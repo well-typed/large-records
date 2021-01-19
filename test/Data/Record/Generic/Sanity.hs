@@ -2,14 +2,20 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE EmptyCase           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE InstanceSigs        #-}
+{-# LANGUAGE PatternSynonyms     #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE ViewPatterns        #-}
+
+{-# OPTIONS_GHC -ddump-splices #-}
 
 module Data.Record.Generic.Sanity (tests) where
 
@@ -18,33 +24,103 @@ import Data.Proxy
 import Data.SOP (NP(..), All, Compose)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.SOP     as SOP
-import qualified Data.Vector  as V
-import qualified Generics.SOP as SOP
-import qualified GHC.Generics as GHC
+import qualified Data.SOP                   as SOP
+import qualified Data.Vector                as V
+import qualified Generics.SOP               as SOP
+import qualified Generics.SOP.Metadata      as SOP
+import qualified Generics.SOP.Type.Metadata as SOP.T
+import qualified Generics.SOP.Eq            as SOP
+import qualified Generics.SOP.Show          as SOP
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Generic
 import Data.Record.Generic.SOP
--- import Data.Record.Generic.TH
+import Data.Record.Generic.TH
 import qualified Data.Record.Generic.Rep as Rep
 
 {-------------------------------------------------------------------------------
   TH test
 -------------------------------------------------------------------------------}
 
--- largeRecord (_ [d| data T = MkT Int |])
+largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
+  data T = MkT {
+      tInt  :: Int
+    , tBool :: Bool
+    , tChar :: Char
+    }
+  |]
+
+-- TODO: We should be renaming our own field accessors if we are
+-- generating the pattern synonym; essentially, this just creates one extra
+-- level of indirection: ghc-generated-accessor = our-accessor
+pattern MkT :: Int -> Bool -> Char -> T
+pattern MkT { _xtInt, _xtBool, _xtChar } <- (tupleFromT -> (_xtInt, _xtBool, _xtChar))
+  where
+    MkT x0 x1 x2 = TFromVector $ V.fromList [
+        unsafeCoerce x0
+      , unsafeCoerce x1
+      , unsafeCoerce x2
+      ]
+
+{-# COMPLETE MkT #-}
+
+{-------------------------------------------------------------------------------
+  Handwritten SOP instance
+
+  This allows us to compare the untyped representation used by @large-records@
+  to the strongly typed version from @generics-sop@.
+-------------------------------------------------------------------------------}
+
+instance SOP.Generic T where
+  type Code T = '[[Int, Bool, Char]]
+  from (MkT i b c) = SOP.SOP (SOP.Z (I i :* I b :* I c :* Nil))
+  to (SOP.SOP (SOP.Z (I i :* I b :* I c :* Nil))) = MkT i b c
+  to (SOP.SOP (SOP.S x)) = case x of {}
+
+instance SOP.HasDatatypeInfo T where
+  type DatatypeInfoOf T =
+    'SOP.T.ADT
+      "Data.Record.Generic.Sanity"
+      "T"
+      '[ 'SOP.T.Record "MkT" '[
+          'SOP.T.FieldInfo "tInt"
+        , 'SOP.T.FieldInfo "tBool"
+        , 'SOP.T.FieldInfo "tChar"
+        ]]
+      '[ '[
+          'SOP.T.StrictnessInfo
+            'SOP.NoSourceUnpackedness
+            'SOP.NoSourceStrictness
+            'SOP.DecidedLazy
+        , 'SOP.T.StrictnessInfo
+            'SOP.NoSourceUnpackedness
+            'SOP.NoSourceStrictness
+            'SOP.DecidedLazy
+        , 'SOP.T.StrictnessInfo
+            'SOP.NoSourceUnpackedness
+            'SOP.NoSourceStrictness
+            'SOP.DecidedLazy
+        ]]
+
+  datatypeInfo _ = SOP.T.demoteDatatypeInfo (Proxy @(SOP.DatatypeInfoOf T))
+
+{-------------------------------------------------------------------------------
+  Temporary: use SOP generics to derive 'Eq' and 'Show'
+
+  TODO: We'll want to use our own generics to do this, and derive it
+  automatically. Once we do, remove @basic-sop@ dependency.
+-------------------------------------------------------------------------------}
+
+instance Eq   T where (==) = SOP.geq
+instance Show T where show = SOP.gshow
 
 {-------------------------------------------------------------------------------
   Small test record
 
   We derive GHC and SOP generics for interop test.
 -------------------------------------------------------------------------------}
-
-data T = MkT Int Bool Char
-  deriving (Eq, Show, GHC.Generic, SOP.Generic)
 
 instance Generic T where
   type Constraints c T = (c Int, c Bool, c Char)

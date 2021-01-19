@@ -17,7 +17,7 @@ library
                         Data.Record.Generic.SOP
                         Data.Record.Generic.TH
                         Data.Record.Generic.Unsafe
-    build-depends:      base ^>=4.13.0.0
+    build-depends:      base >=4.13 && < 4.15
                       , aeson
                       , generics-sop
                       , sop-core
@@ -41,6 +41,7 @@ test-suite test-large-records
     main-is:            TestLargeRecords.hs
     other-modules:      Data.Record.Generic.Sanity
     build-depends:      base
+                      , basic-sop
                       , generics-sop
                       , large-records
                       , mtl
@@ -51,3 +52,11 @@ test-suite test-large-records
     hs-source-dirs:     test
     default-language:   Haskell2010
     ghc-options:       -Wall
+                       -Wcompat
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wpartial-fields
+                       -Widentities
+                       -Wredundant-constraints
+                       -Wmissing-export-lists
+                       -ddump-to-file

@@ -1,0 +1,53 @@
+cabal-version:      2.4
+name:               large-records
+version:            0.1.0.0
+synopsis:           Efficient compilation for large records, linear in the size of the record
+description:
+bug-reports:        https://github.com/well-typed/large-records/issues
+license:            BSD-3-Clause
+author:             Edsko de Vries
+maintainer:         edsko@well-typed.com
+category:           Generics
+extra-source-files: CHANGELOG.md
+
+library
+    exposed-modules:    Data.Record.Generic
+                        Data.Record.Generic.JSON
+                        Data.Record.Generic.Rep
+                        Data.Record.Generic.SOP
+                        Data.Record.Generic.TH
+                        Data.Record.Generic.Unsafe
+    build-depends:      base ^>=4.13.0.0
+                      , aeson
+                      , generics-sop
+                      , sop-core
+                      , template-haskell
+                      , text
+                      , vector
+    hs-source-dirs:     src
+    default-language:   Haskell2010
+    default-extensions: NoStarIsType
+    ghc-options:       -Wall
+                       -Wcompat
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wpartial-fields
+                       -Widentities
+                       -Wredundant-constraints
+                       -Wmissing-export-lists
+
+test-suite test-large-records
+    type:               exitcode-stdio-1.0
+    main-is:            TestLargeRecords.hs
+    other-modules:      Data.Record.Generic.Sanity
+    build-depends:      base
+                      , generics-sop
+                      , large-records
+                      , mtl
+                      , sop-core
+                      , tasty
+                      , tasty-hunit
+                      , vector
+    hs-source-dirs:     test
+    default-language:   Haskell2010
+    ghc-options:       -Wall

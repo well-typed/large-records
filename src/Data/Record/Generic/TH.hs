@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE PatternSynonyms     #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -79,8 +79,8 @@ genNewtype _ r = do
   where
     nameType, nameConstr, nameField :: Name
     nameType   = recordName       r
-    nameConstr = recordConstrName r
-    nameField  = recordFieldName  r
+    nameConstr = recordInternalConstrName r
+    nameField  = recordInternalFieldName  r
 
     cxt :: Cxt
     cxt = []
@@ -123,7 +123,7 @@ genFieldAccessor _opts r f = do
     simpleFn
       (fieldAccessorName f)
       [t| $(recordTypeQ r) -> $(fieldTypeQ f) |]
-      [| $(recordIndexedAccessorQ r) $(fieldIndexQ f) |]
+      (fieldUntypedAccessor r f)
 
 -- | Generate view on the record
 --
@@ -132,31 +132,85 @@ genFieldAccessor _opts r f = do
 -- > tupleFromT :: T -> (Int, Bool, Char)
 -- > tupleFromT = \x -> (tInt x, tBool x, tChar x)
 genRecordView :: Options -> Record -> Q [Dec]
-genRecordView _opts r@Record{..} = do
+genRecordView Options{..} r@Record{..} = do
     simpleFn
       (recordViewName r)
-      [t| $(recordTypeQ r) -> $(return viewType) |]
+      [t| $(recordTypeQ r) -> $viewType |]
       viewBody
   where
-    viewType :: Type
-    viewType = mkTupleT fieldType $ nest recordFields
+    viewType :: Q Type
+    viewType = mkTupleT fieldTypeQ $ nest recordFields
 
     viewBody :: Q Exp
     viewBody = do
         x <- newName "x"
-        return $ LamE [VarP x] $ mkTupleE (viewField x) $ nest recordFields
+        lamE [varP x] $ mkTupleE (viewField x) $ nest recordFields
 
-    viewField :: Name -> Field -> Exp
-    viewField x f = VarE (fieldAccessorName f) `AppE` VarE x
+    -- We generate the view only if we are generating the pattern synonym,
+    -- but when we do we don't generate the typed accessors, because they
+    -- are instead derived from the pattern synonym by GHC. Since the synonym
+    -- requires the view, we therefore use the untyped accessor here.
+    viewField :: Name -> Field -> Q Exp
+    viewField x f = [| $(fieldUntypedAccessor r f) $(varE x) |]
+
+-- | Generate pattern synonym
+--
+-- Constructs something like this:
+--
+-- > pattern MkT :: Int -> Bool -> Char -> T
+-- > pattern MkT{tInt, tBool, tChar} <- tupleFromT -> (tInt, tBool, tChar)
+-- >   where
+-- >     MkT x y z = TFromVector (V.fromList [
+-- >           unsafeCoerce x
+-- >         , unsafeCoerce y
+-- >         , unsafeCoerce z
+-- >         ])
+-- > 
+-- > {-# COMPLETE MkT #-}
+genPatSynonym :: Options -> Record -> Q [Dec]
+genPatSynonym _opts r@Record{..} = sequence [
+      patSynSigD (mkName recordConstr) $
+        simplePatSynType (map fieldTypeQ recordFields) (recordTypeQ r)
+    , patSynD (mkName recordConstr)
+        (recordPatSyn $ map fieldAccessorName recordFields)
+        qDir
+        matchVector
+    , pragCompleteD [mkName recordConstr] Nothing
+    ]
+  where
+    matchVector :: Q Pat
+    matchVector = viewP (varE (recordViewName r)) $
+        mkTupleP (varP . fieldAccessorName) $ nest recordFields
+
+    qDir :: Q PatSynDir
+    qDir = do
+        vars   <- mapM mkVarName recordFields
+        explBidir . (:[]) $ clause
+          (map varP vars)
+          (normalB [| $(recordFromVectorQ r) $(mkVector coerce vars) |] )
+          []
+
+    coerce :: Name -> Q Exp
+    coerce x = [| unsafeCoerce $(varE x) |]
+
+    -- The constructor arguments are locally bound, and should not have the
+    -- same name as the fields themselves
+    mkVarName :: Field -> Q Name
+    mkVarName = newName . fieldUnqual
 
 -- | Generate all definitions
 process :: Options -> Record -> Q [Dec]
 process opts@Options{..} r = concatM $ [
       (:[]) <$> genNewtype opts r
     , genIndexedAccessor opts r
-    , genFieldAccessors  opts r
+      -- If we generate the pattern synonym, there is no need to generate
+      -- field accessors, because GHC will generate them from the synonym
+    , when (not generatePatternSynonym) $ [
+          genFieldAccessors opts r
+        ]
     , when generatePatternSynonym $ [
           genRecordView opts r
+        , genPatSynonym opts r
         ]
     ]
   where
@@ -172,12 +226,27 @@ recordName :: Record -> Name
 recordName Record{..} =
     mkName $ recordUnqual
 
-recordConstrName :: Record -> Name
-recordConstrName Record{..} =
+-- | The name of the constructor used internally
+--
+-- For example, if the user defines
+--
+-- > [largeRecord| data T = MkT {..} |]
+--
+-- then
+--
+-- * 'recordUnqual'             will be 'T'
+-- * 'recordConstr'             will be 'MkT'
+-- * 'recordInternalConstrName' will be 'TFromVector'
+-- * 'recordInternalFieldName'  will be 'vectorFromT'
+recordInternalConstrName :: Record -> Name
+recordInternalConstrName Record{..} =
      mkName $ recordUnqual ++ "FromVector"
 
-recordFieldName :: Record -> Name
-recordFieldName Record{..} =
+-- | The name of the newtype unwrapper used internally
+--
+-- See 'recordInternalConstrName' for a detailed discussion.
+recordInternalFieldName :: Record -> Name
+recordInternalFieldName Record{..} =
     mkName $ "vectorFrom" ++ recordUnqual
 
 recordViewName :: Record -> Name
@@ -197,22 +266,35 @@ fieldAccessorName Field{..} =
 -------------------------------------------------------------------------------}
 
 recordTypeQ :: Record -> Q Type
-recordTypeQ r = return $ ConT (recordName r)
+recordTypeQ = conT . recordName
 
 recordToVectorQ :: Record -> Q Exp
-recordToVectorQ r = return $ VarE (recordFieldName r)
+recordToVectorQ = varE . recordInternalFieldName
+
+recordFromVectorQ :: Record -> Q Exp
+recordFromVectorQ = conE . recordInternalConstrName
 
 recordIndexedAccessorQ :: Record -> Q Exp
-recordIndexedAccessorQ r = return $ VarE (recordIndexedAccessorName r)
+recordIndexedAccessorQ = varE . recordIndexedAccessorName
 
 fieldTypeQ :: Field -> Q Type
 fieldTypeQ Field{..} = return fieldType
 
 fieldIndexQ :: Field -> Q Exp
-fieldIndexQ Field{..} = return $ LitE . IntegerL $ fromIntegral fieldIndex
+fieldIndexQ Field{..} = litE . integerL $ fromIntegral fieldIndex
+
+fieldUntypedAccessor :: Record -> Field -> Q Exp
+fieldUntypedAccessor r f = [| $(recordIndexedAccessorQ r) $(fieldIndexQ f) |]
 
 {-------------------------------------------------------------------------------
   Supported declarations
+
+  TODOs:
+
+  * Support type variables
+  * Support (certain) deriving clauses
+  * Be explicit about strictness
+  * ...
 -------------------------------------------------------------------------------}
 
 -- | Unqualified name
@@ -220,6 +302,7 @@ type Unqual = String
 
 data Record = Record {
       recordUnqual :: Unqual
+    , recordConstr :: Unqual
     , recordFields :: [Field]
     }
 
@@ -235,10 +318,10 @@ record (DataD
           name
           _tyVarBndrs@[]
           _kind@Nothing
-          [RecC _constrName fields]
+          [RecC constrName fields]
           _derivClauses@[]
        ) =
-        Record (nameBase name)
+        Record (nameBase name) (nameBase constrName)
     <$> mapM field (zip [0..] fields)
 record _otherwise =
     Nothing
@@ -254,28 +337,38 @@ pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
   Auxiliary: working with tuples
 -------------------------------------------------------------------------------}
 
+
 -- | Construct tuple type
-mkTupleT :: forall a. (a -> Type) -> Forest a -> Type
+mkTupleT :: forall a. (a -> Q Type) -> Forest a -> Q Type
 mkTupleT f = forest cata
   where
-    cata :: Cata a Type
+    cata :: Cata a (Q Type)
     cata = Cata {
           leaf   = f
-        , branch = \ts -> foldl AppT (TupleT (length ts)) ts
+        , branch = \case [t] -> t
+                         ts  -> foldl appT (tupleT (length ts)) ts
         }
 
 -- | Construct tuple expression
-mkTupleE :: forall a. (a -> Exp) -> Forest a -> Exp
+mkTupleE :: forall a. (a -> Q Exp) -> Forest a -> Q Exp
 mkTupleE f = forest cata
   where
-    cata :: Cata a Exp
+     cata :: Cata a (Q Exp)
+     cata = Cata {
+           leaf   = f
+         , branch = \case [e] -> e
+                          es  -> tupE es
+         }
+
+-- | Construct tuple pattern
+mkTupleP :: forall a. (a -> Q Pat) -> Forest a -> Q Pat
+mkTupleP f = forest cata
+  where
+    cata :: Cata a (Q Pat)
     cata = Cata {
           leaf   = f
-#if MIN_VERSION_template_haskell(2,16,0)
-        , branch = TupE . map Just
-#else
-        , branch = TupE
-#endif
+        , branch = \case [p] -> p
+                         ps  -> tupP ps
         }
 
 -- | Observe Haskell's tuple length
@@ -304,7 +397,7 @@ nest = go . map Leaf
           | otherwise         = go (map (Branch . Forest) (chunk limit ts))
 
     limit :: Int
-    limit = 62
+    limit = 2 -- 62 TODO: Set back to 62 once everything is working
 
 {-------------------------------------------------------------------------------
   Auxiliary: trees and large bananas
@@ -330,26 +423,33 @@ tree cata (Branch as) = forest cata as
 forest :: Cata a b -> Forest a -> b
 forest cata (Forest ts) = branch cata (map (tree cata) ts)
 
--- | Example of structure preserving folding
---
--- In Haskell syntax, 'exampleFolded' is equal to @(A, (B, C))@.
-_exampleFolded :: Type
-_exampleFolded =  mkTupleT id example
-  where
-    example :: Forest Type
-    example =
-        Forest [
-            Leaf (ConT a)
-          , Branch $ Forest [
-                Leaf (ConT b)
-              , Leaf (ConT c)
-              ]
-          ]
+{-------------------------------------------------------------------------------
+  Auxiliary: TH
+-------------------------------------------------------------------------------}
 
-    a, b, c :: Name
-    a = mkName "A"
-    b = mkName "B"
-    c = mkName "C"
+simpleFn :: Name -> Q Type -> Q Exp -> Q [Dec]
+simpleFn name qTyp qBody = do
+    typ  <- qTyp
+    body <- qBody
+    return [
+          SigD name typ
+        , ValD (VarP name) (NormalB body) []
+        ]
+
+-- | Construct simple pattern synonym type
+--
+-- TODO: Add support for type variables (but only universals, not existentials)
+simplePatSynType :: [Q Type] -> Q Type -> Q PatSynType
+simplePatSynType qFieldTypes qResultType = do
+    fieldTypes <- sequence qFieldTypes
+    resultType <- qResultType
+    return
+      $ ForallT [] []
+      $ ForallT [] []
+      $ foldr (\a b -> (ArrowT `AppT` a) `AppT` b) resultType fieldTypes
+
+mkVector :: (a -> Q Exp) -> [a] -> Q Exp
+mkVector f elems = [| V.fromList $(listE (map f elems)) |]
 
 {-------------------------------------------------------------------------------
   Auxiliary: general
@@ -360,15 +460,6 @@ concatM = fmap concat . sequenceA
 
 concatMapM :: Applicative m => (a -> m [b]) -> [a] -> m [b]
 concatMapM f = concatM . map f
-
-simpleFn :: Name -> Q Type -> Q Exp -> Q [Dec]
-simpleFn name qTyp qBody = do
-    typ  <- qTyp
-    body <- qBody
-    return [
-          SigD name typ
-        , ValD (VarP name) (NormalB body) []
-        ]
 
 chunk :: Int -> [a] -> [[a]]
 chunk n = go

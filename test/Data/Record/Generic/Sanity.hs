@@ -52,20 +52,6 @@ largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
     }
   |]
 
--- TODO: We should be renaming our own field accessors if we are
--- generating the pattern synonym; essentially, this just creates one extra
--- level of indirection: ghc-generated-accessor = our-accessor
-pattern MkT :: Int -> Bool -> Char -> T
-pattern MkT { _xtInt, _xtBool, _xtChar } <- (tupleFromT -> (_xtInt, _xtBool, _xtChar))
-  where
-    MkT x0 x1 x2 = TFromVector $ V.fromList [
-        unsafeCoerce x0
-      , unsafeCoerce x1
-      , unsafeCoerce x2
-      ]
-
-{-# COMPLETE MkT #-}
-
 {-------------------------------------------------------------------------------
   Handwritten SOP instance
 

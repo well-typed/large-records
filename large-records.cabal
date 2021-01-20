@@ -20,6 +20,7 @@ library
     build-depends:      base >=4.13 && < 4.15
                       , aeson
                       , generics-sop
+                      , mtl
                       , sop-core
                       , template-haskell
                       , text

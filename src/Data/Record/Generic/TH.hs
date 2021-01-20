@@ -11,10 +11,13 @@ module Data.Record.Generic.TH (
   , largeRecord
   ) where
 
+import Control.Monad.State (StateT)
+import Data.List (intercalate)
 import Data.Vector (Vector)
 import GHC.Exts (Any)
 
-import qualified Data.Vector as V
+import qualified Control.Monad.State as StateT
+import qualified Data.Vector         as V
 
 import Language.Haskell.TH hiding (cxt)
 import Language.Haskell.TH.Syntax
@@ -33,11 +36,24 @@ defaultOptions = Options {
     }
 
 largeRecord :: Options -> Q [Dec] -> Q [Dec]
-largeRecord opts decls = decls >>= concatMapM go
+largeRecord opts decls = do
+    ds          <- decls
+    (ds', errs) <- StateT.runStateT (concatMapM go ds) []
+    case errs of
+      []         -> return ds'
+      _otherwise -> fail $ intercalate "\n    " .concat $ [
+          errs
+        , ["(" ++ show (length errs) ++ " errors)"]
+        ]
   where
-    go :: Dec -> Q [Dec]
-    go (record -> Just r) = process opts r
-    go d = fail $ "largeRecord: unexpected declaration " ++ show d
+    go :: Dec -> StateT [String] Q [Dec]
+    go (record -> Just r) = StateT.lift $ process opts r
+    go d = failWith $ "largeRecord: unsupported " ++ show d
+
+    failWith :: String -> StateT [String] Q [a]
+    failWith err = do
+        StateT.modify (++ [err])
+        return []
 
 {-------------------------------------------------------------------------------
   Generation

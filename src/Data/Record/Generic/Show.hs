@@ -14,6 +14,11 @@ import GHC.Show
 import qualified Data.Record.Generic.Rep as Rep
 
 -- | Generic definition of 'showsPrec', compatible with the GHC generated one.
+--
+-- Typical usage:
+--
+-- > instance Show T where
+-- >   showsPrec = gshowsPrec
 gshowsPrec :: forall a. (Generic a, Constraints a Show) => Int -> a -> ShowS
 gshowsPrec d =
       aux

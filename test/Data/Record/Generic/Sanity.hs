@@ -26,12 +26,12 @@ import qualified Data.SOP                   as SOP
 import qualified Generics.SOP               as SOP
 import qualified Generics.SOP.Metadata      as SOP
 import qualified Generics.SOP.Type.Metadata as SOP.T
-import qualified Generics.SOP.Eq            as SOP
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Generic
+import Data.Record.Generic.Eq
 import Data.Record.Generic.Show
 import Data.Record.Generic.SOP
 import Data.Record.Generic.TH
@@ -102,7 +102,8 @@ instance SOP.HasDatatypeInfo T where
 instance Show T where
   showsPrec = gshowsPrec
 
-instance Eq T where (==) = SOP.geq
+instance Eq T where
+  (==) = geq
 
 {-------------------------------------------------------------------------------
   Example type class (for constructing values)

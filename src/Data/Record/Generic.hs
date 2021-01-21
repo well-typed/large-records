@@ -9,13 +9,13 @@ module Data.Record.Generic (
     Generic(..)
   , Rep(..)
   , Metadata(..)
-    -- * Re-exports from sop-core
+    -- * Re-exports
   , module SOP
+  , Proxy(..)
   ) where
 
 import Data.Kind
 import Data.Proxy
-import Data.Text (Text)
 import Data.Vector (Vector)
 import GHC.Exts (Any)
 

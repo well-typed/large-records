@@ -12,6 +12,7 @@ extra-source-files: CHANGELOG.md
 
 library
     exposed-modules:    Data.Record.Generic
+                        Data.Record.Generic.Eq
                         Data.Record.Generic.JSON
                         Data.Record.Generic.Rep
                         Data.Record.Generic.Show
@@ -43,7 +44,6 @@ test-suite test-large-records
     main-is:            TestLargeRecords.hs
     other-modules:      Data.Record.Generic.Sanity
     build-depends:      base
-                      , basic-sop
                       , generics-sop
                       , large-records
                       , mtl

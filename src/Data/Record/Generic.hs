@@ -8,9 +8,7 @@ module Data.Record.Generic (
     -- * Types with a generic view
     Generic(..)
   , Rep(..)
-    -- * Metadata
   , Metadata(..)
-  , FieldName
     -- * Re-exports from sop-core
   , module SOP
   ) where
@@ -48,20 +46,20 @@ class Generic a where
   -- | Construct vector of dictionaries, one for each field of the record
   dict :: Constraints a c => Proxy c -> Rep (Dict c) a
 
+  -- | Metadata
+  metadata :: proxy a -> Metadata a
+
 -- | Representation of some record @a@
 --
 -- The @f@ parameter describes which functor has been applied to all fields of
 -- the record; in other words @Rep I@ is isomorphic to the record itself.
 newtype Rep f a = Rep (Vector (f Any))
 
-{-------------------------------------------------------------------------------
-  Metadata
--------------------------------------------------------------------------------}
-
-class Generic a => Metadata a where
-  metadata :: proxy a -> Rep (K FieldName) a
-
-type FieldName = Text
+data Metadata a = Metadata {
+      recordName        :: String
+    , recordConstructor :: String
+    , recordFieldNames  :: Rep (K String) a
+    }
 
 {-------------------------------------------------------------------------------
   Some specialised instances for 'Rep

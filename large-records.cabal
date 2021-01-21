@@ -14,9 +14,9 @@ library
     exposed-modules:    Data.Record.Generic
                         Data.Record.Generic.JSON
                         Data.Record.Generic.Rep
+                        Data.Record.Generic.Show
                         Data.Record.Generic.SOP
                         Data.Record.Generic.TH
-                        Data.Record.Generic.Unsafe
     build-depends:      base >=4.13 && < 4.15
                       , aeson
                       , generics-sop
@@ -36,6 +36,7 @@ library
                        -Widentities
                        -Wredundant-constraints
                        -Wmissing-export-lists
+                       -ddump-to-file
 
 test-suite test-large-records
     type:               exitcode-stdio-1.0

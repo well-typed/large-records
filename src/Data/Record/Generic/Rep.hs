@@ -31,6 +31,8 @@ module Data.Record.Generic.Rep (
     -- | Generation
   , pure
   , cpure
+    -- | Conversion
+  , unsafeFromListK
   ) where
 
 import Prelude hiding (
@@ -148,3 +150,13 @@ cpure p f = zipWith apFn (pure f') (dict p)
   where
     f' :: forall x. (Dict c -.-> f) x
     f' = Fn $ \Dict -> f
+
+{-------------------------------------------------------------------------------
+  Conversion
+-------------------------------------------------------------------------------}
+
+-- | Convert list to 'Rep'
+--
+-- Does not check that the length has the right number of elements.
+unsafeFromListK :: [b] -> Rep (K b) a
+unsafeFromListK = Rep . V.fromList . Prelude.map K

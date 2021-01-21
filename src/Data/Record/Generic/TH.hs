@@ -28,6 +28,7 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 import Data.Record.Generic
+import qualified Data.Record.Generic.Rep as Rep
 
 {-------------------------------------------------------------------------------
   Public API
@@ -106,9 +107,9 @@ genNewtype _ r =
       []
   where
     nameType, nameConstr, nameField :: Name
-    nameType   = recordName               r
-    nameConstr = recordInternalConstrName r
-    nameField  = recordInternalFieldName  r
+    nameType   = nameRecord               r
+    nameConstr = nameRecordInternalConstr r
+    nameField  = nameRecordInternalField  r
 
 {-------------------------------------------------------------------------------
   Generation: field accessors
@@ -123,7 +124,7 @@ genNewtype _ r =
 genIndexedAccessor :: Options -> Record -> Q [Dec]
 genIndexedAccessor _opts r =
     simpleFn
-      (recordIndexedAccessorName r)
+      (nameRecordIndexedAccessor r)
       [t| forall a. Int -> $(recordTypeQ r) -> a |]
       [| \n t -> unsafeCoerce (V.unsafeIndex ($(recordToVectorQ r) t) n) |]
 
@@ -141,7 +142,7 @@ genFieldAccessors opts r@Record{..} =
 genFieldAccessor :: Options -> Record -> Field -> Q [Dec]
 genFieldAccessor _opts r f = do
     simpleFn
-      (fieldAccessorName f)
+      (nameFieldAccessor f)
       [t| $(recordTypeQ r) -> $(fieldTypeQ f) |]
       (fieldUntypedAccessor r f)
 
@@ -158,7 +159,7 @@ genFieldAccessor _opts r f = do
 genRecordView :: Options -> Record -> Q [Dec]
 genRecordView Options{..} r@Record{..} = do
     simpleFn
-      (recordViewName r)
+      (nameRecordView r)
       [t| $(recordTypeQ r) -> $viewType |]
       viewBody
   where
@@ -196,15 +197,15 @@ genPatSynonym _opts r@Record{..} = sequence [
       patSynSigD (mkName recordConstr) $
         simplePatSynType (map fieldTypeQ recordFields) (recordTypeQ r)
     , patSynD (mkName recordConstr)
-        (recordPatSyn $ map fieldAccessorName recordFields)
+        (recordPatSyn $ map nameFieldAccessor recordFields)
         qDir
         matchVector
     , pragCompleteD [mkName recordConstr] Nothing
     ]
   where
     matchVector :: Q Pat
-    matchVector = viewP (varE (recordViewName r)) $
-        mkTupleP (varP . fieldAccessorName) $ nest recordFields
+    matchVector = viewP (varE (nameRecordView r)) $
+        mkTupleP (varP . nameFieldAccessor) $ nest recordFields
 
     qDir :: Q PatSynDir
     qDir = do
@@ -249,7 +250,7 @@ genConstraintsClass opts r = do
     k <- [t| Kind.Type -> Kind.Constraint |]
     classD
       (genRequiredConstraints opts r c)
-      (recordConstraintsClassName r)
+      (nameRecordConstraintsClass r)
       [KindedTV c k]
       []
       []
@@ -264,7 +265,7 @@ genConstraintsClassInstance opts r = do
     c <- newName "c"
     instanceD
       (genRequiredConstraints opts r c)
-      (conT (recordConstraintsClassName r) `appT` varT c)
+      (conT (nameRecordConstraintsClass r) `appT` varT c)
       []
 
 -- | Generate the Constraints type family instance
@@ -277,7 +278,7 @@ genConstraintsFamilyInstance _opts r = tySynInstD $
     tySynEqn
       Nothing
       [t| Constraints $(recordTypeQ r) |]
-      (conT (recordConstraintsClassName r))
+      (conT (nameRecordConstraintsClass r))
 
 -- | Generate the dictionary creation function ('dict')
 --
@@ -298,6 +299,27 @@ genDict _opts Record{..} = do
           unsafeCoerce (dictFor $(varE p) (Proxy :: Proxy $(fieldTypeQ f)))
         |]
 
+-- | Generate metadata
+--
+-- Generates something like
+--
+-- > \_p -> Metadata {
+-- >      recordName        = "T"
+-- >    , recordConstructor = "MkT"
+-- >    , recordFieldNames  = Rep.unsafeFromListK ["tInt", "tBool", "tChar"]
+-- >    }
+genMetadata :: Options -> Record -> Q Exp
+genMetadata _opts Record{..} = do
+    p <- newName "_p"
+    lamE [varP p] $ recConE 'Metadata [
+        fieldExp 'recordName        $ litE (stringL recordUnqual)
+      , fieldExp 'recordConstructor $ litE (stringL recordConstr)
+      , fieldExp 'recordFieldNames  $ [| Rep.unsafeFromListK $fieldNames |]
+      ]
+  where
+    fieldNames :: Q Exp
+    fieldNames = listE $ map (litE . stringL . fieldUnqual) recordFields
+
 -- | Generate the definitions required to provide the instance for 'Generic'
 --
 -- > class    (..) => Constraints_T c
@@ -315,12 +337,13 @@ genGenericInstance opts r@Record{..} = sequence [
     , genConstraintsClassInstance opts r
     , instanceD
         (cxt [])
-        [t| Generic $(conT (recordName r)) |]
+        [t| Generic $(conT (nameRecord r)) |]
         [ genConstraintsFamilyInstance opts r
         , valD (varP 'from)       (normalB [| coerce           |]) []
         , valD (varP 'to)         (normalB [| coerce           |]) []
         , valD (varP 'recordSize) (normalB [| const $numFields |]) []
-        , valD (varP 'dict)       (normalB (genDict opts r))       []
+        , valD (varP 'dict)       (normalB (genDict     opts r))   []
+        , valD (varP 'metadata)   (normalB (genMetadata opts r))   []
         ]
     ]
   where
@@ -331,8 +354,8 @@ genGenericInstance opts r@Record{..} = sequence [
   Decide naming
 -------------------------------------------------------------------------------}
 
-recordName :: Record -> Name
-recordName Record{..} =
+nameRecord :: Record -> Name
+nameRecord Record{..} =
     mkName $ recordUnqual
 
 -- | The name of the constructor used internally
@@ -345,33 +368,33 @@ recordName Record{..} =
 --
 -- * 'recordUnqual'             will be 'T'
 -- * 'recordConstr'             will be 'MkT'
--- * 'recordInternalConstrName' will be 'TFromVector'
--- * 'recordInternalFieldName'  will be 'vectorFromT'
-recordInternalConstrName :: Record -> Name
-recordInternalConstrName Record{..} =
+-- * 'nameRecordInternalConstr' will be 'TFromVector'
+-- * 'nameRecordInternalField'  will be 'vectorFromT'
+nameRecordInternalConstr :: Record -> Name
+nameRecordInternalConstr Record{..} =
      mkName $ recordUnqual ++ "FromVector"
 
 -- | The name of the newtype unwrapper used internally
 --
--- See 'recordInternalConstrName' for a detailed discussion.
-recordInternalFieldName :: Record -> Name
-recordInternalFieldName Record{..} =
+-- See 'nameRecordInternalConstr' for a detailed discussion.
+nameRecordInternalField :: Record -> Name
+nameRecordInternalField Record{..} =
     mkName $ "vectorFrom" ++ recordUnqual
 
-recordViewName :: Record -> Name
-recordViewName Record{..} =
+nameRecordView :: Record -> Name
+nameRecordView Record{..} =
     mkName $ "tupleFrom" ++ recordUnqual
 
-recordIndexedAccessorName :: Record -> Name
-recordIndexedAccessorName Record{..} =
+nameRecordIndexedAccessor :: Record -> Name
+nameRecordIndexedAccessor Record{..} =
     mkName $ "unsafeIndex" ++ recordUnqual
 
-recordConstraintsClassName :: Record -> Name
-recordConstraintsClassName Record{..} =
+nameRecordConstraintsClass :: Record -> Name
+nameRecordConstraintsClass Record{..} =
     mkName $ "Constraints_" ++ recordUnqual
 
-fieldAccessorName :: Field -> Name
-fieldAccessorName Field{..} =
+nameFieldAccessor :: Field -> Name
+nameFieldAccessor Field{..} =
     mkName $ fieldUnqual
 
 {-------------------------------------------------------------------------------
@@ -379,16 +402,16 @@ fieldAccessorName Field{..} =
 -------------------------------------------------------------------------------}
 
 recordTypeQ :: Record -> Q Type
-recordTypeQ = conT . recordName
+recordTypeQ = conT . nameRecord
 
 recordToVectorQ :: Record -> Q Exp
-recordToVectorQ = varE . recordInternalFieldName
+recordToVectorQ = varE . nameRecordInternalField
 
 recordFromVectorQ :: Record -> Q Exp
-recordFromVectorQ = conE . recordInternalConstrName
+recordFromVectorQ = conE . nameRecordInternalConstr
 
 recordIndexedAccessorQ :: Record -> Q Exp
-recordIndexedAccessorQ = varE . recordIndexedAccessorName
+recordIndexedAccessorQ = varE . nameRecordIndexedAccessor
 
 fieldTypeQ :: Field -> Q Type
 fieldTypeQ Field{..} = return fieldType

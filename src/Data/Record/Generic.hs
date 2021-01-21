@@ -46,7 +46,7 @@ class Generic a where
   recordSize :: Proxy a -> Int
 
   -- | Construct vector of dictionaries, one for each field of the record
-  dict :: Constraints a c => Rep (Dict c) a
+  dict :: Constraints a c => Proxy c -> Rep (Dict c) a
 
 -- | Representation of some record @a@
 --

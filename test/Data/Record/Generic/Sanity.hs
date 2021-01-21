@@ -1,15 +1,11 @@
 {-# LANGUAGE ConstraintKinds         #-}
 {-# LANGUAGE DataKinds               #-}
-{-# LANGUAGE DeriveAnyClass          #-}
-{-# LANGUAGE DeriveGeneric           #-}
 {-# LANGUAGE EmptyCase               #-}
 {-# LANGUAGE FlexibleContexts        #-}
 {-# LANGUAGE FlexibleInstances       #-}
-{-# LANGUAGE InstanceSigs            #-}
+{-# LANGUAGE KindSignatures          #-}
 {-# LANGUAGE PatternSynonyms         #-}
-{-# LANGUAGE RankNTypes              #-}
 {-# LANGUAGE ScopedTypeVariables     #-}
-{-# LANGUAGE StandaloneDeriving      #-}
 {-# LANGUAGE TemplateHaskell         #-}
 {-# LANGUAGE TypeApplications        #-}
 {-# LANGUAGE TypeFamilies            #-}
@@ -23,13 +19,10 @@
 module Data.Record.Generic.Sanity (tests) where
 
 import Control.Monad.State (State, evalState, state)
-import Data.Coerce (coerce)
 import Data.Proxy
 import Data.SOP (NP(..), All, Compose)
-import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.SOP                   as SOP
-import qualified Data.Vector                as V
 import qualified Generics.SOP               as SOP
 import qualified Generics.SOP.Metadata      as SOP
 import qualified Generics.SOP.Type.Metadata as SOP.T
@@ -45,7 +38,7 @@ import Data.Record.Generic.TH
 import qualified Data.Record.Generic.Rep as Rep
 
 {-------------------------------------------------------------------------------
-  TH test
+  Small test record
 -------------------------------------------------------------------------------}
 
 largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
@@ -55,6 +48,9 @@ largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
     , tChar :: Char
     }
   |]
+
+exampleT :: T
+exampleT = MkT 5 True 'c'
 
 {-------------------------------------------------------------------------------
   Handwritten SOP instance
@@ -107,33 +103,6 @@ instance Eq   T where (==) = SOP.geq
 instance Show T where show = SOP.gshow
 
 {-------------------------------------------------------------------------------
-  Small test record
-
-  We derive GHC and SOP generics for interop test.
--------------------------------------------------------------------------------}
-
-instance Generic T where
-  type Constraints T = Constraints_T
-
-  from = coerce
-  to   = coerce
-
-  recordSize _ = 3
-
-  dict :: forall c. Constraints T c => Rep (Dict c) T
-  dict = Rep $ V.fromList [
-        unsafeCoerce $ dictFor (Proxy @Int)
-      , unsafeCoerce $ dictFor (Proxy @Bool)
-      , unsafeCoerce $ dictFor (Proxy @Char)
-      ]
-    where
-      dictFor :: c x => Proxy x -> Dict c x
-      dictFor _ = Dict
-
-exampleT :: T
-exampleT = MkT 5 True 'c'
-
-{-------------------------------------------------------------------------------
   Example type class (for constructing values)
 -------------------------------------------------------------------------------}
 
@@ -164,7 +133,7 @@ test_pure =
     expected = K 'a' :* K 'a' :* K 'a' :* Nil
 
     actual :: Rep (K Char) T
-    actual = Rep.pure (unsafeCoerce (K 'a'))
+    actual = Rep.pure (K 'a')
 
 test_cpure :: Assertion
 test_cpure =

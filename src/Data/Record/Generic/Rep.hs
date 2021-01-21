@@ -112,8 +112,8 @@ czipWithM ::
   => Proxy c
   -> (forall x. c x => f x -> g x -> m (h x))
   -> Rep f a -> Rep g a -> m (Rep h a)
-czipWithM _ f a b =
-    sequenceA (zipWith apFn (zipWith apFn (pure f') dict) (zip a b))
+czipWithM p f a b =
+    sequenceA (zipWith apFn (zipWith apFn (pure f') (dict p)) (zip a b))
   where
     f' :: (Dict c -.-> Product f g -.-> m :.: h) x
     f' = Fn $ \Dict -> Fn $ \(Pair x y) -> Comp (f x y)
@@ -144,7 +144,7 @@ cpure ::
   => Proxy c
   -> (forall x. c x => f x)
   -> Rep f a
-cpure _ f = zipWith apFn (pure f') dict
+cpure p f = zipWith apFn (pure f') (dict p)
   where
     f' :: forall x. (Dict c -.-> f) x
     f' = Fn $ \Dict -> f

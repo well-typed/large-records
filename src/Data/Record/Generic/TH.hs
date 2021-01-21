@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE PatternSynonyms     #-}
 {-# LANGUAGE RecordWildCards     #-}
@@ -12,16 +13,21 @@ module Data.Record.Generic.TH (
   ) where
 
 import Control.Monad.State (StateT)
-import qualified Data.Kind as Kind
+import Data.Coerce (coerce)
 import Data.List (intercalate)
+import Data.Proxy
 import Data.Vector (Vector)
 import GHC.Exts (Any)
+import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Control.Monad.State as StateT
+import qualified Data.Kind           as Kind
 import qualified Data.Vector         as V
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
+
+import Data.Record.Generic
 
 {-------------------------------------------------------------------------------
   Public API
@@ -48,7 +54,7 @@ largeRecord opts decls = do
         ]
   where
     go :: Dec -> StateT [String] Q [Dec]
-    go (record -> Just r) = StateT.lift $ process opts r
+    go (record -> Just r) = StateT.lift $ genAll opts r
     go d = failWith $ "largeRecord: unsupported " ++ show d
 
     failWith :: String -> StateT [String] Q [a]
@@ -56,8 +62,29 @@ largeRecord opts decls = do
         StateT.modify (++ [err])
         return []
 
+-- | Generate all definitions
+genAll :: Options -> Record -> Q [Dec]
+genAll opts@Options{..} r = concatM $ [
+      (:[]) <$> genNewtype opts r
+    , genIndexedAccessor opts r
+      -- If we generate the pattern synonym, there is no need to generate
+      -- field accessors, because GHC will generate them from the synonym
+    , when (not generatePatternSynonym) $ [
+          genFieldAccessors opts r
+        ]
+    , when generatePatternSynonym $ [
+          genRecordView opts r
+        , genPatSynonym opts r
+        ]
+    , genGenericInstance opts r
+    ]
+  where
+    when :: Bool -> [Q [Dec]] -> Q [Dec]
+    when False _   = return []
+    when True  gen = concatM gen
+
 {-------------------------------------------------------------------------------
-  Generation
+  Generation: the type itself
 -------------------------------------------------------------------------------}
 
 -- | Generate the newtype that will represent the record
@@ -82,6 +109,10 @@ genNewtype _ r =
     nameType   = recordName               r
     nameConstr = recordInternalConstrName r
     nameField  = recordInternalFieldName  r
+
+{-------------------------------------------------------------------------------
+  Generation: field accessors
+-------------------------------------------------------------------------------}
 
 -- | Generate the indexed field accessor
 --
@@ -113,6 +144,10 @@ genFieldAccessor _opts r f = do
       (fieldAccessorName f)
       [t| $(recordTypeQ r) -> $(fieldTypeQ f) |]
       (fieldUntypedAccessor r f)
+
+{-------------------------------------------------------------------------------
+  Generation: pattern synonym
+-------------------------------------------------------------------------------}
 
 -- | Generate view on the record
 --
@@ -176,24 +211,20 @@ genPatSynonym _opts r@Record{..} = sequence [
         vars   <- mapM mkVarName recordFields
         explBidir . (:[]) $ clause
           (map varP vars)
-          (normalB [| $(recordFromVectorQ r) $(mkVector coerce vars) |] )
+          (normalB [| $(recordFromVectorQ r) $(mkVector qUnsafeCoerce vars) |] )
           []
 
-    coerce :: Name -> Q Exp
-    coerce x = [| unsafeCoerce $(varE x) |]
+    qUnsafeCoerce :: Name -> Q Exp
+    qUnsafeCoerce x = [| unsafeCoerce $(varE x) |]
 
     -- The constructor arguments are locally bound, and should not have the
     -- same name as the fields themselves
     mkVarName :: Field -> Q Name
     mkVarName = newName . fieldUnqual
 
-{-
-ClassD [
-    AppT (VarT c_6989586621679064041) (ConT GHC.Types.Int)
-  ,AppT (VarT c_6989586621679064041) (ConT GHC.Types.Bool)
-  ,AppT (VarT c_6989586621679064041) (ConT GHC.Types.Char)
-] Constraints_T_6989586621679064040 [KindedTV c_6989586621679064041 (AppT (AppT ArrowT StarT) ConstraintT)] [] []
--}
+{-------------------------------------------------------------------------------
+  Generation: Generic instance
+-------------------------------------------------------------------------------}
 
 -- | Superclass constraints required by the constraints class and instance
 --
@@ -228,41 +259,73 @@ genConstraintsClass opts r = do
 -- Generates something like
 --
 -- > instance (c Int, c Bool, c Char) => Constraints_T c
-genConstraintsInstance :: Options -> Record -> Q Dec
-genConstraintsInstance opts r = do
+genConstraintsClassInstance :: Options -> Record -> Q Dec
+genConstraintsClassInstance opts r = do
     c <- newName "c"
     instanceD
       (genRequiredConstraints opts r c)
       (conT (recordConstraintsClassName r) `appT` varT c)
       []
 
--- | Generate the definitions required to provide the instance for 'Generic'
-genGenericInstance :: Options -> Record -> Q [Dec]
-genGenericInstance opts r = sequence [
-      genConstraintsClass    opts r
-    , genConstraintsInstance opts r
-    ]
+-- | Generate the Constraints type family instance
+--
+-- Generates something like
+--
+-- > type Constraints T = Constraints_T
+genConstraintsFamilyInstance :: Options -> Record -> Q Dec
+genConstraintsFamilyInstance _opts r = tySynInstD $
+    tySynEqn
+      Nothing
+      [t| Constraints $(recordTypeQ r) |]
+      (conT (recordConstraintsClassName r))
 
--- | Generate all definitions
-process :: Options -> Record -> Q [Dec]
-process opts@Options{..} r = concatM $ [
-      (:[]) <$> genNewtype opts r
-    , genIndexedAccessor opts r
-      -- If we generate the pattern synonym, there is no need to generate
-      -- field accessors, because GHC will generate them from the synonym
-    , when (not generatePatternSynonym) $ [
-          genFieldAccessors opts r
+-- | Generate the dictionary creation function ('dict')
+--
+-- Generates something like
+--
+-- > \p -> Rep (V.fromList [
+-- >     unsafeCoerce (dictFor p (Proxy :: Proxy Int))
+-- >   , unsafeCoerce (dictFor p (Proxy :: Proxy Bool))
+-- >   , unsafeCoerce (dictFor p (Proxy :: Proxy Char))
+-- >   ])
+genDict :: Options -> Record -> Q Exp
+genDict _opts Record{..} = do
+    p <- newName "p"
+    lamE [varP p] [| Rep $(mkVector (dictForField p) recordFields) |]
+  where
+    dictForField :: Name -> Field -> Q Exp
+    dictForField p f = [|
+          unsafeCoerce (dictFor $(varE p) (Proxy :: Proxy $(fieldTypeQ f)))
+        |]
+
+-- | Generate the definitions required to provide the instance for 'Generic'
+--
+-- > class    (..) => Constraints_T c
+-- > instance (..) => Constraints_T c
+-- >
+-- > instance Generic T where
+-- >   type Constraints T = Constraints_T
+-- >   from       = coerce
+-- >   to         = coerce
+-- >   recordSize = const 3
+-- >   dict       = ..
+genGenericInstance :: Options -> Record -> Q [Dec]
+genGenericInstance opts r@Record{..} = sequence [
+      genConstraintsClass         opts r
+    , genConstraintsClassInstance opts r
+    , instanceD
+        (cxt [])
+        [t| Generic $(conT (recordName r)) |]
+        [ genConstraintsFamilyInstance opts r
+        , valD (varP 'from)       (normalB [| coerce           |]) []
+        , valD (varP 'to)         (normalB [| coerce           |]) []
+        , valD (varP 'recordSize) (normalB [| const $numFields |]) []
+        , valD (varP 'dict)       (normalB (genDict opts r))       []
         ]
-    , when generatePatternSynonym $ [
-          genRecordView opts r
-        , genPatSynonym opts r
-        ]
-    , genGenericInstance opts r
     ]
   where
-    when :: Bool -> [Q [Dec]] -> Q [Dec]
-    when False _   = return []
-    when True  gen = concatM gen
+    numFields :: Q Exp
+    numFields = litE . integerL . fromIntegral $ length recordFields
 
 {-------------------------------------------------------------------------------
   Decide naming
@@ -516,3 +579,10 @@ chunk n = go
     go :: [a] -> [[a]]
     go [] = []
     go xs = let (firstChunk, rest) = splitAt n xs in firstChunk : go rest
+
+{-------------------------------------------------------------------------------
+  Functions to support the TH code (i.e., functions called by generated code)
+-------------------------------------------------------------------------------}
+
+dictFor :: c x => Proxy c -> Proxy x -> Dict c x
+dictFor _ _ = Dict

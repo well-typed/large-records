@@ -20,6 +20,7 @@
 module Data.Record.Generic.Sanity (tests) where
 
 import Control.Monad.State (State, evalState, state)
+import Data.Coerce (coerce)
 import Data.Proxy
 import Data.SOP (NP(..), All, Compose)
 import Unsafe.Coerce (unsafeCoerce)
@@ -111,18 +112,9 @@ instance Show T where show = SOP.gshow
 instance Generic T where
   type Constraints c T = (c Int, c Bool, c Char)
 
-  from (MkT i b c) = Rep $ V.fromList [
-        unsafeCoerce (I i)
-      , unsafeCoerce (I b)
-      , unsafeCoerce (I c)
-      ]
-
-  to (Rep v) = case V.toList v of
-                 [I i, I b, I c] -> MkT (unsafeCoerce i)
-                                        (unsafeCoerce b)
-                                        (unsafeCoerce c)
-                 _otherwise      -> error "to: unexpected vector"
-
+  from = coerce
+  to   = coerce
+  
   recordSize _ = 3
 
   dict :: forall c. Constraints c T => Rep (Dict c) T

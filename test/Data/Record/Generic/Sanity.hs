@@ -112,9 +112,6 @@ instance Show T where show = SOP.gshow
   We derive GHC and SOP generics for interop test.
 -------------------------------------------------------------------------------}
 
-class (c Int, c Bool, c Char) => Constraints_T c where
-instance (c Int, c Bool, c Char) => Constraints_T c where
-
 instance Generic T where
   type Constraints T = Constraints_T
 

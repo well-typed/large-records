@@ -12,6 +12,7 @@ module Data.Record.Generic.TH (
   ) where
 
 import Control.Monad.State (StateT)
+import qualified Data.Kind as Kind
 import Data.List (intercalate)
 import Data.Vector (Vector)
 import GHC.Exts (Any)
@@ -19,7 +20,7 @@ import GHC.Exts (Any)
 import qualified Control.Monad.State as StateT
 import qualified Data.Vector         as V
 
-import Language.Haskell.TH hiding (cxt)
+import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 {-------------------------------------------------------------------------------
@@ -65,34 +66,22 @@ largeRecord opts decls = do
 --
 -- > newtype T = TFromVector {vectorFromT :: V.Vector Any}
 genNewtype :: Options -> Record -> Q Dec
-genNewtype _ r = do
-    typVector <- [t| Vector Any |]
-
-    let con :: Con
-        con = RecC nameConstr [(
-              nameField
-            , DefaultBang
-            , typVector
-            )]
-
-    return $ NewtypeD cxt nameType tyVarBndrs mKind con derivClauses
+genNewtype _ r =
+    newtypeD
+      (cxt [])
+      nameType
+      []
+      Nothing
+      (recC nameConstr [
+           varBangType nameField $
+             bangType (return DefaultBang) [t| Vector Any |]
+         ])
+      []
   where
     nameType, nameConstr, nameField :: Name
-    nameType   = recordName       r
+    nameType   = recordName               r
     nameConstr = recordInternalConstrName r
     nameField  = recordInternalFieldName  r
-
-    cxt :: Cxt
-    cxt = []
-
-    tyVarBndrs :: [TyVarBndr]
-    tyVarBndrs = []
-
-    mKind :: Maybe Kind
-    mKind = Nothing
-
-    derivClauses :: [DerivClause]
-    derivClauses = []
 
 -- | Generate the indexed field accessor
 --
@@ -165,7 +154,7 @@ genRecordView Options{..} r@Record{..} = do
 -- >         , unsafeCoerce y
 -- >         , unsafeCoerce z
 -- >         ])
--- > 
+-- >
 -- > {-# COMPLETE MkT #-}
 genPatSynonym :: Options -> Record -> Q [Dec]
 genPatSynonym _opts r@Record{..} = sequence [
@@ -198,6 +187,62 @@ genPatSynonym _opts r@Record{..} = sequence [
     mkVarName :: Field -> Q Name
     mkVarName = newName . fieldUnqual
 
+{-
+ClassD [
+    AppT (VarT c_6989586621679064041) (ConT GHC.Types.Int)
+  ,AppT (VarT c_6989586621679064041) (ConT GHC.Types.Bool)
+  ,AppT (VarT c_6989586621679064041) (ConT GHC.Types.Char)
+] Constraints_T_6989586621679064040 [KindedTV c_6989586621679064041 (AppT (AppT ArrowT StarT) ConstraintT)] [] []
+-}
+
+-- | Superclass constraints required by the constraints class and instance
+--
+-- Generates something like
+--
+-- > (c Int, c Bool, c Char)
+genRequiredConstraints :: Options -> Record -> Name -> Q Cxt
+genRequiredConstraints _opts Record{..} c =
+    cxt $ map constrainField recordFields
+  where
+    constrainField :: Field -> Q Pred
+    constrainField f = varT c `appT` fieldTypeQ f
+
+-- | Generate the class we will use to instantiate 'Constraints'
+--
+-- Generates something like this:
+--
+-- > class (c Int, c Bool, c Char) => Constraints_T (c :: Type -> Constraint)
+genConstraintsClass :: Options -> Record -> Q Dec
+genConstraintsClass opts r = do
+    c <- newName "c"
+    k <- [t| Kind.Type -> Kind.Constraint |]
+    classD
+      (genRequiredConstraints opts r c)
+      (recordConstraintsClassName r)
+      [KindedTV c k]
+      []
+      []
+
+-- | Generate (one and only) instance of the constraints class
+--
+-- Generates something like
+--
+-- > instance (c Int, c Bool, c Char) => Constraints_T c
+genConstraintsInstance :: Options -> Record -> Q Dec
+genConstraintsInstance opts r = do
+    c <- newName "c"
+    instanceD
+      (genRequiredConstraints opts r c)
+      (conT (recordConstraintsClassName r) `appT` varT c)
+      []
+
+-- | Generate the definitions required to provide the instance for 'Generic'
+genGenericInstance :: Options -> Record -> Q [Dec]
+genGenericInstance opts r = sequence [
+      genConstraintsClass    opts r
+    , genConstraintsInstance opts r
+    ]
+
 -- | Generate all definitions
 process :: Options -> Record -> Q [Dec]
 process opts@Options{..} r = concatM $ [
@@ -212,6 +257,7 @@ process opts@Options{..} r = concatM $ [
           genRecordView opts r
         , genPatSynonym opts r
         ]
+    , genGenericInstance opts r
     ]
   where
     when :: Bool -> [Q [Dec]] -> Q [Dec]
@@ -256,6 +302,10 @@ recordViewName Record{..} =
 recordIndexedAccessorName :: Record -> Name
 recordIndexedAccessorName Record{..} =
     mkName $ "unsafeIndex" ++ recordUnqual
+
+recordConstraintsClassName :: Record -> Name
+recordConstraintsClassName Record{..} =
+    mkName $ "Constraints_" ++ recordUnqual
 
 fieldAccessorName :: Field -> Name
 fieldAccessorName Field{..} =
@@ -336,7 +386,6 @@ pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
 {-------------------------------------------------------------------------------
   Auxiliary: working with tuples
 -------------------------------------------------------------------------------}
-
 
 -- | Construct tuple type
 mkTupleT :: forall a. (a -> Q Type) -> Forest a -> Q Type

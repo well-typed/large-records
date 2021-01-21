@@ -66,14 +66,14 @@ mapM ::
 mapM f (Rep v) = Rep <$> traverse f v
 
 cmap ::
-     (Generic a, Constraints c a)
+     (Generic a, Constraints a c)
   => Proxy c
   -> (forall x. c x => f x -> g x)
   -> Rep f a -> Rep g a
 cmap p f = runIdentity . cmapM p (Identity . f)
 
 cmapM ::
-     (Generic a, Applicative r, Constraints c a)
+     (Generic a, Applicative r, Constraints a c)
   => Proxy c
   -> (forall x. c x => f x -> r (g x))
   -> Rep f a -> r (Rep g a)
@@ -101,14 +101,14 @@ zipWithM f (Rep a) (Rep b) = Rep <$>
     Prelude.sequenceA (V.zipWith f a b)
 
 czipWith ::
-     (Generic a, Constraints c a)
+     (Generic a, Constraints a c)
   => Proxy c
   -> (forall x. c x => f x -> g x -> h x)
   -> Rep f a -> Rep g a -> Rep h a
 czipWith p f a b = runIdentity (czipWithM p (\x y -> Identity (f x y)) a b)
 
 czipWithM ::
-     forall m f g h c a. (Generic a, Applicative m, Constraints c a)
+     forall m f g h c a. (Generic a, Applicative m, Constraints a c)
   => Proxy c
   -> (forall x. c x => f x -> g x -> m (h x))
   -> Rep f a -> Rep g a -> m (Rep h a)
@@ -140,7 +140,7 @@ pure :: forall f a. Generic a => (forall x. f x) -> Rep f a
 pure = Rep . V.replicate (recordSize (Proxy @a))
 
 cpure ::
-     forall c f a. (Generic a, Constraints c a)
+     forall c f a. (Generic a, Constraints a c)
   => Proxy c
   -> (forall x. c x => f x)
   -> Rep f a

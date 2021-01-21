@@ -12,7 +12,7 @@ import Data.Proxy
 import Data.Record.Generic
 import qualified Data.Record.Generic.Rep as Rep
 
-gtoJSON :: forall a. (Metadata a, Constraints ToJSON a) => a -> Value
+gtoJSON :: forall a. (Metadata a, Constraints a ToJSON) => a -> Value
 gtoJSON =
       object
     . Rep.collapse

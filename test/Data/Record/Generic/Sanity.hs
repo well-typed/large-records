@@ -1,19 +1,22 @@
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE EmptyCase           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE InstanceSigs        #-}
-{-# LANGUAGE PatternSynonyms     #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE ConstraintKinds         #-}
+{-# LANGUAGE DataKinds               #-}
+{-# LANGUAGE DeriveAnyClass          #-}
+{-# LANGUAGE DeriveGeneric           #-}
+{-# LANGUAGE EmptyCase               #-}
+{-# LANGUAGE FlexibleContexts        #-}
+{-# LANGUAGE FlexibleInstances       #-}
+{-# LANGUAGE InstanceSigs            #-}
+{-# LANGUAGE PatternSynonyms         #-}
+{-# LANGUAGE RankNTypes              #-}
+{-# LANGUAGE ScopedTypeVariables     #-}
+{-# LANGUAGE StandaloneDeriving      #-}
+{-# LANGUAGE TemplateHaskell         #-}
+{-# LANGUAGE TypeApplications        #-}
+{-# LANGUAGE TypeFamilies            #-}
+{-# LANGUAGE TypeOperators           #-}
+{-# LANGUAGE UndecidableInstances    #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE ViewPatterns            #-}
 
 {-# OPTIONS_GHC -ddump-splices #-}
 
@@ -109,15 +112,18 @@ instance Show T where show = SOP.gshow
   We derive GHC and SOP generics for interop test.
 -------------------------------------------------------------------------------}
 
+class (c Int, c Bool, c Char) => Constraints_T c where
+instance (c Int, c Bool, c Char) => Constraints_T c where
+
 instance Generic T where
-  type Constraints c T = (c Int, c Bool, c Char)
+  type Constraints T = Constraints_T
 
   from = coerce
   to   = coerce
-  
+
   recordSize _ = 3
 
-  dict :: forall c. Constraints c T => Rep (Dict c) T
+  dict :: forall c. Constraints T c => Rep (Dict c) T
   dict = Rep $ V.fromList [
         unsafeCoerce $ dictFor (Proxy @Int)
       , unsafeCoerce $ dictFor (Proxy @Bool)
@@ -129,6 +135,17 @@ instance Generic T where
 
 exampleT :: T
 exampleT = MkT 5 True 'c'
+
+{-------------------------------------------------------------------------------
+  Example type class (for constructing values)
+-------------------------------------------------------------------------------}
+
+class Default a where
+  defaultValue :: a
+
+instance Default Int  where defaultValue = 0
+instance Default Bool where defaultValue = False
+instance Default Char where defaultValue = '\x0000'
 
 {-------------------------------------------------------------------------------
   Tests
@@ -151,6 +168,14 @@ test_pure =
 
     actual :: Rep (K Char) T
     actual = Rep.pure (unsafeCoerce (K 'a'))
+
+test_cpure :: Assertion
+test_cpure =
+    assertEqual "matches hand-constructed" expected actual
+  where
+    expected, actual :: T
+    expected = MkT 0 False '\x0000'
+    actual   = to $ Rep.cpure (Proxy @Default) (I defaultValue)
 
 test_sequenceA :: Assertion
 test_sequenceA =
@@ -202,9 +227,9 @@ compareTyped ::
 compareTyped expected actual =
     case npFromRep (Proxy @(Compose Show f)) actual of
       FromRepExact actual' ->
-        assertEqual "expected matches actual" expected actual'
+        assertEqual "matches exactly" expected actual'
       FromRepTooMany actual' leftover -> do
-        assertEqual "expected matches actual" expected actual'
+        assertEqual "matches prefix" expected actual'
         assertFailure $ concat [
             show (length leftover)
           , " fields left over"
@@ -225,7 +250,7 @@ compareUntyped ::
      (Show (Rep f a), Eq (Rep f a))
   => NP f (Fields a) -> Rep f a -> Assertion
 compareUntyped expected actual =
-    assertEqual "expected matches actual" (npToRep expected) actual
+    assertEqual "untyped representation matches" (npToRep expected) actual
 
 {-------------------------------------------------------------------------------
   All tests
@@ -237,6 +262,7 @@ tests = testGroup "Data.Record.Generic.Sanity" [
     , testCase "pure"       test_pure
     , testCase "sequenceA"  test_sequenceA
     , testCase "zipWithM"   test_zipWithM
+    , testCase "cpure"      test_cpure
     ]
 
 {-------------------------------------------------------------------------------

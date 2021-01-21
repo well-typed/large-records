@@ -34,7 +34,7 @@ import Data.SOP.Dict          as SOP (Dict(..))
 -------------------------------------------------------------------------------}
 
 class Generic a where
-  type Constraints (c :: Type -> Constraint) a :: Constraint
+  type Constraints a :: (Type -> Constraint) -> Constraint
 
   -- | Translate to generic representation
   from :: a -> Rep I a
@@ -46,7 +46,7 @@ class Generic a where
   recordSize :: Proxy a -> Int
 
   -- | Construct vector of dictionaries, one for each field of the record
-  dict :: Constraints c a => Rep (Dict c) a
+  dict :: Constraints a c => Rep (Dict c) a
 
 -- | Representation of some record @a@
 --

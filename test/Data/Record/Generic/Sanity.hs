@@ -31,8 +31,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Generic
-import Data.Record.Generic.Eq
-import Data.Record.Generic.Show
 import Data.Record.Generic.SOP
 import Data.Record.Generic.TH
 import qualified Data.Record.Generic.Rep as Rep
@@ -91,19 +89,6 @@ instance SOP.HasDatatypeInfo T where
         ]]
 
   datatypeInfo _ = SOP.T.demoteDatatypeInfo (Proxy @(SOP.DatatypeInfoOf T))
-
-{-------------------------------------------------------------------------------
-  Temporary: use SOP generics to derive 'Eq' and 'Show'
-
-  TODO: We'll want to use our own generics to do this, and derive it
-  automatically. Once we do, remove @basic-sop@ dependency.
--------------------------------------------------------------------------------}
-
-instance Show T where
-  showsPrec = gshowsPrec
-
-instance Eq T where
-  (==) = geq
 
 {-------------------------------------------------------------------------------
   Example type class (for constructing values)

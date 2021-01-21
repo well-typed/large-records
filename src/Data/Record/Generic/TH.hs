@@ -28,6 +28,9 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 import Data.Record.Generic
+import Data.Record.Generic.Eq
+import Data.Record.Generic.Show
+
 import qualified Data.Record.Generic.Rep as Rep
 
 {-------------------------------------------------------------------------------
@@ -320,6 +323,41 @@ genMetadata _opts Record{..} = do
     fieldNames :: Q Exp
     fieldNames = listE $ map (litE . stringL . fieldUnqual) recordFields
 
+{-
+    [ValD (VarP GHC.Show.showsPrec) (NormalB (VarE Data.Record.Generic.Show.gshowsPrec)) []]
+    [ValD (VarP GHC.Classes.==) (NormalB (VarE Data.Record.Generic.Eq.geq)) []]
+-}
+
+-- | Generate instance for specific class
+--
+-- Generates one of the following:
+--
+-- * 'Show':
+--
+--   > instance Show T where
+--   >   showsPrec = gshowsPrec
+--
+-- * 'Eq':
+--
+--   > instance Eq T where
+--   >   (==) = geq
+genDeriving :: Options -> Record -> SupportedDeriving -> Q Dec
+genDeriving _opts r = \case
+    DeriveEq   -> inst ''Eq   '(==)      'geq
+    DeriveShow -> inst ''Show 'showsPrec 'gshowsPrec
+  where
+    inst :: Name -> Name -> Name -> Q Dec
+    inst clss fn gfn =
+        instanceD
+          (cxt [])
+          [t| $(conT clss) $(recordTypeQ r) |]
+          [valD (varP fn) (normalB (varE gfn)) []]
+
+
+-- -- | Instances for all requested deriving classes
+-- genDeriving :: Options -> Record -> Q Exp
+-- genDeriving
+
 -- | Generate the definitions required to provide the instance for 'Generic'
 --
 -- > class    (..) => Constraints_T c
@@ -345,6 +383,10 @@ genGenericInstance opts r@Record{..} = sequence [
         , valD (varP 'dict)       (normalB (genDict     opts r))   []
         , valD (varP 'metadata)   (normalB (genMetadata opts r))   []
         ]
+
+      -- TODO: We should do this conditionally
+    , genDeriving opts r DeriveShow
+    , genDeriving opts r DeriveEq
     ]
   where
     numFields :: Q Exp
@@ -468,6 +510,10 @@ field _otherwise = Nothing
 
 pattern DefaultBang :: Bang
 pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
+
+data SupportedDeriving =
+    DeriveEq
+  | DeriveShow
 
 {-------------------------------------------------------------------------------
   Auxiliary: working with tuples

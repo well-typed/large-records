@@ -70,6 +70,7 @@ test-suite test-large-records
     build-depends:      base
                       , aeson
                       , generics-sop
+                      , ghc-dump-core
                       , json-sop
                       , large-records
                       , mtl
@@ -90,7 +91,10 @@ test-suite test-large-records
                        -Wpartial-fields
                        -Widentities
                        -Wredundant-constraints
+
+    -- Dump timings so we can use ghc-timings-report
                        -ddump-to-file
+                       -ddump-timings
 
     -- We're mostly interested in compile time for O0
                        -O0

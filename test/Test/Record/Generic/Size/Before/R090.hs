@@ -1,8 +1,8 @@
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell    #-}
 
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
-{-# OPTIONS_GHC -ddump-splices                 #-}
+{-# OPTIONS_GHC -fplugin=GhcDump.Plugin        #-}
 
 module Test.Record.Generic.Size.Before.R090 where
 

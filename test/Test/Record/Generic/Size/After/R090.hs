@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
 
 module Test.Record.Generic.Size.After.R090 where
 

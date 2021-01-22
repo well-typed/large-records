@@ -2,8 +2,10 @@
 {-# LANGUAGE KindSignatures  #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Data.Record.Generic.Size.Infra (
+module Test.Record.Generic.Size.Infra (
     recordOfSize
+    -- Supporting infrastructure used by generated code
+  , T(..)
   ) where
 
 import GHC.TypeLits (Nat)

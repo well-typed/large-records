@@ -42,10 +42,10 @@ library
 test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
-    other-modules:      Data.Record.Generic.Sanity
-                        Data.Record.Generic.Size.Infra
-                        Data.Record.Generic.Size.Before.R010
-                        Data.Record.Generic.Size.After.R010
+    other-modules:      Test.Record.Generic.Sanity
+                        Test.Record.Generic.Size.Infra
+                        Test.Record.Generic.Size.Before.R010
+                        Test.Record.Generic.Size.After.R010
     build-depends:      base
                       , generics-sop
                       , large-records

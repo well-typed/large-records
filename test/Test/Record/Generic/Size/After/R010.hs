@@ -9,10 +9,11 @@
 
 {-# OPTIONS_GHC -ddump-splices #-}
 
-module Data.Record.Generic.Size.After.R010 where
+module Test.Record.Generic.Size.After.R010 where
 
 import Data.Record.Generic
 import Data.Record.Generic.TH
-import Data.Record.Generic.Size.Infra
+
+import Test.Record.Generic.Size.Infra
 
 largeRecord defaultOptions (recordOfSize 10)

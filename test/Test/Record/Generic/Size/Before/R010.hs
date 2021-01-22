@@ -3,8 +3,8 @@
 
 {-# OPTIONS_GHC -ddump-splices #-}
 
-module Data.Record.Generic.Size.Before.R010 where
+module Test.Record.Generic.Size.Before.R010 where
 
-import Data.Record.Generic.Size.Infra
+import Test.Record.Generic.Size.Infra
 
 recordOfSize 10

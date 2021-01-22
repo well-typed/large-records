@@ -17,7 +17,7 @@
 
 {-# OPTIONS_GHC -ddump-splices #-}
 
-module Data.Record.Generic.Sanity (tests) where
+module Test.Record.Generic.Sanity (tests) where
 
 import Control.Monad.State (State, evalState, state)
 import Data.Proxy

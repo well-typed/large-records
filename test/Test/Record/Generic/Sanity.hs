@@ -10,6 +10,10 @@
 
 {-# OPTIONS_GHC -ddump-splices #-}
 
+-- | Sanity check that the generic functions are not totally broken
+--
+-- These are not proper tests, merely intended to catch egregious refactoring
+-- mistakes.
 module Test.Record.Generic.Sanity (tests) where
 
 import Control.Monad.State (State, evalState, state)
@@ -25,8 +29,11 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Generic
-import Data.Record.Generic.SOP
+import Data.Record.Generic.LowerBound
+import Data.Record.Generic.SOP (Fields)
 import Data.Record.Generic.TH
+
+import qualified Data.Record.Generic.SOP as SOP
 import qualified Data.Record.Generic.Rep as Rep
 
 {-------------------------------------------------------------------------------
@@ -35,7 +42,7 @@ import qualified Data.Record.Generic.Rep as Rep
 
 largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
   data T a b = MkT {
-        tInt   :: Int
+        tInt   :: Word
       , tBool  :: Bool
       , tChar  :: Char
       , tA     :: a
@@ -47,6 +54,15 @@ largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
 exampleT :: T () Float
 exampleT = MkT 5 True 'c' () [3.14]
 
+_suppressWarnings :: ()
+_suppressWarnings = const () $ (
+      tInt
+    , tBool
+    , tChar
+    , tA
+    , tListB
+    )
+
 {-------------------------------------------------------------------------------
   Handwritten SOP instance
 
@@ -55,7 +71,7 @@ exampleT = MkT 5 True 'c' () [3.14]
 -------------------------------------------------------------------------------}
 
 instance SOP.Generic (T a b) where
-  type Code (T a b) = '[[Int, Bool, Char, a, [b]]]
+  type Code (T a b) = '[[Word, Bool, Char, a, [b]]]
   from (MkT i b c a bs) = SOP.SOP (SOP.Z (I i :* I b :* I c :* I a :* I bs :* Nil))
   to (SOP.SOP (SOP.Z (I i :* I b :* I c :* I a :* I bs :* Nil))) = MkT i b c a bs
   to (SOP.SOP (SOP.S x)) = case x of {}
@@ -90,19 +106,6 @@ instance SOP.HasDatatypeInfo (T a b) where
       SOP.T.demoteDatatypeInfo $ Proxy @(SOP.DatatypeInfoOf (T a b))
 
 {-------------------------------------------------------------------------------
-  Example type class (for constructing values)
--------------------------------------------------------------------------------}
-
-class Default a where
-  defaultValue :: a
-
-instance Default Int  where defaultValue = 0
-instance Default Bool where defaultValue = False
-instance Default Char where defaultValue = '\x0000'
-instance Default ()   where defaultValue = ()
-instance Default [a]  where defaultValue = []
-
-{-------------------------------------------------------------------------------
   Tests
 -------------------------------------------------------------------------------}
 
@@ -130,7 +133,7 @@ test_cpure =
   where
     expected, actual :: T () Float
     expected = MkT 0 False '\x0000' () []
-    actual   = to $ Rep.cpure (Proxy @Default) (I defaultValue)
+    actual   = glowerBound
 
 test_sequenceA :: Assertion
 test_sequenceA =
@@ -140,7 +143,7 @@ test_sequenceA =
     expected = flip evalState 0 $ SOP.hsequence' $ example
 
     actual :: Rep (K Int) (T () Float)
-    actual = flip evalState 0 $ Rep.sequenceA $ npToRep example
+    actual = flip evalState 0 $ Rep.sequenceA $ SOP.npToRep example
 
     example :: NP (State Int SOP.:.: K Int) (Fields (T () Float))
     example =
@@ -164,7 +167,7 @@ test_zipWithM =
 
     actual :: Rep (K Int) (T () Float)
     actual = flip evalState 0 $
-        Rep.zipWithM tick (npToRep x) (npToRep y)
+        Rep.zipWithM tick (SOP.npToRep x) (SOP.npToRep y)
 
     tick :: K Int x -> K Int x -> State Int (K Int x)
     tick (K a) (K b) = state $ \i -> (K (a + b + i), i + 1)
@@ -182,16 +185,16 @@ compareTyped ::
      (All (Compose Eq f) (Fields a), All (Compose Show f) (Fields a))
   => NP f (Fields a) -> Rep f a -> Assertion
 compareTyped expected actual =
-    case npFromRep (Proxy @(Compose Show f)) actual of
-      FromRepExact actual' ->
+    case SOP.npFromRep (Proxy @(Compose Show f)) actual of
+      SOP.FromRepExact actual' ->
         assertEqual "matches exactly" expected actual'
-      FromRepTooMany actual' leftover -> do
+      SOP.FromRepTooMany actual' leftover -> do
         assertEqual "matches prefix" expected actual'
         assertFailure $ concat [
             show (length leftover)
           , " fields left over"
           ]
-      FromRepTooFew actual' ->
+      SOP.FromRepTooFew actual' ->
         assertFailure $ concat [
             "Not enough fields: expected "
           , show expected
@@ -207,14 +210,14 @@ compareUntyped ::
      (Show (Rep f a), Eq (Rep f a))
   => NP f (Fields a) -> Rep f a -> Assertion
 compareUntyped expected actual =
-    assertEqual "untyped representation matches" (npToRep expected) actual
+    assertEqual "untyped representation matches" (SOP.npToRep expected) actual
 
 {-------------------------------------------------------------------------------
   All tests
 -------------------------------------------------------------------------------}
 
 tests :: TestTree
-tests = testGroup "Data.Record.Generic.Sanity" [
+tests = testGroup "Test.Record.Generic.Sanity" [
       testCase "from_to_id" test_from_to_id
     , testCase "pure"       test_pure
     , testCase "sequenceA"  test_sequenceA

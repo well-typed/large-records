@@ -1,4 +1,4 @@
-packages: ./
+packages: ./ , ../json-sop
 
 package large-records
   tests: True

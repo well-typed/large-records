@@ -5,6 +5,7 @@
 {-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -16,13 +17,15 @@ module Data.Record.Generic.SOP (
   , FromRep(..)
   , npToRep
   , npFromRep
+    -- | SOP functions
+  , glowerBound
   ) where
 
 import Data.Bifunctor
 import Data.Kind (Type, Constraint)
 import Data.Proxy
 import Data.Type.Equality ((:~:)(..))
-import Generics.SOP (NP(..), Code, All, Shape(..))
+import Generics.SOP (NP(..), SOP(..), NS(..), Code, All, Shape(..))
 import GHC.Exts (Any)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -30,6 +33,7 @@ import qualified Data.Vector  as V
 import qualified Generics.SOP as SOP
 
 import Data.Record.Generic
+import Data.Record.Generic.LowerBound hiding (glowerBound)
 
 type family RecordFields (code :: [[Type]]) :: [Type] where
   RecordFields '[r] = r
@@ -104,3 +108,12 @@ npFromRep _ (Rep v) =
     goCons (ShapeCons s) x xs k =
         go s xs $ \pf np ->
           k (first (\Refl -> Refl) <$> pf) ((unsafeCoerce x :: f y) :* np)
+
+{-------------------------------------------------------------------------------
+  SOP generic functions
+-------------------------------------------------------------------------------}
+
+glowerBound ::
+     (SOP.Generic a, All LowerBound (Fields a), Code a ~ '[Fields a])
+  => a
+glowerBound = SOP.to (SOP (Z (SOP.hcpure (Proxy @LowerBound) (I lowerBound))))

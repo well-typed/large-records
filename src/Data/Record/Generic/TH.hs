@@ -91,7 +91,7 @@ genAll opts@Options{..} r = concatM $ [
   NOTE: All generation examples assume as example
 
   > data T a b = MkT {
-  >       tInt   :: Int
+  >       tWord  :: Word
   >     , tBool  :: Bool
   >     , tChar  :: Char
   >     , tA     :: a
@@ -153,8 +153,8 @@ genFieldAccessors opts r@Record{..} =
 --
 -- Generates function such as
 --
--- > tInt :: forall a b. T a b -> Int
--- > tInt = unsafeIndexT 0
+-- > tWord :: forall a b. T a b -> Word
+-- > tWord = unsafeIndexT 0
 genFieldAccessor :: Options -> Record -> Field -> Q [Dec]
 genFieldAccessor _opts r@Record{..} f = do
     simpleFn
@@ -170,7 +170,7 @@ genFieldAccessor _opts r@Record{..} f = do
 --
 -- Generates function such as
 --
--- > tupleFromT :: forall a b. T a b -> (Int, Bool, Char, a, [b])
+-- > tupleFromT :: forall a b. T a b -> (Word, Bool, Char, a, [b])
 -- > tupleFromT = \x -> (
 -- >       unsafeIndexT 0 x
 -- >     , unsafeIndexT 1 x
@@ -206,12 +206,12 @@ genRecordView Options{..} r@Record{..} = do
 --
 -- Constructs something like this:
 --
--- > pattern MkT :: forall a b. Int -> Bool -> Char -> a -> [b] -> T a b
--- > pattern MkT{tInt, tBool, tChar, tA, tListB} <-
--- >     (tupleFromT -> (tInt, tBool, tChar, tA, tListB) )
+-- > pattern MkT :: forall a b. Word -> Bool -> Char -> a -> [b] -> T a b
+-- > pattern MkT{tWord, tBool, tChar, tA, tListB} <-
+-- >     (tupleFromT -> (tWord, tBool, tChar, tA, tListB) )
 -- >   where
--- >     MkT tInt' tBool' tChar' tA' tListB' = TFromVector (V.fromList [
--- >         , unsafeCoerce tInt'
+-- >     MkT tWord' tBool' tChar' tA' tListB' = TFromVector (V.fromList [
+-- >         , unsafeCoerce tWord'
 -- >         , unsafeCoerce tBool'
 -- >         , unsafeCoerce tChar'
 -- >         , unsafeCoerce tA'
@@ -263,7 +263,7 @@ genPatSynonym _opts r@Record{..} = sequence [
 --
 -- Generates something like
 --
--- > (c Int, c Bool, c Char, c a, c [b])
+-- > (c Word, c Bool, c Char, c a, c [b])
 genRequiredConstraints :: Options -> Record -> Name -> Q Cxt
 genRequiredConstraints _opts Record{..} c =
     cxt $ map constrainField recordFields
@@ -318,7 +318,7 @@ genConstraintsFamilyInstance _opts r@Record{..} = tySynInstD $
 -- Generates something like
 --
 -- > \p -> Rep (V.fromList [
--- >     unsafeCoerce (dictFor p (Proxy :: Proxy Int))
+-- >     unsafeCoerce (dictFor p (Proxy :: Proxy Word))
 -- >   , unsafeCoerce (dictFor p (Proxy :: Proxy Bool))
 -- >   , unsafeCoerce (dictFor p (Proxy :: Proxy Char))
 -- >   , unsafeCoerce (dictFor p (Proxy :: Proxy a))
@@ -341,7 +341,7 @@ genDict _opts Record{..} = do
 -- > \_p -> Metadata {
 -- >     recordName        = "T",
 -- >   , recordConstructor = "MkT"
--- >   , recordFieldNames  = unsafeFromListK ["tInt", "tBool", "tChar", "tA", "tListB"]
+-- >   , recordFieldNames  = unsafeFromListK ["tWord", "tBool", "tChar", "tA", "tListB"]
 -- >   }
 genMetadata :: Options -> Record -> Q Exp
 genMetadata _opts Record{..} = do

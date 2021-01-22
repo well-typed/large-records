@@ -7,7 +7,6 @@ module Data.Record.Generic.Show (
   ) where
 
 import Data.Record.Generic
-import Data.Proxy
 import Data.List (intersperse)
 import GHC.Show
 

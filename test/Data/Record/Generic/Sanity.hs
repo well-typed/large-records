@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts        #-}
 {-# LANGUAGE FlexibleInstances       #-}
 {-# LANGUAGE KindSignatures          #-}
+{-# LANGUAGE MultiParamTypeClasses   #-}
 {-# LANGUAGE PatternSynonyms         #-}
 {-# LANGUAGE ScopedTypeVariables     #-}
 {-# LANGUAGE TemplateHaskell         #-}
@@ -40,16 +41,18 @@ import qualified Data.Record.Generic.Rep as Rep
 -------------------------------------------------------------------------------}
 
 largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
-  data T = MkT {
-      tInt  :: Int
-    , tBool :: Bool
-    , tChar :: Char
-    }
+  data T a b = MkT {
+        tInt   :: Int
+      , tBool  :: Bool
+      , tChar  :: Char
+      , tA     :: a
+      , tListB :: [b]
+      }
     deriving (Eq, Show)
   |]
 
-exampleT :: T
-exampleT = MkT 5 True 'c'
+exampleT :: T () Float
+exampleT = MkT 5 True 'c' () [3.14]
 
 {-------------------------------------------------------------------------------
   Handwritten SOP instance
@@ -58,14 +61,20 @@ exampleT = MkT 5 True 'c'
   to the strongly typed version from @generics-sop@.
 -------------------------------------------------------------------------------}
 
-instance SOP.Generic T where
-  type Code T = '[[Int, Bool, Char]]
-  from (MkT i b c) = SOP.SOP (SOP.Z (I i :* I b :* I c :* Nil))
-  to (SOP.SOP (SOP.Z (I i :* I b :* I c :* Nil))) = MkT i b c
+instance SOP.Generic (T a b) where
+  type Code (T a b) = '[[Int, Bool, Char, a, [b]]]
+  from (MkT i b c a bs) = SOP.SOP (SOP.Z (I i :* I b :* I c :* I a :* I bs :* Nil))
+  to (SOP.SOP (SOP.Z (I i :* I b :* I c :* I a :* I bs :* Nil))) = MkT i b c a bs
   to (SOP.SOP (SOP.S x)) = case x of {}
 
-instance SOP.HasDatatypeInfo T where
-  type DatatypeInfoOf T =
+type DefaultBang =
+       'SOP.T.StrictnessInfo
+          'SOP.NoSourceUnpackedness
+          'SOP.NoSourceStrictness
+          'SOP.DecidedLazy
+
+instance SOP.HasDatatypeInfo (T a b) where
+  type DatatypeInfoOf (T a b) =
     'SOP.T.ADT
       "Data.Record.Generic.Sanity"
       "T"
@@ -73,23 +82,19 @@ instance SOP.HasDatatypeInfo T where
           'SOP.T.FieldInfo "tInt"
         , 'SOP.T.FieldInfo "tBool"
         , 'SOP.T.FieldInfo "tChar"
+        , 'SOP.T.FieldInfo "tA"
+        , 'SOP.T.FieldInfo "tListB"
         ]]
       '[ '[
-          'SOP.T.StrictnessInfo
-            'SOP.NoSourceUnpackedness
-            'SOP.NoSourceStrictness
-            'SOP.DecidedLazy
-        , 'SOP.T.StrictnessInfo
-            'SOP.NoSourceUnpackedness
-            'SOP.NoSourceStrictness
-            'SOP.DecidedLazy
-        , 'SOP.T.StrictnessInfo
-            'SOP.NoSourceUnpackedness
-            'SOP.NoSourceStrictness
-            'SOP.DecidedLazy
+          DefaultBang
+        , DefaultBang
+        , DefaultBang
+        , DefaultBang
+        , DefaultBang
         ]]
 
-  datatypeInfo _ = SOP.T.demoteDatatypeInfo (Proxy @(SOP.DatatypeInfoOf T))
+  datatypeInfo _ =
+      SOP.T.demoteDatatypeInfo $ Proxy @(SOP.DatatypeInfoOf (T a b))
 
 {-------------------------------------------------------------------------------
   Example type class (for constructing values)
@@ -101,6 +106,8 @@ class Default a where
 instance Default Int  where defaultValue = 0
 instance Default Bool where defaultValue = False
 instance Default Char where defaultValue = '\x0000'
+instance Default ()   where defaultValue = ()
+instance Default [a]  where defaultValue = []
 
 {-------------------------------------------------------------------------------
   Tests
@@ -110,7 +117,7 @@ test_from_to_id :: Assertion
 test_from_to_id =
     assertEqual "from . to = id" expected actual
   where
-    expected, actual :: T
+    expected, actual :: T () Float
     expected = exampleT
     actual   = (to . from) exampleT
 
@@ -118,33 +125,35 @@ test_pure :: Assertion
 test_pure =
     compareTyped expected actual
   where
-    expected :: NP (K Char) (Fields T)
-    expected = K 'a' :* K 'a' :* K 'a' :* Nil
+    expected :: NP (K Char) (Fields (T () Float))
+    expected = K 'a' :* K 'a' :* K 'a' :* K 'a' :* K 'a' :* Nil
 
-    actual :: Rep (K Char) T
+    actual :: Rep (K Char) (T () Float)
     actual = Rep.pure (K 'a')
 
 test_cpure :: Assertion
 test_cpure =
     assertEqual "matches hand-constructed" expected actual
   where
-    expected, actual :: T
-    expected = MkT 0 False '\x0000'
+    expected, actual :: T () Float
+    expected = MkT 0 False '\x0000' () []
     actual   = to $ Rep.cpure (Proxy @Default) (I defaultValue)
 
 test_sequenceA :: Assertion
 test_sequenceA =
     compareTyped expected actual
   where
-    expected :: NP (K Int) (Fields T)
+    expected :: NP (K Int) (Fields (T () Float))
     expected = flip evalState 0 $ SOP.hsequence' $ example
 
-    actual :: Rep (K Int) T
+    actual :: Rep (K Int) (T () Float)
     actual = flip evalState 0 $ Rep.sequenceA $ npToRep example
 
-    example :: NP (State Int SOP.:.: K Int) (Fields T)
+    example :: NP (State Int SOP.:.: K Int) (Fields (T () Float))
     example =
            Comp (K <$> tick)
+        :* Comp (K <$> tick)
+        :* Comp (K <$> tick)
         :* Comp (K <$> tick)
         :* Comp (K <$> tick)
         :* Nil
@@ -156,20 +165,20 @@ test_zipWithM :: Assertion
 test_zipWithM =
     compareUntyped expected actual
   where
-    expected :: NP (K Int) (Fields T)
+    expected :: NP (K Int) (Fields (T () Float))
     expected = flip evalState 0 $
         SOP.hsequence' $ SOP.hliftA2 (Comp .: tick) x y
 
-    actual :: Rep (K Int) T
+    actual :: Rep (K Int) (T () Float)
     actual = flip evalState 0 $
         Rep.zipWithM tick (npToRep x) (npToRep y)
 
     tick :: K Int x -> K Int x -> State Int (K Int x)
     tick (K a) (K b) = state $ \i -> (K (a + b + i), i + 1)
 
-    x, y :: NP (K Int) (Fields T)
-    x = K 0 :* K 1 :* K 2 :* Nil
-    y = K 3 :* K 4 :* K 5 :* Nil
+    x, y :: NP (K Int) (Fields (T () Float))
+    x = K 10 :* K 11 :* K 12 :* K 13 :* K 14 :* Nil
+    y = K 20 :* K 21 :* K 22 :* K 23 :* K 24 :* Nil
 
 {-------------------------------------------------------------------------------
   For testing purposes, we compare against proper heterogeneous lists

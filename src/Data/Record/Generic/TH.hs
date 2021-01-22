@@ -60,7 +60,7 @@ largeRecord opts decls = do
   where
     go :: Dec -> StateT [String] Q [Dec]
     go d =
-        case runExcept $ mkRecord d of
+        case runExcept $ matchRecord d of
           Right r   -> StateT.lift $ genAll opts r
           Left  err -> StateT.modify (++ [err]) >> return []
 
@@ -87,19 +87,30 @@ genAll opts@Options{..} r = concatM $ [
 
 {-------------------------------------------------------------------------------
   Generation: the type itself
+
+  NOTE: All generation examples assume as example
+
+  > data T a b = MkT {
+  >       tInt   :: Int
+  >     , tBool  :: Bool
+  >     , tChar  :: Char
+  >     , tA     :: a
+  >     , tListB :: [b]
+  >     }
+  >   deriving (Eq, Show)
 -------------------------------------------------------------------------------}
 
 -- | Generate the newtype that will represent the record
 --
 -- Generates something like
 --
--- > newtype T = TFromVector {vectorFromT :: V.Vector Any}
+-- > newtype T a b = TFromVector {vectorFromT :: Vector Any}
 genNewtype :: Options -> Record -> Q Dec
-genNewtype _ r =
+genNewtype _ r@Record{..} =
     newtypeD
       (cxt [])
       nameType
-      []
+      recordTVars
       Nothing
       (recC nameConstr [
            varBangType nameField $
@@ -120,13 +131,17 @@ genNewtype _ r =
 --
 -- Generates something like
 --
--- > unsafeIndexT :: forall a_adzi. Int -> T -> a_adzi
--- > unsafeIndexT = \n t -> unsafeCoerce ((V.unsafeIndex (vectorFromT t)) n)
+-- > unsafeIndexT :: forall x a b. Int -> T a b -> x
+-- > unsafeIndexT = \ n t -> unsafeCoerce ((unsafeIndex (vectorFromT t)) n)
 genIndexedAccessor :: Options -> Record -> Q [Dec]
-genIndexedAccessor _opts r =
+genIndexedAccessor _opts r@Record{..} = do
+    a <- newName "x"
     simpleFn
       (nameRecordIndexedAccessor r)
-      [t| forall a. Int -> $(recordTypeQ r) -> a |]
+      (forallT
+         (PlainTV a : recordTVars)
+         (cxt [])
+         (fnQ [conT ''Int, recordTypeQ r] (varT a)))
       [| \n t -> unsafeCoerce (V.unsafeIndex ($(recordToVectorQ r) t) n) |]
 
 -- | Generate field accessors for all fields
@@ -138,13 +153,13 @@ genFieldAccessors opts r@Record{..} =
 --
 -- Generates function such as
 --
--- > tInt :: T -> Int
+-- > tInt :: forall a b. T a b -> Int
 -- > tInt = unsafeIndexT 0
 genFieldAccessor :: Options -> Record -> Field -> Q [Dec]
-genFieldAccessor _opts r f = do
+genFieldAccessor _opts r@Record{..} f = do
     simpleFn
       (nameFieldAccessor f)
-      [t| $(recordTypeQ r) -> $(fieldTypeQ f) |]
+      (forallT recordTVars (cxt []) $ fnQ [recordTypeQ r] (fieldTypeQ f))
       (fieldUntypedAccessor r f)
 
 {-------------------------------------------------------------------------------
@@ -155,13 +170,21 @@ genFieldAccessor _opts r f = do
 --
 -- Generates function such as
 --
--- > tupleFromT :: T -> (Int, Bool, Char)
--- > tupleFromT = \x -> (tInt x, tBool x, tChar x)
+-- > tupleFromT :: forall a b. T a b -> (Int, Bool, Char, a, [b])
+-- > tupleFromT = \x -> (
+-- >       unsafeIndexT 0 x
+-- >     , unsafeIndexT 1 x
+-- >     , unsafeIndexT 2 x
+-- >     , unsafeIndexT 3 x
+-- >     , unsafeIndexT 4 x
+-- >     )
+--
+-- Modulo tuple nesting (see 'nest').
 genRecordView :: Options -> Record -> Q [Dec]
 genRecordView Options{..} r@Record{..} = do
     simpleFn
       (nameRecordView r)
-      [t| $(recordTypeQ r) -> $viewType |]
+      (forallT recordTVars (cxt []) $ fnQ [recordTypeQ r] viewType)
       viewBody
   where
     viewType :: Q Type
@@ -183,20 +206,28 @@ genRecordView Options{..} r@Record{..} = do
 --
 -- Constructs something like this:
 --
--- > pattern MkT :: Int -> Bool -> Char -> T
--- > pattern MkT{tInt, tBool, tChar} <- tupleFromT -> (tInt, tBool, tChar)
+-- > pattern MkT :: forall a b. Int -> Bool -> Char -> a -> [b] -> T a b
+-- > pattern MkT{tInt, tBool, tChar, tA, tListB} <-
+-- >     (tupleFromT -> (tInt, tBool, tChar, tA, tListB) )
 -- >   where
--- >     MkT x y z = TFromVector (V.fromList [
--- >           unsafeCoerce x
--- >         , unsafeCoerce y
--- >         , unsafeCoerce z
+-- >     MkT tInt' tBool' tChar' tA' tListB' = TFromVector (V.fromList [
+-- >         , unsafeCoerce tInt'
+-- >         , unsafeCoerce tBool'
+-- >         , unsafeCoerce tChar'
+-- >         , unsafeCoerce tA'
+-- >         , unsafeCoerce tListB'
 -- >         ])
 -- >
 -- > {-# COMPLETE MkT #-}
+--
+-- Modulo nesting ('nest').
 genPatSynonym :: Options -> Record -> Q [Dec]
 genPatSynonym _opts r@Record{..} = sequence [
       patSynSigD (mkName recordConstr) $
-        simplePatSynType (map fieldTypeQ recordFields) (recordTypeQ r)
+        simplePatSynType
+          recordTVars
+          (map fieldTypeQ recordFields)
+          (recordTypeQ r)
     , patSynD (mkName recordConstr)
         (recordPatSyn $ map nameFieldAccessor recordFields)
         qDir
@@ -232,7 +263,7 @@ genPatSynonym _opts r@Record{..} = sequence [
 --
 -- Generates something like
 --
--- > (c Int, c Bool, c Char)
+-- > (c Int, c Bool, c Char, c a, c [b])
 genRequiredConstraints :: Options -> Record -> Name -> Q Cxt
 genRequiredConstraints _opts Record{..} c =
     cxt $ map constrainField recordFields
@@ -244,7 +275,7 @@ genRequiredConstraints _opts Record{..} c =
 --
 -- Generates something like this:
 --
--- > class (c Int, c Bool, c Char) => Constraints_T (c :: Type -> Constraint)
+-- > class (..) => Constraints_T a b (c :: Type -> Constraint)
 genConstraintsClass :: Options -> Record -> Q Dec
 genConstraintsClass opts r = do
     c <- newName "c"
@@ -252,7 +283,7 @@ genConstraintsClass opts r = do
     classD
       (genRequiredConstraints opts r c)
       (nameRecordConstraintsClass r)
-      [KindedTV c k]
+      (recordTVars r ++ [KindedTV c k])
       []
       []
 
@@ -260,26 +291,27 @@ genConstraintsClass opts r = do
 --
 -- Generates something like
 --
--- > instance (c Int, c Bool, c Char) => Constraints_T c
+-- > instance (..) => Constraints_T a b c
 genConstraintsClassInstance :: Options -> Record -> Q Dec
-genConstraintsClassInstance opts r = do
+genConstraintsClassInstance opts r@Record{..} = do
     c <- newName "c"
     instanceD
       (genRequiredConstraints opts r c)
-      (conT (nameRecordConstraintsClass r) `appT` varT c)
+      (appsT (conT (nameRecordConstraintsClass r)) $
+         map tyVarType recordTVars ++ [varT c])
       []
 
 -- | Generate the Constraints type family instance
 --
 -- Generates something like
 --
--- > type Constraints T = Constraints_T
+-- > type Constraints (T a b) = Constraints_T a b
 genConstraintsFamilyInstance :: Options -> Record -> Q Dec
-genConstraintsFamilyInstance _opts r = tySynInstD $
+genConstraintsFamilyInstance _opts r@Record{..} = tySynInstD $
     tySynEqn
       Nothing
       [t| Constraints $(recordTypeQ r) |]
-      (conT (nameRecordConstraintsClass r))
+      (appsT (conT (nameRecordConstraintsClass r)) $ map tyVarType recordTVars)
 
 -- | Generate the dictionary creation function ('dict')
 --
@@ -289,6 +321,8 @@ genConstraintsFamilyInstance _opts r = tySynInstD $
 -- >     unsafeCoerce (dictFor p (Proxy :: Proxy Int))
 -- >   , unsafeCoerce (dictFor p (Proxy :: Proxy Bool))
 -- >   , unsafeCoerce (dictFor p (Proxy :: Proxy Char))
+-- >   , unsafeCoerce (dictFor p (Proxy :: Proxy a))
+-- >   , unsafeCoerce (dictFor p (Proxy :: Proxy [b]))
 -- >   ])
 genDict :: Options -> Record -> Q Exp
 genDict _opts Record{..} = do
@@ -305,10 +339,10 @@ genDict _opts Record{..} = do
 -- Generates something like
 --
 -- > \_p -> Metadata {
--- >      recordName        = "T"
--- >    , recordConstructor = "MkT"
--- >    , recordFieldNames  = Rep.unsafeFromListK ["tInt", "tBool", "tChar"]
--- >    }
+-- >     recordName        = "T",
+-- >   , recordConstructor = "MkT"
+-- >   , recordFieldNames  = unsafeFromListK ["tInt", "tBool", "tChar", "tA", "tListB"]
+-- >   }
 genMetadata :: Options -> Record -> Q Exp
 genMetadata _opts Record{..} = do
     p <- newName "_p"
@@ -327,22 +361,25 @@ genMetadata _opts Record{..} = do
 --
 -- * 'Show':
 --
---   > instance Show T where
---   >   showsPrec = gshowsPrec
+--   > instance (Eq a, Eq b) => Eq (T a b) where
+--   >   (==) = geq
 --
 -- * 'Eq':
 --
---   > instance Eq T where
---   >   (==) = geq
+--   > instance (Show a, Show b) => Show (T a b) where
+--   >   showsPrec = gshowsPrec
+--
+-- TODO: Currently we just add 'Eq'/'Show'/.. constraints for all type arguments
+-- of the type. This is perhaps a bit naive? Should we be more sophisticated?
 genDeriving :: Options -> Record -> Deriving -> Q Dec
-genDeriving _opts r = \case
+genDeriving _opts r@Record{..} = \case
     DeriveEq   -> inst ''Eq   '(==)      'geq
     DeriveShow -> inst ''Show 'showsPrec 'gshowsPrec
   where
     inst :: Name -> Name -> Name -> Q Dec
     inst clss fn gfn =
         instanceD
-          (cxt [])
+          (cxt $ map (\v -> conT clss `appT` tyVarType v) recordTVars)
           [t| $(conT clss) $(recordTypeQ r) |]
           [valD (varP fn) (normalB (varE gfn)) []]
 
@@ -364,13 +401,13 @@ genGenericInstance opts r@Record{..} = concatM [
          , genConstraintsClassInstance opts r
          , instanceD
              (cxt [])
-             [t| Generic $(conT (nameRecord r)) |]
+             [t| Generic $(recordTypeQ r) |]
              [ genConstraintsFamilyInstance opts r
-             , valD (varP 'from)       (normalB [| coerce           |]) []
-             , valD (varP 'to)         (normalB [| coerce           |]) []
-             , valD (varP 'recordSize) (normalB [| const $numFields |]) []
-             , valD (varP 'dict)       (normalB (genDict     opts r))   []
-             , valD (varP 'metadata)   (normalB (genMetadata opts r))   []
+              , valD (varP 'from)       (normalB [| coerce           |]) []
+              , valD (varP 'to)         (normalB [| coerce           |]) []
+              , valD (varP 'recordSize) (normalB [| const $numFields |]) []
+              , valD (varP 'dict)       (normalB (genDict     opts r))   []
+              , valD (varP 'metadata)   (normalB (genMetadata opts r))   []
              ]
          ]
     , mapM (genDeriving opts r) recordDeriv
@@ -431,7 +468,8 @@ nameFieldAccessor Field{..} =
 -------------------------------------------------------------------------------}
 
 recordTypeQ :: Record -> Q Type
-recordTypeQ = conT . nameRecord
+recordTypeQ r@Record{..} =
+    appsT (conT (nameRecord r)) $ map tyVarType recordTVars
 
 recordToVectorQ :: Record -> Q Exp
 recordToVectorQ = varE . nameRecordInternalField
@@ -470,6 +508,7 @@ data Record = Record {
     , recordConstr :: Unqual
     , recordFields :: [Field]
     , recordDeriv  :: [Deriving]
+    , recordTVars  :: [TyVarBndr]
     }
 
 data Field = Field {
@@ -482,37 +521,40 @@ data Deriving =
     DeriveEq
   | DeriveShow
 
-mkRecord :: Dec -> Except String Record
-mkRecord (DataD
+matchRecord :: Dec -> Except String Record
+matchRecord (DataD
           _cxt@[]
           name
-          _tyVarBndrs@[]
+          tyVarBndrs
           _kind@Nothing
           [RecC constrName fields]
           derivClauses
        ) =
-        Record (nameBase name) (nameBase constrName)
-    <$> mapM       mkField (zip [0..] fields)
-    <*> concatMapM mkDeriv derivClauses
-mkRecord d =
+        Record
+    <$> pure (nameBase name)
+    <*> pure (nameBase constrName)
+    <*> mapM matchField (zip [0..] fields)
+    <*> concatMapM matchDeriv derivClauses
+    <*> pure tyVarBndrs
+matchRecord d =
     throwError $ "Unsupported declaration: " ++ show d
 
 -- | Support deriving clauses
 --
 -- TODO: We'll want to support some additional built-in classes probably,
 -- and we can for sure support 'DeriveAnyClass' style derivation.
-mkDeriv :: DerivClause -> Except String [Deriving]
-mkDeriv (DerivClause Nothing cs) = mapM go cs
+matchDeriv :: DerivClause -> Except String [Deriving]
+matchDeriv (DerivClause Nothing cs) = mapM go cs
   where
     go :: Pred -> Except String Deriving
     go p | p == ConT ''Eq   = return DeriveEq
          | p == ConT ''Show = return DeriveShow
          | otherwise = throwError $ "Cannot derive instance for " ++ show p
-mkDeriv (DerivClause (Just _) _) =
+matchDeriv (DerivClause (Just _) _) =
     throwError "Deriving strategies not supported"
 
-mkField :: (Int, VarBangType)-> Except String Field
-mkField (i, (name, bng, typ)) =
+matchField :: (Int, VarBangType)-> Except String Field
+matchField (i, (name, bng, typ)) =
     case bng of
       DefaultBang -> return $ Field (nameBase name) typ i
       _otherwise  -> throwError $ "Unsupported bang type: " ++ show bng
@@ -532,7 +574,7 @@ mkTupleT f = forest cata
     cata = Cata {
           leaf   = f
         , branch = \case [t] -> t
-                         ts  -> foldl appT (tupleT (length ts)) ts
+                         ts  -> appsT (tupleT (length ts)) ts
         }
 
 -- | Construct tuple expression
@@ -623,19 +665,27 @@ simpleFn name qTyp qBody = do
         ]
 
 -- | Construct simple pattern synonym type
---
--- TODO: Add support for type variables (but only universals, not existentials)
-simplePatSynType :: [Q Type] -> Q Type -> Q PatSynType
-simplePatSynType qFieldTypes qResultType = do
-    fieldTypes <- sequence qFieldTypes
-    resultType <- qResultType
-    return
-      $ ForallT [] []
-      $ ForallT [] []
-      $ foldr (\a b -> (ArrowT `AppT` a) `AppT` b) resultType fieldTypes
+simplePatSynType :: [TyVarBndr] -> [Q Type] -> Q Type -> Q PatSynType
+simplePatSynType tvars fieldTypes resultType =
+      forallT tvars (cxt [])
+    $ forallT []    (cxt [])
+    $ fnQ fieldTypes resultType
 
 mkVector :: (a -> Q Exp) -> [a] -> Q Exp
 mkVector f elems = [| V.fromList $(listE (map f elems)) |]
+
+fnQ :: [Q Type] -> Q Type -> Q Type
+fnQ ts t = foldr (\a b -> arrowT `appT` a `appT` b) t ts
+
+appsT :: Q Type -> [Q Type] -> Q Type
+appsT t ts = foldl appT t ts
+
+tyVarName :: TyVarBndr -> Name
+tyVarName (PlainTV  n)   = n
+tyVarName (KindedTV n _) = n
+
+tyVarType :: TyVarBndr -> Q Type
+tyVarType = varT . tyVarName
 
 {-------------------------------------------------------------------------------
   Auxiliary: general

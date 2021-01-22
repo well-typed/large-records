@@ -54,11 +54,14 @@ test-suite test-large-records
                       , json-sop
                       , large-records
                       , mtl
+                      , record-dot-preprocessor
+                      , record-hasfield
                       , sop-core
                       , tasty
                       , tasty-hunit
                       , template-haskell
                       , vector
+    build-tool-depends: record-dot-preprocessor:record-dot-preprocessor
     hs-source-dirs:     test
     default-language:   Haskell2010
     ghc-options:       -Wall
@@ -78,6 +81,7 @@ test-suite test-large-records
                         DataKinds
                         FlexibleInstances
                         KindSignatures
+                        MultiParamTypeClasses
                         TypeFamilies
                         UndecidableInstances
                         UndecidableSuperClasses

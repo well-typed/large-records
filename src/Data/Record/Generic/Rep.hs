@@ -12,6 +12,9 @@
 -- This module is intended for qualified import.
 --
 -- > import qualified Data.Record.Generic.Rep as Rep
+--
+-- TODO: Could we provide instances for the @generics-sop@ type classes?
+-- Might lessen the pain of switching between the two or using both?
 module Data.Record.Generic.Rep (
     -- | Mapping
     map

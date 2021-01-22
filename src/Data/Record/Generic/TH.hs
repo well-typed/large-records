@@ -19,6 +19,7 @@ import Data.List (intercalate)
 import Data.Proxy
 import Data.Vector (Vector)
 import GHC.Exts (Any)
+import GHC.Records.Compat (HasField(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Control.Monad.State  as StateT
@@ -68,7 +69,9 @@ largeRecord opts decls = do
 genAll :: Options -> Record -> Q [Dec]
 genAll opts@Options{..} r = concatM $ [
       (:[]) <$> genNewtype opts r
-    , genIndexedAccessor opts r
+    , genIndexedAccessor   opts r
+    , genIndexedOverwrite  opts r
+    , genHasFieldInstances opts r
       -- If we generate the pattern synonym, there is no need to generate
       -- field accessors, because GHC will generate them from the synonym
     , when (not generatePatternSynonym) $ [
@@ -131,18 +134,39 @@ genNewtype _ r@Record{..} =
 --
 -- Generates something like
 --
--- > unsafeIndexT :: forall x a b. Int -> T a b -> x
--- > unsafeIndexT = \ n t -> unsafeCoerce ((unsafeIndex (vectorFromT t)) n)
+-- > unsafeGetIndexT :: forall x a b. Int -> T a b -> x
+-- > unsafeGetIndexT = \ n t -> unsafeCoerce (V.unsafeIndex (vectorFromT t) n)
 genIndexedAccessor :: Options -> Record -> Q [Dec]
 genIndexedAccessor _opts r@Record{..} = do
-    a <- newName "x"
+    x <- newName "x"
     simpleFn
       (nameRecordIndexedAccessor r)
       (forallT
-         (PlainTV a : recordTVars)
+         (PlainTV x : recordTVars)
          (cxt [])
-         (fnQ [conT ''Int, recordTypeQ r] (varT a)))
+         (fnQ [conT ''Int, recordTypeQ r] (varT x)))
       [| \n t -> unsafeCoerce (V.unsafeIndex ($(recordToVectorQ r) t) n) |]
+
+-- | Generate index field overwrite
+--
+-- Generates something like
+--
+-- > unsafeSetIndexT :: forall x a b. Int -> T a b -> x -> T a b
+-- > unsafeSetIndexT = \n t val ->
+-- >     TFromVector (V.unsafeUpd (vectorFromT t) [(n, unsafeCoerce val)])
+genIndexedOverwrite :: Options -> Record -> Q [Dec]
+genIndexedOverwrite _opts r@Record{..} = do
+    x <- newName "x"
+    simpleFn
+      (nameRecordIndexedOverwrite r)
+      (forallT
+        (PlainTV x : recordTVars)
+        (cxt [])
+        (fnQ [conT ''Int, recordTypeQ r, varT x] (recordTypeQ r)))
+      [| \n t val -> $(recordFromVectorQ r) (
+             V.unsafeUpd ($(recordToVectorQ r) t) [(n, unsafeCoerce val)]
+           )
+       |]
 
 -- | Generate field accessors for all fields
 genFieldAccessors :: Options -> Record -> Q [Dec]
@@ -154,13 +178,39 @@ genFieldAccessors opts r@Record{..} =
 -- Generates function such as
 --
 -- > tWord :: forall a b. T a b -> Word
--- > tWord = unsafeIndexT 0
+-- > tWord = unsafeGetIndexT 0
 genFieldAccessor :: Options -> Record -> Field -> Q [Dec]
 genFieldAccessor _opts r@Record{..} f = do
     simpleFn
       (nameFieldAccessor f)
       (forallT recordTVars (cxt []) $ fnQ [recordTypeQ r] (fieldTypeQ f))
       (fieldUntypedAccessor r f)
+
+-- | Generate 'HasField' instances for all fields
+genHasFieldInstances :: Options -> Record -> Q [Dec]
+genHasFieldInstances opts r@Record{..} =
+    mapM (genHasFieldInstance opts r) recordFields
+
+-- | Generate 'HasField' instance for single field
+--
+-- Generates something like
+--
+-- > instance HasField "tInt" (T a b) Word where
+-- >   hasField = \t -> (unsafeSetIndexT 0 t, unsafeGetIndexT 0 t)
+genHasFieldInstance :: Options -> Record -> Field -> Q Dec
+genHasFieldInstance _opts r@Record{..} f@Field{..} = do
+    instanceD
+      (cxt [])
+      (appsT (conT ''HasField) [
+          litT (strTyLit fieldUnqual)
+        , recordTypeQ r
+        , fieldTypeQ f
+        ])
+      [valD (varP 'hasField) (normalB [|
+          \t -> ( $(fieldUntypedOverwrite r f) t
+                , $(fieldUntypedAccessor  r f) t
+                )
+        |]) []]
 
 {-------------------------------------------------------------------------------
   Generation: pattern synonym
@@ -172,11 +222,11 @@ genFieldAccessor _opts r@Record{..} f = do
 --
 -- > tupleFromT :: forall a b. T a b -> (Word, Bool, Char, a, [b])
 -- > tupleFromT = \x -> (
--- >       unsafeIndexT 0 x
--- >     , unsafeIndexT 1 x
--- >     , unsafeIndexT 2 x
--- >     , unsafeIndexT 3 x
--- >     , unsafeIndexT 4 x
+-- >       unsafeGetIndexT 0 x
+-- >     , unsafeGetIndexT 1 x
+-- >     , unsafeGetIndexT 2 x
+-- >     , unsafeGetIndexT 3 x
+-- >     , unsafeGetIndexT 4 x
 -- >     )
 --
 -- Modulo tuple nesting (see 'nest').
@@ -453,7 +503,11 @@ nameRecordView Record{..} =
 
 nameRecordIndexedAccessor :: Record -> Name
 nameRecordIndexedAccessor Record{..} =
-    mkName $ "unsafeIndex" ++ recordUnqual
+    mkName $ "unsafeGetIndex" ++ recordUnqual
+
+nameRecordIndexedOverwrite :: Record -> Name
+nameRecordIndexedOverwrite Record{..} =
+    mkName $ "unsafeSetIndex" ++ recordUnqual
 
 nameRecordConstraintsClass :: Record -> Name
 nameRecordConstraintsClass Record{..} =
@@ -480,6 +534,9 @@ recordFromVectorQ = conE . nameRecordInternalConstr
 recordIndexedAccessorQ :: Record -> Q Exp
 recordIndexedAccessorQ = varE . nameRecordIndexedAccessor
 
+recordIndexedOverwriteQ :: Record -> Q Exp
+recordIndexedOverwriteQ = varE . nameRecordIndexedOverwrite
+
 fieldTypeQ :: Field -> Q Type
 fieldTypeQ Field{..} = return fieldType
 
@@ -488,6 +545,9 @@ fieldIndexQ Field{..} = litE . integerL $ fromIntegral fieldIndex
 
 fieldUntypedAccessor :: Record -> Field -> Q Exp
 fieldUntypedAccessor r f = [| $(recordIndexedAccessorQ r) $(fieldIndexQ f) |]
+
+fieldUntypedOverwrite :: Record -> Field -> Q Exp
+fieldUntypedOverwrite r f = [| $(recordIndexedOverwriteQ r) $(fieldIndexQ f) |]
 
 {-------------------------------------------------------------------------------
   Supported declarations

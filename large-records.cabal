@@ -23,6 +23,7 @@ library
                       , aeson
                       , generics-sop
                       , mtl
+                      , record-hasfield
                       , sop-core
                       , template-haskell
                       , text

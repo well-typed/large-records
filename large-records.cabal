@@ -43,6 +43,9 @@ test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
     other-modules:      Data.Record.Generic.Sanity
+                        Data.Record.Generic.Size.Infra
+                        Data.Record.Generic.Size.Before.R010
+                        Data.Record.Generic.Size.After.R010
     build-depends:      base
                       , generics-sop
                       , large-records
@@ -50,6 +53,7 @@ test-suite test-large-records
                       , sop-core
                       , tasty
                       , tasty-hunit
+                      , template-haskell
                       , vector
     hs-source-dirs:     test
     default-language:   Haskell2010
@@ -60,5 +64,4 @@ test-suite test-large-records
                        -Wpartial-fields
                        -Widentities
                        -Wredundant-constraints
-                       -Wmissing-export-lists
                        -ddump-to-file

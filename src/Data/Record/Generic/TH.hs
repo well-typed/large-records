@@ -12,7 +12,8 @@ module Data.Record.Generic.TH (
   , largeRecord
   ) where
 
-import Control.Monad.State (StateT)
+import Control.Monad.Except (Except, runExcept, throwError)
+import Control.Monad.State (StateT, runStateT)
 import Data.Coerce (coerce)
 import Data.List (intercalate)
 import Data.Proxy
@@ -20,9 +21,9 @@ import Data.Vector (Vector)
 import GHC.Exts (Any)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Control.Monad.State as StateT
-import qualified Data.Kind           as Kind
-import qualified Data.Vector         as V
+import qualified Control.Monad.State  as StateT
+import qualified Data.Kind            as Kind
+import qualified Data.Vector          as V
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
@@ -49,7 +50,7 @@ defaultOptions = Options {
 largeRecord :: Options -> Q [Dec] -> Q [Dec]
 largeRecord opts decls = do
     ds          <- decls
-    (ds', errs) <- StateT.runStateT (concatMapM go ds) []
+    (ds', errs) <- runStateT (concatMapM go ds) []
     case errs of
       []         -> return ds'
       _otherwise -> fail $ intercalate "\n    " .concat $ [
@@ -58,13 +59,10 @@ largeRecord opts decls = do
         ]
   where
     go :: Dec -> StateT [String] Q [Dec]
-    go (record -> Just r) = StateT.lift $ genAll opts r
-    go d = failWith $ "largeRecord: unsupported " ++ show d
-
-    failWith :: String -> StateT [String] Q [a]
-    failWith err = do
-        StateT.modify (++ [err])
-        return []
+    go d =
+        case runExcept $ mkRecord d of
+          Right r   -> StateT.lift $ genAll opts r
+          Left  err -> StateT.modify (++ [err]) >> return []
 
 -- | Generate all definitions
 genAll :: Options -> Record -> Q [Dec]
@@ -323,11 +321,6 @@ genMetadata _opts Record{..} = do
     fieldNames :: Q Exp
     fieldNames = listE $ map (litE . stringL . fieldUnqual) recordFields
 
-{-
-    [ValD (VarP GHC.Show.showsPrec) (NormalB (VarE Data.Record.Generic.Show.gshowsPrec)) []]
-    [ValD (VarP GHC.Classes.==) (NormalB (VarE Data.Record.Generic.Eq.geq)) []]
--}
-
 -- | Generate instance for specific class
 --
 -- Generates one of the following:
@@ -341,7 +334,7 @@ genMetadata _opts Record{..} = do
 --
 --   > instance Eq T where
 --   >   (==) = geq
-genDeriving :: Options -> Record -> SupportedDeriving -> Q Dec
+genDeriving :: Options -> Record -> Deriving -> Q Dec
 genDeriving _opts r = \case
     DeriveEq   -> inst ''Eq   '(==)      'geq
     DeriveShow -> inst ''Show 'showsPrec 'gshowsPrec
@@ -352,11 +345,6 @@ genDeriving _opts r = \case
           (cxt [])
           [t| $(conT clss) $(recordTypeQ r) |]
           [valD (varP fn) (normalB (varE gfn)) []]
-
-
--- -- | Instances for all requested deriving classes
--- genDeriving :: Options -> Record -> Q Exp
--- genDeriving
 
 -- | Generate the definitions required to provide the instance for 'Generic'
 --
@@ -370,23 +358,22 @@ genDeriving _opts r = \case
 -- >   recordSize = const 3
 -- >   dict       = ..
 genGenericInstance :: Options -> Record -> Q [Dec]
-genGenericInstance opts r@Record{..} = sequence [
-      genConstraintsClass         opts r
-    , genConstraintsClassInstance opts r
-    , instanceD
-        (cxt [])
-        [t| Generic $(conT (nameRecord r)) |]
-        [ genConstraintsFamilyInstance opts r
-        , valD (varP 'from)       (normalB [| coerce           |]) []
-        , valD (varP 'to)         (normalB [| coerce           |]) []
-        , valD (varP 'recordSize) (normalB [| const $numFields |]) []
-        , valD (varP 'dict)       (normalB (genDict     opts r))   []
-        , valD (varP 'metadata)   (normalB (genMetadata opts r))   []
-        ]
-
-      -- TODO: We should do this conditionally
-    , genDeriving opts r DeriveShow
-    , genDeriving opts r DeriveEq
+genGenericInstance opts r@Record{..} = concatM [
+       sequence [
+           genConstraintsClass         opts r
+         , genConstraintsClassInstance opts r
+         , instanceD
+             (cxt [])
+             [t| Generic $(conT (nameRecord r)) |]
+             [ genConstraintsFamilyInstance opts r
+             , valD (varP 'from)       (normalB [| coerce           |]) []
+             , valD (varP 'to)         (normalB [| coerce           |]) []
+             , valD (varP 'recordSize) (normalB [| const $numFields |]) []
+             , valD (varP 'dict)       (normalB (genDict     opts r))   []
+             , valD (varP 'metadata)   (normalB (genMetadata opts r))   []
+             ]
+         ]
+    , mapM (genDeriving opts r) recordDeriv
     ]
   where
     numFields :: Q Exp
@@ -482,6 +469,7 @@ data Record = Record {
       recordUnqual :: Unqual
     , recordConstr :: Unqual
     , recordFields :: [Field]
+    , recordDeriv  :: [Deriving]
     }
 
 data Field = Field {
@@ -490,30 +478,47 @@ data Field = Field {
     , fieldIndex  :: Int
     }
 
-record :: Dec -> Maybe Record
-record (DataD
+data Deriving =
+    DeriveEq
+  | DeriveShow
+
+mkRecord :: Dec -> Except String Record
+mkRecord (DataD
           _cxt@[]
           name
           _tyVarBndrs@[]
           _kind@Nothing
           [RecC constrName fields]
-          _derivClauses@[]
+          derivClauses
        ) =
         Record (nameBase name) (nameBase constrName)
-    <$> mapM field (zip [0..] fields)
-record _otherwise =
-    Nothing
+    <$> mapM       mkField (zip [0..] fields)
+    <*> concatMapM mkDeriv derivClauses
+mkRecord d =
+    throwError $ "Unsupported declaration: " ++ show d
 
-field :: (Int, VarBangType)-> Maybe Field
-field (i, (name, DefaultBang, typ)) = return $ Field (nameBase name) typ i
-field _otherwise = Nothing
+-- | Support deriving clauses
+--
+-- TODO: We'll want to support some additional built-in classes probably,
+-- and we can for sure support 'DeriveAnyClass' style derivation.
+mkDeriv :: DerivClause -> Except String [Deriving]
+mkDeriv (DerivClause Nothing cs) = mapM go cs
+  where
+    go :: Pred -> Except String Deriving
+    go p | p == ConT ''Eq   = return DeriveEq
+         | p == ConT ''Show = return DeriveShow
+         | otherwise = throwError $ "Cannot derive instance for " ++ show p
+mkDeriv (DerivClause (Just _) _) =
+    throwError "Deriving strategies not supported"
+
+mkField :: (Int, VarBangType)-> Except String Field
+mkField (i, (name, bng, typ)) =
+    case bng of
+      DefaultBang -> return $ Field (nameBase name) typ i
+      _otherwise  -> throwError $ "Unsupported bang type: " ++ show bng
 
 pattern DefaultBang :: Bang
 pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
-
-data SupportedDeriving =
-    DeriveEq
-  | DeriveShow
 
 {-------------------------------------------------------------------------------
   Auxiliary: working with tuples

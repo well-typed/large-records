@@ -45,6 +45,7 @@ largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
     , tBool :: Bool
     , tChar :: Char
     }
+    deriving (Eq, Show)
   |]
 
 exampleT :: T

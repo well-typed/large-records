@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures             #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeApplications           #-}
 
 module Test.Record.Generic.Size.Infra (
     recordOfSize
@@ -10,7 +12,8 @@ module Test.Record.Generic.Size.Infra (
   ) where
 
 import Data.Aeson
-import GHC.TypeLits (Nat)
+import Data.Proxy
+import GHC.TypeLits
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
@@ -47,4 +50,7 @@ recordOfSize n = fmap (:[]) $
 
 -- | 'T' gives us as many different types as we need
 newtype T (i :: Nat) = MkT Word
-  deriving (Show, Eq, ToJSON, LowerBound)
+  deriving (Show, Eq, ToJSON)
+
+instance KnownNat i => LowerBound (T i) where
+  lowerBound = MkT $ fromInteger $ natVal (Proxy @i)

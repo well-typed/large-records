@@ -1,12 +1,4 @@
-{-# LANGUAGE ConstraintKinds         #-}
-{-# LANGUAGE DataKinds               #-}
-{-# LANGUAGE KindSignatures          #-}
-{-# LANGUAGE TemplateHaskell         #-}
-{-# LANGUAGE TypeFamilies            #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
-{-# LANGUAGE FlexibleInstances       #-}
-{-# LANGUAGE UndecidableInstances    #-}
-
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Generic.Size.After.R010 where

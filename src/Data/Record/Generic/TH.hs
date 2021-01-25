@@ -198,7 +198,7 @@ genHasFieldInstances opts r@Record{..} =
 -- > instance HasField "tInt" (T a b) Word where
 -- >   hasField = \t -> (unsafeSetIndexT 0 t, unsafeGetIndexT 0 t)
 genHasFieldInstance :: Options -> Record -> Field -> Q Dec
-genHasFieldInstance _opts r@Record{..} f@Field{..} = do
+genHasFieldInstance _opts r f@Field{..} = do
     instanceD
       (cxt [])
       (appsT (conT ''HasField) [
@@ -231,7 +231,7 @@ genHasFieldInstance _opts r@Record{..} f@Field{..} = do
 --
 -- Modulo tuple nesting (see 'nest').
 genRecordView :: Options -> Record -> Q [Dec]
-genRecordView Options{..} r@Record{..} = do
+genRecordView _opts r@Record{..} = do
     simpleFn
       (nameRecordView r)
       (forallT recordTVars (cxt []) $ fnQ [recordTypeQ r] viewType)
@@ -441,6 +441,10 @@ genMetadata _opts Record{..} = do
 --
 -- TODO: Currently we just add 'Eq'/'Show'/.. constraints for all type arguments
 -- of the type. This is perhaps a bit naive? Should we be more sophisticated?
+--
+-- TODO: Try what happens if we just add superclass constraints for all fields?
+--
+-- TODO: Think about DeriveFunctor?
 genDeriving :: Options -> Record -> Deriving -> Q Dec
 genDeriving _opts r@Record{..} = \case
     DeriveEq   -> inst ''Eq   '(==)      'geq
@@ -585,6 +589,7 @@ fieldUntypedOverwrite r f = [| $(recordIndexedOverwriteQ r) $(fieldIndexQ f) |]
 -- | Unqualified name
 type Unqual = String
 
+-- TODO: Reorder and give an example
 data Record = Record {
       recordUnqual :: Unqual
     , recordConstr :: Unqual
@@ -707,7 +712,7 @@ nest = go . map Leaf
           | otherwise         = go (map (Branch . Forest) (chunk limit ts))
 
     limit :: Int
-    limit = 2 -- 62 TODO: Set back to 62 once everything is working
+    limit = 62
 
 {-------------------------------------------------------------------------------
   Auxiliary: trees and large bananas

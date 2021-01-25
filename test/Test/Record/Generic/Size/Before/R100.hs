@@ -1,8 +1,12 @@
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell    #-}
 
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
-{-# OPTIONS_GHC -fplugin=GhcDump.Plugin        #-}
+
+#if USE_GHC_DUMP
+{-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
+#endif
 
 module Test.Record.Generic.Size.Before.R100 where
 

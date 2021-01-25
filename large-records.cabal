@@ -45,16 +45,25 @@ test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
     other-modules:      Test.Record.Generic.Sanity
-                        Test.Record.Generic.Size.After.R010
-                        Test.Record.Generic.Size.After.R020
-                        Test.Record.Generic.Size.After.R030
-                        Test.Record.Generic.Size.After.R040
-                        Test.Record.Generic.Size.After.R050
-                        Test.Record.Generic.Size.After.R060
-                        Test.Record.Generic.Size.After.R070
-                        Test.Record.Generic.Size.After.R080
-                        Test.Record.Generic.Size.After.R090
-                        Test.Record.Generic.Size.After.R100
+                        Test.Record.Generic.Size.After.R0010
+                        Test.Record.Generic.Size.After.R0020
+                        Test.Record.Generic.Size.After.R0030
+                        Test.Record.Generic.Size.After.R0040
+                        Test.Record.Generic.Size.After.R0050
+                        Test.Record.Generic.Size.After.R0060
+                        Test.Record.Generic.Size.After.R0070
+                        Test.Record.Generic.Size.After.R0080
+                        Test.Record.Generic.Size.After.R0090
+                        Test.Record.Generic.Size.After.R0100
+                        Test.Record.Generic.Size.After.R0200
+                        Test.Record.Generic.Size.After.R0300
+                        Test.Record.Generic.Size.After.R0400
+                        Test.Record.Generic.Size.After.R0500
+                        Test.Record.Generic.Size.After.R0600
+                        Test.Record.Generic.Size.After.R0700
+                        Test.Record.Generic.Size.After.R0800
+                        Test.Record.Generic.Size.After.R0900
+                        Test.Record.Generic.Size.After.R1000
                         Test.Record.Generic.Size.Before.R010
                         Test.Record.Generic.Size.Before.R020
                         Test.Record.Generic.Size.Before.R030
@@ -111,3 +120,10 @@ test-suite test-large-records
                         TypeFamilies
                         UndecidableInstances
                         UndecidableSuperClasses
+
+    if flag(use-ghc-dump)
+      cpp-options: -DUSE_GHC_DUMP
+
+Flag use-ghc-dump
+  Description: Use ghc-dump (to generate core size stats)
+  Default: True

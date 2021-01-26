@@ -99,13 +99,7 @@ test-suite test-large-records
                        -Wpartial-fields
                        -Widentities
                        -Wredundant-constraints
-
-    -- Dump timings so we can use ghc-timings-report
                        -ddump-to-file
-                       -ddump-timings
-
-    -- We're mostly interested in compile time for O0
-                       -O0
 
     -- We specify some default extensions for the test suite.
     -- This avoids replication in the various @Size.*@ modules.
@@ -120,10 +114,12 @@ test-suite test-large-records
                         UndecidableInstances
                         UndecidableSuperClasses
 
-    if flag(use-ghc-dump)
+    -- We're mostly interested in compile time for -O0
+    if flag(profile-gen-code)
+      ghc-options: -O0 -ddump-timings
       cpp-options: -DUSE_GHC_DUMP
-      depends: ghc-dump-core 
+      build-depends: ghc-dump-core
 
-Flag use-ghc-dump
-  Description: Use ghc-dump (to generate core size stats)
-  Default: False 
+Flag profile-gen-code
+  Description: Enable to generate some statistics about the generated code
+  Default: False

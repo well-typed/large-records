@@ -2,3 +2,4 @@ packages: ./
 
 package large-records
   tests: True
+  flags: +use-ghc-dump

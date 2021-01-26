@@ -79,7 +79,6 @@ test-suite test-large-records
     build-depends:      base
                       , aeson
                       , generics-sop
-                      , ghc-dump-core
                       , json-sop
                       , large-records
                       , mtl
@@ -123,7 +122,8 @@ test-suite test-large-records
 
     if flag(use-ghc-dump)
       cpp-options: -DUSE_GHC_DUMP
+      depends: ghc-dump-core 
 
 Flag use-ghc-dump
   Description: Use ghc-dump (to generate core size stats)
-  Default: True
+  Default: False 

@@ -25,6 +25,7 @@ library
                       , mtl
                       , record-hasfield
                       , sop-core
+                      , syb
                       , template-haskell
                       , text
                       , vector
@@ -45,37 +46,13 @@ test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
     other-modules:      Test.Record.Generic.Sanity
+                        Test.Record.Generic.Size.After.HK010
                         Test.Record.Generic.Size.After.R0010
-                        Test.Record.Generic.Size.After.R0020
-                        Test.Record.Generic.Size.After.R0030
-                        Test.Record.Generic.Size.After.R0040
-                        Test.Record.Generic.Size.After.R0050
-                        Test.Record.Generic.Size.After.R0060
-                        Test.Record.Generic.Size.After.R0070
-                        Test.Record.Generic.Size.After.R0080
-                        Test.Record.Generic.Size.After.R0090
-                        Test.Record.Generic.Size.After.R0100
-                        Test.Record.Generic.Size.After.R0200
-                        Test.Record.Generic.Size.After.R0300
-                        Test.Record.Generic.Size.After.R0400
-                        Test.Record.Generic.Size.After.R0500
-                        Test.Record.Generic.Size.After.R0600
-                        Test.Record.Generic.Size.After.R0700
-                        Test.Record.Generic.Size.After.R0800
-                        Test.Record.Generic.Size.After.R0900
-                        Test.Record.Generic.Size.After.R1000
                         Test.Record.Generic.Size.Before.R010
-                        Test.Record.Generic.Size.Before.R020
-                        Test.Record.Generic.Size.Before.R030
-                        Test.Record.Generic.Size.Before.R040
-                        Test.Record.Generic.Size.Before.R050
-                        Test.Record.Generic.Size.Before.R060
-                        Test.Record.Generic.Size.Before.R070
-                        Test.Record.Generic.Size.Before.R080
-                        Test.Record.Generic.Size.Before.R090
-                        Test.Record.Generic.Size.Before.R100
                         Test.Record.Generic.Size.Infra
                         Test.Record.Generic.Size.Sanity
+                        Test.Record.Generic.Strictness
+
     build-depends:      base
                       , aeson
                       , generics-sop
@@ -110,15 +87,52 @@ test-suite test-large-records
                         FlexibleInstances
                         KindSignatures
                         MultiParamTypeClasses
+                        ScopedTypeVariables
                         TypeFamilies
                         UndecidableInstances
                         UndecidableSuperClasses
 
     -- We're mostly interested in compile time for -O0
     if flag(profile-gen-code)
-      ghc-options: -O0 -ddump-timings
-      cpp-options: -DUSE_GHC_DUMP
+      ghc-options:   -O0 -ddump-timings
+      cpp-options:   -DPROFILE_GEN_CODE
       build-depends: ghc-dump-core
+      other-modules: Test.Record.Generic.Size.After.HK020
+                     Test.Record.Generic.Size.After.HK030
+                     Test.Record.Generic.Size.After.HK040
+                     Test.Record.Generic.Size.After.HK050
+                     Test.Record.Generic.Size.After.HK060
+                     Test.Record.Generic.Size.After.HK070
+                     Test.Record.Generic.Size.After.HK080
+                     Test.Record.Generic.Size.After.HK090
+                     Test.Record.Generic.Size.After.HK100
+                     Test.Record.Generic.Size.After.R0020
+                     Test.Record.Generic.Size.After.R0030
+                     Test.Record.Generic.Size.After.R0040
+                     Test.Record.Generic.Size.After.R0050
+                     Test.Record.Generic.Size.After.R0060
+                     Test.Record.Generic.Size.After.R0070
+                     Test.Record.Generic.Size.After.R0080
+                     Test.Record.Generic.Size.After.R0090
+                     Test.Record.Generic.Size.After.R0100
+                     Test.Record.Generic.Size.After.R0200
+                     Test.Record.Generic.Size.After.R0300
+                     Test.Record.Generic.Size.After.R0400
+                     Test.Record.Generic.Size.After.R0500
+                     Test.Record.Generic.Size.After.R0600
+                     Test.Record.Generic.Size.After.R0700
+                     Test.Record.Generic.Size.After.R0800
+                     Test.Record.Generic.Size.After.R0900
+                     Test.Record.Generic.Size.After.R1000
+                     Test.Record.Generic.Size.Before.R020
+                     Test.Record.Generic.Size.Before.R030
+                     Test.Record.Generic.Size.Before.R040
+                     Test.Record.Generic.Size.Before.R050
+                     Test.Record.Generic.Size.Before.R060
+                     Test.Record.Generic.Size.Before.R070
+                     Test.Record.Generic.Size.Before.R080
+                     Test.Record.Generic.Size.Before.R090
+                     Test.Record.Generic.Size.Before.R100
 
 Flag profile-gen-code
   Description: Enable to generate some statistics about the generated code

@@ -5,16 +5,10 @@
 {-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
 #endif
 
-module Test.Record.Generic.Size.After.R0010 where
+module Test.Record.Generic.Size.After.HK050 where
 
-import Data.Aeson (ToJSON(..))
-
-import Data.Record.Generic.JSON
 import Data.Record.Generic.TH
 
 import Test.Record.Generic.Size.Infra
 
-largeRecord defaultLazyOptions (recordOfSize 10)
-
-instance ToJSON R where
-  toJSON = gtoJSON
+largeRecord defaultLazyOptions (higherKindedRecordOfSize 50)

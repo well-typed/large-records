@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP             #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-#if USE_GHC_DUMP
+#if PROFILE_GEN_CODE
 {-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
 #endif
 
@@ -9,13 +9,12 @@ module Test.Record.Generic.Size.After.R0070 where
 
 import Data.Aeson (ToJSON(..))
 
-import Data.Record.Generic
 import Data.Record.Generic.JSON
 import Data.Record.Generic.TH
 
 import Test.Record.Generic.Size.Infra
 
-largeRecord defaultOptions (recordOfSize 70)
+largeRecord defaultLazyOptions (recordOfSize 70)
 
 instance ToJSON R where
   toJSON = gtoJSON

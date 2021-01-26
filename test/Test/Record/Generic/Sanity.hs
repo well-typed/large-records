@@ -40,7 +40,7 @@ import qualified Data.Record.Generic.Rep as Rep
   Small test record
 -------------------------------------------------------------------------------}
 
-largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
+largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
   data T a b = MkT {
         tInt   :: Word
       , tBool  :: Bool
@@ -54,8 +54,8 @@ largeRecord (defaultOptions { generatePatternSynonym = True }) [d|
 exampleT :: T () Float
 exampleT = MkT 5 True 'c' () [3.14]
 
-_suppressWarnings :: ()
-_suppressWarnings = const () $ (
+_silenceWarnings :: ()
+_silenceWarnings = const () $ (
       tInt
     , tBool
     , tChar

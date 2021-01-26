@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 {-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
 
 -- | Sanity checks that we generate correct code for in the @Sized.*@ modules
@@ -7,13 +9,18 @@
 module Test.Record.Generic.Size.Sanity (tests) where
 
 import Data.Aeson
+import Data.Functor.Identity
 
 import qualified Data.Record.Generic.SOP        as SOP
 import qualified Data.Record.Generic.LowerBound as LR
 
+import qualified Test.Record.Generic.Size.Before.R010 as Before010
+import qualified Test.Record.Generic.Size.After.R0010 as After0010
+import qualified Test.Record.Generic.Size.After.HK010 as AfterHK10
+
+#if PROFILE_GEN_CODE
 import Test.Record.Generic.Size.Infra (T(..))
 
-import qualified Test.Record.Generic.Size.Before.R010 as Before010
 import qualified Test.Record.Generic.Size.Before.R020 as Before020
 import qualified Test.Record.Generic.Size.Before.R030 as Before030
 import qualified Test.Record.Generic.Size.Before.R040 as Before040
@@ -23,7 +30,6 @@ import qualified Test.Record.Generic.Size.Before.R070 as Before070
 import qualified Test.Record.Generic.Size.Before.R080 as Before080
 import qualified Test.Record.Generic.Size.Before.R090 as Before090
 import qualified Test.Record.Generic.Size.Before.R100 as Before100
-import qualified Test.Record.Generic.Size.After.R0010 as After0010
 import qualified Test.Record.Generic.Size.After.R0020 as After0020
 import qualified Test.Record.Generic.Size.After.R0030 as After0030
 import qualified Test.Record.Generic.Size.After.R0040 as After0040
@@ -42,6 +48,16 @@ import qualified Test.Record.Generic.Size.After.R0700 as After0700
 import qualified Test.Record.Generic.Size.After.R0800 as After0800
 import qualified Test.Record.Generic.Size.After.R0900 as After0900
 import qualified Test.Record.Generic.Size.After.R1000 as After1000
+import qualified Test.Record.Generic.Size.After.HK020 as AfterHK20
+import qualified Test.Record.Generic.Size.After.HK030 as AfterHK30
+import qualified Test.Record.Generic.Size.After.HK040 as AfterHK40
+import qualified Test.Record.Generic.Size.After.HK050 as AfterHK50
+import qualified Test.Record.Generic.Size.After.HK060 as AfterHK60
+import qualified Test.Record.Generic.Size.After.HK070 as AfterHK70
+import qualified Test.Record.Generic.Size.After.HK080 as AfterHK80
+import qualified Test.Record.Generic.Size.After.HK090 as AfterHK90
+import qualified Test.Record.Generic.Size.After.HK100 as AfterH100
+#endif
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -50,7 +66,10 @@ tests :: TestTree
 tests = testGroup "Test.Record.Generic.Size.Sanity" [
       testCase "sameValue" test_sameValue
     , testCase "sameField" test_sameField
+    , testCase "showHK"    test_showHK
+#if PROFILE_GEN_CODE
     , testCase "reallyBig" test_reallyBig
+#endif
     ]
 
 -- | Test that @generics-sop@ and @large-records@ generates the same structure
@@ -59,6 +78,7 @@ test_sameValue = do
     assertEqual "10"
       (toJSON (SOP.glowerBound :: Before010.R))
       (toJSON ( LR.glowerBound :: After0010.R))
+#if PROFILE_GEN_CODE
     assertEqual "20"
       (toJSON (SOP.glowerBound :: Before020.R))
       (toJSON ( LR.glowerBound :: After0020.R))
@@ -86,11 +106,13 @@ test_sameValue = do
     assertEqual "100"
       (toJSON (SOP.glowerBound :: Before100.R))
       (toJSON ( LR.glowerBound :: After0100.R))
+#endif
 
 -- | Test that we have the necessary @HasField@ instances
 test_sameField :: Assertion
 test_sameField = do
     assertEqual "HasField" sop010.field1  lr010.field1
+#if PROFILE_GEN_CODE
     assertEqual "HasField" sop020.field11 lr020.field11
     assertEqual "HasField" sop030.field21 lr030.field21
     assertEqual "HasField" sop040.field31 lr040.field31
@@ -100,8 +122,12 @@ test_sameField = do
     assertEqual "HasField" sop080.field71 lr080.field71
     assertEqual "HasField" sop090.field81 lr090.field81
     assertEqual "HasField" sop100.field91 lr100.field91
+#endif
   where
     sop010 = SOP.glowerBound :: Before010.R
+    lr010  =  LR.glowerBound :: After0010.R
+
+#if PROFILE_GEN_CODE
     sop020 = SOP.glowerBound :: Before020.R
     sop030 = SOP.glowerBound :: Before030.R
     sop040 = SOP.glowerBound :: Before040.R
@@ -112,7 +138,6 @@ test_sameField = do
     sop090 = SOP.glowerBound :: Before090.R
     sop100 = SOP.glowerBound :: Before100.R
 
-    lr010 = LR.glowerBound :: After0010.R
     lr020 = LR.glowerBound :: After0020.R
     lr030 = LR.glowerBound :: After0030.R
     lr040 = LR.glowerBound :: After0040.R
@@ -122,7 +147,40 @@ test_sameField = do
     lr080 = LR.glowerBound :: After0080.R
     lr090 = LR.glowerBound :: After0090.R
     lr100 = LR.glowerBound :: After0100.R
+#endif
 
+-- | Check that we can 'Show' the higher-kinded records
+test_showHK :: Assertion
+test_showHK = do
+    assertBool "some output" (not . null $ show lr010)
+
+#if PROFILE_GEN_CODE
+    assertBool "some output" (not . null $ show lr020)
+    assertBool "some output" (not . null $ show lr030)
+    assertBool "some output" (not . null $ show lr040)
+    assertBool "some output" (not . null $ show lr050)
+    assertBool "some output" (not . null $ show lr060)
+    assertBool "some output" (not . null $ show lr070)
+    assertBool "some output" (not . null $ show lr080)
+    assertBool "some output" (not . null $ show lr090)
+    assertBool "some output" (not . null $ show lr100)
+#endif    
+  where
+    lr010 = LR.glowerBound :: AfterHK10.HKR Identity
+
+#if PROFILE_GEN_CODE
+    lr020 = LR.glowerBound :: AfterHK20.HKR Identity
+    lr030 = LR.glowerBound :: AfterHK30.HKR Identity
+    lr040 = LR.glowerBound :: AfterHK40.HKR Identity
+    lr050 = LR.glowerBound :: AfterHK50.HKR Identity
+    lr060 = LR.glowerBound :: AfterHK60.HKR Identity
+    lr070 = LR.glowerBound :: AfterHK70.HKR Identity
+    lr080 = LR.glowerBound :: AfterHK80.HKR Identity
+    lr090 = LR.glowerBound :: AfterHK90.HKR Identity
+    lr100 = LR.glowerBound :: AfterH100.HKR Identity
+#endif
+
+#if PROFILE_GEN_CODE
 -- | Check the value of the last field in the truly big records
 test_reallyBig :: Assertion
 test_reallyBig = do
@@ -147,3 +205,4 @@ test_reallyBig = do
     lr0800 = LR.glowerBound :: After0800.R
     lr0900 = LR.glowerBound :: After0900.R
     lr1000 = LR.glowerBound :: After1000.R
+#endif

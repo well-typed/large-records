@@ -4,7 +4,7 @@
 
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
 
-#if USE_GHC_DUMP
+#if PROFILE_GEN_CODE
 {-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
 #endif
 

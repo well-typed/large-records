@@ -2,5 +2,3 @@ packages: ./
 
 package large-records
   tests: True
-
--- flags: +profile-gen-code

@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE PatternSynonyms     #-}
@@ -8,13 +9,15 @@
 
 module Data.Record.Generic.TH (
     Options(..)
-  , defaultOptions
+  , defaultStrictOptions
+  , defaultLazyOptions
   , largeRecord
   ) where
 
 import Control.Monad.Except (Except, runExcept, throwError)
 import Control.Monad.State (StateT, runStateT)
 import Data.Coerce (coerce)
+import Data.Generics (everything, mkQ)
 import Data.List (intercalate)
 import Data.Proxy
 import Data.Vector (Vector)
@@ -22,9 +25,9 @@ import GHC.Exts (Any)
 import GHC.Records.Compat (HasField(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Control.Monad.State  as StateT
-import qualified Data.Kind            as Kind
-import qualified Data.Vector          as V
+import qualified Control.Monad.State as StateT
+import qualified Data.Kind           as Kind
+import qualified Data.Vector         as V
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
@@ -36,17 +39,42 @@ import Data.Record.Generic.Show
 import qualified Data.Record.Generic.Rep as Rep
 
 {-------------------------------------------------------------------------------
-  Public API
+  Options
 -------------------------------------------------------------------------------}
 
 data Options = Options {
+      -- | Generate a pattern synonym for the record
+      --
+      -- This makes normal pattern matching on the record possible, but comes
+      -- at a cost: @ghc@ will "very helpfully" introduce field accessors for
+      -- all fields in the pattern synonym, which come with quadratic costs
+      -- in code size.
+      --
+      -- Avoid if possible.
       generatePatternSynonym :: Bool
+
+      -- | Make all fields strict
+      --
+      -- This should be used when using the @StrictData@ or @Strict@ language
+      -- extension.
+    , allFieldsStrict :: Bool
     }
 
-defaultOptions :: Options
-defaultOptions = Options {
+defaultLazyOptions :: Options
+defaultLazyOptions = Options {
       generatePatternSynonym = False
+    , allFieldsStrict        = False
     }
+
+defaultStrictOptions :: Options
+defaultStrictOptions = Options {
+      generatePatternSynonym = False
+    , allFieldsStrict        = True
+    }
+
+{-------------------------------------------------------------------------------
+  Public API
+-------------------------------------------------------------------------------}
 
 largeRecord :: Options -> Q [Dec] -> Q [Dec]
 largeRecord opts decls = do
@@ -154,8 +182,12 @@ genIndexedAccessor _opts r@Record{..} = do
 -- > unsafeSetIndexT :: forall x a b. Int -> T a b -> x -> T a b
 -- > unsafeSetIndexT = \n t val ->
 -- >     TFromVector (V.unsafeUpd (vectorFromT t) [(n, unsafeCoerce val)])
+--
+-- If using 'allFieldsStrict', the function will be strict in @val@.
+--
+-- TODO: We should support per-field strictness.
 genIndexedOverwrite :: Options -> Record -> Q [Dec]
-genIndexedOverwrite _opts r@Record{..} = do
+genIndexedOverwrite Options{..} r@Record{..} = do
     x <- newName "x"
     simpleFn
       (nameRecordIndexedOverwrite r)
@@ -163,10 +195,20 @@ genIndexedOverwrite _opts r@Record{..} = do
         (PlainTV x : recordTVars)
         (cxt [])
         (fnQ [conT ''Int, recordTypeQ r, varT x] (recordTypeQ r)))
-      [| \n t val -> $(recordFromVectorQ r) (
-             V.unsafeUpd ($(recordToVectorQ r) t) [(n, unsafeCoerce val)]
-           )
-       |]
+      body
+  where
+    body :: Q Exp
+    body
+      | allFieldsStrict =
+          [| \n t !val -> $(recordFromVectorQ r) (
+                 V.unsafeUpd ($(recordToVectorQ r) t) [(n, unsafeCoerce val)]
+               )
+           |]
+      | otherwise =
+          [| \n t val -> $(recordFromVectorQ r) (
+                 V.unsafeUpd ($(recordToVectorQ r) t) [(n, unsafeCoerce val)]
+               )
+           |]
 
 -- | Generate field accessors for all fields
 genFieldAccessors :: Options -> Record -> Q [Dec]
@@ -344,12 +386,29 @@ genConstraintsClass _opts r = do
 -- Generates something like
 --
 -- > (c Word, c Bool, c Char, c a, c [b])
-genRequiredConstraints :: Options -> Record -> Name -> Q Cxt
-genRequiredConstraints _opts Record{..} c =
-    cxt $ map constrainField recordFields
+--
+-- However, we filter out constraints that are type variable free, so if we
+-- pass, say, @Show@ for @c@, then we generate
+--
+-- > (Show a, Show [b])
+--
+-- instead. This avoids @ghc@ complaining about
+--
+-- > Redundant constraints: (Show Word, Show Bool, Show Char)
+genRequiredConstraints :: Options -> Record -> Q Type -> Q Cxt
+genRequiredConstraints _opts Record{..} c = do
+    constraints <- mapM constrainField recordFields
+    return $ filter hasTypeVar constraints
   where
     constrainField :: Field -> Q Pred
-    constrainField f = varT c `appT` fieldTypeQ f
+    constrainField f = c `appT` fieldTypeQ f
+
+    hasTypeVar :: Pred -> Bool
+    hasTypeVar = everything (||) (mkQ False isTypeVar)
+
+    isTypeVar :: Type -> Bool
+    isTypeVar (VarT _)   = True
+    isTypeVar _otherwise = False
 
 -- | Generate the dictionary creation function ('dict')
 --
@@ -384,7 +443,7 @@ genConstraintsClassInstance :: Options -> Record -> Q Dec
 genConstraintsClassInstance opts r@Record{..} = do
     c <- newName "c"
     instanceD
-      (genRequiredConstraints opts r c)
+      (genRequiredConstraints opts r (varT c))
       (appsT (conT (nameRecordConstraintsClass r)) $
          map tyVarType recordTVars ++ [varT c])
       [ valD (varP (nameRecordConstraintsMethod r))
@@ -431,31 +490,55 @@ genMetadata _opts Record{..} = do
 --
 -- * 'Show':
 --
---   > instance (Eq a, Eq b) => Eq (T a b) where
+--   > instance (..) => Eq (T a b) where
 --   >   (==) = geq
 --
 -- * 'Eq':
 --
---   > instance (Show a, Show b) => Show (T a b) where
+--   > instance (..) => Show (T a b) where
 --   >   showsPrec = gshowsPrec
 --
--- TODO: Currently we just add 'Eq'/'Show'/.. constraints for all type arguments
--- of the type. This is perhaps a bit naive? Should we be more sophisticated?
---
--- TODO: Try what happens if we just add superclass constraints for all fields?
+-- where the @(..)@ constraints are generated by 'genRequiredConstraints'
+-- (i.e., a constraint for each field).
 --
 -- TODO: Think about DeriveFunctor?
 genDeriving :: Options -> Record -> Deriving -> Q Dec
-genDeriving _opts r@Record{..} = \case
+genDeriving opts r@Record{..} = \case
     DeriveEq   -> inst ''Eq   '(==)      'geq
     DeriveShow -> inst ''Show 'showsPrec 'gshowsPrec
   where
     inst :: Name -> Name -> Name -> Q Dec
     inst clss fn gfn =
         instanceD
-          (cxt $ map (\v -> conT clss `appT` tyVarType v) recordTVars)
+          (genRequiredConstraints opts r (conT clss))
           [t| $(conT clss) $(recordTypeQ r) |]
           [valD (varP fn) (normalB (varE gfn)) []]
+
+-- | Generate definition for `from` in the `Generic` instance
+--
+-- Generates something like
+--
+-- > repFromVectorStrict . vectorFromT
+genFrom :: Options -> Record -> Q Exp
+genFrom _opts r = [| repFromVector . $(varE (nameRecordInternalField r)) |]
+
+-- | Generate definition for `to` in the `Generic` instance
+--
+-- Generation depends on options.
+--
+-- * If all fields are strict, generates something like
+--
+--   > TFromVector . repToVector
+--
+-- * Otherwise, generates something like
+--
+--   > TFromVector . repToVector
+--
+-- TODO: We should support per-field strictness annotations.
+genTo :: Options -> Record -> Q Exp
+genTo Options{..} r
+  | allFieldsStrict = [| $(conE (nameRecordInternalConstr r)) . repToVectorStrict |]
+  | otherwise       = [| $(conE (nameRecordInternalConstr r)) . repToVectorLazy   |]
 
 -- | Generate the definitions required to provide the instance for 'Generic'
 --
@@ -475,8 +558,8 @@ genGenericInstance opts r@Record{..} = concatM [
              (cxt [])
              [t| Generic $(recordTypeQ r) |]
              [ genConstraintsFamilyInstance opts r
-              , valD (varP 'from)       (normalB [| coerce           |])                 []
-              , valD (varP 'to)         (normalB [| coerce           |])                 []
+              , valD (varP 'from)       (normalB (genFrom opts r))                       []
+              , valD (varP 'to)         (normalB (genTo   opts r))                       []
               , valD (varP 'recordSize) (normalB [| const $numFields |])                 []
               , valD (varP 'dict)       (normalB (varE (nameRecordConstraintsMethod r))) []
               , valD (varP 'metadata)   (normalB (genMetadata opts r))                   []
@@ -577,13 +660,6 @@ fieldUntypedOverwrite r f = [| $(recordIndexedOverwriteQ r) $(fieldIndexQ f) |]
 
 {-------------------------------------------------------------------------------
   Supported declarations
-
-  TODOs:
-
-  * Support type variables
-  * Support (certain) deriving clauses
-  * Be explicit about strictness
-  * ...
 -------------------------------------------------------------------------------}
 
 -- | Unqualified name
@@ -793,7 +869,26 @@ chunk n = go
 
 {-------------------------------------------------------------------------------
   Functions to support the TH code (i.e., functions called by generated code)
+
+  NOTE: We leave the generic representation type as lazy, and only force
+  values once we translate back to the type itself. This means that we can
+  chain generic functions and get some kind of fusion without having to
+  traverse records multiple times.
 -------------------------------------------------------------------------------}
 
 dictFor :: c x => Proxy c -> Proxy x -> Dict c x
 dictFor _ _ = Dict
+
+repFromVector :: Vector Any -> Rep I a
+repFromVector = coerce
+
+repToVectorLazy :: Rep I a -> Vector Any
+repToVectorLazy = coerce
+
+repToVectorStrict :: Rep I a -> Vector Any
+repToVectorStrict (Rep v) =
+    rnfElems (V.toList v) `seq` coerce v
+  where
+    rnfElems :: [I Any] -> ()
+    rnfElems []       = ()
+    rnfElems (I x:xs) = x `seq` rnfElems xs

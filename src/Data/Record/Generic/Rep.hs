@@ -142,7 +142,7 @@ sequenceA (Rep v) = Rep <$> Prelude.sequenceA (fmap unComp v)
 -------------------------------------------------------------------------------}
 
 pure :: forall f a. Generic a => (forall x. f x) -> Rep f a
-pure = Rep . V.replicate (recordSize (Proxy @a))
+pure = Rep . V.replicate (recordSize (metadata (Proxy @a)))
 
 cpure ::
      forall c f a. (Generic a, Constraints a c)

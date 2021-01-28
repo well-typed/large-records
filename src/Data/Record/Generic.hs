@@ -40,9 +40,6 @@ class Generic a where
   -- | Translate from generic representation
   to :: Rep I a -> a
 
-  -- | Number of fields in the record
-  recordSize :: Proxy a -> Int
-
   -- | Construct vector of dictionaries, one for each field of the record
   dict :: Constraints a c => Proxy c -> Rep (Dict c) a
 
@@ -58,6 +55,7 @@ newtype Rep f a = Rep (Vector (f Any))
 data Metadata a = Metadata {
       recordName        :: String
     , recordConstructor :: String
+    , recordSize        :: Int
     , recordFieldNames  :: Rep (K String) a
     }
 

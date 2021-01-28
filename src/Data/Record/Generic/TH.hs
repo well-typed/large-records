@@ -478,9 +478,13 @@ genMetadata _opts Record{..} = do
     lamE [varP p] $ recConE 'Metadata [
         fieldExp 'recordName        $ litE (stringL recordUnqual)
       , fieldExp 'recordConstructor $ litE (stringL recordConstr)
+      , fieldExp 'recordSize        $ litE (integerL numFields)
       , fieldExp 'recordFieldNames  $ [| Rep.unsafeFromListK $fieldNames |]
       ]
   where
+    numFields :: Integer
+    numFields = fromIntegral $ length recordFields
+
     fieldNames :: Q Exp
     fieldNames = listE $ map (litE . stringL . fieldUnqual) recordFields
 
@@ -546,7 +550,6 @@ genTo Options{..} r
 -- >   type Constraints T = Constraints_T
 -- >   from       = coerce
 -- >   to         = coerce
--- >   recordSize = const 3
 -- >   dict       = dictConstraints_T
 -- >   metadata   = ..
 genGenericInstance :: Options -> Record -> Q [Dec]
@@ -558,18 +561,14 @@ genGenericInstance opts r@Record{..} = concatM [
              (cxt [])
              [t| Generic $(recordTypeQ r) |]
              [ genConstraintsFamilyInstance opts r
-              , valD (varP 'from)       (normalB (genFrom opts r))                       []
-              , valD (varP 'to)         (normalB (genTo   opts r))                       []
-              , valD (varP 'recordSize) (normalB [| const $numFields |])                 []
-              , valD (varP 'dict)       (normalB (varE (nameRecordConstraintsMethod r))) []
-              , valD (varP 'metadata)   (normalB (genMetadata opts r))                   []
+              , valD (varP 'from)     (normalB (genFrom opts r))                       []
+              , valD (varP 'to)       (normalB (genTo   opts r))                       []
+              , valD (varP 'dict)     (normalB (varE (nameRecordConstraintsMethod r))) []
+              , valD (varP 'metadata) (normalB (genMetadata opts r))                   []
              ]
          ]
     , mapM (genDeriving opts r) recordDeriv
     ]
-  where
-    numFields :: Q Exp
-    numFields = litE . integerL . fromIntegral $ length recordFields
 
 {-------------------------------------------------------------------------------
   Decide naming

@@ -45,7 +45,8 @@ library
 test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
-    other-modules:      Test.Record.Generic.Sanity
+    other-modules:      Test.Record.Generic.Sanity.Generics
+                        Test.Record.Generic.Sanity.OverloadingNoDRF
                         Test.Record.Generic.Size.After.HK010
                         Test.Record.Generic.Size.After.R0010
                         Test.Record.Generic.Size.Before.R010

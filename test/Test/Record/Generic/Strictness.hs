@@ -17,7 +17,6 @@ import qualified Data.Record.Generic.Rep as Rep
 import Test.Tasty
 import Test.Tasty.HUnit
 
-
 largeRecord defaultLazyOptions [d|
     data Lazy = MkLazy { lazyField :: Word }
   |]
@@ -30,6 +29,8 @@ _silenceWarnings :: ()
 _silenceWarnings = const () $ (
       lazyField
     , strictField
+    , mkLazy
+    , mkStrict
     )
 
 tests :: TestTree

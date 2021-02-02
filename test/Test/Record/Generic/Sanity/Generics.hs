@@ -14,7 +14,7 @@
 --
 -- These are not proper tests, merely intended to catch egregious refactoring
 -- mistakes.
-module Test.Record.Generic.Sanity (tests) where
+module Test.Record.Generic.Sanity.Generics (tests) where
 
 import Control.Monad.State (State, evalState, state)
 import Data.Proxy

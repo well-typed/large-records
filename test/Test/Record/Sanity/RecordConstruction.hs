@@ -11,7 +11,10 @@ import Data.Record.TH
 import Test.Tasty
 import Test.Tasty.HUnit
 
-largeRecord defaultPureScript [d|
+-- Test that this works if we don't generate field accessors
+-- However, set fields to lazy for this test, so that we can test with
+-- missing fields.
+largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
     data R = MkR { x :: Int, y :: Bool }
   |]
 
@@ -36,6 +39,7 @@ outOfOrder = [mkRecord| MkR { y = True, x = 1234 } |]
 -- extraFields = [mkRecord| MkR { x = 1234, y = True, z = () } |]
 
 -- But this works (with a warning)
+-- TODO: It should result in undefined though (all field strict)
 missingFields :: R
 missingFields = [mkRecord| MkR { x = 1234 } |]
 

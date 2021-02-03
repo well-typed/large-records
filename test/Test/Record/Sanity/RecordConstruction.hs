@@ -3,6 +3,7 @@
 
 {-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
 {-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -Wwarn #-}
 
 module Test.Record.Sanity.RecordConstruction (tests) where
 
@@ -39,7 +40,6 @@ outOfOrder = [mkRecord| MkR { y = True, x = 1234 } |]
 -- extraFields = [mkRecord| MkR { x = 1234, y = True, z = () } |]
 
 -- But this works (with a warning)
--- TODO: It should result in undefined though (all field strict)
 missingFields :: R
 missingFields = [mkRecord| MkR { x = 1234 } |]
 

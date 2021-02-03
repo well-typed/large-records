@@ -30,7 +30,7 @@ import Test.Tasty.HUnit
 
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound
-import Data.Record.Generic.SOP (Fields)
+import Data.Record.Generic.SOP hiding (glowerBound)
 import Data.Record.TH
 
 import qualified Data.Record.Generic.SOP as SOP
@@ -49,7 +49,7 @@ largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
       , tListB :: [b]
       }
     deriving (Eq, Show)
-  |]  
+  |]
 
 exampleT :: T () Float
 exampleT = MkT 5 True 'c' () [3.14]
@@ -122,8 +122,14 @@ test_pure :: Assertion
 test_pure =
     compareTyped expected actual
   where
-    expected :: NP (K Char) (Fields (T () Float))
-    expected = K 'a' :* K 'a' :* K 'a' :* K 'a' :* K 'a' :* Nil
+    expected :: NP (Field (K Char)) (MetadataOf_MkT () Float)
+    expected =
+           Field (K 'a')
+        :* Field (K 'a')
+        :* Field (K 'a')
+        :* Field (K 'a')
+        :* Field (K 'a')
+        :* Nil
 
     actual :: Rep (K Char) (T () Float)
     actual = Rep.pure (K 'a')
@@ -140,19 +146,27 @@ test_sequenceA :: Assertion
 test_sequenceA =
     compareTyped expected actual
   where
-    expected :: NP (K Int) (Fields (T () Float))
-    expected = flip evalState 0 $ SOP.hsequence' $ example
+    expected :: NP (Field (K Int)) (MetadataOf (T () Float))
+    expected =
+          flip evalState 0
+        $ SOP.hsequence'
+        $ SOP.hmap distrib
+        $ example
+      where
+        distrib :: Field (State Int :.: K Int) x
+                -> (State Int :.: (Field (K Int))) x
+        distrib (Field (Comp x)) = Comp (Field <$> x)
 
     actual :: Rep (K Int) (T () Float)
-    actual = flip evalState 0 $ Rep.sequenceA $ SOP.npToRep example
+    actual = flip evalState 0 $ Rep.sequenceA $ SOP.fromSOP example
 
-    example :: NP (State Int SOP.:.: K Int) (Fields (T () Float))
+    example :: NP (Field (State Int SOP.:.: K Int)) (MetadataOf (T () Float))
     example =
-           Comp (K <$> tick)
-        :* Comp (K <$> tick)
-        :* Comp (K <$> tick)
-        :* Comp (K <$> tick)
-        :* Comp (K <$> tick)
+           Field (Comp (K <$> tick))
+        :* Field (Comp (K <$> tick))
+        :* Field (Comp (K <$> tick))
+        :* Field (Comp (K <$> tick))
+        :* Field (Comp (K <$> tick))
         :* Nil
 
     tick :: State Int Int
@@ -160,58 +174,67 @@ test_sequenceA =
 
 test_zipWithM :: Assertion
 test_zipWithM =
-    compareUntyped expected actual
+    compareTyped expected actual
   where
-    expected :: NP (K Int) (Fields (T () Float))
-    expected = flip evalState 0 $
-        SOP.hsequence' $ SOP.hliftA2 (Comp .: tick) x y
+    expected :: NP (Field (K Int)) (MetadataOf (T () Float))
+    expected =
+          flip evalState 0
+        $ SOP.hsequence'
+        $ SOP.hliftA2 tick' x y
+      where
+        tick' :: Field (K Int) field
+              -> Field (K Int) field
+              -> (State Int :.: Field (K Int)) field
+        tick' (Field a) (Field b) = Comp $ Field <$> tick a b
 
     actual :: Rep (K Int) (T () Float)
     actual = flip evalState 0 $
-        Rep.zipWithM tick (SOP.npToRep x) (SOP.npToRep y)
+        Rep.zipWithM tick (fromSOP x) (fromSOP y)
 
     tick :: K Int x -> K Int x -> State Int (K Int x)
     tick (K a) (K b) = state $ \i -> (K (a + b + i), i + 1)
 
-    x, y :: NP (K Int) (Fields (T () Float))
-    x = K 10 :* K 11 :* K 12 :* K 13 :* K 14 :* Nil
-    y = K 20 :* K 21 :* K 22 :* K 23 :* K 24 :* Nil
+    x, y :: NP (Field (K Int)) (MetadataOf (T () Float))
+    x = Field (K 10)
+     :* Field (K 11)
+     :* Field (K 12)
+     :* Field (K 13)
+     :* Field (K 14)
+     :* Nil
+    y = Field (K 20)
+     :* Field (K 21)
+     :* Field (K 22)
+     :* Field (K 23)
+     :* Field (K 24)
+     :* Nil
 
 {-------------------------------------------------------------------------------
   For testing purposes, we compare against proper heterogeneous lists
 -------------------------------------------------------------------------------}
 
 compareTyped ::
-     forall f a.
-     (All (Compose Eq f) (Fields a), All (Compose Show f) (Fields a))
-  => NP f (Fields a) -> Rep f a -> Assertion
+     forall f a. (
+       Generic a
+     , Constraints a (Compose Eq f)
+     , Constraints a (Compose Show f)
+     , All IsField (MetadataOf a)
+     )
+  => NP (Field f) (MetadataOf a) -> Rep f a -> Assertion
 compareTyped expected actual =
-    case SOP.npFromRep (Proxy @(Compose Show f)) actual of
-      SOP.FromRepExact actual' ->
-        assertEqual "matches exactly" expected actual'
-      SOP.FromRepTooMany actual' leftover -> do
-        assertEqual "matches prefix" expected actual'
-        assertFailure $ concat [
-            show (length leftover)
-          , " fields left over"
-          ]
-      SOP.FromRepTooFew actual' ->
-        assertFailure $ concat [
-            "Not enough fields: expected "
-          , show expected
-          , " but got "
-          , show actual'
-          ]
-
--- | Variation on 'compareTyped' that compares based on the /untyped/ version
---
--- This can be more informative, as we can show all values, but is also
--- applicable in degenerate circumstances (e.g. @f == K x@ for some @x@).
-compareUntyped ::
-     (Show (Rep f a), Eq (Rep f a))
-  => NP f (Fields a) -> Rep f a -> Assertion
-compareUntyped expected actual =
-    assertEqual "untyped representation matches" (SOP.npToRep expected) actual
+    case toSOP actual of
+      Nothing ->
+        assertFailure "compareTyped: incorrect number of fields"
+      Just actual' ->
+        case toDictAll (Proxy @f) (Proxy @a) (Proxy @Show) of
+          Dict ->
+            case toDictAll (Proxy @f) (Proxy @a) (Proxy @Eq) of
+              Dict -> go expected actual'
+  where
+    go :: ( All (Compose Eq   (Field f)) fields
+          , All (Compose Show (Field f)) fields
+          )
+       => NP (Field f) fields -> NP (Field f) fields -> Assertion
+    go = assertEqual "compareTyped"
 
 {-------------------------------------------------------------------------------
   All tests
@@ -225,10 +248,3 @@ tests = testGroup "Test.Record.Sanity" [
     , testCase "zipWithM"   test_zipWithM
     , testCase "cpure"      test_cpure
     ]
-
-{-------------------------------------------------------------------------------
-  Auxiliary
--------------------------------------------------------------------------------}
-
-(.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
-(.:) f g x y = f (g x y)

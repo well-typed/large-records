@@ -217,6 +217,11 @@ genAll opts@Options{..} r = concatM $ [
   Construct record values
 -------------------------------------------------------------------------------}
 
+-- | Construct record value
+--
+-- TODO: Discussion and comparison to the pattern synonym.
+--
+-- See <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0160-no-toplevel-field-selectors.rst>
 mkRecord :: QuasiQuoter
 mkRecord = QuasiQuoter {
       quoteExp  = go
@@ -703,12 +708,20 @@ genConstraintsClassInstance opts r@Record{..} = do
 -- Generates something like
 --
 -- > type Constraints (T a b) = Constraints_T a b
-genConstraintsFamilyInstance :: Options -> Record -> Q Dec
-genConstraintsFamilyInstance opts r@Record{..} = tySynInstD $
+genInstanceConstraints :: Options -> Record -> Q Dec
+genInstanceConstraints opts r@Record{..} = tySynInstD $
     tySynEqn
       Nothing
       [t| Constraints $(recordTypeQ opts r) |]
       (appsT (conT (nameRecordConstraintsClass opts r)) $
+         map tyVarType recordTVars)
+
+genInstanceMetadataOf :: Options -> Record -> Q Dec
+genInstanceMetadataOf opts r@Record{..} = tySynInstD $
+    tySynEqn
+      Nothing
+      [t| MetadataOf $(recordTypeQ opts r) |]
+      (appsT (conT (nameRecordTypeLevelMetadata recordConstr)) $
          map tyVarType recordTVars)
 
 -- | Generate metadata
@@ -799,11 +812,12 @@ genGenericInstance opts r@Record{..} = concatM [
          , instanceD
              (cxt [])
              [t| Generic $(recordTypeQ opts r) |]
-             [ genConstraintsFamilyInstance opts r
-              , valD (varP 'from)     (normalB (genFrom opts r))                            []
-              , valD (varP 'to)       (normalB (genTo   opts r))                            []
-              , valD (varP 'dict)     (normalB (varE (nameRecordConstraintsMethod opts r))) []
-              , valD (varP 'metadata) (normalB (genMetadata opts r))                        []
+             [ genInstanceConstraints opts r
+             , genInstanceMetadataOf  opts r
+             , valD (varP 'from)     (normalB (genFrom opts r))                            []
+             , valD (varP 'to)       (normalB (genTo   opts r))                            []
+             , valD (varP 'dict)     (normalB (varE (nameRecordConstraintsMethod opts r))) []
+             , valD (varP 'metadata) (normalB (genMetadata opts r))                        []
              ]
          ]
     , mapM (genDeriving opts r) recordDeriv
@@ -842,7 +856,7 @@ nameRecordInternalConstr Options{..} Record{..}
 --
 -- See 'constructRecord'.
 nameRecordTypeLevelMetadata :: ConstrName -> Name
-nameRecordTypeLevelMetadata = nameWithPrefix "Fields_"
+nameRecordTypeLevelMetadata = nameWithPrefix "MetadataOf_"
 
 -- | Name of the constructor function
 --

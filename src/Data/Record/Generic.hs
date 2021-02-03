@@ -1,8 +1,9 @@
-{-# LANGUAGE ConstraintKinds         #-}
-{-# LANGUAGE ExplicitNamespaces      #-}
-{-# LANGUAGE FlexibleInstances       #-}
-{-# LANGUAGE KindSignatures          #-}
-{-# LANGUAGE TypeFamilies            #-}
+{-# LANGUAGE ConstraintKinds    #-}
+{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE KindSignatures     #-}
+{-# LANGUAGE TypeFamilies       #-}
 
 module Data.Record.Generic (
     -- * Types with a generic view
@@ -18,6 +19,7 @@ import Data.Kind
 import Data.Proxy
 import Data.Vector (Vector)
 import GHC.Exts (Any)
+import GHC.TypeLits (Symbol)
 
 import qualified Data.Vector as V
 
@@ -32,7 +34,11 @@ import Data.SOP.Dict          as SOP (Dict(..))
 -------------------------------------------------------------------------------}
 
 class Generic a where
+  -- | @Constraints a c@ means "all fields of @a@ satisfy @c@"
   type Constraints a :: (Type -> Constraint) -> Constraint
+
+  -- | Type-level metadata
+  type MetadataOf a :: [(Symbol, Type)]
 
   -- | Translate to generic representation
   from :: a -> Rep I a

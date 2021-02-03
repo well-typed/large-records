@@ -21,8 +21,8 @@ library
                         Data.Record.TH
     build-depends:      base >=4.13 && < 4.15
                       , aeson
+                      , containers
                       , generics-sop
-                      , mtl
                       , record-hasfield
                       , sop-core
                       , syb
@@ -48,6 +48,7 @@ test-suite test-large-records
     other-modules:      Test.Record.Sanity.Generics
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.OverloadingNoDRF
+                        Test.Record.Sanity.RecordConstruction
                         Test.Record.Sanity.Strictness
                         Test.Record.Size.After.HK010
                         Test.Record.Size.After.R0010

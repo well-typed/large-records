@@ -49,7 +49,7 @@ largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
       , tListB :: [b]
       }
     deriving (Eq, Show)
-  |]
+  |]  
 
 exampleT :: T () Float
 exampleT = MkT 5 True 'c' () [3.14]

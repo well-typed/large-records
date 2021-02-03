@@ -1,20 +1,22 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE DefaultSignatures   #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE PatternSynonyms     #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE DefaultSignatures          #-}
+{-# LANGUAGE DeriveAnyClass             #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
+{-# LANGUAGE ViewPatterns               #-}
 
 module Data.Record.TH (
     largeRecord
-  , constructRecord
   , endOfBindingGroup
+  , mkRecord
     -- * Options
   , Options(..)
   , defaultStrictOptions
@@ -39,6 +41,9 @@ import qualified Data.Map    as Map
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Quote
+
+import qualified Language.Haskell.Meta.Parse as HSE
 
 import Data.Record.Generic
 import Data.Record.Generic.Eq
@@ -212,15 +217,31 @@ genAll opts@Options{..} r = concatM $ [
   Construct record values
 -------------------------------------------------------------------------------}
 
+mkRecord :: QuasiQuoter
+mkRecord = QuasiQuoter {
+      quoteExp  = go
+    , quotePat  = wrongContext
+    , quoteType = wrongContext
+    , quoteDec  = wrongContext
+    }
+  where
+    wrongContext :: String -> Q a
+    wrongContext _ =  fail "mkRecord can only be used in expression contexts"
+
+    go :: String -> Q Exp
+    go str =
+        case HSE.parseExp str of
+          Left  err  -> fail $ "Could not parse record definition: " ++ err
+          Right expr -> constructRecord expr
+
 endOfBindingGroup :: Q [Dec]
 endOfBindingGroup = return []
 
-constructRecord :: Q Exp -> Q Exp
-constructRecord qExp = do
-    RecordValue{..} <- matchRecordValue =<< qExp
+constructRecord :: Exp -> Q Exp
+constructRecord expr = do
+    RecordValue{..} <- matchRecordValue expr
     (_tyVars, mdata) <- getTypeLevelMetadata recordValueConstr
     aligned <- align (map fst mdata) recordValueFields
-    reportWarning $ "Should be doing something with " ++ show aligned
     appsE $ varE (nameConstructorFn recordValueConstr) : map return aligned
 
 -- | Order record definition declarations according to the type declaration
@@ -888,9 +909,17 @@ fieldUntypedOverwrite opts r f =
 
 class Coercible n String => IsName n where
 
-newtype TypeName   = TypeName   String deriving (Show, Eq, Ord, IsName)
-newtype ConstrName = ConstrName String deriving (Show, Eq, Ord, IsName)
-newtype FieldName  = FieldName  String deriving (Show, Eq, Ord, IsName)
+newtype TypeName = TypeName String
+  deriving newtype  (Show, Eq, Ord)
+  deriving anyclass IsName
+
+newtype ConstrName = ConstrName String
+  deriving newtype  (Show, Eq, Ord)
+  deriving anyclass IsName
+
+newtype FieldName = FieldName  String
+  deriving newtype  (Show, Eq, Ord)
+  deriving anyclass IsName
 
 fresh :: IsName n => n -> Q Name
 fresh = newName . coerce

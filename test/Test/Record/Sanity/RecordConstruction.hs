@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes     #-}
 
+{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
 {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Sanity.RecordConstruction (tests) where
@@ -7,12 +9,11 @@ module Test.Record.Sanity.RecordConstruction (tests) where
 import Data.Record.TH
 
 import Test.Tasty
+import Test.Tasty.HUnit
 
-largeRecord defaultLazyOptions [d|
+largeRecord defaultPureScript [d|
     data R = MkR { x :: Int, y :: Bool }
   |]
-
--- TODO: Check that we can't introduce type errors (unsafe coercing True to Int or whatever)
 
 -- This call just indicates to @ghc@ that we have reached the end of a binding
 -- group, and so it should process all definitions. This is not necessary if
@@ -24,24 +25,30 @@ largeRecord defaultLazyOptions [d|
 -- TODO: It'd be nicer if we could avoid this altogether.
 endOfBindingGroup
 
-
 inOrder :: R
-inOrder = $(constructRecord [| MkR { x = 1234, y = True } |])
+inOrder = [mkRecord| MkR { x = 1234, y = True } |]
 
 outOfOrder :: R
-outOfOrder = $(constructRecord [| MkR { y = True, x = 1234 } |])
-
--- Damn. TH doesn't type check, but it checks that names are in scope :/
-z :: Int
-z = 5
+outOfOrder = [mkRecord| MkR { y = True, x = 1234 } |]
 
 -- Results in "Unexpected fields" error
 -- extraFields :: R
--- extraFields = $(constructRecord [| MkR { x = 1234, y = True, z = () } |])
+-- extraFields = [mkRecord| MkR { x = 1234, y = True, z = () } |]
 
 -- But this works (with a warning)
 missingFields :: R
-missingFields = $(constructRecord [| MkR { x = 1234 } |])
+missingFields = [mkRecord| MkR { x = 1234 } |]
+
+{-------------------------------------------------------------------------------
+  Sanity check
+-------------------------------------------------------------------------------}
 
 tests :: TestTree
-tests = testGroup "Test.Record.Sanity.RecordConstruction" []
+tests = testGroup "Test.Record.Sanity.RecordConstruction" [
+      testCase "allEqual" testAllEqual
+    ]
+
+testAllEqual :: Assertion
+testAllEqual = do
+    assertEqual "inOrder/outOfOrder"    inOrder.x outOfOrder.x
+    assertEqual "inOrder/missingFields" inOrder.x missingFields.x

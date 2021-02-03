@@ -23,6 +23,8 @@ library
                       , aeson
                       , containers
                       , generics-sop
+                      , haskell-src-exts
+                      , haskell-src-meta
                       , record-hasfield
                       , sop-core
                       , syb

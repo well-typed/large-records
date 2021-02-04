@@ -122,7 +122,7 @@ test_pure :: Assertion
 test_pure =
     compareTyped expected actual
   where
-    expected :: NP (Field (K Char)) (MetadataOf_MkT () Float)
+    expected :: NP (Field (K Char)) (MetadataOf (T () Float))
     expected =
            Field (K 'a')
         :* Field (K 'a')

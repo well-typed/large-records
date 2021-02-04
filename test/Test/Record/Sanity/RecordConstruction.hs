@@ -16,7 +16,7 @@ import Test.Tasty.HUnit
 -- However, set fields to lazy for this test, so that we can test with
 -- missing fields.
 largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
-    data R = MkR { x :: Int, y :: Bool }
+    data R a = MkR { x :: Int, y :: [a] }
   |]
 
 -- This call just indicates to @ghc@ that we have reached the end of a binding
@@ -29,18 +29,18 @@ largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
 -- TODO: It'd be nicer if we could avoid this altogether.
 endOfBindingGroup
 
-inOrder :: R
-inOrder = [mkRecord| MkR { x = 1234, y = True } |]
+inOrder :: R Bool
+inOrder = [mkRecord| MkR { x = 1234, y = [True] } |]
 
-outOfOrder :: R
-outOfOrder = [mkRecord| MkR { y = True, x = 1234 } |]
+outOfOrder :: R Bool
+outOfOrder = [mkRecord| MkR { y = [True], x = 1234 } |]
 
 -- Results in "Unexpected fields" error
 -- extraFields :: R
 -- extraFields = [mkRecord| MkR { x = 1234, y = True, z = () } |]
 
 -- But this works (with a warning)
-missingFields :: R
+missingFields :: R Bool
 missingFields = [mkRecord| MkR { x = 1234 } |]
 
 {-------------------------------------------------------------------------------

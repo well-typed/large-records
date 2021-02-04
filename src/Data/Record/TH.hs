@@ -27,7 +27,7 @@ module Data.Record.TH (
 import Data.Char (toLower)
 import Data.Coerce (Coercible, coerce)
 import Data.Generics (everything, mkQ)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Map (Map)
 import Data.Proxy
 import Data.Vector (Vector)
@@ -205,8 +205,7 @@ genAll opts@Options{..} r = concatM $ [
           genRecordView opts r
         , genPatSynonym opts r
         ]
-    , genTypeLevelMetadata opts r
-    , genGenericInstance   opts r
+    , genGenericInstance opts r
     ]
   where
     when :: Bool -> [Q [Dec]] -> Q [Dec]
@@ -548,11 +547,11 @@ genConstructorFn opts r@Record{..} = do
 --
 -- TODO: We currently use this only for record construction, and don't tie it
 -- in with the generics. I wonder if we could and/or should.
-genTypeLevelMetadata :: Options -> Record -> Q [Dec]
-genTypeLevelMetadata opts Record{..} = (:[]) <$>
-    tySynD
-      (nameRecordTypeLevelMetadata recordConstr)
-      recordTVars
+genInstanceMetadataOf :: Options -> Record -> Q Dec
+genInstanceMetadataOf opts r@Record{..} = tySynInstD $
+    tySynEqn
+      Nothing
+      [t| MetadataOf $(recordTypeQ opts r) |]
       (typeLevelList $ map fieldMetadata recordFields)
   where
     fieldMetadata :: Field -> Q Type
@@ -567,15 +566,36 @@ genTypeLevelMetadata opts Record{..} = (:[]) <$>
 -- 'Options', so this must work without options.
 getTypeLevelMetadata :: ConstrName -> Q ([TyVarBndr], [(FieldName, Type)])
 getTypeLevelMetadata constr =
-    parse =<< reify (nameRecordTypeLevelMetadata constr)
+        reify (name constr)
+    >>= getDataConParent
+    >>= reify
+    >>= getSaturatedType
+    >>= getMetadataInstance
+    >>= parseTySynInst
   where
-    parse :: Info -> Q ([TyVarBndr], [(FieldName, Type)])
-    parse (TyConI (TySynD _name bndrs typ)) = (bndrs,) <$> parseList typ
-    parse i = fail $ concat [
-          "Unrecognized metadata: "
-        , show i
-        , " (expected type synonym)"
-        ]
+    saturate :: Name -> [TyVarBndr] -> Type
+    saturate n = foldl (\t v -> t `AppT` VarT (tyVarName v)) (ConT n)
+
+    getMetadataInstance :: Type -> Q [InstanceDec]
+    getMetadataInstance = reifyInstances ''MetadataOf . (:[])
+
+    getSaturatedType :: Info -> Q Type
+    getSaturatedType (TyConI (NewtypeD [] nm tyVars _kind _con _deriv)) =
+        return $ saturate nm tyVars
+    getSaturatedType i =
+        unexpected i "newtype"
+
+    getDataConParent :: Info -> Q Name
+    getDataConParent (DataConI _ _ parent) =
+        return parent
+    getDataConParent i =
+        unexpected i "data constructor"
+
+    parseTySynInst :: [InstanceDec] -> Q ([TyVarBndr], [(FieldName, Type)])
+    parseTySynInst [TySynInstD (TySynEqn vars _lhs rhs)] =
+        (fromMaybe [] vars, ) <$> parseList rhs
+    parseTySynInst is =
+        unexpected is "type instance"
 
     parseList :: Type -> Q [(FieldName, Type)]
     parseList (AppT (AppT PromotedConsT t) ts) =
@@ -584,19 +604,20 @@ getTypeLevelMetadata constr =
         return []
     parseList (SigT t _kind) =
         parseList t
-    parseList t = fail $ concat [
-          "Unexpected type: "
-        , show t
-        , " (expected type level list)"
-        ]
+    parseList t = unexpected t "list"
 
     parseTuple :: Type -> Q (FieldName, Type)
     parseTuple (AppT (AppT (PromotedTupleT 2) (LitT (StrTyLit f))) t) =
         return (FieldName f, t)
-    parseTuple t = fail $ concat [
-          "Unexpected type: "
-        , show t
-        , " (expected type level tuple of a name and a type)"
+    parseTuple t = unexpected t "tuple"
+
+    unexpected :: Show a => a -> String -> Q b
+    unexpected actual expected = fail $ concat [
+          "Unexpected "
+        , show actual
+        , " (expected "
+        , expected
+        , ")"
         ]
 
 {-------------------------------------------------------------------------------
@@ -714,14 +735,6 @@ genInstanceConstraints opts r@Record{..} = tySynInstD $
       Nothing
       [t| Constraints $(recordTypeQ opts r) |]
       (appsT (conT (nameRecordConstraintsClass opts r)) $
-         map tyVarType recordTVars)
-
-genInstanceMetadataOf :: Options -> Record -> Q Dec
-genInstanceMetadataOf opts r@Record{..} = tySynInstD $
-    tySynEqn
-      Nothing
-      [t| MetadataOf $(recordTypeQ opts r) |]
-      (appsT (conT (nameRecordTypeLevelMetadata recordConstr)) $
          map tyVarType recordTVars)
 
 -- | Generate metadata
@@ -848,15 +861,6 @@ nameRecordInternalConstr :: Options -> Record -> Name
 nameRecordInternalConstr Options{..} Record{..}
   | generatePatternSynonym = nameWithSuffix "FromVector" $ recordUnqual
   | otherwise              = name                        $ recordConstr
-
--- | Name of the type synonym with the type-level metadata
---
--- We use the name of the /constructor/ for the type level metadata,
--- so that it's easier to find this info when we construct record values.
---
--- See 'constructRecord'.
-nameRecordTypeLevelMetadata :: ConstrName -> Name
-nameRecordTypeLevelMetadata = nameWithPrefix "MetadataOf_"
 
 -- | Name of the constructor function
 --

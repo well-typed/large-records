@@ -13,10 +13,15 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 -- Test that this works if we don't generate field accessors
--- However, set fields to lazy for this test, so that we can test with
--- missing fields.
+-- See <https://gitlab.haskell.org/ghc/ghc/-/issues/19312>
+--
+-- Use lazy fields so that we can test values with missing fields.
+--
+-- Test both the case where the name of the type and the name of the constructor
+-- are the same and where they are different.
 largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
     data R a = MkR { x :: Int, y :: [a] }
+    data S a = S   { x :: Int, y :: [a] }
   |]
 
 -- This call just indicates to @ghc@ that we have reached the end of a binding
@@ -43,6 +48,9 @@ outOfOrder = [mkRecord| MkR { y = [True], x = 1234 } |]
 missingFields :: R Bool
 missingFields = [mkRecord| MkR { x = 1234 } |]
 
+valueOfS :: S Bool
+valueOfS = [mkRecord| S { x = 1234, y = [True] } |]
+
 {-------------------------------------------------------------------------------
   Sanity check
 -------------------------------------------------------------------------------}
@@ -56,3 +64,4 @@ testAllEqual :: Assertion
 testAllEqual = do
     assertEqual "inOrder/outOfOrder"    inOrder.x outOfOrder.x
     assertEqual "inOrder/missingFields" inOrder.x missingFields.x
+    assertEqual "R/S"                   inOrder.x valueOfS.x

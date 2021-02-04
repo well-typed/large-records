@@ -301,6 +301,12 @@ genNewtype opts r@Record{..} =
 
 {-------------------------------------------------------------------------------
   Generation: field accessors
+
+  TODO: If we had support within GHC itself for accessing fields in records,
+  we might be able to integrate this a lot more closely with normal GHC,
+  especially when combined with the @NoFieldSelectors@ extension.
+
+  See <https://gitlab.haskell.org/ghc/ghc/-/issues/17991>
 -------------------------------------------------------------------------------}
 
 -- | Generate the indexed field accessor
@@ -566,13 +572,20 @@ genInstanceMetadataOf opts r@Record{..} = tySynInstD $
 -- 'Options', so this must work without options.
 getTypeLevelMetadata :: ConstrName -> Q ([TyVarBndr], [(FieldName, Type)])
 getTypeLevelMetadata constr =
-        reify (name constr)
+        reifyConstr constr
     >>= getDataConParent
     >>= reify
     >>= getSaturatedType
     >>= getMetadataInstance
     >>= parseTySynInst
   where
+    reifyConstr :: ConstrName -> Q Info
+    reifyConstr (ConstrName c) = do
+        mName <- lookupValueName c
+        case mName of
+          Nothing -> fail $ show constr ++ " not in scope"
+          Just nm -> reify nm
+
     saturate :: Name -> [TyVarBndr] -> Type
     saturate n = foldl (\t v -> t `AppT` VarT (tyVarName v)) (ConT n)
 

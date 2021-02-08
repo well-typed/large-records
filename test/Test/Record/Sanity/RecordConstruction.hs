@@ -20,8 +20,8 @@ import Test.Tasty.HUnit
 -- Test both the case where the name of the type and the name of the constructor
 -- are the same and where they are different.
 largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
-    data R a = MkR { x :: Int, y :: [a] }
-    data S a = S   { x :: Int, y :: [a] }
+    data R a = MkR { x :: Int, y :: [a] } deriving (Eq, Show)
+    data S a = S   { x :: Int, y :: [a] } deriving (Eq, Show)
   |]
 
 -- This call just indicates to @ghc@ that we have reached the end of a binding
@@ -52,6 +52,26 @@ valueOfS :: S Bool
 valueOfS = [mkRecord| S { x = 1234, y = [True] } |]
 
 {-------------------------------------------------------------------------------
+  Nested records
+-------------------------------------------------------------------------------}
+
+data RegularRecord = RR { a :: Int }
+  deriving (Show, Eq)
+
+largeRecord defaultPureScript [d|
+    data T = T { x :: Int, y :: S Bool, z :: RegularRecord }
+  |]
+
+endOfBindingGroup
+
+valueOfT :: T
+valueOfT = [mkRecord| T { x = 5
+                        , y = S { x = 1234, y = [True] }
+                        , z = RR { a = 5 }
+                        }
+                    |]
+
+{-------------------------------------------------------------------------------
   Sanity check
 -------------------------------------------------------------------------------}
 
@@ -62,6 +82,8 @@ tests = testGroup "Test.Record.Sanity.RecordConstruction" [
 
 testAllEqual :: Assertion
 testAllEqual = do
-    assertEqual "inOrder/outOfOrder"    inOrder.x outOfOrder.x
-    assertEqual "inOrder/missingFields" inOrder.x missingFields.x
-    assertEqual "R/S"                   inOrder.x valueOfS.x
+    assertEqual "inOrder/outOfOrder"    inOrder.x  outOfOrder.x
+    assertEqual "inOrder/missingFields" inOrder.x  missingFields.x
+    assertEqual "R/S"                   inOrder.x  valueOfS.x
+    assertEqual "T/S"                   valueOfT.y valueOfS
+    assertEqual "T/R"                   valueOfT.z (RR 5)

@@ -24,9 +24,10 @@ module Data.Record.TH (
   , defaultPureScript
   ) where
 
+import Control.Monad ((>=>))
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
 import Data.Char (toLower)
 import Data.Coerce (Coercible, coerce)
-import Data.Generics (everything, mkQ)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Map (Map)
 import Data.Proxy
@@ -35,9 +36,11 @@ import GHC.Exts (Any)
 import GHC.Records.Compat (HasField(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.Kind   as Kind
-import qualified Data.Vector as V
-import qualified Data.Map    as Map
+import qualified Control.Monad.Except as ExceptT
+import qualified Data.Generics        as SYB
+import qualified Data.Kind            as Kind
+import qualified Data.Map             as Map
+import qualified Data.Vector          as V
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
@@ -242,11 +245,25 @@ endOfBindingGroup :: Q [Dec]
 endOfBindingGroup = return []
 
 constructRecord :: Exp -> Q Exp
-constructRecord expr = do
-    RecordValue{..} <- matchRecordValue expr
-    (_tyVars, mdata) <- getTypeLevelMetadata recordValueConstr
-    aligned <- align (map fst mdata) recordValueFields
-    appsE $ varE (nameConstructorFn recordValueConstr) : map return aligned
+constructRecord = SYB.everywhereM (SYB.mkM go)
+  where
+    go :: Exp -> Q Exp
+    go e = do
+        case matchRecordValue e of
+          Nothing ->
+            -- Leave non-record expressions alone
+            return e
+          Just RecordValue{..} -> do
+            mMetadata <- runExceptT $ getTypeLevelMetadata recordValueConstr
+            case mMetadata of
+              Left _err ->
+                -- If we don't mind metadata, assume it's an ordinary record,
+                -- and leave it untouched
+                return e
+              Right (_tyVars, mdata) -> do
+                aligned <- align (map fst mdata) recordValueFields
+                appsE $ varE (nameConstructorFn recordValueConstr)
+                      : map return aligned
 
 -- | Order record definition declarations according to the type declaration
 --
@@ -570,21 +587,25 @@ genInstanceMetadataOf opts r@Record{..} = tySynInstD $
 --
 -- We do this when we construct record /values/, at which point we have no
 -- 'Options', so this must work without options.
-getTypeLevelMetadata :: ConstrName -> Q ([TyVarBndr], [(FieldName, Type)])
-getTypeLevelMetadata constr =
-        reifyConstr constr
-    >>= getDataConParent
-    >>= reify
-    >>= getSaturatedType
-    >>= getMetadataInstance
-    >>= parseTySynInst
+--
+-- 'Nothing' if this wasn't a type created using @large-records@.
+getTypeLevelMetadata ::
+     ConstrName
+  -> ExceptT String Q ([TyVarBndr], [(FieldName, Type)])
+getTypeLevelMetadata =
+        reifyConstr
+    >=> getDataConParent
+    >=> ExceptT.lift . reify
+    >=> getSaturatedType
+    >=> ExceptT.lift . getMetadataInstance
+    >=> parseTySynInst
   where
-    reifyConstr :: ConstrName -> Q Info
+    reifyConstr :: ConstrName -> ExceptT String Q Info
     reifyConstr (ConstrName c) = do
-        mName <- lookupValueName c
+        mName <- ExceptT.lift $ lookupValueName c
         case mName of
-          Nothing -> fail $ show constr ++ " not in scope"
-          Just nm -> reify nm
+          Nothing -> throwError $ show c ++ " not in scope"
+          Just nm -> ExceptT.lift $ reify nm
 
     saturate :: Name -> [TyVarBndr] -> Type
     saturate n = foldl (\t v -> t `AppT` VarT (tyVarName v)) (ConT n)
@@ -592,25 +613,27 @@ getTypeLevelMetadata constr =
     getMetadataInstance :: Type -> Q [InstanceDec]
     getMetadataInstance = reifyInstances ''MetadataOf . (:[])
 
-    getSaturatedType :: Info -> Q Type
+    getSaturatedType :: Info -> ExceptT String Q Type
     getSaturatedType (TyConI (NewtypeD [] nm tyVars _kind _con _deriv)) =
         return $ saturate nm tyVars
     getSaturatedType i =
         unexpected i "newtype"
 
-    getDataConParent :: Info -> Q Name
+    getDataConParent :: Info -> ExceptT String Q Name
     getDataConParent (DataConI _ _ parent) =
         return parent
     getDataConParent i =
         unexpected i "data constructor"
 
-    parseTySynInst :: [InstanceDec] -> Q ([TyVarBndr], [(FieldName, Type)])
+    parseTySynInst ::
+         [InstanceDec]
+      -> ExceptT String Q ([TyVarBndr], [(FieldName, Type)])
     parseTySynInst [TySynInstD (TySynEqn vars _lhs rhs)] =
         (fromMaybe [] vars, ) <$> parseList rhs
     parseTySynInst is =
         unexpected is "type instance"
 
-    parseList :: Type -> Q [(FieldName, Type)]
+    parseList :: Type -> ExceptT String Q [(FieldName, Type)]
     parseList (AppT (AppT PromotedConsT t) ts) =
         (:) <$> parseTuple t <*> parseList ts
     parseList PromotedNilT =
@@ -619,13 +642,13 @@ getTypeLevelMetadata constr =
         parseList t
     parseList t = unexpected t "list"
 
-    parseTuple :: Type -> Q (FieldName, Type)
+    parseTuple :: Type -> ExceptT String Q (FieldName, Type)
     parseTuple (AppT (AppT (PromotedTupleT 2) (LitT (StrTyLit f))) t) =
         return (FieldName f, t)
     parseTuple t = unexpected t "tuple"
 
-    unexpected :: Show a => a -> String -> Q b
-    unexpected actual expected = fail $ concat [
+    unexpected :: Show a => a -> String -> ExceptT String Q b
+    unexpected actual expected = throwError $ concat [
           "Unexpected "
         , show actual
         , " (expected "
@@ -690,7 +713,7 @@ genRequiredConstraints opts Record{..} c = do
     constrainField f = c `appT` fieldTypeQ opts f
 
     hasTypeVar :: Pred -> Bool
-    hasTypeVar = everything (||) (mkQ False isTypeVar)
+    hasTypeVar = SYB.everything (||) (SYB.mkQ False isTypeVar)
 
     isTypeVar :: Type -> Bool
     isTypeVar (VarT _)   = True
@@ -1126,15 +1149,16 @@ data RecordValue = RecordValue {
     }
   deriving (Show)
 
-matchRecordValue :: Exp -> Q RecordValue
-matchRecordValue (RecConE constr fields) =
-        RecordValue (ConstrName $ nameBase constr) . Map.fromList
-    <$> mapM matchFieldValue fields
-matchRecordValue e =
-    fail $ "Unsupported definition: " ++ show e
-
-matchFieldValue :: FieldExp -> Q (FieldName, Exp)
-matchFieldValue (f, e) = return $ (FieldName $ nameBase f, e)
+matchRecordValue :: Exp -> Maybe RecordValue
+matchRecordValue (RecConE constr fields) = Just $ RecordValue {
+      recordValueConstr = ConstrName $ nameBase constr
+    , recordValueFields = Map.fromList $ map matchFieldValue fields
+    }
+  where
+    matchFieldValue :: FieldExp -> (FieldName, Exp)
+    matchFieldValue (f, e) = (FieldName $ nameBase f, e)
+matchRecordValue _otherwise =
+    Nothing
 
 {-------------------------------------------------------------------------------
   Auxiliary: working with tuples

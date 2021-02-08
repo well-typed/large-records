@@ -25,6 +25,7 @@ library
                       , generics-sop
                       , haskell-src-exts
                       , haskell-src-meta
+                      , mtl
                       , record-hasfield
                       , sop-core
                       , syb

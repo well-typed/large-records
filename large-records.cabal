@@ -19,6 +19,7 @@ library
                         Data.Record.Generic.Show
                         Data.Record.Generic.SOP
                         Data.Record.TH
+                        Data.Record.TH.Support
     build-depends:      base >=4.13 && < 4.15
                       , aeson
                       , containers
@@ -51,6 +52,7 @@ test-suite test-large-records
     other-modules:      Test.Record.Sanity.Generics
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.OverloadingNoDRF
+                        Test.Record.Sanity.Projection
                         Test.Record.Sanity.RecordConstruction
                         Test.Record.Sanity.Strictness
                         Test.Record.Size.After.HK010
@@ -63,6 +65,8 @@ test-suite test-large-records
                       , aeson
                       , generics-sop
                       , json-sop
+                       -- TODO: Remove:
+                      , ghc-dump-core
                       , large-records
                       , mtl
                       , record-dot-preprocessor
@@ -94,9 +98,11 @@ test-suite test-large-records
                         KindSignatures
                         MultiParamTypeClasses
                         ScopedTypeVariables
+                        TypeApplications
                         TypeFamilies
                         UndecidableInstances
                         UndecidableSuperClasses
+                        ViewPatterns
 
     -- We're mostly interested in compile time for -O0
     if flag(profile-gen-code)

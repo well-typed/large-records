@@ -35,21 +35,21 @@ largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
 endOfBindingGroup
 
 inOrder :: R Bool
-inOrder = [mkRecord| MkR { x = 1234, y = [True] } |]
+inOrder = [lr| MkR { x = 1234, y = [True] } |]
 
 outOfOrder :: R Bool
-outOfOrder = [mkRecord| MkR { y = [True], x = 1234 } |]
+outOfOrder = [lr| MkR { y = [True], x = 1234 } |]
 
 -- Results in "Unexpected fields" error
 -- extraFields :: R
--- extraFields = [mkRecord| MkR { x = 1234, y = True, z = () } |]
+-- extraFields = [lr| MkR { x = 1234, y = True, z = () } |]
 
 -- But this works (with a warning)
 missingFields :: R Bool
-missingFields = [mkRecord| MkR { x = 1234 } |]
+missingFields = [lr| MkR { x = 1234 } |]
 
 valueOfS :: S Bool
-valueOfS = [mkRecord| S { x = 1234, y = [True] } |]
+valueOfS = [lr| S { x = 1234, y = [True] } |]
 
 {-------------------------------------------------------------------------------
   Nested records
@@ -65,11 +65,11 @@ largeRecord defaultPureScript [d|
 endOfBindingGroup
 
 valueOfT :: T
-valueOfT = [mkRecord| T { x = 5
-                        , y = S { x = 1234, y = [True] }
-                        , z = RR { a = 5 }
-                        }
-                    |]
+valueOfT = [lr| T { x = 5
+                  , y = S { x = 1234, y = [True] }
+                  , z = RR { a = 5 }
+                  }
+              |]
 
 {-------------------------------------------------------------------------------
   Sanity check

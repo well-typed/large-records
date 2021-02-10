@@ -1,22 +1,20 @@
 {-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE ConstraintKinds            #-}
-{-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE ParallelListComp           #-}
 {-# LANGUAGE PatternSynonyms            #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
-{-# LANGUAGE ViewPatterns               #-}
 
 module Data.Record.TH (
     largeRecord
   , endOfBindingGroup
-  , mkRecord
+  , lr
     -- * Options
   , Options(..)
   , defaultStrictOptions
@@ -24,12 +22,11 @@ module Data.Record.TH (
   , defaultPureScript
   ) where
 
-import Control.Monad ((>=>))
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Coerce (Coercible, coerce)
-import Data.Maybe (catMaybes, fromMaybe)
-import Data.Map (Map)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import Data.Proxy
 import Data.Vector (Vector)
 import GHC.Exts (Any)
@@ -51,6 +48,7 @@ import qualified Language.Haskell.Meta.Parse as HSE
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.Show
+import Data.Record.TH.Support
 
 import qualified Data.Record.Generic.Rep as Rep
 
@@ -216,7 +214,7 @@ genAll opts@Options{..} r = concatM $ [
     when True  gen = concatM gen
 
 {-------------------------------------------------------------------------------
-  Construct record values
+  Construct/deconstruct record values
 -------------------------------------------------------------------------------}
 
 -- | Construct record value
@@ -224,64 +222,108 @@ genAll opts@Options{..} r = concatM $ [
 -- TODO: Discussion and comparison to the pattern synonym.
 --
 -- See <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0160-no-toplevel-field-selectors.rst>
-mkRecord :: QuasiQuoter
-mkRecord = QuasiQuoter {
-      quoteExp  = go
-    , quotePat  = wrongContext
+lr :: QuasiQuoter
+lr = QuasiQuoter {
+      quoteExp  = goExp
+    , quotePat  = goPat
     , quoteType = wrongContext
     , quoteDec  = wrongContext
     }
   where
     wrongContext :: String -> Q a
-    wrongContext _ =  fail "mkRecord can only be used in expression contexts"
+    wrongContext _ =
+        fail "lr can only be used in expression or pattern contexts"
 
-    go :: String -> Q Exp
-    go str =
+    goExp :: String -> Q Exp
+    goExp str =
         case HSE.parseExp str of
           Left  err  -> fail $ "Could not parse record definition: " ++ err
           Right expr -> constructRecord expr
+
+    goPat :: String -> Q Pat
+    goPat str =
+        case HSE.parsePat str of
+          Left  err -> fail $ "Could not parse pattern: " ++ err
+          Right pat -> recordPattern pat
 
 endOfBindingGroup :: Q [Dec]
 endOfBindingGroup = return []
 
 constructRecord :: Exp -> Q Exp
-constructRecord = SYB.everywhereM (SYB.mkM go)
+constructRecord =  SYB.everywhereM (SYB.mkM go)
   where
     go :: Exp -> Q Exp
     go e = do
-        case matchRecordValue e of
+        mTerm <- matchRecordTerm termExp e
+        case mTerm of
           Nothing ->
             -- Leave non-record expressions alone
             return e
-          Just RecordValue{..} -> do
-            mMetadata <- runExceptT $ getTypeLevelMetadata recordValueConstr
-            case mMetadata of
-              Left _err ->
-                -- If we don't mind metadata, assume it's an ordinary record,
-                -- and leave it untouched
-                return e
-              Right (_tyVars, mdata) -> do
-                aligned <- align (map fst mdata) recordValueFields
-                appsE $ varE (nameConstructorFn recordValueConstr)
-                      : map return aligned
+          Just RecordTerm{..} ->
+            appsE $ varE (nameConstructorFn recordTermConstr)
+                  : map mkArg recordTermFields
 
--- | Order record definition declarations according to the type declaration
---
--- Once we have the right order, we can then pass those arguments to the
--- "constructor function" we define in 'genConstructorFn'. Since that function
--- is typed, any type mismatches will then be handled by @ghc@.
-align :: [FieldName] -> Map FieldName Exp -> Q [Exp]
-align [] defs =
-    if Map.null defs
-      then return []
-      else fail $ "Unexpected fields: " ++ show (Map.keys defs)
-align (f:fs) defs =
-    case Map.lookup f defs of
-      Just t ->
-        (t:) <$> align fs (Map.delete f defs)
-      Nothing -> do
-        reportWarning $ "Missing field " ++ show f
-        (VarE 'undefined :) <$> align fs defs
+    mkArg :: FieldTerm Exp -> Q Exp
+    mkArg FieldTerm{..}
+      | Just dec <- fieldTermDec = return dec
+      | otherwise                = [| undefined |]
+
+recordPattern :: Pat -> Q Pat
+recordPattern =  SYB.everywhereM (SYB.mkM go)
+  where
+    go :: Pat -> Q Pat
+    go p = do
+         mTerm <- matchRecordTerm termPat p
+         case mTerm of
+           Nothing ->
+             return p
+           Just RecordTerm{..} ->
+             viewP (varE 'matchHasField) $
+               mkTupleP (uncurry mkPat) $
+                 nest (mapMaybe getPat recordTermFields)
+
+    getPat :: FieldTerm Pat -> Maybe (FieldName, Pat)
+    getPat FieldTerm{..} = (fieldTermUnqual, ) <$> fieldTermDec
+
+    mkPat :: FieldName -> Pat -> Q Pat
+    mkPat field =
+        viewP (varE 'fieldNamed `appTypeE` nameType field) 
+      . return
+
+
+
+
+
+
+
+{-
+RecordTerm {
+    recordTermUnqual = "T"
+  , recordTermTVars = [KindedTV a_6989586621679177991 StarT]
+  , recordTermConstr = "MkT"
+  , recordTermFields = [
+      FieldTerm {
+        fieldTermUnqual = "x"
+      , fieldTermType = ConT GHC.Types.Int
+      , fieldTermIndex = 0
+      , fieldTermDec = Just (VarP a)
+    }
+    ,FieldTerm {
+        fieldTermUnqual = "y"
+      , fieldTermType = AppT ListT (VarT a_6989586621679177991)
+      , fieldTermIndex = 1
+      , fieldTermDec = Nothing
+    }
+  ]
+}
+-}
+
+    --   case matchRecordPattern p of
+    --     Nothing ->
+    --       -- Leave non-record pattern matching alone
+    --       return p
+    --     Just p'@RecordTerm{..} -> do
+    --       fail $ show p' -}
 
 {-------------------------------------------------------------------------------
   Generation: the type itself
@@ -591,14 +633,12 @@ genInstanceMetadataOf opts r@Record{..} = tySynInstD $
 -- 'Nothing' if this wasn't a type created using @large-records@.
 getTypeLevelMetadata ::
      ConstrName
-  -> ExceptT String Q ([TyVarBndr], [(FieldName, Type)])
-getTypeLevelMetadata =
-        reifyConstr
-    >=> getDataConParent
-    >=> ExceptT.lift . reify
-    >=> getSaturatedType
-    >=> ExceptT.lift . getMetadataInstance
-    >=> parseTySynInst
+  -> ExceptT String Q (TypeName, ([TyVarBndr], [(FieldName, Type)]))
+getTypeLevelMetadata constr = do
+    parent    <- reifyConstr constr >>= getDataConParent
+    saturated <- ExceptT.lift (reify parent) >>= getSaturatedType
+    parsed    <- ExceptT.lift (getMetadataInstance saturated) >>= parseTySynInst
+    return (TypeName (nameBase parent), parsed)
   where
     reifyConstr :: ConstrName -> ExceptT String Q Info
     reifyConstr (ConstrName c) = do
@@ -1140,25 +1180,75 @@ pattern DefaultBang :: Bang
 pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
 
 {-------------------------------------------------------------------------------
-  Our view of a record value definition
+  Records at the term level (expressions or patterns)
+
+  'RecordTerm' and 'FieldTerm' follow 'Record' and 'Field' closely, but each
+  field is decorated with an expression or a pattern, and we don't have
+  additional information about the type (such as which classes are derived).
 -------------------------------------------------------------------------------}
 
-data RecordValue = RecordValue {
-      recordValueConstr :: ConstrName
-    , recordValueFields :: Map FieldName Exp
+data RecordTerm a = RecordTerm {
+      recordTermUnqual :: TypeName
+    , recordTermTVars  :: [TyVarBndr]
+    , recordTermConstr :: ConstrName
+    , recordTermFields :: [FieldTerm a]
     }
   deriving (Show)
 
-matchRecordValue :: Exp -> Maybe RecordValue
-matchRecordValue (RecConE constr fields) = Just $ RecordValue {
-      recordValueConstr = ConstrName $ nameBase constr
-    , recordValueFields = Map.fromList $ map matchFieldValue fields
+data FieldTerm a = FieldTerm {
+      fieldTermUnqual :: FieldName
+    , fieldTermType   :: Type
+    , fieldTermIndex  :: Int
+    , fieldTermDec    :: Maybe a -- ^ Nothing if not present
     }
-  where
-    matchFieldValue :: FieldExp -> (FieldName, Exp)
-    matchFieldValue (f, e) = (FieldName $ nameBase f, e)
-matchRecordValue _otherwise =
-    Nothing
+  deriving (Show)
+
+matchRecordTerm ::
+     (a -> Maybe (ConstrName, [(FieldName, a)]))
+  -> a -> Q (Maybe (RecordTerm a))
+matchRecordTerm term a =
+    case term a of
+      Nothing ->
+        -- Not a record term/pattern
+        return Nothing
+      Just (constr, fields) -> do
+        let fields' = Map.fromList fields
+        mMetadata <- runExceptT $ getTypeLevelMetadata constr
+        case mMetadata of
+          Left _err ->
+            -- If we can't find any metadata, assume it's a regular record
+            -- rather than a @large-records@ record, and return 'Nothing'
+            return Nothing
+          Right (typeName, (tyVars, fieldTypes)) ->
+            return $ Just RecordTerm {
+                recordTermUnqual = typeName
+              , recordTermTVars  = tyVars
+              , recordTermConstr = constr
+              , recordTermFields = [
+                    FieldTerm {
+                        fieldTermUnqual = fieldName
+                      , fieldTermType   = typ
+                      , fieldTermIndex  = ix
+                      , fieldTermDec    = Map.lookup fieldName fields'
+                      }
+                  | (fieldName, typ) <- fieldTypes
+                  | ix <- [0..]
+                  ]
+              }
+
+termExp :: Exp -> Maybe (ConstrName, [(FieldName, Exp)])
+termExp (RecConE constr fields) = Just (
+      ConstrName (nameBase constr)
+    , map (first (FieldName . nameBase)) fields
+    )
+termExp _otherwise = Nothing
+
+termPat :: Pat -> Maybe (ConstrName, [(FieldName, Pat)])
+termPat (RecP constr fields) = Just (
+      ConstrName (nameBase constr)
+    , map (first (FieldName . nameBase)) fields
+    )
+termPat _otherwise = Nothing
 
 {-------------------------------------------------------------------------------
   Auxiliary: working with tuples
@@ -1226,7 +1316,7 @@ nest = go . map Leaf
     limit = 62
 
 {-------------------------------------------------------------------------------
-  Auxiliary: trees and large bananas
+   Auxiliary: trees and large bananas
 -------------------------------------------------------------------------------}
 
 -- | Trees with values at the leaves
@@ -1314,28 +1404,3 @@ chunk n = go
 firstToLower :: String -> String
 firstToLower []     = []
 firstToLower (c:cs) = toLower c : cs
-
-{-------------------------------------------------------------------------------
-  Functions to support the TH code (i.e., functions called by generated code)
-
-  NOTE: We leave the generic representation type as lazy, and only force
-  values once we translate back to the type itself. This means that we can
-  chain generic functions and get some kind of fusion without having to
-  traverse records multiple times.
--------------------------------------------------------------------------------}
-
-dictFor :: c x => Proxy c -> Proxy x -> Dict c x
-dictFor _ _ = Dict
-
-repFromVector :: Vector Any -> Rep I a
-repFromVector = coerce
-
-repToVector :: Rep I a -> Vector Any
-repToVector = coerce
-
-rnfVectorAny :: Vector Any -> ()
-rnfVectorAny = rnfElems . V.toList
-  where
-    rnfElems :: [Any] -> ()
-    rnfElems []     = ()
-    rnfElems (x:xs) = x `seq` rnfElems xs

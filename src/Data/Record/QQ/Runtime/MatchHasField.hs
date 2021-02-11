@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds        #-}
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -9,60 +8,21 @@
 {-# LANGUAGE UndecidableInstances   #-}
 {-# LANGUAGE ViewPatterns           #-}
 
--- | Functions to support the TH code (i.e., functions called by generated code)
+-- | Infrastructure for supporting matching on records
 --
--- NOTE: We leave the generic representation type as lazy, and only force
--- values once we translate back to the type itself. This means that we can
--- chain generic functions and get some kind of fusion without having to
--- traverse records multiple times.
-module Data.Record.TH.Support (
-    -- * Miscellaneous
-    dictFor
-  , repFromVector
-  , repToVector
-  , rnfVectorAny
-    -- * Infrastructure for supporting matching on records
-  , MatchHasField -- opaque
+-- We are be careful not to reintroduce quadratic code size here.
+module Data.Record.QQ.Runtime.MatchHasField (
+    MatchHasField -- opaque
   , matchHasField
   , fieldNamed
   ) where
 
-import Data.Coerce (coerce)
 import Data.Kind
-import Data.Proxy
-import Data.Vector (Vector)
-import GHC.Exts (Any)
 import GHC.Records.Compat
 import GHC.TypeLits
 
-import qualified Data.Vector as V
-
-import Data.Record.Generic
-
 {-------------------------------------------------------------------------------
-  Miscellaneous
--------------------------------------------------------------------------------}
-
-dictFor :: c x => Proxy c -> Proxy x -> Dict c x
-dictFor _ _ = Dict
-
-repFromVector :: Vector Any -> Rep I a
-repFromVector = coerce
-
-repToVector :: Rep I a -> Vector Any
-repToVector = coerce
-
-rnfVectorAny :: Vector Any -> ()
-rnfVectorAny = rnfElems . V.toList
-  where
-    rnfElems :: [Any] -> ()
-    rnfElems []     = ()
-    rnfElems (x:xs) = x `seq` rnfElems xs
-
-{-------------------------------------------------------------------------------
-  Infrastructure for supporting matching on records
-
-  We should be careful not to reintroduce quadratic code size here.
+  Infrastructure
 -------------------------------------------------------------------------------}
 
 -- | Pattern match on 'HasField'
@@ -84,7 +44,7 @@ class MatchHasField a b | b -> a where
 -- | To be used in conjunction with 'MatchHasField'.
 --
 -- See 'MatchHasField' for details.
-fieldNamed :: forall x r a. GetField x r a -> a
+fieldNamed :: GetField x r a -> a
 fieldNamed (GetField a) = a
 
 data GetField (x :: Symbol) (r :: Type) (a :: Type) = GetField a

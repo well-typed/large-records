@@ -18,8 +18,23 @@ library
                         Data.Record.Generic.Rep
                         Data.Record.Generic.Show
                         Data.Record.Generic.SOP
+
+                        Data.Record.QQ.CodeGen
+                        Data.Record.QQ.CodeGen.Metadata
+                        Data.Record.QQ.CodeGen.View
+                        Data.Record.QQ.Runtime.MatchHasField
+
                         Data.Record.TH
-                        Data.Record.TH.Support
+                        Data.Record.TH.CodeGen
+                        Data.Record.TH.CodeGen.Name
+                        Data.Record.TH.CodeGen.TH
+                        Data.Record.TH.CodeGen.Tree
+                        Data.Record.TH.CodeGen.Util
+                        Data.Record.TH.CodeGen.View
+                        Data.Record.TH.Config.Naming
+                        Data.Record.TH.Config.Options
+                        Data.Record.TH.Runtime
+
     build-depends:      base >=4.13 && < 4.15
                       , aeson
                       , containers

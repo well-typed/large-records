@@ -28,9 +28,11 @@ import qualified Language.Haskell.Meta.Parse as HSE
 
 import Data.Record.QQ.CodeGen.View
 import Data.Record.QQ.Runtime.MatchHasField
-import Data.Record.TH.CodeGen.Name
+import Data.Record.TH.CodeGen.Name (FieldName)
 import Data.Record.TH.CodeGen.Tree
 import Data.Record.TH.Config.Naming
+
+import qualified Data.Record.TH.CodeGen.Name as N
 
 {-------------------------------------------------------------------------------
   Top-level quasi-quoter
@@ -83,7 +85,7 @@ construct =  SYB.everywhereM (SYB.mkM go)
             -- Leave non-record expressions alone
             return e
           Just Record{..} ->
-            appsE $ varE (nameConstructorFn recordConstr)
+            appsE $ N.varE (nameConstructorFn recordConstr)
                   : map mkArg recordFields
 
     mkArg :: Field Exp -> Q Exp
@@ -115,5 +117,5 @@ deconstruct =  SYB.everywhereM (SYB.mkM go)
 
     mkPat :: FieldName -> Pat -> Q Pat
     mkPat field =
-        viewP (varE 'fieldNamed `appTypeE` nameType field)
+        viewP (varE 'fieldNamed `appTypeE` N.typeLevelMetadata field)
       . return

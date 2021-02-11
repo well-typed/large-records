@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections   #-}
 
@@ -14,8 +15,10 @@ import Language.Haskell.TH
 import qualified Control.Monad.Except as Except
 
 import Data.Record.Generic
-import Data.Record.TH.CodeGen.Name
 import Data.Record.TH.CodeGen.TH
+import Data.Record.TH.CodeGen.Name (TypeName, ConstrName, FieldName)
+
+import qualified Data.Record.TH.CodeGen.Name as N
 
 {-------------------------------------------------------------------------------
   Parsing
@@ -28,21 +31,14 @@ import Data.Record.TH.CodeGen.TH
 --
 -- 'Nothing' if this wasn't a type created using @large-records@.
 getTypeLevelMetadata ::
-     ConstrName
-  -> ExceptT String Q (TypeName, ([TyVarBndr], [(FieldName, Type)]))
+     ConstrName 'N.Global
+  -> ExceptT String Q (TypeName 'N.Global, ([TyVarBndr], [(FieldName, Type)]))
 getTypeLevelMetadata constr = do
-    parent    <- reifyConstr constr >>= getDataConParent
-    saturated <- Except.lift (reify parent) >>= getSaturatedType
+    parent    <- Except.lift (N.reify constr) >>= getDataConParent
+    saturated <- Except.lift (N.reify parent) >>= getSaturatedType
     parsed    <- Except.lift (getMetadataInstance saturated) >>= parseTySynInst
-    return (TypeName (nameBase parent), parsed)
+    return (parent, parsed)
   where
-    reifyConstr :: ConstrName -> ExceptT String Q Info
-    reifyConstr (ConstrName c) = do
-        mName <- Except.lift $ lookupValueName c
-        case mName of
-          Nothing -> throwError $ show c ++ " not in scope"
-          Just nm -> Except.lift $ reify nm
-
     saturate :: Name -> [TyVarBndr] -> Type
     saturate n = foldl (\t v -> t `AppT` VarT (tyVarName v)) (ConT n)
 
@@ -55,9 +51,9 @@ getTypeLevelMetadata constr = do
     getSaturatedType i =
         unexpected i "newtype"
 
-    getDataConParent :: Info -> ExceptT String Q Name
+    getDataConParent :: Info -> ExceptT String Q (TypeName 'N.Global)
     getDataConParent (DataConI _ _ parent) =
-        return parent
+        return $ N.TypeName $ N.fromName' parent
     getDataConParent i =
         unexpected i "data constructor"
 
@@ -80,7 +76,7 @@ getTypeLevelMetadata constr = do
 
     parseTuple :: Type -> ExceptT String Q (FieldName, Type)
     parseTuple (AppT (AppT (PromotedTupleT 2) (LitT (StrTyLit f))) t) =
-        return (FieldName f, t)
+        return (N.FieldName (N.OverloadedName f), t)
     parseTuple t = unexpected t "tuple"
 
     unexpected :: Show a => a -> String -> ExceptT String Q b

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Names of the various things we generate
@@ -14,10 +15,7 @@ module Data.Record.TH.Config.Naming (
   , nameConstructorFn
   ) where
 
-import Language.Haskell.TH
-
 import Data.Record.TH.CodeGen.Name
-import Data.Record.TH.CodeGen.Util
 import Data.Record.TH.CodeGen.View
 import Data.Record.TH.Config.Options
 
@@ -30,36 +28,41 @@ import Data.Record.TH.Config.Options
 -- We pick this depending on whether the user enabled the generation of the
 -- pattern synonym:
 --
--- * If we generate the pattern synonym, then that pattern  synonym should have
+-- * If we generate the pattern synonym, then that pattern synonym should have
 --   the name of the original constructor, and the name we pick here must be
 --   different.
 --
--- * If however we do /not/ generate the pattern synonym, we pick the /original/
---   name here. We do this so that the constructor name is in scope, enabling
---   the user to write TH splices such as
+-- * If however we do /not/ generate the pattern synonym, we have to be a bit
+--   careful. If the user wants to use the QQ infrastructure for constructing
+--   or deconstructing records
 --
---   > $(constructRecord [| MkR { x = 5, y = True } |])
+--   > [lr| MkR { x = 5, y = True } |]
 --
---   For some reason (not sure why), this is not possible unless 'MkR' exists
---   (it doesn't need to have the right type, it just needs to exist).
-nameRecordInternalConstr :: Options -> Record -> Name
-nameRecordInternalConstr Options{..} Record{..}
-  | generatePatternSynonym = nameWithSuffix "FromVector" $ recordUnqual
-  | otherwise              = name                        $ recordConstr
+--   we must be able to go from that name 'MkR' to the (type-level) metadata
+--   associated with the record. By picking the original, user-specified,
+--   name for the constructor, we can reify it, get the type of the record,
+--   and then lookup the associated type-level metadata. This will fail if the
+--   name is not in scope, but that is reasonable: the original record
+--   construction would also not be possible if @MkR@ is not in scope.
+nameRecordInternalConstr :: Options -> Record -> ConstrName 'Dynamic
+nameRecordInternalConstr Options{..} Record{..} = ConstrName $
+    if generatePatternSynonym
+      then mkPrefixedName "FromVector" $ recordUnqual
+      else mkPrefixedName ""           $ recordConstr
 
-nameRecordConstraintsClass  :: Options -> Record -> Name
-nameRecordConstraintsMethod :: Options -> Record -> Name
-nameRecordIndexedAccessor   :: Options -> Record -> Name
-nameRecordIndexedOverwrite  :: Options -> Record -> Name
-nameRecordInternalField     :: Options -> Record -> Name
-nameRecordView              :: Options -> Record -> Name
+nameRecordConstraintsClass  :: Options -> Record -> Name 'Dynamic
+nameRecordConstraintsMethod :: Options -> Record -> Name 'Dynamic
+nameRecordIndexedAccessor   :: Options -> Record -> Name 'Dynamic
+nameRecordIndexedOverwrite  :: Options -> Record -> Name 'Dynamic
+nameRecordInternalField     :: Options -> Record -> Name 'Dynamic
+nameRecordView              :: Options -> Record -> Name 'Dynamic
 
-nameRecordConstraintsClass  _opts = nameWithPrefix "Constraints_"     . recordUnqual
-nameRecordConstraintsMethod _opts = nameWithPrefix "dictConstraints_" . recordUnqual
-nameRecordIndexedAccessor   _opts = nameWithPrefix "unsafeGetIndex"   . recordUnqual
-nameRecordIndexedOverwrite  _opts = nameWithPrefix "unsafeSetIndex"   . recordUnqual
-nameRecordInternalField     _opts = nameWithPrefix "vectorFrom"       . recordUnqual
-nameRecordView              _opts = nameWithPrefix "tupleFrom"        . recordUnqual
+nameRecordConstraintsClass  _opts = mkPrefixedName "Constraints_"     . recordUnqual
+nameRecordConstraintsMethod _opts = mkPrefixedName "dictConstraints_" . recordUnqual
+nameRecordIndexedAccessor   _opts = mkPrefixedName "unsafeGetIndex"   . recordUnqual
+nameRecordIndexedOverwrite  _opts = mkPrefixedName "unsafeSetIndex"   . recordUnqual
+nameRecordInternalField     _opts = mkPrefixedName "vectorFrom"       . recordUnqual
+nameRecordView              _opts = mkPrefixedName "tupleFrom"        . recordUnqual
 
 {-------------------------------------------------------------------------------
   Option-independent names
@@ -69,5 +72,5 @@ nameRecordView              _opts = nameWithPrefix "tupleFrom"        . recordUn
   therefore not depend on the options.
 -------------------------------------------------------------------------------}
 
-nameConstructorFn :: ConstrName -> Name
-nameConstructorFn (ConstrName n) = mkName $ firstToLower n
+nameConstructorFn :: ConstrName flavour -> Name 'Dynamic
+nameConstructorFn = mkPrefixedName "_construct_"

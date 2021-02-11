@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -18,9 +19,11 @@ import Data.Maybe (catMaybes)
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import Data.Record.TH.CodeGen.Name
+import Data.Record.TH.CodeGen.Name (TypeName, ConstrName, FieldName)
 import Data.Record.TH.CodeGen.TH
 import Data.Record.TH.CodeGen.Util
+
+import qualified Data.Record.TH.CodeGen.Name as N
 
 {-------------------------------------------------------------------------------
   View
@@ -46,14 +49,14 @@ import Data.Record.TH.CodeGen.Util
 -- >   , recordTVars = [PlainTV a, PlainTV b]
 -- >   }
 data Record = Record {
-      -- | Unqualified name of the record type
-      recordUnqual :: TypeName
+      -- | Name of the record /type/
+      recordUnqual :: TypeName 'N.Unique
 
-      -- | The type variables in the record type
+      -- | The type variables in the records type
     , recordTVars :: [TyVarBndr]
 
-      -- | Unqualified name of the record constructor
-    , recordConstr :: ConstrName
+      -- | Unqualified name of the record /constructor/
+    , recordConstr :: ConstrName 'N.Unique
 
       -- | The fields in the record
     , recordFields :: [Field]
@@ -103,9 +106,9 @@ matchRecord (DataD
           derivClauses
        ) = fmap Just $
         Record
-    <$> pure (TypeName $ nameBase typeName)
+    <$> pure (N.TypeName $ N.fromName' typeName)
     <*> pure tyVarBndrs
-    <*> pure (ConstrName $ nameBase constrName)
+    <*> pure (N.ConstrName $ N.fromName' constrName)
     <*> (catMaybes <$> mapM matchField (zip [0..] fields))
     <*> concatMapM matchDeriv derivClauses
 matchRecord d = do
@@ -140,7 +143,7 @@ matchField (i, (fieldName, bng, typ)) =
         return Nothing
   where
     unqualify :: Name -> FieldName
-    unqualify = FieldName . undoDRF . nameBase
+    unqualify = N.FieldName . N.OverloadedName . undoDRF . nameBase
 
 -- When @DuplicateRecordFields@ is enabled, it produces field names such as
 -- @$sel:a:MkY@. We don't really care much about 'DuplicateRecordFields',

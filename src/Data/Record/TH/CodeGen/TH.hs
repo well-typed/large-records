@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PatternSynonyms #-}
 
@@ -23,6 +24,8 @@ module Data.Record.TH.CodeGen.TH (
 import Language.Haskell.TH
 
 import qualified Data.Vector as V
+
+import qualified Data.Record.TH.CodeGen.Name as N
 
 {-------------------------------------------------------------------------------
   Folding
@@ -70,14 +73,17 @@ ptupleT ts = appsT (promotedTupleT (length ts)) ts
 --
 -- > f :: typ
 -- > f = body
-simpleFn :: Name -> Q Type -> Q Exp -> Q [Dec]
+simpleFn :: N.Name 'N.Dynamic -> Q Type -> Q Exp -> Q [Dec]
 simpleFn fnName qTyp qBody = do
     typ  <- qTyp
     body <- qBody
     return [
-          SigD fnName typ
-        , ValD (VarP fnName) (NormalB body) []
+          SigD fnName' typ
+        , ValD (VarP fnName') (NormalB body) []
         ]
+  where
+    fnName' :: Name
+    fnName' = N.toName fnName
 
 -- | Construct simple pattern synonym type
 --

@@ -298,7 +298,7 @@ genRecordVal opts r@Record{..} mkFn = do
 genConstructorFn :: Options -> Record -> Q [Dec]
 genConstructorFn opts r@Record{..} = do
     simpleFn
-      (nameConstructorFn recordConstr)
+      (constructNameConstructorFn recordConstr)
       (forallT recordTVars (cxt []) $
          arrT (map (fieldTypeT opts) recordFields) (recordTypeT opts r))
       (genRecordVal opts r lamE)

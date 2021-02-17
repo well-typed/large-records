@@ -12,12 +12,15 @@ module Data.Record.TH.Config.Naming (
   , nameRecordInternalField
   , nameRecordView
     -- * Option-independent names
-  , nameConstructorFn
+  , constructNameConstructorFn
+  , resolveNameConstructorFn
   ) where
 
 import Data.Record.TH.CodeGen.Name
 import Data.Record.TH.CodeGen.View
 import Data.Record.TH.Config.Options
+
+import Language.Haskell.TH.Syntax (NameSpace(..))
 
 {-------------------------------------------------------------------------------
   Option-dependent names
@@ -47,8 +50,8 @@ import Data.Record.TH.Config.Options
 nameRecordInternalConstr :: Options -> Record -> ConstrName 'Dynamic
 nameRecordInternalConstr Options{..} Record{..} = ConstrName $
     if generatePatternSynonym
-      then mkPrefixedName "FromVector" $ recordUnqual
-      else mkPrefixedName ""           $ recordConstr
+      then prefixNew "FromVector" $ recordUnqual
+      else prefixNew ""           $ recordConstr
 
 nameRecordConstraintsClass  :: Options -> Record -> Name 'Dynamic
 nameRecordConstraintsMethod :: Options -> Record -> Name 'Dynamic
@@ -57,12 +60,12 @@ nameRecordIndexedOverwrite  :: Options -> Record -> Name 'Dynamic
 nameRecordInternalField     :: Options -> Record -> Name 'Dynamic
 nameRecordView              :: Options -> Record -> Name 'Dynamic
 
-nameRecordConstraintsClass  _opts = mkPrefixedName "Constraints_"     . recordUnqual
-nameRecordConstraintsMethod _opts = mkPrefixedName "dictConstraints_" . recordUnqual
-nameRecordIndexedAccessor   _opts = mkPrefixedName "unsafeGetIndex"   . recordUnqual
-nameRecordIndexedOverwrite  _opts = mkPrefixedName "unsafeSetIndex"   . recordUnqual
-nameRecordInternalField     _opts = mkPrefixedName "vectorFrom"       . recordUnqual
-nameRecordView              _opts = mkPrefixedName "tupleFrom"        . recordUnqual
+nameRecordConstraintsClass  _opts = prefixNew "Constraints_"     . recordUnqual
+nameRecordConstraintsMethod _opts = prefixNew "dictConstraints_" . recordUnqual
+nameRecordIndexedAccessor   _opts = prefixNew "unsafeGetIndex"   . recordUnqual
+nameRecordIndexedOverwrite  _opts = prefixNew "unsafeSetIndex"   . recordUnqual
+nameRecordInternalField     _opts = prefixNew "vectorFrom"       . recordUnqual
+nameRecordView              _opts = prefixNew "tupleFrom"        . recordUnqual
 
 {-------------------------------------------------------------------------------
   Option-independent names
@@ -72,5 +75,8 @@ nameRecordView              _opts = mkPrefixedName "tupleFrom"        . recordUn
   therefore not depend on the options.
 -------------------------------------------------------------------------------}
 
-nameConstructorFn :: ConstrName flavour -> Name 'Dynamic
-nameConstructorFn = mkPrefixedName "_construct_"
+constructNameConstructorFn :: ConstrName 'Unique -> Name 'Dynamic
+constructNameConstructorFn = prefixNew "_construct_"
+
+resolveNameConstructorFn :: ConstrName 'Global -> Name 'Global
+resolveNameConstructorFn = prefixExisting "_construct_" VarName

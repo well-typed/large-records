@@ -68,6 +68,9 @@ test-suite test-large-records
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.OverloadingNoDRF
                         Test.Record.Sanity.PatternMatch
+                        Test.Record.Sanity.QualifiedImports
+                        Test.Record.Sanity.QualifiedImports.A
+                        Test.Record.Sanity.QualifiedImports.B
                         Test.Record.Sanity.RecordConstruction
                         Test.Record.Sanity.Strictness
                         Test.Record.Size.After.HK010

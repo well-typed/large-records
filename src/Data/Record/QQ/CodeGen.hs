@@ -85,7 +85,7 @@ construct =  SYB.everywhereM (SYB.mkM go)
             -- Leave non-record expressions alone
             return e
           Just Record{..} ->
-            appsE $ N.varE (nameConstructorFn recordConstr)
+            appsE $ N.varE (resolveNameConstructorFn recordConstr)
                   : map mkArg recordFields
 
     mkArg :: Field Exp -> Q Exp

@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Test.Record.Sanity.Projection (tests) where
+module Test.Record.Sanity.PatternMatch (tests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit

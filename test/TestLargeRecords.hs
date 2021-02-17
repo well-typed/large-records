@@ -5,7 +5,7 @@ import Test.Tasty
 import qualified Test.Record.Sanity.Generics
 import qualified Test.Record.Sanity.HigherKinded
 import qualified Test.Record.Sanity.OverloadingNoDRF
-import qualified Test.Record.Sanity.Projection
+import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.RecordConstruction
 import qualified Test.Record.Sanity.Strictness
 import qualified Test.Record.Size.Sanity
@@ -18,7 +18,7 @@ tests = testGroup "Tests" [
       Test.Record.Sanity.Generics.tests
     , Test.Record.Sanity.HigherKinded.tests
     , Test.Record.Sanity.OverloadingNoDRF.tests
-    , Test.Record.Sanity.Projection.tests
+    , Test.Record.Sanity.PatternMatch.tests
     , Test.Record.Sanity.RecordConstruction.tests
     , Test.Record.Sanity.Strictness.tests
     , Test.Record.Size.Sanity.tests

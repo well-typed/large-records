@@ -23,9 +23,11 @@ import Data.Maybe (mapMaybe)
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 
-import qualified Data.Generics               as SYB
-import qualified Language.Haskell.Meta.Parse as HSE
+import qualified Data.Generics         as SYB
+import qualified Language.Haskell.Exts as HSE
+import qualified Language.Haskell.Meta as HSE.Meta
 
+import Data.Record.QQ.CodeGen.HSE
 import Data.Record.QQ.CodeGen.View
 import Data.Record.QQ.Runtime.MatchHasField
 import Data.Record.TH.CodeGen.Name (FieldName)
@@ -51,8 +53,8 @@ import qualified Data.Record.TH.CodeGen.Name as N
 -- > projectOne [lr| MkT { x = a } |] = a
 lr :: QuasiQuoter
 lr = QuasiQuoter {
-      quoteExp  = go "expression" HSE.parseExp   construct
-    , quotePat  = go "pattern"    HSE.parsePat deconstruct
+      quoteExp  = go "expression" parseExp   construct
+    , quotePat  = go "pattern"    parsePat deconstruct
     , quoteType = wrongContext
     , quoteDec  = wrongContext
     }
@@ -61,14 +63,49 @@ lr = QuasiQuoter {
     wrongContext _ =
         fail "lr can only be used in expression or pattern contexts"
 
-    go :: String                       -- Label
-       -> (String -> Either String a)  -- Parser
-       -> (a -> Q a)                   -- Construction
+    parseMode :: [Extension] -> HSE.ParseMode
+    parseMode exts = HSE.defaultParseMode {
+          HSE.extensions = concat [
+              -- Include extensions enabled in the module
+              map extensionFromTH exts
+
+              -- But also include the default
+              --
+              -- We do this primarily because 'fromTH' doesn't actually parse
+              -- all extensions
+            , HSE.extensions HSE.defaultParseMode
+            ]
+        }
+
+    parseExp :: [Extension] -> String -> Either String Exp
+    parseExp exts str =
+        case HSE.parseExpWithMode (parseMode exts) str of
+          HSE.ParseFailed _loc err -> Left err
+          HSE.ParseOk e -> Right (HSE.Meta.toExp e)
+
+    parsePat :: [Extension] -> String -> Either String Pat
+    parsePat exts str =
+        case HSE.parsePatWithMode (parseMode exts) str of
+          HSE.ParseFailed _loc err -> Left err
+          HSE.ParseOk p -> Right (HSE.Meta.toPat (processRecordPuns p))
+
+    go :: String                                      -- Label
+       -> ([Extension] -> String -> Either String a)  -- Parser
+       -> (a -> Q a)                                  -- Construction
        -> String -> Q a
-    go label f g str =
-        case f str of
-          Left  err  -> fail $ "Could not parse " ++ label ++ ": " ++ err
+    go label f g str = do
+        exts <- extsEnabled
+        case f exts str of
+          Left  err  -> fail (parseErr label err)
           Right expr -> g expr
+
+    parseErr :: String -> String -> String
+    parseErr label err = concat [
+          "Could not parse "
+        , label
+        , ": "
+        , map (\c -> if c == '\n' then ' ' else c) err
+        ]
 
 {-------------------------------------------------------------------------------
   Construction

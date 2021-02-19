@@ -20,6 +20,7 @@ library
                         Data.Record.Generic.SOP
 
                         Data.Record.QQ.CodeGen
+                        Data.Record.QQ.CodeGen.HSE
                         Data.Record.QQ.CodeGen.Metadata
                         Data.Record.QQ.CodeGen.View
                         Data.Record.QQ.Runtime.MatchHasField

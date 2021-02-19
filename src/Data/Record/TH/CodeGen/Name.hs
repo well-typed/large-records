@@ -39,8 +39,6 @@ module Data.Record.TH.CodeGen.Name (
   , LookupName(..)
   , Reify(..)
     -- * Construction
---  , newName
---  , mkName
   , MkPrefixedName(..)
   , Fresh(..)
     -- * Metadata

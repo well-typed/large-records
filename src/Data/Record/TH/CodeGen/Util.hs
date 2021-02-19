@@ -5,8 +5,6 @@ module Data.Record.TH.CodeGen.Util (
   , concatMapM
   ) where
 
-import Data.Char (toLower)
-
 {-------------------------------------------------------------------------------
   Monadic combinators
 -------------------------------------------------------------------------------}

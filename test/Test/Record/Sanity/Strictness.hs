@@ -29,8 +29,6 @@ _silenceWarnings :: ()
 _silenceWarnings = const () $ (
       lazyField
     , strictField
-    , mkLazy
-    , mkStrict
     )
 
 tests :: TestTree

@@ -27,10 +27,10 @@ testOverloading = do
     assertEqual "Y" y.a "hi"
   where
     x :: X
-    x = mkX 0
+    x = _construct_MkX 0
 
     y :: Y
-    y = mkY "hi"
+    y = _construct_MkY "hi"
 
 tests :: TestTree
 tests = testGroup "Test.Record.Sanity.OverloadingNoDRF" [

@@ -60,7 +60,6 @@ _suppressWarnings = const () (
     , field7
     , field8
     , field9
-    , myRecord
     )
 
 example :: MyRecord I

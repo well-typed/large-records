@@ -2,6 +2,7 @@
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE ViewPatterns          #-}
 
 module Test.Record.Sanity.PatternMatch (tests) where
 
@@ -34,12 +35,16 @@ projectPuns [lr| MkT { x, y } |] = (x, y)
 projectNested :: S a -> (Char, Int, [a])
 projectNested [lr| MkS { x = a, y = MkT { x = b, y = c } } |] = (a, b, c)
 
+projectView :: T Bool -> Int
+projectView [lr| MkT { x = ((+1) -> a) } |] = a
+
 testProjections :: Assertion
 testProjections = do
     assertEqual "one"    (projectOne    t)  5
     assertEqual "two"    (projectTwo    t) (5, [True])
     assertEqual "puns"   (projectPuns   t) (5, [True])
     assertEqual "nested" (projectNested s) ('a', 2, [True, False])
+    assertEqual "view"   (projectView   t)  6
   where
     t :: T Bool
     t = [lr| MkT { x = 5, y = [True] } |]

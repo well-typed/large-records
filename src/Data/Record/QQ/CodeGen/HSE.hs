@@ -17,7 +17,8 @@ import qualified Language.Haskell.TH as TH
 -- Useful in combination with 'extsEnabled'.
 extensionFromTH :: TH.Extension -> Extension
 extensionFromTH = \case
-    TH.RecordPuns -> EnableExtension $ NamedFieldPuns
+    TH.RecordPuns   -> EnableExtension $ NamedFieldPuns
+    TH.ViewPatterns -> EnableExtension $ ViewPatterns 
 
     -- We don't care about all extensions; there are many of them, and they vary
     -- from ghc version to ghc version. Treating them all would be a lot of work

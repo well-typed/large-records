@@ -33,13 +33,13 @@ import Data.SOP.Dict (all_NP)
 import Generics.SOP (SOP(..), NS(..), NP(..), SListI, All, Code, Compose)
 import GHC.Exts (Any)
 import GHC.TypeLits (Symbol)
-import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector  as V
 import qualified Generics.SOP as SOP
 
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound hiding (glowerBound)
+import Data.Record.TH.Runtime (noInlineUnsafeCo)
 
 {-------------------------------------------------------------------------------
   Conversion back and forth to generics-sop records
@@ -67,14 +67,14 @@ fromSOP =
     Rep . V.fromList . SOP.hcollapse . SOP.hmap conv
   where
     conv :: Field f field -> K (f Any) field
-    conv (Field fx) = K $ unsafeCoerce fx
+    conv (Field fx) = K $ noInlineUnsafeCo fx
 
 toSOP :: SListI (MetadataOf a) => Rep f a -> Maybe (NP (Field f) (MetadataOf a))
 toSOP (Rep v) =
     SOP.hmap conv <$> SOP.fromList (V.toList v)
   where
     conv :: K (f Any) field -> Field f field
-    conv (K fx) = Field (unsafeCoerce fx)
+    conv (K fx) = Field (noInlineUnsafeCo fx)
 
 {-------------------------------------------------------------------------------
   Translate constraints

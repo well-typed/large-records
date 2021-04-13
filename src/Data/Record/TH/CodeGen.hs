@@ -233,16 +233,17 @@ genHasFieldInstances opts r@Record{..} =
 --
 -- Generates something like
 --
--- > instance HasField "tInt" (T a b) Word where
+-- > instance x ~ Word => HasField "tInt" (T a b) x where
 -- >   hasField = \t -> (unsafeSetIndexT 0 t, unsafeGetIndexT 0 t)
 genHasFieldInstance :: Options -> Record -> Field -> Q Dec
 genHasFieldInstance opts r f@Field{..} = do
+    x <- newName "x"
     instanceD
-      (cxt [])
+      (cxt [equalityT `appT` varT x `appT` fieldTypeT opts f])
       (appsT (conT ''HasField) [
           N.typeLevelMetadata fieldUnqual
         , recordTypeT opts r
-        , fieldTypeT  opts f
+        , varT x
         ])
       [valD (varP 'hasField) (normalB [|
           \t -> ( $(fieldUntypedOverwriteE opts r f) t

@@ -44,13 +44,11 @@ data Options = Options {
 
       -- | Generate a "constructor function" for the record
       --
-      -- > mkT :: Word -> Bool -> Char -> a -> [b] -> T a b
-      -- > mkT = ..
+      -- > _construct_MkT :: Word -> Bool -> Char -> a -> [b] -> T a b
+      -- > _construct_MkT = ..
       --
-      -- The name of the constructor function is the name of the constructor,
-      -- but starting with lowercase letter. This function can be used directly,
-      -- but it is also used by 'constructRecord', so if this function is
-      -- not generated, 'constructRecord' will not work.
+      -- This function can be used directly, but it is also used by the 'lr'
+      -- quasi-quoter, so if this function is not generated, 'lr' will not work.
     , generateConstructorFn :: Bool
 
       -- | Generate 'HasField' instances

@@ -3,6 +3,7 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE KindSignatures     #-}
+{-# LANGUAGE RoleAnnotations    #-}
 {-# LANGUAGE TypeFamilies       #-}
 
 module Data.Record.Generic (
@@ -57,6 +58,8 @@ class Generic a where
 -- The @f@ parameter describes which functor has been applied to all fields of
 -- the record; in other words @Rep I@ is isomorphic to the record itself.
 newtype Rep f a = Rep (Vector (f Any))
+
+type role Rep representational nominal
 
 data Metadata a = Metadata {
       recordName        :: String

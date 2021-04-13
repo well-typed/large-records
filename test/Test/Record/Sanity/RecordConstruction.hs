@@ -40,6 +40,13 @@ inOrder = [lr| MkR { x = 1234, y = [True] } |]
 outOfOrder :: R Bool
 outOfOrder = [lr| MkR { y = [True], x = 1234 } |]
 
+-- | Occassionally we cannot use the quasi-quoter (for instance, in an
+-- applicative context)
+--
+-- TODO: It would be better if we could use the quasi-quoter here.
+withoutQQ :: R Bool
+withoutQQ = _construct_MkR 1234 [True]
+
 -- Results in "Unexpected fields" error
 -- extraFields :: R
 -- extraFields = [lr| MkR { x = 1234, y = True, z = () } |]
@@ -83,6 +90,7 @@ tests = testGroup "Test.Record.Sanity.RecordConstruction" [
 testAllEqual :: Assertion
 testAllEqual = do
     assertEqual "inOrder/outOfOrder"    inOrder.x  outOfOrder.x
+    assertEqual "inOrder/withoutQQ"     inOrder.x  withoutQQ.x
     assertEqual "inOrder/missingFields" inOrder.x  missingFields.x
     assertEqual "R/S"                   inOrder.x  valueOfS.x
     assertEqual "T/S"                   valueOfT.y valueOfS

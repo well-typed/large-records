@@ -67,6 +67,7 @@ test-suite test-large-records
     main-is:            TestLargeRecords.hs
     other-modules:      Test.Record.Sanity.Generics
                         Test.Record.Sanity.HigherKinded
+                        Test.Record.Sanity.HKD
                         Test.Record.Sanity.OverloadingNoDRF
                         Test.Record.Sanity.PatternMatch
                         Test.Record.Sanity.QualifiedImports

@@ -4,6 +4,7 @@ import Test.Tasty
 
 import qualified Test.Record.Sanity.Generics
 import qualified Test.Record.Sanity.HigherKinded
+import qualified Test.Record.Sanity.HKD
 import qualified Test.Record.Sanity.OverloadingNoDRF
 import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.QualifiedImports
@@ -18,6 +19,7 @@ tests :: TestTree
 tests = testGroup "Tests" [
       Test.Record.Sanity.Generics.tests
     , Test.Record.Sanity.HigherKinded.tests
+    , Test.Record.Sanity.HKD.tests
     , Test.Record.Sanity.OverloadingNoDRF.tests
     , Test.Record.Sanity.PatternMatch.tests
     , Test.Record.Sanity.QualifiedImports.tests

@@ -15,6 +15,8 @@ module Data.Record.QQ.CodeGen.View (
     -- * Constructing the view
   , matchRecordExp
   , matchRecordPat
+    -- * Lower-level API
+  , resolveConstr
   ) where
 
 import Data.Map (Map)

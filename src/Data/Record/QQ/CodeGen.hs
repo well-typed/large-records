@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections   #-}
@@ -46,6 +47,11 @@ import qualified Data.Record.TH.CodeGen.Name as N
 --
 -- > inOrder :: R Bool
 -- > inOrder = [lr| MkR { x = 1234, y = [True] } |]
+--
+-- or:
+--
+-- > constructorApp :: R Bool
+-- > constructorApp = [lr| MkR |] 1234 [True]
 --
 -- Example matching usage:
 --
@@ -112,7 +118,13 @@ lr = QuasiQuoter {
 -------------------------------------------------------------------------------}
 
 construct :: Exp -> Q Exp
-construct =  SYB.everywhereM (SYB.mkM go)
+construct = \case
+    ConE constr -> do
+      constr' <- resolveConstr constr
+      N.varE $ resolveNameConstructorFn constr'
+    expr ->
+      -- Assume this is a record construction expression
+      SYB.everywhereM (SYB.mkM go) expr
   where
     go :: Exp -> Q Exp
     go e = do

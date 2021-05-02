@@ -578,6 +578,7 @@ genDeriving :: Options -> Record -> Deriving -> Q Dec
 genDeriving opts r@Record{..} = \case
     DeriveEq   -> inst ''Eq   '(==)      'geq
     DeriveShow -> inst ''Show 'showsPrec 'gshowsPrec
+    DeriveStrategy s t -> strategic t s
   where
     inst :: Name -> Name -> Name -> Q Dec
     inst clss fn gfn =
@@ -585,6 +586,14 @@ genDeriving opts r@Record{..} = \case
           (genRequiredConstraints opts r (conT clss))
           [t| $(conT clss) $(recordTypeT opts r) |]
           [valD (varP fn) (normalB (varE gfn)) []]
+
+    -- Build standalone deriving statement, like
+    -- `deriving instance anyclass (Newtype R1) R1`
+    strategic :: Type -> DerivStrategy -> Q Dec
+    strategic t s = do
+      cxt' <- cxt []
+      r' <- recordTypeT opts r
+      pure $ StandaloneDerivD (Just s) cxt' (AppT t r')
 
 -- | Generate definition for `from` in the `Generic` instance
 --

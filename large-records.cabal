@@ -66,6 +66,7 @@ test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
     other-modules:      Test.Record.Sanity.Generics
+                        Test.Record.Sanity.Derive
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.HKD
                         Test.Record.Sanity.OverloadingNoDRF
@@ -88,6 +89,7 @@ test-suite test-large-records
                        -- TODO: Remove:
                       , ghc-dump-core
                       , large-records
+                      , newtype
                       , mtl
                       , record-dot-preprocessor
                       , record-hasfield

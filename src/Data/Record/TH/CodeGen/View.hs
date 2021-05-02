@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -86,6 +87,7 @@ data Field = Field {
 data Deriving =
     DeriveEq
   | DeriveShow
+  | DeriveStrategy DerivStrategy Type
   deriving (Show)
 
 {-------------------------------------------------------------------------------
@@ -120,18 +122,24 @@ matchRecord d = do
 -- TODO: We'll want to support some additional built-in classes probably,
 -- and we can for sure support 'DeriveAnyClass' style derivation.
 matchDeriv :: DerivClause -> Q [Deriving]
-matchDeriv (DerivClause Nothing cs) =
-    catMaybes <$> mapM go cs
+matchDeriv = \case
+    DerivClause Nothing cs ->
+      derivStock cs
+    DerivClause (Just StockStrategy) cs ->
+      derivStock cs
+    DerivClause (Just AnyclassStrategy) cs ->
+      pure $ map (DeriveStrategy AnyclassStrategy) cs
+    DerivClause strategy _ -> do
+      reportError $ "Unsupported deriving strategy " ++ show strategy
+      return []
   where
+    derivStock cs = catMaybes <$> mapM go cs
     go :: Pred -> Q (Maybe Deriving)
     go p | p == ConT ''Eq   = return $ Just DeriveEq
          | p == ConT ''Show = return $ Just DeriveShow
          | otherwise        = do
              reportError $ "Cannot derive instance for " ++ show p
              return Nothing
-matchDeriv (DerivClause (Just _) _) = do
-    reportError "Deriving strategies not supported"
-    return []
 
 matchField :: (Int, VarBangType) -> Q (Maybe Field)
 matchField (i, (fieldName, bng, typ)) =

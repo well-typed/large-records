@@ -2,6 +2,7 @@ module Main (main) where
 
 import Test.Tasty
 
+import qualified Test.Record.Sanity.Derive
 import qualified Test.Record.Sanity.Generics
 import qualified Test.Record.Sanity.HigherKinded
 import qualified Test.Record.Sanity.HKD
@@ -17,7 +18,8 @@ main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [
-      Test.Record.Sanity.Generics.tests
+      Test.Record.Sanity.Derive.tests
+    , Test.Record.Sanity.Generics.tests
     , Test.Record.Sanity.HigherKinded.tests
     , Test.Record.Sanity.HKD.tests
     , Test.Record.Sanity.OverloadingNoDRF.tests

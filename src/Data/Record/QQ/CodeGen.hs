@@ -32,6 +32,7 @@ import Data.Record.QQ.CodeGen.HSE
 import Data.Record.QQ.CodeGen.View
 import Data.Record.QQ.Runtime.MatchHasField
 import Data.Record.TH.CodeGen.Name (FieldName)
+import Data.Record.TH.CodeGen.TH
 import Data.Record.TH.CodeGen.Tree
 import Data.Record.TH.Config.Naming
 
@@ -148,7 +149,9 @@ construct = \case
 -------------------------------------------------------------------------------}
 
 deconstruct :: Pat -> Q Pat
-deconstruct =  SYB.everywhereM (SYB.mkM go)
+deconstruct = \pat -> do
+    requiresExtensions [TypeApplications, ViewPatterns, DataKinds]
+    SYB.everywhereM (SYB.mkM go) pat
   where
     go :: Pat -> Q Pat
     go p = do

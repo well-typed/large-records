@@ -19,8 +19,12 @@ module Data.Record.TH.CodeGen.TH (
   , tyVarType
     -- * Bang
   , pattern DefaultBang
+    -- * Extensions
+  , requiresExtensions
   ) where
 
+import Control.Monad
+import Data.List (intercalate)
 import Language.Haskell.TH
 
 import qualified Data.Vector as V
@@ -113,3 +117,17 @@ tyVarType = varT . tyVarName
 
 pattern DefaultBang :: Bang
 pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
+
+{-------------------------------------------------------------------------------
+  Extensions
+-------------------------------------------------------------------------------}
+
+-- | Check that the specified extensions are enabled
+--
+-- To improve user experience, we report all missing extensions at once (rather
+-- than giving an error for the first missing one).
+requiresExtensions :: [Extension] -> Q ()
+requiresExtensions exts = do
+    disabled <- filterM (fmap not . isExtEnabled) exts
+    unless (null disabled) $ do
+      fail $ "Please enable " ++ intercalate ", " (map show disabled)

@@ -1,6 +1,16 @@
 {-# LANGUAGE CPP                #-}
 {-# LANGUAGE TemplateHaskell    #-}
+-- {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 {-# OPTIONS_GHC -ddump-splices #-}
 

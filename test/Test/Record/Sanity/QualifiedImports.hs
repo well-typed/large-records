@@ -1,4 +1,7 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE QuasiQuotes      #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns     #-}
 
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
 

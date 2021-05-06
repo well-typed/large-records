@@ -33,6 +33,7 @@ import qualified Generics.SOP.Type.Metadata as SOP.T
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound
@@ -54,7 +55,7 @@ largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
       , tA     :: a
       , tListB :: [b]
       }
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
   |]
 
 exampleT :: T () Float
@@ -213,6 +214,16 @@ test_zipWithM =
      :* Field (K 24)
      :* Nil
 
+test_ord :: Word -> Word -> Bool -> Bool -> Property
+test_ord w w' b b'
+  | w == w' && b == b' = t1 === t2
+  | w == w'            = compare t1 t2 === compare b b'
+  | otherwise          = compare t1 t2 === compare w w'
+  where
+    t1, t2 :: T () Float
+    t1 = MkT w  b  'c' () [3.14]
+    t2 = MkT w' b' 'c' () [3.14]
+
 {-------------------------------------------------------------------------------
   For testing purposes, we compare against proper heterogeneous lists
 -------------------------------------------------------------------------------}
@@ -247,9 +258,10 @@ compareTyped expected actual =
 
 tests :: TestTree
 tests = testGroup "Test.Record.Sanity" [
-      testCase "from_to_id" test_from_to_id
-    , testCase "pure"       test_pure
-    , testCase "sequenceA"  test_sequenceA
-    , testCase "zipWithM"   test_zipWithM
-    , testCase "cpure"      test_cpure
+      testCase     "from_to_id" test_from_to_id
+    , testCase     "pure"       test_pure
+    , testCase     "sequenceA"  test_sequenceA
+    , testCase     "zipWithM"   test_zipWithM
+    , testCase     "cpure"      test_cpure
+    , testProperty "ord"        test_ord
     ]

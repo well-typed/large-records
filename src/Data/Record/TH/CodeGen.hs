@@ -589,6 +589,7 @@ genMetadata _opts Record{..} = do
 genDeriving :: Options -> Record -> Deriving -> Q Dec
 genDeriving opts r@Record{..} = \case
     DeriveEq   -> inst ''Eq   '(==)      'geq
+    DeriveOrd  -> inst ''Ord  'compare   'gcompare
     DeriveShow -> inst ''Show 'showsPrec 'gshowsPrec
     DeriveStrategy s t -> strategic t s
   where

@@ -86,6 +86,7 @@ data Field = Field {
 
 data Deriving =
     DeriveEq
+  | DeriveOrd
   | DeriveShow
   | DeriveStrategy DerivStrategy Type
   deriving (Show)
@@ -136,6 +137,7 @@ matchDeriv = \case
     derivStock cs = catMaybes <$> mapM go cs
     go :: Pred -> Q (Maybe Deriving)
     go p | p == ConT ''Eq   = return $ Just DeriveEq
+         | p == ConT ''Ord  = return $ Just DeriveOrd
          | p == ConT ''Show = return $ Just DeriveShow
          | otherwise        = do
              reportError $ "Cannot derive instance for " ++ show p

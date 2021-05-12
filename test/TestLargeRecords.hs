@@ -2,6 +2,7 @@ module Main (main) where
 
 import Test.Tasty
 
+import qualified Test.Record.Prop.ToFromJSON
 import qualified Test.Record.Sanity.Derive
 import qualified Test.Record.Sanity.Generics
 import qualified Test.Record.Sanity.HigherKinded
@@ -18,14 +19,21 @@ main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [
-      Test.Record.Sanity.Derive.tests
-    , Test.Record.Sanity.Generics.tests
-    , Test.Record.Sanity.HigherKinded.tests
-    , Test.Record.Sanity.HKD.tests
-    , Test.Record.Sanity.OverloadingNoDRF.tests
-    , Test.Record.Sanity.PatternMatch.tests
-    , Test.Record.Sanity.QualifiedImports.tests
-    , Test.Record.Sanity.RecordConstruction.tests
-    , Test.Record.Sanity.Strictness.tests
-    , Test.Record.Size.Sanity.tests
+      testGroup "Sanity" [
+          Test.Record.Sanity.Derive.tests
+        , Test.Record.Sanity.Generics.tests
+        , Test.Record.Sanity.HigherKinded.tests
+        , Test.Record.Sanity.HKD.tests
+        , Test.Record.Sanity.OverloadingNoDRF.tests
+        , Test.Record.Sanity.PatternMatch.tests
+        , Test.Record.Sanity.QualifiedImports.tests
+        , Test.Record.Sanity.RecordConstruction.tests
+        , Test.Record.Sanity.Strictness.tests
+        ]
+    , testGroup "Size" [
+          Test.Record.Size.Sanity.tests
+        ]
+    , testGroup "Prop" [
+          Test.Record.Prop.ToFromJSON.tests
+        ]
     ]

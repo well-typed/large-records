@@ -77,6 +77,11 @@ test-suite test-large-records
                         Test.Record.Sanity.QualifiedImports.B
                         Test.Record.Sanity.RecordConstruction
                         Test.Record.Sanity.Strictness
+                        Test.Record.Sanity.Transforms
+                        Test.Record.Sanity.Transforms.MiniBeam
+                        Test.Record.Sanity.Transforms.Interpret
+                        Test.Record.Sanity.Transforms.Interpret.LR
+                        Test.Record.Sanity.Transforms.Interpret.SOP
                         Test.Record.Size.After.HK010
                         Test.Record.Size.After.R0010
                         Test.Record.Size.Before.R010
@@ -112,6 +117,7 @@ test-suite test-large-records
                        -Widentities
                        -Wredundant-constraints
                        -ddump-to-file
+                       -fmax-valid-hole-fits=0
 
     -- We're mostly interested in compile time for -O0
     if flag(profile-gen-code)

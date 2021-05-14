@@ -197,6 +197,7 @@ instance Table TableA where
 
 type instance Interpreted Columnar' f (table Uninterpreted) = table f
 type instance Interpreted Columnar' f (Uninterpreted x)     = Columnar' f x
+type instance Interpreted Columnar' f Int                   = Bool --- !!!!
 
 class ZipInterpreted a where
   zipInterpreted ::
@@ -211,6 +212,9 @@ instance Beamable table => ZipInterpreted (table Uninterpreted) where
 
 instance ZipInterpreted (Uninterpreted x) where
   zipInterpreted = liftInterpretedA2
+
+instance ZipInterpreted Int where
+  zipInterpreted _ = liftInterpretedA2 (\x y -> pure $ x && y)
 
 gzipBeamSOP :: forall m table fields f g h.
      ( Applicative m
@@ -228,7 +232,7 @@ gzipBeamSOP :: forall m table fields f g h.
 gzipBeamSOP f a b =
     fmap SOP.productToDenormalized $
       SOP.hsequence' $
-        SOP.hcliftA2
+        SOP.hczipWith
           (Proxy @ZipInterpreted)
           (\fa ga -> Comp $ zipInterpreted f fa ga)
           (SOP.normalizedProductFrom a)
@@ -243,6 +247,7 @@ largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
           tcFieldI :: PrimaryKey TableC f
         , tcFieldB :: Columnar f Bool
         , tcFieldM :: TableB f
+        , tcFieldX :: Int
         }
 
     data TableD (f :: Type -> Type) = TableD {
@@ -251,7 +256,7 @@ largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
   |]
 
 instance Beamable TableC where
-  zipBeamFieldsM = safe_gzipBeamLR --  gzipBeamLR also fine, of course
+  zipBeamFieldsM = safe_gzipBeamLR -- also fine, of course
 
 instance Beamable TableD where
   zipBeamFieldsM = safe_gzipBeamLR

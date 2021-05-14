@@ -36,6 +36,7 @@ type HasNormalForm d x f = (
   , AllZip2 (LiftedCoercible (Interpret d f) I) (Code (x Uninterpreted)) (Code (x f))
   )
 
+-- TODO: Could this be generalized further by assuming less about the shape of the type?
 normalize ::
      HasNormalForm d x f
   => Proxy d

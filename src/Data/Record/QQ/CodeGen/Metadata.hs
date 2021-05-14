@@ -14,7 +14,7 @@ import Language.Haskell.TH
 
 import qualified Control.Monad.Except as Except
 
-import Data.Record.Generic
+import Data.Record.Generic hiding (FieldName)
 import Data.Record.TH.CodeGen.TH
 import Data.Record.TH.CodeGen.Name (TypeName, ConstrName, FieldName)
 

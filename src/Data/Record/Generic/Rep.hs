@@ -16,7 +16,7 @@
 -- TODO: Could we provide instances for the @generics-sop@ type classes?
 -- Might lessen the pain of switching between the two or using both?
 module Data.Record.Generic.Rep (
-    -- | Mapping
+    -- | "Functor"
     map
   , mapM
   , cmap
@@ -27,13 +27,14 @@ module Data.Record.Generic.Rep (
   , zipWithM
   , czipWith
   , czipWithM
-    -- | Folding
+    -- | "Foldable"
   , collapse
-    -- | Traversing
+    -- | "Traversable"
   , sequenceA
-    -- | Generation
+    -- | "Applicable"
   , pure
   , cpure
+  , ap
     -- | Conversion
   , unsafeFromListK
   ) where
@@ -58,7 +59,7 @@ import qualified Data.Vector as V
 import Data.Record.Generic
 
 {-------------------------------------------------------------------------------
-  Mapping
+  "Functor"
 -------------------------------------------------------------------------------}
 
 map :: (forall x. f x -> g x) -> Rep f a -> Rep g a
@@ -124,21 +125,21 @@ czipWithM p f a b =
     f' = Fn $ \Dict -> Fn $ \(Pair x y) -> Comp (f x y)
 
 {-------------------------------------------------------------------------------
-  Folding
+  "Foldable"
 -------------------------------------------------------------------------------}
 
 collapse :: Rep (K a) b -> [a]
 collapse = getConst . mapM (\(K a) -> Const [a])
 
 {-------------------------------------------------------------------------------
-  Traversing
+  "Traversable"
 -------------------------------------------------------------------------------}
 
 sequenceA :: Applicative m => Rep (m :.: f) a -> m (Rep f a)
 sequenceA (Rep v) = Rep <$> Prelude.sequenceA (fmap unComp v)
 
 {-------------------------------------------------------------------------------
-  Generation
+  "Applicable"
 -------------------------------------------------------------------------------}
 
 pure :: forall f a. Generic a => (forall x. f x) -> Rep f a
@@ -153,6 +154,9 @@ cpure p f = zipWith apFn (pure f') (dict p)
   where
     f' :: forall x. (Dict c -.-> f) x
     f' = Fn $ \Dict -> f
+
+ap :: Rep (f -.-> g) a -> Rep f a -> Rep g a
+ap = zipWith apFn
 
 {-------------------------------------------------------------------------------
   Conversion

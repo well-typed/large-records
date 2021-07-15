@@ -12,7 +12,7 @@
 {-# LANGUAGE ViewPatterns          #-}
 
 {-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
-{-# OPTIONS_GHC -ddump-splices #-}
+-- {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Sanity.HKD (
     tests

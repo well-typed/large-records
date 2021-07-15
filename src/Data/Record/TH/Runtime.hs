@@ -55,3 +55,4 @@ rnfVectorAny = rnfElems . V.toList
 noInlineUnsafeCo :: forall a b. a -> b
 {-# NOINLINE noInlineUnsafeCo #-}
 noInlineUnsafeCo = unsafeCoerce
+

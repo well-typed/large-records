@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE TemplateHaskell     #-}
 
 -- | Operations on the generic representation
 --
@@ -16,27 +17,34 @@
 -- TODO: Could we provide instances for the @generics-sop@ type classes?
 -- Might lessen the pain of switching between the two or using both?
 module Data.Record.Generic.Rep (
-    -- | "Functor"
-    map
+    Rep(..) -- TODO: Make opaque?
+    -- * "Functor"
+  , map
   , mapM
   , cmap
   , cmapM
-    -- | Zipping
+    -- * Zipping
   , zip
   , zipWith
   , zipWithM
   , czipWith
   , czipWithM
-    -- | "Foldable"
+    -- * "Foldable"
   , collapse
-    -- | "Traversable"
+    -- * "Traversable"
   , sequenceA
-    -- | "Applicable"
+    -- * "Applicable"
   , pure
   , cpure
   , ap
-    -- | Conversion
-  , unsafeFromListK
+    -- * Array-like interface
+  , Index -- opaque
+  , indexToInt
+  , getAtIndex
+  , putAtIndex
+  , updateAtIndex
+  , allIndices
+  , mapWithIndex
   ) where
 
 import Prelude hiding (
@@ -47,123 +55,156 @@ import Prelude hiding (
   , zip
   , zipWith
   )
-import qualified Prelude
 
 import Data.Proxy
 import Data.Functor.Identity
-import Data.Functor.Const
 import Data.Functor.Product
+import Data.SOP.Classes (fn_2)
+import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector as V
 
 import Data.Record.Generic
+import Data.Record.Generic.Rep.Internal
+
+--
+-- NOTE: In order to avoid circular definitions, this module is strictly defined
+-- in order: every function only depends on the functions defined before it. To
+-- enforce this, we make use of 'compileToHere' to force ghc to compile the
+-- module to that point.
+--
 
 {-------------------------------------------------------------------------------
-  "Functor"
+  Array-like interface
 -------------------------------------------------------------------------------}
 
-map :: (forall x. f x -> g x) -> Rep f a -> Rep g a
-map f (Rep v) = Rep $ f <$> v
+newtype Index a x = UnsafeIndex Int
 
-mapM ::
-     Applicative m
-  => (forall x. f x -> m (g x))
-  -> Rep f a -> m (Rep g a)
-mapM f (Rep v) = Rep <$> traverse f v
+indexToInt :: Index a x -> Int
+indexToInt (UnsafeIndex ix) = ix
 
-cmap ::
-     (Generic a, Constraints a c)
-  => Proxy c
-  -> (forall x. c x => f x -> g x)
+getAtIndex :: Index a x -> Rep f a -> f x
+getAtIndex (UnsafeIndex ix) (Rep v) =
+    unsafeCoerce $ V.unsafeIndex v ix
+
+putAtIndex :: Index a x -> f x -> Rep f a -> Rep f a
+putAtIndex (UnsafeIndex ix) x (Rep v) = Rep $
+    V.unsafeUpd v [(ix, unsafeCoerce x)]
+
+updateAtIndex ::
+     Functor m
+  => Index a x
+  -> (f x -> m (f x))
+  -> Rep f a -> m (Rep f a)
+updateAtIndex ix f a = (\x -> putAtIndex ix x a) <$> f (getAtIndex ix a)
+
+allIndices :: forall a. Generic a => Rep (Index a) a
+allIndices = Rep $ V.generate (recordSize (metadata (Proxy @a))) UnsafeIndex
+
+-- | Map with index
+--
+-- This is an important building block in this module.
+-- Crucially, @mapWithIndex f a@ is lazy in @a@, reading elements from @a@
+-- only if and when @f@ demands them.
+mapWithIndex ::
+     forall f g a. Generic a
+  => (forall x. Index a x -> f x -> g x)
   -> Rep f a -> Rep g a
-cmap p f = runIdentity . cmapM p (Identity . f)
-
-cmapM ::
-     (Generic a, Applicative r, Constraints a c)
-  => Proxy c
-  -> (forall x. c x => f x -> r (g x))
-  -> Rep f a -> r (Rep g a)
-cmapM p f a = czipWithM p (\x _ -> f x) a (pure (K ()))
-
-{-------------------------------------------------------------------------------
-  Zipping
--------------------------------------------------------------------------------}
-
-zip :: Rep f a -> Rep g a -> Rep (Product f g) a
-zip = zipWith Pair
-
-zipWith ::
-     (forall x. f x -> g x -> h x)
-  -> Rep f a -> Rep g a -> Rep h a
-zipWith f (Rep a) (Rep b) = Rep $ V.zipWith f a b
-
-zipWithM ::
-     Applicative m
-  => (forall x. f x -> g x -> m (h x))
-  -> Rep f a -> Rep g a -> m (Rep h a)
-zipWithM f (Rep a) (Rep b) = Rep <$>
-    -- The 'Applicative' instance on 'Vector' behaves like @[]@, not @ZipList@
-    -- 'V.zipWithM' requires 'Monad' rather than 'Applicative'
-    Prelude.sequenceA (V.zipWith f a b)
-
-czipWith ::
-     (Generic a, Constraints a c)
-  => Proxy c
-  -> (forall x. c x => f x -> g x -> h x)
-  -> Rep f a -> Rep g a -> Rep h a
-czipWith p f a b = runIdentity (czipWithM p (\x y -> Identity (f x y)) a b)
-
-czipWithM ::
-     forall m f g h c a. (Generic a, Applicative m, Constraints a c)
-  => Proxy c
-  -> (forall x. c x => f x -> g x -> m (h x))
-  -> Rep f a -> Rep g a -> m (Rep h a)
-czipWithM p f a b =
-    sequenceA (zipWith apFn (zipWith apFn (pure f') (dict p)) (zip a b))
+mapWithIndex f as = map' f' allIndices
   where
-    f' :: (Dict c -.-> Product f g -.-> m :.: h) x
-    f' = Fn $ \Dict -> Fn $ \(Pair x y) -> Comp (f x y)
+    f' :: Index a x -> g x
+    f' ix = f ix (getAtIndex ix as)
+compileToHere -- ===============================================================
 
 {-------------------------------------------------------------------------------
-  "Foldable"
--------------------------------------------------------------------------------}
-
-collapse :: Rep (K a) b -> [a]
-collapse = getConst . mapM (\(K a) -> Const [a])
-
-{-------------------------------------------------------------------------------
-  "Traversable"
--------------------------------------------------------------------------------}
-
-sequenceA :: Applicative m => Rep (m :.: f) a -> m (Rep f a)
-sequenceA (Rep v) = Rep <$> Prelude.sequenceA (fmap unComp v)
-
-{-------------------------------------------------------------------------------
-  "Applicable"
+  "Applicative"
 -------------------------------------------------------------------------------}
 
 pure :: forall f a. Generic a => (forall x. f x) -> Rep f a
 pure = Rep . V.replicate (recordSize (metadata (Proxy @a)))
 
 cpure ::
-     forall c f a. (Generic a, Constraints a c)
+     (Generic a, Constraints a c)
   => Proxy c
   -> (forall x. c x => f x)
   -> Rep f a
-cpure p f = zipWith apFn (pure f') (dict p)
-  where
-    f' :: forall x. (Dict c -.-> f) x
-    f' = Fn $ \Dict -> f
+cpure p f = map' (\Dict -> f) (dict p)
 
-ap :: Rep (f -.-> g) a -> Rep f a -> Rep g a
-ap = zipWith apFn
+-- | Higher-order version of @<*>@
+--
+-- Lazy in the second argument.
+ap :: forall f g a. Generic a => Rep (f -.-> g) a -> Rep f a -> Rep g a
+ap fs as = mapWithIndex f' fs
+  where
+    f' :: Index a x -> (-.->) f g x -> g x
+    f' ix f = f `apFn` getAtIndex ix as
+
+compileToHere -- ===============================================================
 
 {-------------------------------------------------------------------------------
-  Conversion
+  "Functor"
 -------------------------------------------------------------------------------}
 
--- | Convert list to 'Rep'
---
--- Does not check that the length has the right number of elements.
-unsafeFromListK :: [b] -> Rep (K b) a
-unsafeFromListK = Rep . V.fromList . Prelude.map K
+map :: Generic a => (forall x. f x -> g x) -> Rep f a -> Rep g a
+map f = mapWithIndex (const f)
+
+mapM ::
+     (Applicative m, Generic a)
+  => (forall x. f x -> m (g x))
+  -> Rep f a -> m (Rep g a)
+mapM f = sequenceA . mapWithIndex (const (Comp . f))
+
+cmap ::
+     (Generic a, Constraints a c)
+  => Proxy c
+  -> (forall x. c x => f x -> g x)
+  -> Rep f a -> Rep g a
+cmap p f = ap $ cpure p (Fn f)
+
+cmapM ::
+     forall m f g c a. (Generic a, Applicative m, Constraints a c)
+  => Proxy c
+  -> (forall x. c x => f x -> m (g x))
+  -> Rep f a -> m (Rep g a)
+cmapM p f = sequenceA . cmap p (Comp . f)
+
+compileToHere -- ===============================================================
+
+{-------------------------------------------------------------------------------
+  Zipping
+-------------------------------------------------------------------------------}
+
+zipWithM ::
+     forall m f g h a. (Generic a, Applicative m)
+  => (forall x. f x -> g x -> m (h x))
+  -> Rep f a -> Rep g a -> m (Rep h a)
+zipWithM f a b = sequenceA $
+    pure (fn_2 $ \x y -> Comp $ f x y) `ap` a `ap` b
+
+zipWith ::
+     Generic a
+  => (forall x. f x -> g x -> h x)
+  -> Rep f a -> Rep g a -> Rep h a
+zipWith f a b = runIdentity $
+    zipWithM (\x y -> Identity $ f x y) a b
+
+zip :: Generic a => Rep f a -> Rep g a -> Rep (Product f g) a
+zip = zipWith Pair
+
+czipWithM ::
+     forall m f g h c a. (Generic a, Applicative m, Constraints a c)
+  => Proxy c
+  -> (forall x. c x => f x -> g x -> m (h x))
+  -> Rep f a -> Rep g a -> m (Rep h a)
+czipWithM p f a b = sequenceA $
+    cpure p (fn_2 $ \x y -> Comp $ f x y) `ap` a `ap` b
+
+czipWith ::
+     (Generic a, Constraints a c)
+  => Proxy c
+  -> (forall x. c x => f x -> g x -> h x)
+  -> Rep f a -> Rep g a -> Rep h a
+czipWith p f a b = runIdentity $
+    czipWithM p (\x y -> Identity (f x y)) a b
+
+compileToHere -- ===============================================================

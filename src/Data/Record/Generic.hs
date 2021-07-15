@@ -1,15 +1,19 @@
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE GADTs              #-}
 {-# LANGUAGE KindSignatures     #-}
-{-# LANGUAGE RoleAnnotations    #-}
 {-# LANGUAGE TypeFamilies       #-}
 
 module Data.Record.Generic (
     -- * Types with a generic view
     Generic(..)
-  , Rep(..)
+  , Rep(..) -- TODO: Make opaque?
+    -- * Metadata
   , Metadata(..)
+  , FieldStrictness(..)
+  , recordFieldNames
+  , FieldInfo(..)
     -- * Working with type-level metadata
   , FieldName
   , FieldType
@@ -21,17 +25,17 @@ module Data.Record.Generic (
 
 import Data.Kind
 import Data.Proxy
-import Data.Vector (Vector)
-import GHC.Exts (Any)
-import GHC.TypeLits (Symbol)
-
-import qualified Data.Vector as V
+import GHC.TypeLits
 
 -- To reduce overlap between the two libraries and improve interoperability,
 -- we import as much from sop-core as possible.
 import Data.SOP.BasicFunctors as SOP
 import Data.SOP.Classes       as SOP (type (-.->)(..))
 import Data.SOP.Dict          as SOP (Dict(..))
+
+import Data.Record.Generic.Rep.Internal (Rep(..))
+
+import qualified Data.Record.Generic.Rep.Internal as Rep
 
 {-------------------------------------------------------------------------------
   Generic type class
@@ -56,30 +60,27 @@ class Generic a where
   -- | Metadata
   metadata :: proxy a -> Metadata a
 
--- | Representation of some record @a@
---
--- The @f@ parameter describes which functor has been applied to all fields of
--- the record; in other words @Rep I@ is isomorphic to the record itself.
-newtype Rep f a = Rep (Vector (f Any))
-
-type role Rep representational nominal
+{-------------------------------------------------------------------------------
+  Metadata
+-------------------------------------------------------------------------------}
 
 data Metadata a = Metadata {
       recordName        :: String
     , recordConstructor :: String
     , recordSize        :: Int
-    , recordFieldNames  :: Rep (K String) a
+    , recordFieldInfo   :: Rep FieldInfo a
     }
 
-{-------------------------------------------------------------------------------
-  Some specialised instances for 'Rep
--------------------------------------------------------------------------------}
+data FieldStrictness = FieldStrict | FieldLazy
 
-instance Show x => Show (Rep (K x) a) where
-  show (Rep v) = show $ map unK (V.toList v)
+data FieldInfo x where
+  FieldInfo :: KnownSymbol name => Proxy name -> FieldStrictness -> FieldInfo x
 
-instance Eq x => Eq (Rep (K x) a) where
-  Rep v == Rep v' = map unK (V.toList v) == map unK (V.toList v')
+recordFieldNames :: Metadata a -> Rep (K String) a
+recordFieldNames = Rep.map' aux . recordFieldInfo
+  where
+    aux :: FieldInfo x -> K String x
+    aux (FieldInfo p _) = K $ symbolVal p
 
 {-------------------------------------------------------------------------------
   Working with the type-level metadata

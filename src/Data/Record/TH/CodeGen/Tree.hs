@@ -10,6 +10,7 @@ module Data.Record.TH.CodeGen.Tree (
   , tree
   , forest
     -- * Dealing with @ghc@'s tuple size limit
+  , TupleLimit(..)
   , nest
   , mkTupleE
   , mkTupleT
@@ -69,15 +70,25 @@ forest cata (Forest ts) = branch cata (map (tree cata) ts)
 -- >  (((A, A), (A, A)), ((A, A), (A, A)))
 -- > ((((A, A), (A, A)), ((A, A), (A, A))),  A)
 -- > ((((A, A), (A, A)), ((A, A), (A, A))), (A, A))
-nest :: [a] -> Forest a
-nest = go . map Leaf
+nest :: TupleLimit -> [a] -> Forest a
+nest mLimit = go . map Leaf
   where
     go :: [Tree a] -> Forest a
     go ts | length ts < limit = Forest ts
           | otherwise         = go (map (Branch . Forest) (chunk limit ts))
 
     limit :: Int
-    limit = 62
+    limit = case mLimit of
+              DefaultGhcTupleLimit -> 62
+              MaxTupleElems n      -> n
+
+-- | Maximum number of elements in a tuple
+data TupleLimit =
+    -- | Default maximum number of elements in a tuple in ghc (62)
+    DefaultGhcTupleLimit
+
+    -- | Explicit specified liit
+  | MaxTupleElems Int
 
 {-------------------------------------------------------------------------------
   Constructing nested types/values/patterns

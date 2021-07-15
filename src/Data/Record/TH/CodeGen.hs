@@ -14,6 +14,7 @@ import GHC.Records.Compat
 import GHC.Exts (Any)
 import Language.Haskell.TH
 
+import qualified GHC.Generics  as GHC
 import qualified Data.Generics as SYB
 import qualified Data.Kind     as Kind
 import qualified Data.Vector   as V
@@ -104,6 +105,7 @@ genAll opts@Options{..} r = concatM $ [
         , genPatSynonym opts r
         ]
     , genGenericInstance opts r
+    , genGhcGenericsInstances opts r
     ]
   where
     when :: Bool -> [Q [Dec]] -> Q [Dec]
@@ -650,6 +652,36 @@ genGenericInstance opts r@Record{..} = concatM [
              ]
          ]
     , mapM (genDeriving opts r) recordDeriv
+    ]
+
+{-------------------------------------------------------------------------------
+  GHC generics
+-------------------------------------------------------------------------------}
+
+-- | Generate GHC generics instance
+--
+-- Generates something like
+--
+-- > instance GHC.Generic ExampleRecord where
+-- >   type Rep ExampleRecord = ThroughLRGenerics ExampleRecord
+-- >
+-- >   from = WrapThroughLRGenerics
+-- >   to   = unwrapThroughLRGenerics
+--
+-- See 'ThroughLRGenerics' for documentation.
+genGhcGenericsInstances :: Options -> Record -> Q [Dec]
+genGhcGenericsInstances opts r = sequenceA [
+      instanceD
+        (cxt [])
+        [t| GHC.Generic $(recordTypeT opts r) |]
+        [ tySynInstD $
+            tySynEqn
+              Nothing
+              [t| GHC.Rep $(recordTypeT opts r) |]
+              [t| ThroughLRGenerics $(recordTypeT opts r) |]
+        , valD (varP 'GHC.from) (normalB (conE 'WrapThroughLRGenerics))   []
+        , valD (varP 'GHC.to)   (normalB (varE 'unwrapThroughLRGenerics)) []
+        ]
     ]
 
 {-------------------------------------------------------------------------------

@@ -18,6 +18,7 @@ library
                         Data.Record.Generic.Rep
                         Data.Record.Generic.Show
                         Data.Record.Generic.SOP
+                        Data.Record.Generic.Transform
 
                         Data.Record.QQ.CodeGen
                         Data.Record.QQ.CodeGen.HSE
@@ -77,6 +78,7 @@ test-suite test-large-records
                         Test.Record.Sanity.QualifiedImports.B
                         Test.Record.Sanity.RecordConstruction
                         Test.Record.Sanity.Strictness
+                        Test.Record.Sanity.Transform
                         Test.Record.Size.After.HK010
                         Test.Record.Size.After.R0010
                         Test.Record.Size.Before.R010
@@ -110,8 +112,12 @@ test-suite test-large-records
                        -Wincomplete-record-updates
                        -Wpartial-fields
                        -Widentities
-                       -Wredundant-constraints
                        -ddump-to-file
+                       -- Needed for the AllZip tests
+                       -freduction-depth=2000
+
+    if flag(profile-allzip)
+      cpp-options: -DPROFILE_ALLZIP
 
     -- We're mostly interested in compile time for -O0
     if flag(profile-gen-code)
@@ -157,4 +163,8 @@ test-suite test-large-records
 
 Flag profile-gen-code
   Description: Enable to generate some statistics about the generated code
+  Default: False
+
+Flag profile-allzip
+  Description: Include experiment to verify size of AllZip is linear
   Default: False

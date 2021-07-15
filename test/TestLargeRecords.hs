@@ -12,6 +12,7 @@ import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.QualifiedImports
 import qualified Test.Record.Sanity.RecordConstruction
 import qualified Test.Record.Sanity.Strictness
+import qualified Test.Record.Sanity.Transform
 import qualified Test.Record.Size.Sanity
 
 main :: IO ()
@@ -29,6 +30,7 @@ tests = testGroup "Tests" [
         , Test.Record.Sanity.QualifiedImports.tests
         , Test.Record.Sanity.RecordConstruction.tests
         , Test.Record.Sanity.Strictness.tests
+        , Test.Record.Sanity.Transform.tests
         ]
     , testGroup "Size" [
           Test.Record.Size.Sanity.tests

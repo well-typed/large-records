@@ -24,7 +24,20 @@ import Data.Record.TH
 
 import Test.Record.Size.Infra
 
+#ifdef PROFILE_ALLZIP
+import Data.Record.Generic
+import Data.Record.Generic.Transform
+#endif
+
 largeRecord defaultLazyOptions (recordOfSize 800)
 
 instance ToJSON R where
   toJSON = gtoJSON
+
+#ifdef PROFILE_ALLZIP
+testInterpretTo :: ()
+testInterpretTo = aux
+  where
+    aux :: InterpretTo I (MetadataOf R) (MetadataOf R) => ()
+    aux = ()
+#endif

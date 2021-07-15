@@ -13,8 +13,10 @@
 module Test.Record.Size.Infra (
     recordOfSize
   , higherKindedRecordOfSize
-    -- Supporting infrastructure used by generated code
+    -- * Supporting infrastructure used by generated code
   , T(..)
+    -- * Re-exports
+  , I
   ) where
 
 import Data.Aeson
@@ -22,12 +24,14 @@ import Data.Functor.Classes
 import Data.Functor.Identity
 import Data.Kind
 import Data.Proxy
+import Data.SOP.BasicFunctors
 import GHC.TypeLits
 
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Syntax hiding (Type)
 
 import Data.Record.Generic.LowerBound
+import Data.Record.Generic.Transform
 
 {-------------------------------------------------------------------------------
   Construct records of specified size
@@ -113,6 +117,8 @@ defaultBang = bang noSourceUnpackedness noSourceStrictness
 -- | 'T' gives us as many different types as we need
 newtype T (i :: Nat) = MkT Word
   deriving (Show, Eq, ToJSON)
+
+type instance Interpreted I (T i) = T i
 
 -- | Like 'T', but with a higher-kinded type variable
 newtype HK (i :: Nat) (f :: Type -> Type) = MkHK (f Word)

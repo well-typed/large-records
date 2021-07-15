@@ -17,11 +17,9 @@
 module Data.Record.Generic.SOP (
     -- | Translate between SOP representation and large-records representation
     Field(..)
-  , FieldType
   , fromSOP
   , toSOP
     -- | Translate constraints
-  , IsField
   , toDictAll
     -- | Additional SOP functions
   , glowerBound
@@ -53,9 +51,6 @@ import Data.Record.TH.Runtime (noInlineUnsafeCo)
   which would make these functions less general than we need them to be.
 -------------------------------------------------------------------------------}
 
-type family FieldType (field :: (Symbol, Type)) :: Type where
-  FieldType '(_name, typ) = typ
-
 newtype Field (f :: Type -> Type) (field :: (Symbol, Type)) where
   Field :: f (FieldType field) -> Field f field
 
@@ -79,12 +74,6 @@ toSOP (Rep v) =
 {-------------------------------------------------------------------------------
   Translate constraints
 -------------------------------------------------------------------------------}
-
-type family FieldName (field :: (Symbol, Type)) :: Symbol where
-  FieldName '(name, _typ) = name
-
-class (field ~ '(FieldName field, FieldType field)) => IsField field
-instance (field ~ '(FieldName field, FieldType field)) => IsField field
 
 -- | Translate constraints
 --

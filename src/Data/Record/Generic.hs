@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds    #-}
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleInstances  #-}
@@ -11,6 +10,10 @@ module Data.Record.Generic (
     Generic(..)
   , Rep(..)
   , Metadata(..)
+    -- * Working with type-level metadata
+  , FieldName
+  , FieldType
+  , IsField
     -- * Re-exports
   , module SOP
   , Proxy(..)
@@ -77,3 +80,16 @@ instance Show x => Show (Rep (K x) a) where
 
 instance Eq x => Eq (Rep (K x) a) where
   Rep v == Rep v' = map unK (V.toList v) == map unK (V.toList v')
+
+{-------------------------------------------------------------------------------
+  Working with the type-level metadata
+-------------------------------------------------------------------------------}
+
+type family FieldName (field :: (Symbol, Type)) :: Symbol where
+  FieldName '(name, _typ) = name
+
+type family FieldType (field :: (Symbol, Type)) :: Type where
+  FieldType '(_name, typ) = typ
+
+class (field ~ '(FieldName field, FieldType field)) => IsField field
+instance (field ~ '(FieldName field, FieldType field)) => IsField field

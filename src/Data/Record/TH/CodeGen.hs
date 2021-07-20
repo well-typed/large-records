@@ -1,8 +1,8 @@
-{-# LANGUAGE BangPatterns    #-}
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE RecordWildCards  #-}
+{-# LANGUAGE TemplateHaskell  #-}
 
 -- | Code generation
 module Data.Record.TH.CodeGen (largeRecord, endOfBindingGroup) where
@@ -21,6 +21,7 @@ import qualified Data.Vector   as V
 
 import Data.Record.Generic
 import Data.Record.Generic.Eq
+import Data.Record.Generic.GHC
 import Data.Record.Generic.Show
 
 import Data.Record.TH.CodeGen.TH
@@ -31,8 +32,8 @@ import Data.Record.TH.Config.Naming
 import Data.Record.TH.Config.Options
 import Data.Record.TH.Runtime
 
-import qualified Data.Record.Generic.Rep     as Rep
-import qualified Data.Record.TH.CodeGen.Name as N
+import qualified Data.Record.Generic.Rep.Internal as Rep
+import qualified Data.Record.TH.CodeGen.Name      as N
 
 {-------------------------------------------------------------------------------
   Public API
@@ -555,20 +556,29 @@ genInstanceConstraints opts r@Record{..} = tySynInstD $
 -- >   , recordFieldNames  = unsafeFromListK ["tWord", "tBool", "tChar", "tA", "tListB"]
 -- >   }
 genMetadata :: Options -> Record -> Q Exp
-genMetadata _opts Record{..} = do
+genMetadata Options{..} Record{..} = do
     p <- newName "_p"
     lamE [varP p] $ recConE 'Metadata [
         fieldExp 'recordName        $ N.termLevelMetadata recordUnqual
       , fieldExp 'recordConstructor $ N.termLevelMetadata recordConstr
       , fieldExp 'recordSize        $ litE (integerL numFields)
-      , fieldExp 'recordFieldNames  $ [| Rep.unsafeFromListK $fieldNames |]
+      , fieldExp 'recordFieldInfo   $ [| Rep.Rep $ V.fromList $fieldInfo |]
       ]
   where
     numFields :: Integer
     numFields = fromIntegral $ length recordFields
 
-    fieldNames :: Q Exp
-    fieldNames = listE $ map (N.termLevelMetadata . fieldUnqual) recordFields
+    fieldInfo :: Q Exp
+    fieldInfo = listE $ map (mkFieldInfo . fieldUnqual) recordFields
+
+    mkFieldInfo :: N.FieldName -> ExpQ
+    mkFieldInfo n = [|
+          FieldInfo
+            (Proxy :: Proxy $(N.typeLevelMetadata n) )
+            $(if allFieldsStrict
+                then [| FieldStrict |]
+                else [| FieldLazy   |])
+        |]
 
 -- | Generate instance for specific class
 --

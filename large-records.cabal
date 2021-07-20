@@ -13,6 +13,7 @@ extra-source-files: CHANGELOG.md
 library
     exposed-modules:    Data.Record.Generic
                         Data.Record.Generic.Eq
+                        Data.Record.Generic.GHC
                         Data.Record.Generic.JSON
                         Data.Record.Generic.LowerBound
                         Data.Record.Generic.Rep
@@ -36,6 +37,8 @@ library
                         Data.Record.TH.Config.Naming
                         Data.Record.TH.Config.Options
                         Data.Record.TH.Runtime
+
+    other-modules:      Data.Record.Generic.Rep.Internal
 
     build-depends:      base >=4.13 && < 4.15
                       , aeson

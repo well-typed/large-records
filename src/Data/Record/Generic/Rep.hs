@@ -47,29 +47,19 @@ import Prelude hiding (
   , zip
   , zipWith
   )
-import qualified Prelude
 
 import Data.Proxy
 import Data.Functor.Identity
-import Data.Functor.Const
 import Data.Functor.Product
 
 import qualified Data.Vector as V
 
 import Data.Record.Generic
+import Data.Record.Generic.Rep.Internal
 
 {-------------------------------------------------------------------------------
   "Functor"
 -------------------------------------------------------------------------------}
-
-map :: (forall x. f x -> g x) -> Rep f a -> Rep g a
-map f (Rep v) = Rep $ f <$> v
-
-mapM ::
-     Applicative m
-  => (forall x. f x -> m (g x))
-  -> Rep f a -> m (Rep g a)
-mapM f (Rep v) = Rep <$> traverse f v
 
 cmap ::
      (Generic a, Constraints a c)
@@ -88,23 +78,6 @@ cmapM p f a = czipWithM p (\x _ -> f x) a (pure (K ()))
 {-------------------------------------------------------------------------------
   Zipping
 -------------------------------------------------------------------------------}
-
-zip :: Rep f a -> Rep g a -> Rep (Product f g) a
-zip = zipWith Pair
-
-zipWith ::
-     (forall x. f x -> g x -> h x)
-  -> Rep f a -> Rep g a -> Rep h a
-zipWith f (Rep a) (Rep b) = Rep $ V.zipWith f a b
-
-zipWithM ::
-     Applicative m
-  => (forall x. f x -> g x -> m (h x))
-  -> Rep f a -> Rep g a -> m (Rep h a)
-zipWithM f (Rep a) (Rep b) = Rep <$>
-    -- The 'Applicative' instance on 'Vector' behaves like @[]@, not @ZipList@
-    -- 'V.zipWithM' requires 'Monad' rather than 'Applicative'
-    Prelude.sequenceA (V.zipWith f a b)
 
 czipWith ::
      (Generic a, Constraints a c)
@@ -125,20 +98,6 @@ czipWithM p f a b =
     f' = Fn $ \Dict -> Fn $ \(Pair x y) -> Comp (f x y)
 
 {-------------------------------------------------------------------------------
-  "Foldable"
--------------------------------------------------------------------------------}
-
-collapse :: Rep (K a) b -> [a]
-collapse = getConst . mapM (\(K a) -> Const [a])
-
-{-------------------------------------------------------------------------------
-  "Traversable"
--------------------------------------------------------------------------------}
-
-sequenceA :: Applicative m => Rep (m :.: f) a -> m (Rep f a)
-sequenceA (Rep v) = Rep <$> Prelude.sequenceA (fmap unComp v)
-
-{-------------------------------------------------------------------------------
   "Applicable"
 -------------------------------------------------------------------------------}
 
@@ -155,15 +114,3 @@ cpure p f = zipWith apFn (pure f') (dict p)
     f' :: forall x. (Dict c -.-> f) x
     f' = Fn $ \Dict -> f
 
-ap :: Rep (f -.-> g) a -> Rep f a -> Rep g a
-ap = zipWith apFn
-
-{-------------------------------------------------------------------------------
-  Conversion
--------------------------------------------------------------------------------}
-
--- | Convert list to 'Rep'
---
--- Does not check that the length has the right number of elements.
-unsafeFromListK :: [b] -> Rep (K b) a
-unsafeFromListK = Rep . V.fromList . Prelude.map K

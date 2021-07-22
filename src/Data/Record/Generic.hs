@@ -77,7 +77,7 @@ data FieldInfo x where
   FieldInfo :: KnownSymbol name => Proxy name -> FieldStrictness -> FieldInfo x
 
 recordFieldNames :: Metadata a -> Rep (K String) a
-recordFieldNames = Rep.map aux . recordFieldInfo
+recordFieldNames = Rep.map' aux . recordFieldInfo
   where
     aux :: FieldInfo x -> K String x
     aux (FieldInfo p _) = K $ symbolVal p

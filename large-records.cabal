@@ -17,6 +17,7 @@ library
                         Data.Record.Generic.JSON
                         Data.Record.Generic.LowerBound
                         Data.Record.Generic.Rep
+                        Data.Record.Generic.Rep.Internal
                         Data.Record.Generic.Show
                         Data.Record.Generic.SOP
                         Data.Record.Generic.Transform
@@ -37,8 +38,6 @@ library
                         Data.Record.TH.Config.Naming
                         Data.Record.TH.Config.Options
                         Data.Record.TH.Runtime
-
-    other-modules:      Data.Record.Generic.Rep.Internal
 
     build-depends:      base >=4.13 && < 4.15
                       , aeson
@@ -70,11 +69,12 @@ test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
     other-modules:      Test.Record.Prop.ToFromJSON
+                        Test.Record.Sanity.Derive
                         Test.Record.Sanity.Generics
                         Test.Record.Sanity.GhcGenerics
-                        Test.Record.Sanity.Derive
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.HKD
+                        Test.Record.Sanity.Laziness
                         Test.Record.Sanity.OverloadingNoDRF
                         Test.Record.Sanity.PatternMatch
                         Test.Record.Sanity.QualifiedImports

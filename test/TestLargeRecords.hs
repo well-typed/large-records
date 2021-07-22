@@ -8,6 +8,7 @@ import qualified Test.Record.Sanity.Generics
 import qualified Test.Record.Sanity.GhcGenerics
 import qualified Test.Record.Sanity.HigherKinded
 import qualified Test.Record.Sanity.HKD
+import qualified Test.Record.Sanity.Laziness
 import qualified Test.Record.Sanity.OverloadingNoDRF
 import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.QualifiedImports
@@ -27,6 +28,7 @@ tests = testGroup "Tests" [
         , Test.Record.Sanity.GhcGenerics.tests
         , Test.Record.Sanity.HigherKinded.tests
         , Test.Record.Sanity.HKD.tests
+        , Test.Record.Sanity.Laziness.tests
         , Test.Record.Sanity.OverloadingNoDRF.tests
         , Test.Record.Sanity.PatternMatch.tests
         , Test.Record.Sanity.QualifiedImports.tests

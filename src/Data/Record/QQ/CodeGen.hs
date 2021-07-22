@@ -162,7 +162,7 @@ deconstruct = \pat -> do
            Just Record{..} ->
              viewP (varE 'matchHasField) $
                mkTupleP (uncurry mkPat) $
-                 nest (mapMaybe getPat recordFields)
+                 nest (MaxTupleElems 2) (mapMaybe getPat recordFields)
 
     getPat :: Field Pat -> Maybe (FieldName, Pat)
     getPat Field{..} = (fieldUnqual, ) <$> fieldDec

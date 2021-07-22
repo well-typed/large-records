@@ -370,12 +370,14 @@ genRecordView opts r@Record{..} = do
       viewBody
   where
     viewType :: Q Type
-    viewType = mkTupleT (fieldTypeT opts) $ nest recordFields
+    viewType = mkTupleT (fieldTypeT opts) $
+                 nest DefaultGhcTupleLimit recordFields
 
     viewBody :: Q Exp
     viewBody = do
         x <- newName "x"
-        lamE [varP x] $ mkTupleE (viewField x) $ nest recordFields
+        lamE [varP x] $ mkTupleE (viewField x) $
+          nest DefaultGhcTupleLimit recordFields
 
     -- We generate the view only if we are generating the pattern synonym,
     -- but when we do we don't generate the typed accessors, because they
@@ -417,7 +419,7 @@ genPatSynonym opts r@Record{..} = do
     matchVector :: Q Pat
     matchVector = viewP (N.varE (nameRecordView opts r)) $
         mkTupleP (N.varP . N.fromOverloaded . fieldUnqual) $
-          nest recordFields
+          nest DefaultGhcTupleLimit recordFields
 
     constrVector :: [Q Pat] -> Q Exp -> Q Clause
     constrVector xs body = clause xs (normalB body) []

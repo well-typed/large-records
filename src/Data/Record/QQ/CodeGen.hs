@@ -141,8 +141,8 @@ construct = \case
     mkArg :: Field Exp -> Q Exp
     mkArg Field{..}
       | Just dec <- fieldDec = return dec
-      | otherwise            = [| undefined |]
-
+      | otherwise = [| error $ "No value given for field "
+                           ++ $(N.termLevelMetadata fieldUnqual) |]
 
 {-------------------------------------------------------------------------------
   Deconstruction

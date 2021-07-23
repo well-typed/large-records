@@ -17,8 +17,9 @@
 -- TODO: Could we provide instances for the @generics-sop@ type classes?
 -- Might lessen the pain of switching between the two or using both?
 module Data.Record.Generic.Rep (
+    Rep(..) -- TODO: Make opaque?
     -- * "Functor"
-    map
+  , map
   , mapM
   , cmap
   , cmapM
@@ -39,7 +40,9 @@ module Data.Record.Generic.Rep (
     -- * Array-like interface
   , Index -- opaque
   , indexToInt
-  , getByIndex
+  , getAtIndex
+  , putAtIndex
+  , updateAtIndex
   , allIndices
   , mapWithIndex
   ) where
@@ -80,8 +83,20 @@ newtype Index a x = UnsafeIndex Int
 indexToInt :: Index a x -> Int
 indexToInt (UnsafeIndex ix) = ix
 
-getByIndex :: Index a x -> Rep f a -> f x
-getByIndex (UnsafeIndex ix) (Rep v) = unsafeCoerce $ V.unsafeIndex v ix
+getAtIndex :: Index a x -> Rep f a -> f x
+getAtIndex (UnsafeIndex ix) (Rep v) =
+    unsafeCoerce $ V.unsafeIndex v ix
+
+putAtIndex :: Index a x -> f x -> Rep f a -> Rep f a
+putAtIndex (UnsafeIndex ix) x (Rep v) = Rep $
+    V.unsafeUpd v [(ix, unsafeCoerce x)]
+
+updateAtIndex ::
+     Functor m
+  => Index a x
+  -> (f x -> m (f x))
+  -> Rep f a -> m (Rep f a)
+updateAtIndex ix f a = (\x -> putAtIndex ix x a) <$> f (getAtIndex ix a)
 
 allIndices :: forall a. Generic a => Rep (Index a) a
 allIndices = Rep $ V.generate (recordSize (metadata (Proxy @a))) UnsafeIndex
@@ -98,8 +113,7 @@ mapWithIndex ::
 mapWithIndex f as = map' f' allIndices
   where
     f' :: Index a x -> g x
-    f' ix = f ix (getByIndex ix as)
-
+    f' ix = f ix (getAtIndex ix as)
 compileToHere -- ===============================================================
 
 {-------------------------------------------------------------------------------
@@ -123,7 +137,7 @@ ap :: forall f g a. Generic a => Rep (f -.-> g) a -> Rep f a -> Rep g a
 ap fs as = mapWithIndex f' fs
   where
     f' :: Index a x -> (-.->) f g x -> g x
-    f' ix f = f `apFn` getByIndex ix as
+    f' ix f = f `apFn` getAtIndex ix as
 
 compileToHere -- ===============================================================
 

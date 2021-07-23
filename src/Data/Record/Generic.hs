@@ -8,7 +8,7 @@
 module Data.Record.Generic (
     -- * Types with a generic view
     Generic(..)
-  , Rep(..)
+  , Rep(..) -- TODO: Make opaque?
     -- * Metadata
   , Metadata(..)
   , FieldStrictness(..)

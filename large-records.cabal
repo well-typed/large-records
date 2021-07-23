@@ -15,6 +15,7 @@ library
                         Data.Record.Generic.Eq
                         Data.Record.Generic.GHC
                         Data.Record.Generic.JSON
+                        Data.Record.Generic.Lens.Micro
                         Data.Record.Generic.LowerBound
                         Data.Record.Generic.Rep
                         Data.Record.Generic.Rep.Internal
@@ -45,6 +46,7 @@ library
                       , generics-sop
                       , haskell-src-exts
                       , haskell-src-meta
+                      , microlens
                       , mtl
                       , record-hasfield
                       , sop-core
@@ -75,6 +77,7 @@ test-suite test-large-records
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.HKD
                         Test.Record.Sanity.Laziness
+                        Test.Record.Sanity.Lens.Micro
                         Test.Record.Sanity.OverloadingNoDRF
                         Test.Record.Sanity.PatternMatch
                         Test.Record.Sanity.QualifiedImports
@@ -98,6 +101,7 @@ test-suite test-large-records
                       , ghc-dump-core
                       , large-records
                       , newtype
+                      , microlens
                       , mtl
                       , record-dot-preprocessor
                       , record-hasfield

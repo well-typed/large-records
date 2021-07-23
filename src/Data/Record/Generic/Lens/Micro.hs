@@ -6,14 +6,19 @@ module Data.Record.Generic.Lens.Micro (
     -- * Lenses into a large record
     MicroLens(..)
   , glenses
-    -- Low level: lenses into 'Rep'
+    -- * Low level: lenses into 'Rep'
   , RepLens(..)
   , repLenses
+    -- * Specific lenses
+  , genericLens
+  , normalForm1Lens
+  , interpretedLens
   ) where
 
 import Lens.Micro (Lens')
 
 import Data.Record.Generic
+import Data.Record.Generic.Transform
 
 import qualified Data.Record.Generic.Rep as Rep
 
@@ -55,4 +60,18 @@ repLenses = Rep.map aux Rep.allIndices
     aux :: Rep.Index a x -> RepLens f a x
     aux ix = RepLens $ Rep.updateAtIndex ix
 
+{-------------------------------------------------------------------------------
+  Specific lenses
+-------------------------------------------------------------------------------}
 
+genericLens :: Generic a => Lens' a (Rep I a)
+genericLens f a = to <$> f (from a)
+
+normalForm1Lens ::
+     HasNormalForm (d f) (x f) (x Uninterpreted)
+  => Proxy d
+  -> Lens' (Rep I (x f)) (Rep (Interpret (d f)) (x Uninterpreted))
+normalForm1Lens p f a = denormalize1 p <$> f (normalize1 p a)
+
+interpretedLens :: Lens' (Interpret d x) (Interpreted d x)
+interpretedLens f (Interpret x) = Interpret <$> f x

@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 {-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
-{-# OPTIONS_GHC -ddump-splices #-}
+-- {-# OPTIONS_GHC -ddump-splices #-}
 {-# OPTIONS_GHC -Wwarn #-}
 
 module Test.Record.Sanity.RecordConstruction (tests) where

@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase       #-}
 {-# LANGUAGE RecordWildCards  #-}
 {-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE TupleSections    #-}
 
 -- | Code generation
 module Data.Record.TH.CodeGen (largeRecord, endOfBindingGroup) where
@@ -134,6 +135,7 @@ genAll opts@Options{..} r = concatM $ [
 -- Generates something like
 --
 -- > newtype T a b = TFromVector {vectorFromT :: Vector Any}
+-- >   deriving anyclass C -- where applicable
 genNewtype :: Options -> Record -> Q Dec
 genNewtype opts r@Record{..} =
     N.newtypeD
@@ -145,7 +147,10 @@ genNewtype opts r@Record{..} =
            N.varBangType (nameRecordInternalField opts r) $
              bangType (return DefaultBang) [t| Vector Any |]
          ])
-      []
+      (map anyclassDerivClause recordAnyclass)
+  where
+    anyclassDerivClause :: Type -> DerivClauseQ
+    anyclassDerivClause clss = derivClause (Just AnyclassStrategy) [pure clss]
 
 {-------------------------------------------------------------------------------
   Generation: field accessors
@@ -163,6 +168,7 @@ genNewtype opts r@Record{..} =
 --
 -- > unsafeGetIndexT :: forall x a b. Int -> T a b -> x
 -- > unsafeGetIndexT = \ n t -> noInlineUnsafeCo (V.unsafeIndex (vectorFromT t) n)
+
 genIndexedAccessor :: Options -> Record -> Q [Dec]
 genIndexedAccessor opts r@Record{..} = do
     x <- newName "x"
@@ -558,6 +564,9 @@ genInstanceConstraints opts r@Record{..} = tySynInstD $
 -- >   , recordConstructor = "MkT"
 -- >   , recordFieldNames  = unsafeFromListK ["tWord", "tBool", "tChar", "tA", "tListB"]
 -- >   }
+--
+-- TODO: The above comment ^^^ is out of date, we generate more type-level stuff
+-- now.
 genMetadata :: Options -> Record -> Q Exp
 genMetadata Options{..} Record{..} = do
     p <- newName "_p"
@@ -603,10 +612,9 @@ genMetadata Options{..} Record{..} = do
 -- TODO: Think about DeriveFunctor?
 genDeriving :: Options -> Record -> Deriving -> Q Dec
 genDeriving opts r@Record{..} = \case
-    DeriveEq   -> inst ''Eq   '(==)      'geq
-    DeriveOrd  -> inst ''Ord  'compare   'gcompare
-    DeriveShow -> inst ''Show 'showsPrec 'gshowsPrec
-    DeriveStrategy s t -> strategic t s
+    DeriveEq    -> inst ''Eq   '(==)      'geq
+    DeriveOrd   -> inst ''Ord  'compare   'gcompare
+    DeriveShow  -> inst ''Show 'showsPrec 'gshowsPrec
   where
     inst :: Name -> Name -> Name -> Q Dec
     inst clss fn gfn =
@@ -614,14 +622,6 @@ genDeriving opts r@Record{..} = \case
           (genRequiredConstraints opts r (conT clss))
           [t| $(conT clss) $(recordTypeT opts r) |]
           [valD (varP fn) (normalB (varE gfn)) []]
-
-    -- Build standalone deriving statement, like
-    -- `deriving instance anyclass (Newtype R1) R1`
-    strategic :: Type -> DerivStrategy -> Q Dec
-    strategic t s = do
-      cxt' <- cxt []
-      r' <- recordTypeT opts r
-      pure $ StandaloneDerivD (Just s) cxt' (AppT t r')
 
 -- | Generate definition for `from` in the `Generic` instance
 --
@@ -682,6 +682,7 @@ genGenericInstance opts r@Record{..} = concatM [
 -- >   to   = unwrapThroughLRGenerics
 --
 -- See 'ThroughLRGenerics' for documentation.
+
 genGhcGenericsInstances :: Options -> Record -> Q [Dec]
 genGhcGenericsInstances opts r = sequenceA [
       instanceD

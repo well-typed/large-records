@@ -25,6 +25,7 @@ import Data.Record.TH.CodeGen.TH
 import Data.Record.TH.CodeGen.Util
 
 import qualified Data.Record.TH.CodeGen.Name as N
+import Data.Either (partitionEithers)
 
 {-------------------------------------------------------------------------------
   View
@@ -62,8 +63,16 @@ data Record = Record {
       -- | The fields in the record
     , recordFields :: [Field]
 
-      -- | The type class instances that should be derived
+      -- | Explicitly supported type class instances
     , recordDeriv :: [Deriving]
+
+      -- | Anyclass deriving
+      --
+      -- We list these separately, because we need to add these as anyclass
+      -- deriving classes when defining the newtype, rather than as standalone
+      -- deriving instances. (If we don't, we need to duplicate ghc's logic for
+      -- figuring out how many parameters to provide to the datatype.)
+    , recordAnyclass :: [Type]
     }
   deriving (Show)
 
@@ -88,7 +97,6 @@ data Deriving =
     DeriveEq
   | DeriveOrd
   | DeriveShow
-  | DeriveStrategy DerivStrategy Type
   deriving (Show)
 
 {-------------------------------------------------------------------------------
@@ -101,35 +109,39 @@ data Deriving =
 -- we can report multiple errors rather than stopping at the first.
 matchRecord :: Dec -> Q (Maybe Record)
 matchRecord (DataD
-          _cxt@[]
-          typeName
-          tyVarBndrs
-          _kind@Nothing
-          [RecC constrName fields]
-          derivClauses
-       ) = fmap Just $
-        Record
-    <$> pure (N.TypeName $ N.fromName' typeName)
-    <*> pure tyVarBndrs
-    <*> pure (N.ConstrName $ N.fromName' constrName)
-    <*> (catMaybes <$> mapM matchField (zip [0..] fields))
-    <*> concatMapM matchDeriv derivClauses
+               _cxt@[]
+               typeName
+               tyVarBndrs
+               _kind@Nothing
+               [RecC constrName fieldTypes]
+               derivClauses
+            ) = do
+    fields <- catMaybes <$> mapM matchField (zip [0..] fieldTypes)
+    (deriv, anyclass) <- partitionEithers <$> concatMapM matchDeriv derivClauses
+    return $ Just Record {
+        recordUnqual   = N.TypeName $ N.fromName' typeName
+      , recordTVars    = tyVarBndrs
+      , recordConstr   = N.ConstrName $ N.fromName' constrName
+      , recordFields   = fields
+      , recordDeriv    = deriv
+      , recordAnyclass = anyclass
+      }
 matchRecord d = do
     reportError $ "Unsupported declaration: " ++ show d
     return Nothing
 
 -- | Support deriving clauses
 --
--- TODO: We'll want to support some additional built-in classes probably,
--- and we can for sure support 'DeriveAnyClass' style derivation.
-matchDeriv :: DerivClause -> Q [Deriving]
+-- We return the anyclass deriving clauses separately.
+-- See 'recordAnyclass' for more details.
+matchDeriv :: DerivClause -> Q [Either Deriving Type]
 matchDeriv = \case
     DerivClause Nothing cs ->
-      derivStock cs
+      map Left <$> derivStock cs
     DerivClause (Just StockStrategy) cs ->
-      derivStock cs
+      map Left <$> derivStock cs
     DerivClause (Just AnyclassStrategy) cs ->
-      pure $ map (DeriveStrategy AnyclassStrategy) cs
+      return $ map Right cs
     DerivClause strategy _ -> do
       reportError $ "Unsupported deriving strategy " ++ show strategy
       return []

@@ -141,8 +141,8 @@ construct = \case
     mkArg :: Field Exp -> Q Exp
     mkArg Field{..}
       | Just dec <- fieldDec = return dec
-      | otherwise            = [| undefined |]
-
+      | otherwise = [| error $ "No value given for field "
+                           ++ $(N.termLevelMetadata fieldUnqual) |]
 
 {-------------------------------------------------------------------------------
   Deconstruction
@@ -162,7 +162,7 @@ deconstruct = \pat -> do
            Just Record{..} ->
              viewP (varE 'matchHasField) $
                mkTupleP (uncurry mkPat) $
-                 nest (mapMaybe getPat recordFields)
+                 nest (MaxTupleElems 2) (mapMaybe getPat recordFields)
 
     getPat :: Field Pat -> Maybe (FieldName, Pat)
     getPat Field{..} = (fieldUnqual, ) <$> fieldDec

@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds         #-}
 {-# LANGUAGE DataKinds               #-}
+{-# LANGUAGE DefaultSignatures       #-}
 {-# LANGUAGE FlexibleContexts        #-}
 {-# LANGUAGE FlexibleInstances       #-}
 {-# LANGUAGE KindSignatures          #-}
@@ -38,8 +39,13 @@ module Data.Record.Generic.Transform (
   , DefaultInterpretation
   , normalize1
   , denormalize1
+    -- ** Generalization of the default interpretation
+  , StandardInterpretation(..)
+  , toStandardInterpretation
+  , fromStandardInterpretation
   ) where
 
+import Data.Coerce
 import Data.Kind
 import Data.Proxy
 import Data.SOP.BasicFunctors
@@ -131,3 +137,38 @@ denormalize1 :: forall d f x.
   => Proxy d
   -> Rep (Interpret (d f)) (x Uninterpreted) -> Rep I (x f)
 denormalize1 _ = denormalize (Proxy @(d f)) (Proxy @(x Uninterpreted))
+
+{-------------------------------------------------------------------------------
+  Generalization of the default interpretation
+-------------------------------------------------------------------------------}
+
+class StandardInterpretation d f where
+  standardInterpretation ::
+       Proxy d
+    -> ( Interpreted (d f) (Uninterpreted x) -> f x
+       , f x -> Interpreted (d f) (Uninterpreted x)
+       )
+
+  default standardInterpretation ::
+       Coercible (Interpreted (d f) (Uninterpreted x)) (f x)
+    => Proxy d
+    -> ( Interpreted (d f) (Uninterpreted x) -> f x
+       , f x -> Interpreted (d f) (Uninterpreted x)
+       )
+  standardInterpretation _ = (coerce, coerce)
+
+instance StandardInterpretation DefaultInterpretation f
+
+toStandardInterpretation :: forall d f x.
+     StandardInterpretation d f
+  => Proxy d
+  -> f x -> Interpret (d f) (Uninterpreted x)
+toStandardInterpretation d fx = Interpret $
+    snd (standardInterpretation d) fx
+
+fromStandardInterpretation :: forall d f x.
+     StandardInterpretation d f
+  => Proxy d
+  -> Interpret (d f) (Uninterpreted x) -> f x
+fromStandardInterpretation d (Interpret fx) =
+    fst (standardInterpretation d) fx

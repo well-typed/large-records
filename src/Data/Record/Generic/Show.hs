@@ -22,17 +22,17 @@ gshowsPrec :: forall a. (Generic a, Constraints a Show) => Int -> a -> ShowS
 gshowsPrec d =
       aux
     . Rep.collapse
-    . Rep.czipWith (Proxy @Show) showField recordFieldNames
+    . Rep.czipWith (Proxy @Show) showField (recordFieldNames md)
     . from
   where
-    Metadata{..} = metadata (Proxy @a)
+    md = metadata (Proxy @a)
 
     showField :: Show x => K String x -> I x -> K ShowS x
     showField (K n) (I x) = K $ showString n . showString " = " . showsPrec 0 x
 
     aux :: [ShowS] -> ShowS
     aux fields = showParen (d >= 11) (
-          showString recordName . showString " {"
+          showString (recordConstructor md) . showString " {"
         . foldr (.) id (intersperse showCommaSpace fields)
         . showString "}"
         )

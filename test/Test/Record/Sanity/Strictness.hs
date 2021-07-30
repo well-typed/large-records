@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-{-# OPTIONS_GHC -ddump-splices -ddump-simpl #-}
+-- {-# OPTIONS_GHC -ddump-splices -ddump-simpl #-}
 
 module Test.Record.Sanity.Strictness (tests) where
 

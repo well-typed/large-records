@@ -22,23 +22,24 @@ gtoJSON :: forall a. (Generic a, Constraints a ToJSON) => a -> Value
 gtoJSON =
       object
     . Rep.collapse
-    . Rep.zipWith (mapKKK $ \n x -> (Text.pack n, x)) recordFieldNames
+    . Rep.zipWith (mapKKK $ \n x -> (Text.pack n, x)) (recordFieldNames md)
     . Rep.cmap (Proxy @ToJSON) (K . toJSON . unI)
     . from
   where
-    Metadata{..} = metadata (Proxy @a)
+    md = metadata (Proxy @a)
 
 gparseJSON :: forall a. (Generic a, Constraints a FromJSON) => Value -> Parser a
-gparseJSON = withObject recordName (fmap to . Rep.sequenceA . aux)
+gparseJSON =
+    withObject (recordName md) (fmap to . Rep.sequenceA . aux)
   where
-    Metadata{..} = metadata (Proxy @a)
+    md = metadata (Proxy @a)
 
     aux :: Object -> Rep (Parser :.: I) a
     aux obj =
         Rep.cmap
           (Proxy @FromJSON)
           (\(K fld) -> Comp (I <$> getField fld))
-          recordFieldNames
+          (recordFieldNames md)
       where
         getField :: FromJSON x => String -> Parser x
         getField fld = obj .: Text.pack fld

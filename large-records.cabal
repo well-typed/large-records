@@ -13,9 +13,12 @@ extra-source-files: CHANGELOG.md
 library
     exposed-modules:    Data.Record.Generic
                         Data.Record.Generic.Eq
+                        Data.Record.Generic.GHC
                         Data.Record.Generic.JSON
+                        Data.Record.Generic.Lens.Micro
                         Data.Record.Generic.LowerBound
                         Data.Record.Generic.Rep
+                        Data.Record.Generic.Rep.Internal
                         Data.Record.Generic.Show
                         Data.Record.Generic.SOP
                         Data.Record.Generic.Transform
@@ -43,6 +46,7 @@ library
                       , generics-sop
                       , haskell-src-exts
                       , haskell-src-meta
+                      , microlens
                       , mtl
                       , record-hasfield
                       , sop-core
@@ -66,11 +70,18 @@ library
 test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
-    other-modules:      Test.Record.Prop.ToFromJSON
-                        Test.Record.Sanity.Generics
+    other-modules:      Test.Record.Prop.Show
+                        Test.Record.Prop.Show.Regular
+                        Test.Record.Prop.Show.Large
+                        Test.Record.Prop.ToFromJSON
                         Test.Record.Sanity.Derive
+                        Test.Record.Sanity.EqualFieldTypes
+                        Test.Record.Sanity.Generics
+                        Test.Record.Sanity.GhcGenerics
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.HKD
+                        Test.Record.Sanity.Laziness
+                        Test.Record.Sanity.Lens.Micro
                         Test.Record.Sanity.OverloadingNoDRF
                         Test.Record.Sanity.PatternMatch
                         Test.Record.Sanity.QualifiedImports
@@ -89,10 +100,12 @@ test-suite test-large-records
                       , aeson
                       , generics-sop
                       , json-sop
+                      , generic-deriving
                        -- TODO: Remove:
                       , ghc-dump-core
                       , large-records
                       , newtype
+                      , microlens
                       , mtl
                       , record-dot-preprocessor
                       , record-hasfield

@@ -6,7 +6,10 @@
 {-# LANGUAGE TupleSections    #-}
 
 -- | Code generation
-module Data.Record.TH.CodeGen (largeRecord, endOfBindingGroup) where
+module Data.Record.TH.CodeGen (
+    largeRecord
+  , endOfBindingGroup
+  ) where
 
 import Data.List (nub)
 import Data.Maybe (catMaybes)

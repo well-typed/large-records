@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE ParallelListComp    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
@@ -13,17 +12,23 @@ module Data.Record.QQ.CodeGen.View (
     Record(..)
   , Field(..)
     -- * Constructing the view
+  , MatchedRecord(..)
   , matchRecordExp
   , matchRecordPat
     -- * Lower-level API
   , resolveConstr
   ) where
 
-import Data.Map (Map)
 import Control.Monad.Except
+import Control.Monad.State
+import Data.List (sortBy)
+import Data.Map (Map)
+import Data.Ord (comparing)
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
 
-import qualified Data.Map as Map
+import qualified Data.Map            as Map
+import qualified Data.Map.Merge.Lazy as Map
 
 import Data.Record.QQ.CodeGen.Metadata
 import Data.Record.TH.CodeGen.Name (TypeName, ConstrName, FieldName)
@@ -54,45 +59,87 @@ data Field a = Field {
   Constructing the view
 -------------------------------------------------------------------------------}
 
-matchRecordExp :: Exp -> Q (Maybe (Record Exp))
-matchRecordExp = matchRecord <=< termExp
+matchRecordExp :: Quasi m => Exp -> m (Maybe (MatchedRecord Exp))
+matchRecordExp = traverse matchRecord <=< termExp
 
-matchRecordPat :: Pat -> Q (Maybe (Record Pat))
-matchRecordPat = matchRecord <=< termPat
+matchRecordPat :: Quasi m => Pat -> m (Maybe (MatchedRecord Pat))
+matchRecordPat = traverse matchRecord <=< termPat
 
+data MatchedRecord a =
+    -- | The pattern/value we matched against is not a (known) large record
+    NotKnownLargeRecord
+
+    -- | The pattern/value has fields not present in the record definition
+  | UnknownFields [FieldName]
+
+    -- | Successfully matched against a known large records
+    --
+    -- Note that not all fields may have a corresponding value/pattern.
+  | MatchedRecord (Record a)
+
+-- | Try to match a pattern or expression against a (large) record
 matchRecord ::
-     forall a.
-     Maybe (ConstrName 'N.Global, [(FieldName, a)])
-  -> Q (Maybe (Record a))
-matchRecord Nothing =
-    -- Not a record term/pattern
-    return Nothing
-matchRecord (Just (constr, fields)) = do
+     forall m a. Quasi m
+  => (ConstrName 'N.Global, [(FieldName, a)])
+  -> m (MatchedRecord a)
+matchRecord (constr, fields) = do
     mMetadata <- runExceptT $ getTypeLevelMetadata constr
     case mMetadata of
       Left _err ->
-        -- If we can't find any metadata, assume it's a regular record
-        -- rather than a @large-records@ record, and return 'Nothing'
-        return Nothing
+        return NotKnownLargeRecord
       Right (rType, (tyVars, fieldTypes)) ->
-        return $ Just Record {
-            recordUnqual = rType
-          , recordTVars  = tyVars
-          , recordConstr = constr
-          , recordFields = [
-                Field {
-                    fieldUnqual = fName
-                  , fieldType   = fType
-                  , fieldIndex  = ix
-                  , fieldDec    = Map.lookup fName fields'
-                  }
-              | (fName, fType) <- fieldTypes
-              | ix <- [0..]
-              ]
-          }
+        return $
+          case go rType tyVars fieldTypes of
+            (r, [])      -> MatchedRecord r
+            (_, unknown) -> UnknownFields unknown
   where
-    fields' :: Map FieldName a
-    fields' = Map.fromList fields
+    go :: TypeName 'N.Global
+       -> [TyVarBndr]
+       -> [(FieldName, Type)]
+       -> (Record a, [FieldName])
+    go rType tyVars fieldTypes = (
+          Record {
+              recordUnqual = rType
+            , recordTVars  = tyVars
+            , recordConstr = constr
+            , recordFields = sortBy (comparing fieldIndex) [
+                  Field {
+                      fieldUnqual = fName
+                    , fieldType   = fType
+                    , fieldIndex  = ix
+                    , fieldDec    = fVal
+                    }
+                | (fName, (fType, ix, fVal)) <- Map.toList matched
+                ]
+            }
+        , unknown
+        )
+      where
+        expected :: Map FieldName (Type, Int)
+        expected = Map.fromList $
+            zipWith (\(nm, typ) ix -> (nm, (typ, ix))) fieldTypes [0..]
+
+        actual :: Map FieldName a
+        actual = Map.fromList fields
+
+        matched :: Map FieldName (Type, Int, Maybe a)
+        unknown :: [FieldName]
+        (matched, unknown) = flip runState [] $
+            Map.mergeA
+              (Map.traverseMissing      fieldMissing)
+              (Map.traverseMaybeMissing fieldUnknown)
+              (Map.zipWithAMatched      fieldPresent)
+              expected
+              actual
+
+    fieldPresent :: FieldName -> (Type, Int) -> a -> State [FieldName] (Type, Int, Maybe a)
+    fieldPresent _nm (typ, ix) val = return (typ, ix, Just val)
+
+    fieldMissing :: FieldName -> (Type, Int) -> State [FieldName] (Type, Int, Maybe a)
+    fieldMissing _nm (typ, ix) = return (typ, ix, Nothing)
+
+    fieldUnknown :: FieldName -> a -> State [FieldName] (Maybe (Type, Int, Maybe a))
+    fieldUnknown nm _val = modify (nm:) >> return Nothing
 
 {-------------------------------------------------------------------------------
   Match against the syntax tree generated by @haskell-src-exts@
@@ -107,21 +154,25 @@ matchRecord (Just (constr, fields)) = do
 -- The name we get from @haskell-src-meta@ will have a dynamic flavour (in
 -- other words, will not have been through the renamer), and so we must resolve
 -- it here.
-resolveConstr :: Name -> Q (ConstrName 'N.Global)
+resolveConstr :: Quasi m => Name -> m (ConstrName 'N.Global)
 resolveConstr n = do
     mConstr <- N.lookupName (N.ConstrName (N.fromName' n))
     case mConstr of
       Nothing      -> fail $ "resolveConstr: " ++ show n ++ " not in scope"
       Just constr' -> return constr'
 
-termExp :: Exp -> Q (Maybe (ConstrName 'N.Global, [(FieldName, Exp)]))
+termExp ::
+     Quasi m
+  => Exp -> m (Maybe (ConstrName 'N.Global, [(FieldName, Exp)]))
 termExp (RecConE constr fields) = do
     constr' <- resolveConstr constr
     return $ Just (constr', map matchField fields)
 termExp _otherwise =
    return Nothing
 
-termPat :: Pat -> Q (Maybe (ConstrName 'N.Global, [(FieldName, Pat)]))
+termPat ::
+     Quasi m
+  => Pat -> m (Maybe (ConstrName 'N.Global, [(FieldName, Pat)]))
 termPat (RecP constr fields) = do
     constr' <- resolveConstr constr
     return $ Just (constr', map matchField fields)
@@ -130,3 +181,4 @@ termPat _otherwise =
 
 matchField :: (Name, a) -> (FieldName, a)
 matchField (name, a) = (N.FieldName (N.OverloadedName (nameBase name)), a)
+

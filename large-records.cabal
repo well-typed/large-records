@@ -76,6 +76,8 @@ test-suite test-large-records
                         Test.Record.Prop.ToFromJSON
                         Test.Record.Sanity.Derive
                         Test.Record.Sanity.EqualFieldTypes
+                        Test.Record.Sanity.ErrorsAndWarnings
+                        Test.Record.Sanity.ErrorsAndWarnings.Stage1
                         Test.Record.Sanity.Generics
                         Test.Record.Sanity.GhcGenerics
                         Test.Record.Sanity.HigherKinded
@@ -95,6 +97,7 @@ test-suite test-large-records
                         Test.Record.Size.Before.R010
                         Test.Record.Size.Infra
                         Test.Record.Size.Sanity
+                        Test.Record.Util
 
     build-depends:      base
                       , aeson
@@ -114,6 +117,7 @@ test-suite test-large-records
                       , tasty-hunit
                       , tasty-quickcheck
                       , template-haskell
+                      , transformers
                       , vector
                       , QuickCheck
     build-tool-depends: record-dot-preprocessor:record-dot-preprocessor

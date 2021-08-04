@@ -55,14 +55,6 @@ outOfOrder = [lr| MkR { y = [True], x = 1234 } |]
 constructorApp :: R Bool
 constructorApp = [lr| MkR |] 1234 [True]
 
--- Results in "Unexpected fields" error
--- extraFields :: R
--- extraFields = [lr| MkR { x = 1234, y = True, z = () } |]
-
--- But this works (with a warning)
-missingFields :: R Bool
-missingFields = [lr| MkR { x = 1234 } |]
-
 valueOfS :: S Bool
 valueOfS = [lr| S { x = 1234, y = [True] } |]
 
@@ -97,9 +89,8 @@ tests = testGroup "Test.Record.Sanity.RecordConstruction" [
 
 testAllEqual :: Assertion
 testAllEqual = do
-    assertEqual "inOrder/outOfOrder"    inOrder.x  outOfOrder.x
-    assertEqual "inOrder/withoutQQ"     inOrder.x  constructorApp.x
-    assertEqual "inOrder/missingFields" inOrder.x  missingFields.x
-    assertEqual "R/S"                   inOrder.x  valueOfS.x
-    assertEqual "T/S"                   valueOfT.y valueOfS
-    assertEqual "T/R"                   valueOfT.z (RR 5)
+    assertEqual "inOrder/outOfOrder" inOrder.x  outOfOrder.x
+    assertEqual "inOrder/withoutQQ"  inOrder.x  constructorApp.x
+    assertEqual "R/S"                inOrder.x  valueOfS.x
+    assertEqual "T/S"                valueOfT.y valueOfS
+    assertEqual "T/R"                valueOfT.z (RR 5)

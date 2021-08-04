@@ -26,6 +26,7 @@ module Data.Record.TH.CodeGen.TH (
 import Control.Monad
 import Data.List (intercalate)
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
 
 import qualified Data.Vector as V
 
@@ -126,8 +127,8 @@ pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
 --
 -- To improve user experience, we report all missing extensions at once (rather
 -- than giving an error for the first missing one).
-requiresExtensions :: [Extension] -> Q ()
-requiresExtensions exts = do
+requiresExtensions :: Quasi m => [Extension] -> m ()
+requiresExtensions exts = runQ $ do
     disabled <- filterM (fmap not . isExtEnabled) exts
     unless (null disabled) $ do
       fail $ "Please enable " ++ intercalate ", " (map show disabled)

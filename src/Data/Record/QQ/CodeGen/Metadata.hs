@@ -1,6 +1,7 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections   #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TupleSections       #-}
 
 -- | Deal with the type-level metadata
 module Data.Record.QQ.CodeGen.Metadata (
@@ -11,6 +12,7 @@ module Data.Record.QQ.CodeGen.Metadata (
 import Control.Monad.Except
 import Data.Maybe (fromMaybe)
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
 
 import qualified Control.Monad.Except as Except
 
@@ -30,9 +32,10 @@ import qualified Data.Record.TH.CodeGen.Name as N
 -- 'Options', so this must work without options.
 --
 -- 'Nothing' if this wasn't a type created using @large-records@.
-getTypeLevelMetadata ::
-     ConstrName 'N.Global
-  -> ExceptT String Q (TypeName 'N.Global, ([TyVarBndr], [(FieldName, Type)]))
+getTypeLevelMetadata :: forall m.
+     Quasi m
+  => ConstrName 'N.Global
+  -> ExceptT String m (TypeName 'N.Global, ([TyVarBndr], [(FieldName, Type)]))
 getTypeLevelMetadata constr = do
     parent    <- Except.lift (N.reify constr) >>= getDataConParent
     saturated <- Except.lift (N.reify parent) >>= getSaturatedType
@@ -42,16 +45,16 @@ getTypeLevelMetadata constr = do
     saturate :: Name -> [TyVarBndr] -> Type
     saturate n = foldl (\t v -> t `AppT` VarT (tyVarName v)) (ConT n)
 
-    getMetadataInstance :: Type -> Q [InstanceDec]
-    getMetadataInstance = reifyInstances ''MetadataOf . (:[])
+    getMetadataInstance :: Type -> m [InstanceDec]
+    getMetadataInstance = runQ . reifyInstances ''MetadataOf . (:[])
 
-    getSaturatedType :: Info -> ExceptT String Q Type
+    getSaturatedType :: Info -> ExceptT String m Type
     getSaturatedType (TyConI (NewtypeD [] nm tyVars _kind _con _deriv)) =
         return $ saturate nm tyVars
     getSaturatedType i =
         unexpected i "newtype"
 
-    getDataConParent :: Info -> ExceptT String Q (TypeName 'N.Global)
+    getDataConParent :: Info -> ExceptT String m (TypeName 'N.Global)
     getDataConParent (DataConI _ _ parent) =
         return $ N.TypeName $ N.fromName' parent
     getDataConParent i =
@@ -59,13 +62,13 @@ getTypeLevelMetadata constr = do
 
     parseTySynInst ::
          [InstanceDec]
-      -> ExceptT String Q ([TyVarBndr], [(FieldName, Type)])
+      -> ExceptT String m ([TyVarBndr], [(FieldName, Type)])
     parseTySynInst [TySynInstD (TySynEqn vars _lhs rhs)] =
         (fromMaybe [] vars, ) <$> parseList rhs
     parseTySynInst is =
         unexpected is "type instance"
 
-    parseList :: Type -> ExceptT String Q [(FieldName, Type)]
+    parseList :: Type -> ExceptT String m [(FieldName, Type)]
     parseList (AppT (AppT PromotedConsT t) ts) =
         (:) <$> parseTuple t <*> parseList ts
     parseList PromotedNilT =
@@ -74,12 +77,12 @@ getTypeLevelMetadata constr = do
         parseList t
     parseList t = unexpected t "list"
 
-    parseTuple :: Type -> ExceptT String Q (FieldName, Type)
+    parseTuple :: Type -> ExceptT String m (FieldName, Type)
     parseTuple (AppT (AppT (PromotedTupleT 2) (LitT (StrTyLit f))) t) =
         return (N.FieldName (N.OverloadedName f), t)
     parseTuple t = unexpected t "tuple"
 
-    unexpected :: Show a => a -> String -> ExceptT String Q b
+    unexpected :: Show a => a -> String -> ExceptT String m b
     unexpected actual expected = throwError $ concat [
           "Unexpected "
         , show actual

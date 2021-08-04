@@ -25,6 +25,7 @@ module Data.Record.TH.CodeGen.Name (
   , SFlavour(..)
   , IsFlavour(..)
     -- ** Conversion
+  , ShowName(..)
   , fromName
   , fromName'
   , toName
@@ -62,6 +63,7 @@ module Data.Record.TH.CodeGen.Name (
 import Data.Kind
 import Data.Maybe (fromMaybe)
 import Language.Haskell.TH (Q)
+import Language.Haskell.TH.Syntax (Quasi, runQ)
 
 import qualified Language.Haskell.TH.Syntax as TH
 import qualified Language.Haskell.TH.Lib    as TH
@@ -142,6 +144,13 @@ instance IsFlavour 'Global  where isFlavour = SGlobal
   Conversion
 -------------------------------------------------------------------------------}
 
+class ShowName n where
+  -- User-friendly representation of the name
+  showName :: n -> String
+
+instance ShowName String where
+  showName = id
+
 toFlavourF :: SFlavour flavour -> TH.NameFlavour -> Maybe (NameFlavour flavour)
 toFlavourF SDynamic (TH.NameS)       = Just $ NameDynamic Nothing
 toFlavourF SDynamic (TH.NameQ m)     = Just $ NameDynamic (Just m)
@@ -199,6 +208,7 @@ newtype OverloadedName = OverloadedName {
       getOverloadedName :: String
     }
   deriving (Show, Eq, Ord)
+  deriving ShowName via String
 
 class FromOverloaded n where
   -- | Construct 'Name' from an 'OverloadedName'
@@ -234,33 +244,33 @@ newtype FieldName = FieldName {
       getFieldName :: OverloadedName
     }
   deriving (Show, Eq, Ord)
-  deriving (FromOverloaded, Fresh) via OverloadedName
+  deriving (FromOverloaded, Fresh, ShowName) via OverloadedName
 
 {-------------------------------------------------------------------------------
   Resolution
 -------------------------------------------------------------------------------}
 
 class LookupName (n :: Flavour -> Type) where
-  lookupName :: n 'Dynamic -> Q (Maybe (n 'Global))
+  lookupName :: Quasi m => n 'Dynamic -> m (Maybe (n 'Global))
 
 instance LookupName TypeName where
   lookupName (TypeName (Name occ (NameDynamic mMod))) =
       fmap (TypeName . fromName') <$>
-        TH.lookupTypeName (qualify mMod occ)
+        runQ (TH.lookupTypeName $ qualify mMod occ)
 
 instance LookupName ConstrName where
   lookupName (ConstrName (Name occ (NameDynamic mMod))) =
       fmap (ConstrName . fromName') <$>
-        TH.lookupValueName (qualify mMod occ)
+        runQ (TH.lookupValueName $ qualify mMod occ)
 
 class Reify (n :: Flavour -> Type) where
   -- | Get info about the given name
   --
   -- Only global names can be reified. See 'lookupName'.
-  reify :: n 'Global -> Q TH.Info
+  reify :: Quasi m => n 'Global -> m TH.Info
 
 instance Reify Name where
-  reify = TH.reify . toName
+  reify = runQ . TH.reify . toName
 
 {-------------------------------------------------------------------------------
   Construction

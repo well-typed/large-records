@@ -1,22 +1,17 @@
-{-# LANGUAGE CPP                #-}
-{-# LANGUAGE TemplateHaskell    #-}
--- {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 -- {-# OPTIONS_GHC -ddump-splices #-}
-
-#if PROFILE_GEN_CODE
-{-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
-#endif
 
 -- | Simple example of a type with a higher kind
 module Test.Record.Sanity.HigherKinded (

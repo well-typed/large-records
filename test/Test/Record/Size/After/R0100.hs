@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-#if PROFILE_GEN_CODE
+#if USE_GHC_DUMP
 {-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
 #endif
 

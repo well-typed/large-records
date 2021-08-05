@@ -94,6 +94,7 @@ test-suite test-large-records
                         Test.Record.Sanity.Transform
                         Test.Record.Size.After.HK010
                         Test.Record.Size.After.R0010
+                        Test.Record.Size.Before.Baseline
                         Test.Record.Size.Before.R010
                         Test.Record.Size.Infra
                         Test.Record.Size.Sanity
@@ -136,11 +137,11 @@ test-suite test-large-records
     if flag(profile-allzip)
       cpp-options: -DPROFILE_ALLZIP
 
-    -- We're mostly interested in compile time for -O0
-    if flag(profile-gen-code)
-      ghc-options:   -O0 -ddump-timings
-      cpp-options:   -DPROFILE_GEN_CODE
+    if flag(use-ghc-dump)
+      cpp-options: -DUSE_GHC_DUMP
       build-depends: ghc-dump-core
+
+    if flag(build-all-modules)
       other-modules: Test.Record.Size.After.HK020
                      Test.Record.Size.After.HK030
                      Test.Record.Size.After.HK040
@@ -178,8 +179,12 @@ test-suite test-large-records
                      Test.Record.Size.Before.R090
                      Test.Record.Size.Before.R100
 
-Flag profile-gen-code
-  Description: Enable to generate some statistics about the generated code
+Flag build-all-modules
+  Description: Build all test modules in Size
+  Default: False
+
+Flag use-ghc-dump
+  Description: use ghc-dump to output AST sizes
   Default: False
 
 Flag profile-allzip

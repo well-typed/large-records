@@ -1,0 +1,6 @@
+-- Available flags: build-all-modules, use-ghc-dump, profile-allzip 
+package large-records
+  flags: +use-ghc-dump +build-all-modules
+  -- flags: +build-all-modules
+  ghc-options: -O0
+  ghc-options: -Werror

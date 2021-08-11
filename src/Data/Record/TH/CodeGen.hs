@@ -8,7 +8,6 @@
 -- | Code generation
 module Data.Record.TH.CodeGen (
     largeRecord
-  , endOfBindingGroup
   ) where
 
 import Data.List (nub)
@@ -29,16 +28,18 @@ import Data.Record.Generic.Eq
 import Data.Record.Generic.GHC
 import Data.Record.Generic.Show
 
-import Data.Record.TH.CodeGen.TH
+import Data.Record.Internal.RecordInfo (fromRecordDef)
+import Data.Record.Internal.RecordDef
+import Data.Record.Internal.TH.Util
+import Data.Record.Internal.Util
+import Data.Record.Internal.RecordInfo.Resolution.Internal (putRecordInfo)
 import Data.Record.TH.CodeGen.Tree
-import Data.Record.TH.CodeGen.Util
-import Data.Record.TH.CodeGen.View
 import Data.Record.TH.Config.Naming
 import Data.Record.TH.Config.Options
 import Data.Record.TH.Runtime
 
 import qualified Data.Record.Generic.Rep.Internal as Rep
-import qualified Data.Record.TH.CodeGen.Name      as N
+import qualified Data.Record.Internal.TH.Name as N
 
 {-------------------------------------------------------------------------------
   Public API
@@ -54,65 +55,39 @@ import qualified Data.Record.TH.CodeGen.Name      as N
 -- >   |]
 largeRecord :: Options -> Q [Dec] -> Q [Dec]
 largeRecord opts decls = do
-    rs <- mapM matchRecord =<< decls
+    rs <- mapM parseRecordDef =<< decls
     concatMapM (genAll opts) (catMaybes rs)
-
--- | Tell @ghc@ that the end of a binding group was reached
---
--- @ghc@ type checks declarations in groups called "binding groups".
--- Unfortunately, that doesn't always work so well when TH is involved.
--- For example:
---
--- > largeRecord defaultPureScript [d|
--- >     data T a = MkT { x :: Int, y :: [a] }
--- >   |]
--- >
--- > endOfBindingGroup
--- >
--- > projectOne :: T Bool -> Int
--- > projectOne [lr| MkT { x = a } |] = a
---
--- Without the call to 'endOfBindingGroup' here, the definition of @projectOne@
--- will result in an error about some definitions (created by the call to
--- 'largeRecord') not being in scope.
---
--- Most of the time it should not be necessary to call this function.
--- In particular, if the definition of the record is in a different module,
--- calling this function is /definitely/ not required. Even if that is not the
--- case, however, most of the time this function is not needed, but the exact
--- conditions are then a bit harder to specify (it depends on @ghc@'s binding
--- group analysis).
-endOfBindingGroup :: Q [Dec]
-endOfBindingGroup = return []
 
 {-------------------------------------------------------------------------------
   Top-level
 -------------------------------------------------------------------------------}
 
 -- | Generate all definitions
-genAll :: Options -> Record -> Q [Dec]
-genAll opts@Options{..} r = concatM $ [
-      (:[]) <$> genNewtype opts r
-    , genIndexedAccessor   opts r
-    , genIndexedOverwrite  opts r
-    , when generateHasFieldInstances $ [
-          genHasFieldInstances opts r
-        ]
-      -- If we generate the pattern synonym, there is no need to generate
-      -- field accessors, because GHC will generate them from the synonym
-    , when (generateFieldAccessors && not generatePatternSynonym) $ [
-          genFieldAccessors opts r
-        ]
-    , when generateConstructorFn [
-          genConstructorFn opts r
-        ]
-    , when generatePatternSynonym $ [
-          genRecordView opts r
-        , genPatSynonym opts r
-        ]
-    , genGenericInstance opts r
-    , genGhcGenericsInstances opts r
-    ]
+genAll :: Options -> RecordDef -> Q [Dec]
+genAll opts@Options{..} r = do
+    putRecordInfo =<< fromRecordDef r
+    concatM $ [
+        (:[]) <$> genNewtype opts r
+      , genIndexedAccessor   opts r
+      , genIndexedOverwrite  opts r
+      , when generateHasFieldInstances $ [
+            genHasFieldInstances opts r
+          ]
+        -- If we generate the pattern synonym, there is no need to generate
+        -- field accessors, because GHC will generate them from the synonym
+      , when (generateFieldAccessors && not generatePatternSynonym) $ [
+            genFieldAccessors opts r
+          ]
+      , when generateConstructorFn [
+            genConstructorFn opts r
+          ]
+      , when generatePatternSynonym $ [
+            genRecordView opts r
+          , genPatSynonym opts r
+          ]
+      , genGenericInstance opts r
+      , genGhcGenericsInstances opts r
+      ]
   where
     when :: Bool -> [Q [Dec]] -> Q [Dec]
     when False _   = return []
@@ -139,18 +114,18 @@ genAll opts@Options{..} r = concatM $ [
 --
 -- > newtype T a b = TFromVector {vectorFromT :: Vector Any}
 -- >   deriving anyclass C -- where applicable
-genNewtype :: Options -> Record -> Q Dec
-genNewtype opts r@Record{..} =
+genNewtype :: Options -> RecordDef -> Q Dec
+genNewtype opts r@RecordDef{..} =
     N.newtypeD
       (cxt [])
-      recordUnqual
-      recordTVars
+      recordDefUnqual
+      recordDefTVars
       Nothing
       (N.recC (nameRecordInternalConstr opts r) [
            N.varBangType (nameRecordInternalField opts r) $
              bangType (return DefaultBang) [t| Vector Any |]
          ])
-      (map anyclassDerivClause recordAnyclass)
+      (map anyclassDerivClause recordDefAnyclass)
   where
     anyclassDerivClause :: Type -> DerivClauseQ
     anyclassDerivClause clss = derivClause (Just AnyclassStrategy) [pure clss]
@@ -172,13 +147,13 @@ genNewtype opts r@Record{..} =
 -- > unsafeGetIndexT :: forall x a b. Int -> T a b -> x
 -- > unsafeGetIndexT = \ n t -> noInlineUnsafeCo (V.unsafeIndex (vectorFromT t) n)
 
-genIndexedAccessor :: Options -> Record -> Q [Dec]
-genIndexedAccessor opts r@Record{..} = do
+genIndexedAccessor :: Options -> RecordDef -> Q [Dec]
+genIndexedAccessor opts r@RecordDef{..} = do
     x <- newName "x"
     simpleFn
       (nameRecordIndexedAccessor opts r)
       (forallT
-         (PlainTV x : recordTVars)
+         (PlainTV x : recordDefTVars)
          (cxt [])
          (arrT [conT ''Int, recordTypeT opts r] (varT x)))
       [| \n t -> noInlineUnsafeCo (V.unsafeIndex ($(recordToVectorE opts r) t) n) |]
@@ -194,13 +169,13 @@ genIndexedAccessor opts r@Record{..} = do
 -- If using 'allFieldsStrict', the function will be strict in @val@.
 --
 -- TODO: We should support per-field strictness.
-genIndexedOverwrite :: Options -> Record -> Q [Dec]
-genIndexedOverwrite opts@Options{..} r@Record{..} = do
+genIndexedOverwrite :: Options -> RecordDef -> Q [Dec]
+genIndexedOverwrite opts@Options{..} r@RecordDef{..} = do
     x <- newName "x"
     simpleFn
       (nameRecordIndexedOverwrite opts r)
       (forallT
-        (PlainTV x : recordTVars)
+        (PlainTV x : recordDefTVars)
         (cxt [])
         (arrT [conT ''Int, recordTypeT opts r, varT x] (recordTypeT opts r)))
       body
@@ -219,9 +194,9 @@ genIndexedOverwrite opts@Options{..} r@Record{..} = do
            |]
 
 -- | Generate field accessors for all fields
-genFieldAccessors :: Options -> Record -> Q [Dec]
-genFieldAccessors opts r@Record{..} =
-    concatMapM (genFieldAccessor opts r) recordFields
+genFieldAccessors :: Options -> RecordDef -> Q [Dec]
+genFieldAccessors opts r@RecordDef{..} =
+    concatMapM (genFieldAccessor opts r) recordDefFields
 
 -- | Generate accessor for single field
 --
@@ -229,18 +204,18 @@ genFieldAccessors opts r@Record{..} =
 --
 -- > tWord :: forall a b. T a b -> Word
 -- > tWord = unsafeGetIndexT 0
-genFieldAccessor :: Options -> Record -> Field -> Q [Dec]
-genFieldAccessor opts r@Record{..} f@Field{..} = do
+genFieldAccessor :: Options -> RecordDef -> FieldDef -> Q [Dec]
+genFieldAccessor opts r@RecordDef{..} f@FieldDef{..} = do
     simpleFn
-      (N.fromOverloaded fieldUnqual)
-      (forallT recordTVars (cxt []) $
+      (N.fromOverloaded fieldDefUnqual)
+      (forallT recordDefTVars (cxt []) $
          arrT [recordTypeT opts r] (fieldTypeT opts f))
       (fieldUntypedAccessorE opts r f)
 
 -- | Generate 'HasField' instances for all fields
-genHasFieldInstances :: Options -> Record -> Q [Dec]
-genHasFieldInstances opts r@Record{..} =
-    mapM (genHasFieldInstance opts r) recordFields
+genHasFieldInstances :: Options -> RecordDef -> Q [Dec]
+genHasFieldInstances opts r@RecordDef{..} =
+    mapM (genHasFieldInstance opts r) recordDefFields
 
 -- | Generate 'HasField' instance for single field
 --
@@ -248,8 +223,8 @@ genHasFieldInstances opts r@Record{..} =
 --
 -- > instance x ~ Word => HasField "tInt" (T a b) x where
 -- >   hasField = \t -> (unsafeSetIndexT 0 t, unsafeGetIndexT 0 t)
-genHasFieldInstance :: Options -> Record -> Field -> Q Dec
-genHasFieldInstance opts r f@Field{..} = do
+genHasFieldInstance :: Options -> RecordDef -> FieldDef -> Q Dec
+genHasFieldInstance opts r f@FieldDef{..} = do
     requiresExtensions [
         DataKinds
       , FlexibleInstances
@@ -261,7 +236,7 @@ genHasFieldInstance opts r f@Field{..} = do
     instanceD
       (cxt [equalityT `appT` varT x `appT` fieldTypeT opts f])
       (appsT (conT ''HasField) [
-          N.typeLevelMetadata fieldUnqual
+          N.typeLevelMetadata fieldDefUnqual
         , recordTypeT opts r
         , varT x
         ])
@@ -294,17 +269,17 @@ genHasFieldInstance opts r f@Field{..} = do
 -- However, this function is slightly more general than this, generalizing over
 -- the "kind of lambda" we want to construct. We use this both in
 -- 'genPatSynonym' and in 'genConstructorFn'.
-genRecordVal :: Options -> Record -> ([Q Pat] -> Q Exp -> Q a) -> Q a
-genRecordVal opts r@Record{..} mkFn = do
+genRecordVal :: Options -> RecordDef -> ([Q Pat] -> Q Exp -> Q a) -> Q a
+genRecordVal opts r@RecordDef{..} mkFn = do
     -- The constructor arguments are locally bound, and should not have the
     -- same name as the fields themselves
-    vars <- mapM (N.fresh . fieldUnqual) recordFields
+    vars <- mapM (N.fresh . fieldDefUnqual) recordDefFields
     mkFn (map N.varP vars) [|
         $(recordFromVectorForceStrictFieldsE opts r)
         $(vectorE qNoInlineUnsafeCo vars)
       |]
   where
-    qNoInlineUnsafeCo :: N.Name 'N.Unique -> Q Exp
+    qNoInlineUnsafeCo :: N.Name 'N.VarName 'N.Unique -> Q Exp
     qNoInlineUnsafeCo x = [| noInlineUnsafeCo $(N.varE x) |]
 
 -- | Generate constructor function
@@ -315,12 +290,12 @@ genRecordVal opts r@Record{..} mkFn = do
 -- > mkT = ..
 --
 -- where the body of @mkT@ is generated by 'genRecordVal'.
-genConstructorFn :: Options -> Record -> Q [Dec]
-genConstructorFn opts r@Record{..} = do
+genConstructorFn :: Options -> RecordDef -> Q [Dec]
+genConstructorFn opts r@RecordDef{..} = do
     simpleFn
-      (constructNameConstructorFn recordConstr)
-      (forallT recordTVars (cxt []) $
-         arrT (map (fieldTypeT opts) recordFields) (recordTypeT opts r))
+      (constructNameConstructorFn recordDefConstr)
+      (forallT recordDefTVars (cxt []) $
+         arrT (map (fieldTypeT opts) recordDefFields) (recordTypeT opts r))
       (genRecordVal opts r lamE)
 
 {-------------------------------------------------------------------------------
@@ -331,26 +306,33 @@ genConstructorFn opts r@Record{..} = do
 --
 -- Generates something like
 --
--- > type Fields_T a b = '[
--- >     '("tInt"   , Word)
--- >   , '("tBool"  , Bool)
--- >   , '("tChar"  , Char)
--- >   , '("tA"     , a)
--- >   , '("tListB" , [b])
+-- > type MetadataOf (T a b) = '[
+-- >     '("tInt", Word),
+-- >   , '("tBool", Bool),
+-- >   , '("tChar", Char),
+-- >   , '("tA", a),
+-- >   , '("tListB", [b])
 -- >   ]
 --
--- TODO: We currently use this only for record construction, and don't tie it
--- in with the generics. I wonder if we could and/or should.
-genInstanceMetadataOf :: Options -> Record -> Q Dec
-genInstanceMetadataOf opts r@Record{..} = tySynInstD $
+-- NOTE: We do not use type-level lists in most places, since it's difficult
+-- to avoid quadratic core code size when working with type-level list. We use
+-- this meta-data currently for two purposes only:
+--
+-- * The 'lr' quasi-quoter uses it as a way to lookup the record definition.
+--   See "Data.Record.Internal.RecordInfo.Resolution.GHC".
+-- * We use it to put a constraint on 'normalize'; this constraint is carefully
+--   defined to avoid quadratic core code size.
+--   See "Data.Record.Generic.Transform".
+genInstanceMetadataOf :: Options -> RecordDef -> Q Dec
+genInstanceMetadataOf opts r@RecordDef{..} = tySynInstD $
     tySynEqn
       Nothing
       [t| MetadataOf $(recordTypeT opts r) |]
-      (plistT $ map fieldMetadata recordFields)
+      (plistT $ map fieldMetadata recordDefFields)
   where
-    fieldMetadata :: Field -> Q Type
-    fieldMetadata f@Field{..} = ptupleT [
-          N.typeLevelMetadata fieldUnqual
+    fieldMetadata :: FieldDef -> Q Type
+    fieldMetadata f@FieldDef{..} = ptupleT [
+          N.typeLevelMetadata fieldDefUnqual
         , fieldTypeT opts f
         ]
 
@@ -372,28 +354,28 @@ genInstanceMetadataOf opts r@Record{..} = tySynInstD $
 -- >     )
 --
 -- Modulo tuple nesting (see 'nest').
-genRecordView :: Options -> Record -> Q [Dec]
-genRecordView opts r@Record{..} = do
+genRecordView :: Options -> RecordDef -> Q [Dec]
+genRecordView opts r@RecordDef{..} = do
     simpleFn
       (nameRecordView opts r)
-      (forallT recordTVars (cxt []) $ arrT [recordTypeT opts r] viewType)
+      (forallT recordDefTVars (cxt []) $ arrT [recordTypeT opts r] viewType)
       viewBody
   where
     viewType :: Q Type
     viewType = mkTupleT (fieldTypeT opts) $
-                 nest DefaultGhcTupleLimit recordFields
+                 nest DefaultGhcTupleLimit recordDefFields
 
     viewBody :: Q Exp
     viewBody = do
         x <- newName "x"
         lamE [varP x] $ mkTupleE (viewField x) $
-          nest DefaultGhcTupleLimit recordFields
+          nest DefaultGhcTupleLimit recordDefFields
 
     -- We generate the view only if we are generating the pattern synonym,
     -- but when we do we don't generate the typed accessors, because they
     -- are instead derived from the pattern synonym by GHC. Since the synonym
     -- requires the view, we therefore use the untyped accessor here.
-    viewField :: Name -> Field -> Q Exp
+    viewField :: Name -> FieldDef -> Q Exp
     viewField x f = [| $(fieldUntypedAccessorE opts r f) $(varE x) |]
 
 -- | Generate pattern synonym
@@ -410,26 +392,26 @@ genRecordView opts r@Record{..} = do
 --
 -- modulo nesting ('nest'), where the body of 'MkT' (and its arguments) are
 -- constructed by 'genRecordVal'.
-genPatSynonym :: Options -> Record -> Q [Dec]
-genPatSynonym opts r@Record{..} = do
+genPatSynonym :: Options -> RecordDef -> Q [Dec]
+genPatSynonym opts r@RecordDef{..} = do
     requiresExtensions [PatternSynonyms, ViewPatterns]
     sequence [
-        N.patSynSigD recordConstr $
+        N.patSynSigD recordDefConstr $
           simplePatSynType
-            recordTVars
-            (map (fieldTypeT opts) recordFields)
+            recordDefTVars
+            (map (fieldTypeT opts) recordDefFields)
             (recordTypeT opts r)
-      , N.patSynD recordConstr
-          (N.recordPatSyn $ map fieldUnqual recordFields)
+      , N.patSynD recordDefConstr
+          (N.recordPatSyn $ map fieldDefUnqual recordDefFields)
           qDir
           matchVector
-      , N.pragCompleteD [recordConstr] Nothing
+      , N.pragCompleteD [recordDefConstr] Nothing
       ]
   where
     matchVector :: Q Pat
     matchVector = viewP (N.varE (nameRecordView opts r)) $
-        mkTupleP (N.varP . N.fromOverloaded . fieldUnqual) $
-          nest DefaultGhcTupleLimit recordFields
+        mkTupleP (N.varP . N.fromOverloaded . fieldDefUnqual) $
+          nest DefaultGhcTupleLimit recordDefFields
 
     constrVector :: [Q Pat] -> Q Exp -> Q Clause
     constrVector xs body = clause xs (normalB body) []
@@ -458,7 +440,7 @@ genPatSynonym opts r@Record{..} = do
 -- and use lots of "tuple constraint extractor" functions, each of which have
 -- the same size as the number of constraints (another example of a
 -- @case f of { T x1 x2 x3 .. -> xn@ function, but now at the dictionary level).
-genConstraintsClass :: Options -> Record -> Q Dec
+genConstraintsClass :: Options -> RecordDef -> Q Dec
 genConstraintsClass opts r = do
     requiresExtensions [KindSignatures, ConstraintKinds]
     c <- newName "c"
@@ -466,7 +448,7 @@ genConstraintsClass opts r = do
     N.classD
       (cxt [])
       (nameRecordConstraintsClass opts r)
-      (recordTVars r ++ [KindedTV c k])
+      (recordDefTVars r ++ [KindedTV c k])
       []
       [ N.sigD (nameRecordConstraintsMethod opts r) [t|
             Proxy $(varT c) -> Rep (Dict $(varT c)) $(recordTypeT opts r)
@@ -487,13 +469,13 @@ genConstraintsClass opts r = do
 -- instead. This avoids @ghc@ complaining about
 --
 -- > Redundant constraints: (Show Word, Show Bool, Show Char)
-genRequiredConstraints :: Options -> Record -> Q Type -> Q Cxt
-genRequiredConstraints opts Record{..} c = do
+genRequiredConstraints :: Options -> RecordDef -> Q Type -> Q Cxt
+genRequiredConstraints opts RecordDef{..} c = do
     requiresExtensions [FlexibleContexts]
-    constraints <- mapM constrainField recordFields
+    constraints <- mapM constrainField recordDefFields
     return $ nub $ filter hasTypeVar constraints
   where
-    constrainField :: Field -> Q Pred
+    constrainField :: FieldDef -> Q Pred
     constrainField f = c `appT` fieldTypeT opts f
 
     hasTypeVar :: Pred -> Bool
@@ -514,12 +496,12 @@ genRequiredConstraints opts Record{..} c = do
 -- >   , noInlineUnsafeCo (dictFor p (Proxy :: Proxy a))
 -- >   , noInlineUnsafeCo (dictFor p (Proxy :: Proxy [b]))
 -- >   ])
-genDict :: Options -> Record -> Q Exp
-genDict opts Record{..} = do
+genDict :: Options -> RecordDef -> Q Exp
+genDict opts RecordDef{..} = do
     p <- newName "p"
-    lamE [varP p] [| Rep $(vectorE (dictForField p) recordFields) |]
+    lamE [varP p] [| Rep $(vectorE (dictForField p) recordDefFields) |]
   where
-    dictForField :: Name -> Field -> Q Exp
+    dictForField :: Name -> FieldDef -> Q Exp
     dictForField p f = [|
           noInlineUnsafeCo (dictFor $(varE p) (Proxy :: Proxy $(fieldTypeT opts f)))
         |]
@@ -532,14 +514,14 @@ genDict opts Record{..} = do
 -- >   dictConstraints_T = ..
 --
 -- where the body of @dictConstraints_T@ is generated by 'genDict'.
-genConstraintsClassInstance :: Options -> Record -> Q Dec
-genConstraintsClassInstance opts r@Record{..} = do
+genConstraintsClassInstance :: Options -> RecordDef -> Q Dec
+genConstraintsClassInstance opts r@RecordDef{..} = do
     requiresExtensions [ScopedTypeVariables]
     c <- newName "c"
     instanceD
       (genRequiredConstraints opts r (varT c))
       (appsT (N.conT (nameRecordConstraintsClass opts r)) $
-         map tyVarType recordTVars ++ [varT c])
+         map tyVarType recordDefTVars ++ [varT c])
       [ valD (N.varP (nameRecordConstraintsMethod opts r))
              (normalB (genDict opts r))
              []
@@ -550,45 +532,49 @@ genConstraintsClassInstance opts r@Record{..} = do
 -- Generates something like
 --
 -- > type Constraints (T a b) = Constraints_T a b
-genInstanceConstraints :: Options -> Record -> Q Dec
-genInstanceConstraints opts r@Record{..} = tySynInstD $
+genInstanceConstraints :: Options -> RecordDef -> Q Dec
+genInstanceConstraints opts r@RecordDef{..} = tySynInstD $
     tySynEqn
       Nothing
       [t| Constraints $(recordTypeT opts r) |]
       (appsT (N.conT (nameRecordConstraintsClass opts r)) $
-         map tyVarType recordTVars)
+         map tyVarType recordDefTVars)
 
 -- | Generate metadata
 --
 -- Generates something like
 --
--- > \_p -> Metadata {
--- >     recordName        = "T",
--- >   , recordConstructor = "MkT"
--- >   , recordFieldNames  = unsafeFromListK ["tWord", "tBool", "tChar", "tA", "tListB"]
+-- > \_p  -> Metadata {
+-- >     recordName          = "T"
+-- >   , recordConstructor   = "MkT"
+-- >   , recordSize          = 5
+-- >   , recordFieldMetadata = Rep $ Data.Vector.fromList [
+-- >         FieldMetadata (Proxy :: Proxy "tInt"))   FieldLazy
+-- >       , FieldMetadata (Proxy :: Proxy "tBool"))  FieldLazy
+-- >       , FieldMetadata (Proxy :: Proxy "tChar"))  FieldLazy
+-- >       , FieldMetadata (Proxy :: Proxy "tA"))     FieldLazy
+-- >       , FieldMetadata (Proxy :: Proxy "tListB")) FieldLazy
+-- >       ]
 -- >   }
---
--- TODO: The above comment ^^^ is out of date, we generate more type-level stuff
--- now.
-genMetadata :: Options -> Record -> Q Exp
-genMetadata Options{..} Record{..} = do
+genMetadata :: Options -> RecordDef -> Q Exp
+genMetadata Options{..} RecordDef{..} = do
     p <- newName "_p"
     lamE [varP p] $ recConE 'Metadata [
-        fieldExp 'recordName        $ N.termLevelMetadata recordUnqual
-      , fieldExp 'recordConstructor $ N.termLevelMetadata recordConstr
-      , fieldExp 'recordSize        $ litE (integerL numFields)
-      , fieldExp 'recordFieldInfo   $ [| Rep.Rep $ V.fromList $fieldInfo |]
+        fieldExp 'recordName          $ N.termLevelMetadata recordDefUnqual
+      , fieldExp 'recordConstructor   $ N.termLevelMetadata recordDefConstr
+      , fieldExp 'recordSize          $ litE (integerL numFields)
+      , fieldExp 'recordFieldMetadata $ [| Rep.Rep $ V.fromList $fieldMetadata |]
       ]
   where
     numFields :: Integer
-    numFields = fromIntegral $ length recordFields
+    numFields = fromIntegral $ length recordDefFields
 
-    fieldInfo :: Q Exp
-    fieldInfo = listE $ map (mkFieldInfo . fieldUnqual) recordFields
+    fieldMetadata :: Q Exp
+    fieldMetadata = listE $ map (mkFieldMetadata . fieldDefUnqual) recordDefFields
 
-    mkFieldInfo :: N.FieldName -> ExpQ
-    mkFieldInfo n = [|
-          FieldInfo
+    mkFieldMetadata :: N.OverloadedName -> ExpQ
+    mkFieldMetadata n = [|
+          FieldMetadata
             (Proxy :: Proxy $(N.typeLevelMetadata n) )
             $(if allFieldsStrict
                 then [| FieldStrict |]
@@ -613,8 +599,8 @@ genMetadata Options{..} Record{..} = do
 -- (i.e., a constraint for each field).
 --
 -- TODO: Think about DeriveFunctor?
-genDeriving :: Options -> Record -> Deriving -> Q Dec
-genDeriving opts r@Record{..} = \case
+genDeriving :: Options -> RecordDef -> Deriving -> Q Dec
+genDeriving opts r@RecordDef{..} = \case
     DeriveEq    -> inst ''Eq   '(==)      'geq
     DeriveOrd   -> inst ''Ord  'compare   'gcompare
     DeriveShow  -> inst ''Show 'showsPrec 'gshowsPrec
@@ -631,7 +617,7 @@ genDeriving opts r@Record{..} = \case
 -- Generates something like
 --
 -- > repFromVectorStrict . vectorFromT
-genFrom :: Options -> Record -> Q Exp
+genFrom :: Options -> RecordDef -> Q Exp
 genFrom opts r = [| repFromVector . $(N.varE (nameRecordInternalField opts r)) |]
 
 -- | Generate definition for `to` in the `Generic` instance
@@ -640,7 +626,7 @@ genFrom opts r = [| repFromVector . $(N.varE (nameRecordInternalField opts r)) |
 --
 -- where the @(..)@ is generated by 'recordFromVectorForceStrictFieldsE'
 -- (which will any strict fields in the vector).
-genTo :: Options -> Record -> Q Exp
+genTo :: Options -> RecordDef -> Q Exp
 genTo opts r = [| $(recordFromVectorForceStrictFieldsE opts r) . repToVector |]
 
 -- | Generate the definitions required to provide the instance for 'Generic'
@@ -651,8 +637,8 @@ genTo opts r = [| $(recordFromVectorForceStrictFieldsE opts r) . repToVector |]
 -- >   to         = coerce
 -- >   dict       = dictConstraints_T
 -- >   metadata   = ..
-genGenericInstance :: Options -> Record -> Q [Dec]
-genGenericInstance opts r@Record{..} = concatM [
+genGenericInstance :: Options -> RecordDef -> Q [Dec]
+genGenericInstance opts r@RecordDef{..} = concatM [
        sequence [
            genConstraintsClass         opts r
          , genConstraintsClassInstance opts r
@@ -667,7 +653,7 @@ genGenericInstance opts r@Record{..} = concatM [
              , valD (varP 'metadata) (normalB (genMetadata opts r))                        []
              ]
          ]
-    , mapM (genDeriving opts r) recordDeriv
+    , mapM (genDeriving opts r) recordDefDeriv
     ]
 
 {-------------------------------------------------------------------------------
@@ -686,7 +672,7 @@ genGenericInstance opts r@Record{..} = concatM [
 --
 -- See 'ThroughLRGenerics' for documentation.
 
-genGhcGenericsInstances :: Options -> Record -> Q [Dec]
+genGhcGenericsInstances :: Options -> RecordDef -> Q [Dec]
 genGhcGenericsInstances opts r = sequenceA [
       instanceD
         (cxt [])
@@ -706,12 +692,12 @@ genGhcGenericsInstances opts r = sequenceA [
 -------------------------------------------------------------------------------}
 
 -- | The saturated type of the record (that is, with all type vars applied)
-recordTypeT :: Options -> Record -> Q Type
-recordTypeT _opts Record{..} =
-    appsT (conT (N.toName recordUnqual)) $ map tyVarType recordTVars
+recordTypeT :: Options -> RecordDef -> Q Type
+recordTypeT _opts RecordDef{..} =
+    appsT (conT (N.toName recordDefUnqual)) $ map tyVarType recordDefTVars
 
 -- | Coerce the record to the underlying @Vector Any@
-recordToVectorE :: Options -> Record -> Q Exp
+recordToVectorE :: Options -> RecordDef -> Q Exp
 recordToVectorE opts = N.varE . nameRecordInternalField opts
 
 -- | Construct record from the underlying @Vector Any@
@@ -722,7 +708,7 @@ recordToVectorE opts = N.varE . nameRecordInternalField opts
 -- * we know through other means that all values are already forced.
 --
 -- See also 'recordFromVectorForceE'.
-recordFromVectorDontForceE :: Options -> Record -> Q Exp
+recordFromVectorDontForceE :: Options -> RecordDef -> Q Exp
 recordFromVectorDontForceE opts = N.conE . nameRecordInternalConstr opts
 
 -- | Construct record from the underlying @Vector Any@, forcing strict fields
@@ -731,7 +717,7 @@ recordFromVectorDontForceE opts = N.conE . nameRecordInternalConstr opts
 -- all fields, or none of them.
 --
 -- See also 'recordFromVectorDontForceE'.
-recordFromVectorForceStrictFieldsE :: Options -> Record -> Q Exp
+recordFromVectorForceStrictFieldsE :: Options -> RecordDef -> Q Exp
 recordFromVectorForceStrictFieldsE opts@Options{..} r
     | allFieldsStrict = [|
           (\v -> rnfVectorAny v `seq` $(recordFromVectorDontForceE opts r) v)
@@ -740,11 +726,11 @@ recordFromVectorForceStrictFieldsE opts@Options{..} r
         recordFromVectorDontForceE opts r
 
 -- | The (unsafe) indexed field accessor
-recordIndexedAccessorE :: Options -> Record -> Q Exp
+recordIndexedAccessorE :: Options -> RecordDef -> Q Exp
 recordIndexedAccessorE opts = N.varE . nameRecordIndexedAccessor opts
 
 -- | The (unsafe) indexed field overwrite
-recordIndexedOverwriteE :: Options -> Record -> Q Exp
+recordIndexedOverwriteE :: Options -> RecordDef -> Q Exp
 recordIndexedOverwriteE opts = N.varE . nameRecordIndexedOverwrite opts
 
 {-------------------------------------------------------------------------------
@@ -752,19 +738,19 @@ recordIndexedOverwriteE opts = N.varE . nameRecordIndexedOverwrite opts
 -------------------------------------------------------------------------------}
 
 -- | Type of the field
-fieldTypeT :: Options -> Field -> Q Type
-fieldTypeT _opts Field{..} = return fieldType
+fieldTypeT :: Options -> FieldDef -> Q Type
+fieldTypeT _opts FieldDef{..} = return fieldDefType
 
 -- | Index of the field
-fieldIndexE :: Options -> Field -> Q Exp
-fieldIndexE _opts Field{..} = litE . integerL $ fromIntegral fieldIndex
+fieldIndexE :: Options -> FieldDef -> Q Exp
+fieldIndexE _opts FieldDef{..} = litE . integerL $ fromIntegral fieldDefIndex
 
 -- | The indexed field accessor, applied to this field
-fieldUntypedAccessorE :: Options -> Record -> Field -> Q Exp
+fieldUntypedAccessorE :: Options -> RecordDef -> FieldDef -> Q Exp
 fieldUntypedAccessorE opts r f =
     [| $(recordIndexedAccessorE opts r) $(fieldIndexE opts f) |]
 
 -- | The indexed field overwrite, applied to this field
-fieldUntypedOverwriteE :: Options -> Record -> Field -> Q Exp
+fieldUntypedOverwriteE :: Options -> RecordDef -> FieldDef -> Q Exp
 fieldUntypedOverwriteE opts r f =
     [| $(recordIndexedOverwriteE opts r) $(fieldIndexE opts f) |]

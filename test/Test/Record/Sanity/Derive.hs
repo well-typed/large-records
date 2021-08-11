@@ -63,8 +63,6 @@ largeRecord defaultPureScript [d|
         deriving anyclass (Newtype LB)
     |]
 
-endOfBindingGroup
-
 f :: LB -> LB
 f r = pack ((unpack r){ lb1 = r.lb2, lb2 = r.lb1 })
 
@@ -85,8 +83,6 @@ largeRecord defaultPureScript [d|
         deriving anyclass C3
     |]
 
-endOfBindingGroup
-
 {-------------------------------------------------------------------------------
   Class of kind @((Type -> Type) -> Type) -> Constraint@
 -------------------------------------------------------------------------------}
@@ -103,8 +99,6 @@ largeRecord defaultPureScript [d|
       data LD (f :: Type -> Type) = MkLD { ld1 :: f Int, ld2 :: Int }
         deriving anyclass C4
     |]
-
-endOfBindingGroup
 
 {-------------------------------------------------------------------------------
   Class with a constraint
@@ -124,8 +118,6 @@ largeRecord defaultPureScript [d|
         deriving stock Show
         deriving anyclass C5
     |]
-
-endOfBindingGroup
 
 {-------------------------------------------------------------------------------
   Tests proper

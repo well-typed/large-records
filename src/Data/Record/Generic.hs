@@ -13,7 +13,7 @@ module Data.Record.Generic (
   , Metadata(..)
   , FieldStrictness(..)
   , recordFieldNames
-  , FieldInfo(..)
+  , FieldMetadata(..)
     -- * Working with type-level metadata
   , FieldName
   , FieldType
@@ -65,22 +65,26 @@ class Generic a where
 -------------------------------------------------------------------------------}
 
 data Metadata a = Metadata {
-      recordName        :: String
-    , recordConstructor :: String
-    , recordSize        :: Int
-    , recordFieldInfo   :: Rep FieldInfo a
+      recordName          :: String
+    , recordConstructor   :: String
+    , recordSize          :: Int
+    , recordFieldMetadata :: Rep FieldMetadata a
     }
 
 data FieldStrictness = FieldStrict | FieldLazy
 
-data FieldInfo x where
-  FieldInfo :: KnownSymbol name => Proxy name -> FieldStrictness -> FieldInfo x
+data FieldMetadata x where
+  FieldMetadata ::
+       KnownSymbol name
+    => Proxy name
+    -> FieldStrictness
+    -> FieldMetadata x
 
 recordFieldNames :: Metadata a -> Rep (K String) a
-recordFieldNames = Rep.map' aux . recordFieldInfo
+recordFieldNames = Rep.map' aux . recordFieldMetadata
   where
-    aux :: FieldInfo x -> K String x
-    aux (FieldInfo p _) = K $ symbolVal p
+    aux :: FieldMetadata x -> K String x
+    aux (FieldMetadata p _) = K $ symbolVal p
 
 {-------------------------------------------------------------------------------
   Working with the type-level metadata

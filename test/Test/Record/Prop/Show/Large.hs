@@ -31,8 +31,6 @@ largeRecord defaultPureScript [d|
       deriving (Show)
   |]
 
-endOfBindingGroup
-
 instance FromRegular Regular.Example1 Example1 where
   fromRegular Regular.MkExample1{..} = [lr| MkExample1 {
         example1Field1 = example1Field1

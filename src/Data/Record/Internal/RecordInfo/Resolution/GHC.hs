@@ -3,24 +3,23 @@
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
 
--- | Deal with the type-level metadata
-module Data.Record.QQ.CodeGen.Metadata (
-    -- * Parsing
-    getTypeLevelMetadata
+module Data.Record.Internal.RecordInfo.Resolution.GHC (
+    parseRecordInfo
   ) where
 
 import Control.Monad.Except
 import Data.Maybe (fromMaybe)
+import Data.Void
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 import qualified Control.Monad.Except as Except
 
-import Data.Record.Generic hiding (FieldName)
-import Data.Record.TH.CodeGen.TH
-import Data.Record.TH.CodeGen.Name (TypeName, ConstrName, FieldName)
+import Data.Record.Generic
+import Data.Record.Internal.RecordInfo
+import Data.Record.Internal.TH.Util
 
-import qualified Data.Record.TH.CodeGen.Name as N
+import qualified Data.Record.Internal.TH.Name as N
 
 {-------------------------------------------------------------------------------
   Parsing
@@ -32,16 +31,35 @@ import qualified Data.Record.TH.CodeGen.Name as N
 -- 'Options', so this must work without options.
 --
 -- 'Nothing' if this wasn't a type created using @large-records@.
-getTypeLevelMetadata :: forall m.
+parseRecordInfo :: forall m.
      Quasi m
-  => ConstrName 'N.Global
-  -> ExceptT String m (TypeName 'N.Global, ([TyVarBndr], [(FieldName, Type)]))
-getTypeLevelMetadata constr = do
+  => N.Name 'N.DataName 'N.Global
+  -> m (Either String (RecordInfo Void))
+parseRecordInfo constr = runExceptT $ do
     parent    <- Except.lift (N.reify constr) >>= getDataConParent
     saturated <- Except.lift (N.reify parent) >>= getSaturatedType
     parsed    <- Except.lift (getMetadataInstance saturated) >>= parseTySynInst
-    return (parent, parsed)
+    return $ mkRecordInfo parent parsed
   where
+    mkRecordInfo ::
+         N.Name 'N.TcClsName 'N.Global
+      -> ([TyVarBndr], [(N.OverloadedName, Type)])
+      -> RecordInfo Void
+    mkRecordInfo rType (tyVars, fieldTypes) = RecordInfo {
+          recordInfoUnqual = rType
+        , recordInfoTVars  = tyVars
+        , recordInfoConstr = constr
+        , recordInfoFields = zipWith (uncurry mkFieldInfo) fieldTypes [0..]
+        }
+
+    mkFieldInfo :: N.OverloadedName -> Type -> Int -> FieldInfo Void
+    mkFieldInfo fName fType ix = FieldInfo {
+          fieldInfoUnqual = fName
+        , fieldInfoType   = fType
+        , fieldInfoIndex  = ix
+        , fieldInfoVal    = Nothing
+        }
+
     saturate :: Name -> [TyVarBndr] -> Type
     saturate n = foldl (\t v -> t `AppT` VarT (tyVarName v)) (ConT n)
 
@@ -54,21 +72,21 @@ getTypeLevelMetadata constr = do
     getSaturatedType i =
         unexpected i "newtype"
 
-    getDataConParent :: Info -> ExceptT String m (TypeName 'N.Global)
+    getDataConParent :: Info -> ExceptT String m (N.Name 'N.TcClsName 'N.Global)
     getDataConParent (DataConI _ _ parent) =
-        return $ N.TypeName $ N.fromName' parent
+        return $ N.fromName' parent
     getDataConParent i =
         unexpected i "data constructor"
 
     parseTySynInst ::
          [InstanceDec]
-      -> ExceptT String m ([TyVarBndr], [(FieldName, Type)])
+      -> ExceptT String m ([TyVarBndr], [(N.OverloadedName, Type)])
     parseTySynInst [TySynInstD (TySynEqn vars _lhs rhs)] =
         (fromMaybe [] vars, ) <$> parseList rhs
     parseTySynInst is =
         unexpected is "type instance"
 
-    parseList :: Type -> ExceptT String m [(FieldName, Type)]
+    parseList :: Type -> ExceptT String m [(N.OverloadedName, Type)]
     parseList (AppT (AppT PromotedConsT t) ts) =
         (:) <$> parseTuple t <*> parseList ts
     parseList PromotedNilT =
@@ -77,9 +95,9 @@ getTypeLevelMetadata constr = do
         parseList t
     parseList t = unexpected t "list"
 
-    parseTuple :: Type -> ExceptT String m (FieldName, Type)
+    parseTuple :: Type -> ExceptT String m (N.OverloadedName, Type)
     parseTuple (AppT (AppT (PromotedTupleT 2) (LitT (StrTyLit f))) t) =
-        return (N.FieldName (N.OverloadedName f), t)
+        return (N.OverloadedName f, t)
     parseTuple t = unexpected t "tuple"
 
     unexpected :: Show a => a -> String -> ExceptT String m b

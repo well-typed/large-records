@@ -27,9 +27,8 @@ import Data.Record.Generic
 import Data.Record.Generic.Lens.Micro
 import Data.Record.Generic.SOP
 import Data.Record.Generic.Transform
-import Data.Record.QQ.CodeGen ( lr )
-import Data.Record.TH.CodeGen ( endOfBindingGroup, largeRecord )
-import Data.Record.TH.Config.Options ( defaultPureScript )
+import Data.Record.QQ.CodeGen
+import Data.Record.TH
 
 import qualified Data.Record.Generic.Rep as Rep
 
@@ -45,8 +44,6 @@ largeRecord defaultPureScript [d|
           }
         deriving (Show, Eq)
     |]
-
-endOfBindingGroup
 
 simpleExample :: Simple I
 simpleExample = [lr| MkSimple {
@@ -98,8 +95,6 @@ largeRecord defaultPureScript [d|
           }
         deriving (Show, Eq)
     |]
-
-endOfBindingGroup
 
 regularExample :: Regular I
 regularExample = [lr| MkRegular {
@@ -181,8 +176,6 @@ largeRecord defaultPureScript [d|
           }
         deriving (Show, Eq)
     |]
-
-endOfBindingGroup
 
 irregularExample :: Irregular I
 irregularExample = [lr| MkIrregular {

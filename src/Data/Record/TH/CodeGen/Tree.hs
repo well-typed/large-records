@@ -19,7 +19,7 @@ module Data.Record.TH.CodeGen.Tree (
 
 import Language.Haskell.TH
 
-import Data.Record.TH.CodeGen.TH
+import Data.Record.Internal.TH.Util
 
 {-------------------------------------------------------------------------------
   Trees and forests

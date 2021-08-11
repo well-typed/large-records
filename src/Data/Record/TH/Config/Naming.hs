@@ -16,11 +16,9 @@ module Data.Record.TH.Config.Naming (
   , resolveNameConstructorFn
   ) where
 
-import Data.Record.TH.CodeGen.Name
-import Data.Record.TH.CodeGen.View
+import Data.Record.Internal.RecordDef
+import Data.Record.Internal.TH.Name
 import Data.Record.TH.Config.Options
-
-import Language.Haskell.TH.Syntax (NameSpace(..))
 
 {-------------------------------------------------------------------------------
   Option-dependent names
@@ -47,25 +45,25 @@ import Language.Haskell.TH.Syntax (NameSpace(..))
 --   and then lookup the associated type-level metadata. This will fail if the
 --   name is not in scope, but that is reasonable: the original record
 --   construction would also not be possible if @MkR@ is not in scope.
-nameRecordInternalConstr :: Options -> Record -> ConstrName 'Dynamic
-nameRecordInternalConstr Options{..} Record{..} = ConstrName $
+nameRecordInternalConstr :: Options -> RecordDef -> Name 'DataName 'Dynamic
+nameRecordInternalConstr Options{..} RecordDef{..} =
     if generatePatternSynonym
-      then prefixNew "FromVector" $ recordUnqual
-      else prefixNew ""           $ recordConstr
+      then prefixNew "FromVector" $ recordDefUnqual
+      else prefixNew ""           $ recordDefConstr
 
-nameRecordConstraintsClass  :: Options -> Record -> Name 'Dynamic
-nameRecordConstraintsMethod :: Options -> Record -> Name 'Dynamic
-nameRecordIndexedAccessor   :: Options -> Record -> Name 'Dynamic
-nameRecordIndexedOverwrite  :: Options -> Record -> Name 'Dynamic
-nameRecordInternalField     :: Options -> Record -> Name 'Dynamic
-nameRecordView              :: Options -> Record -> Name 'Dynamic
+nameRecordConstraintsClass  :: Options -> RecordDef -> Name 'TcClsName 'Dynamic
+nameRecordConstraintsMethod :: Options -> RecordDef -> Name 'VarName   'Dynamic
+nameRecordIndexedAccessor   :: Options -> RecordDef -> Name 'VarName   'Dynamic
+nameRecordIndexedOverwrite  :: Options -> RecordDef -> Name 'VarName   'Dynamic
+nameRecordInternalField     :: Options -> RecordDef -> Name 'VarName   'Dynamic
+nameRecordView              :: Options -> RecordDef -> Name 'VarName   'Dynamic
 
-nameRecordConstraintsClass  _opts = prefixNew "Constraints_"     . recordUnqual
-nameRecordConstraintsMethod _opts = prefixNew "dictConstraints_" . recordUnqual
-nameRecordIndexedAccessor   _opts = prefixNew "unsafeGetIndex"   . recordUnqual
-nameRecordIndexedOverwrite  _opts = prefixNew "unsafeSetIndex"   . recordUnqual
-nameRecordInternalField     _opts = prefixNew "vectorFrom"       . recordUnqual
-nameRecordView              _opts = prefixNew "tupleFrom"        . recordUnqual
+nameRecordConstraintsClass  _opts = prefixNew "Constraints_"     . recordDefUnqual
+nameRecordConstraintsMethod _opts = prefixNew "dictConstraints_" . recordDefUnqual
+nameRecordIndexedAccessor   _opts = prefixNew "unsafeGetIndex"   . recordDefUnqual
+nameRecordIndexedOverwrite  _opts = prefixNew "unsafeSetIndex"   . recordDefUnqual
+nameRecordInternalField     _opts = prefixNew "vectorFrom"       . recordDefUnqual
+nameRecordView              _opts = prefixNew "tupleFrom"        . recordDefUnqual
 
 {-------------------------------------------------------------------------------
   Option-independent names
@@ -75,8 +73,8 @@ nameRecordView              _opts = prefixNew "tupleFrom"        . recordUnqual
   therefore not depend on the options.
 -------------------------------------------------------------------------------}
 
-constructNameConstructorFn :: ConstrName 'Unique -> Name 'Dynamic
+constructNameConstructorFn :: Name 'DataName 'Unique -> Name 'VarName 'Dynamic
 constructNameConstructorFn = prefixNew "_construct_"
 
-resolveNameConstructorFn :: ConstrName 'Global -> Name 'Global
+resolveNameConstructorFn :: Name 'DataName 'Global -> Name 'VarName 'Global
 resolveNameConstructorFn = prefixExisting "_construct_" VarName

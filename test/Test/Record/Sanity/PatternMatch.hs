@@ -32,8 +32,6 @@ largeRecord defaultPureScript [d|
     data S a = MkS { x :: Char, y :: T a }
   |]
 
-endOfBindingGroup
-
 projectOne :: T Bool -> Int
 projectOne [lr| MkT { x = a } |] = a
 

@@ -3,7 +3,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 -- | Utility functions for working with TH
-module Data.Record.TH.CodeGen.TH (
+module Data.Record.Internal.TH.Util (
     -- * Folding
     appsT
   , arrT
@@ -30,7 +30,7 @@ import Language.Haskell.TH.Syntax
 
 import qualified Data.Vector as V
 
-import qualified Data.Record.TH.CodeGen.Name as N
+import qualified Data.Record.Internal.TH.Name as N
 
 {-------------------------------------------------------------------------------
   Folding
@@ -78,7 +78,7 @@ ptupleT ts = appsT (promotedTupleT (length ts)) ts
 --
 -- > f :: typ
 -- > f = body
-simpleFn :: N.Name 'N.Dynamic -> Q Type -> Q Exp -> Q [Dec]
+simpleFn :: N.Name 'N.VarName 'N.Dynamic -> Q Type -> Q Exp -> Q [Dec]
 simpleFn fnName qTyp qBody = do
     typ  <- qTyp
     body <- qBody

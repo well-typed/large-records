@@ -101,11 +101,11 @@ withFieldMetadata _ s k =
 
 ghcMetadata :: Generic a => proxy a -> GhcMetadata a
 ghcMetadata pa = GhcMetadata {
-      ghcMetadataFields = Rep.map ghcFieldMetadata recordFieldInfo
+      ghcMetadataFields = Rep.map ghcFieldMetadata recordFieldMetadata
     }
   where
     Metadata{..} = metadata pa
 
-    ghcFieldMetadata :: FieldInfo x -> GhcFieldMetadata x
-    ghcFieldMetadata (FieldInfo pName s) = withFieldMetadata pName s $ \p' ->
-        GhcFieldMetadata p'
+    ghcFieldMetadata :: FieldMetadata x -> GhcFieldMetadata x
+    ghcFieldMetadata (FieldMetadata pName s) =
+        withFieldMetadata pName s $ GhcFieldMetadata

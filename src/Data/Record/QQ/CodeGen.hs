@@ -37,15 +37,15 @@ import qualified Data.Generics         as SYB
 import qualified Language.Haskell.Exts as HSE
 import qualified Language.Haskell.Meta as HSE.Meta
 
+import Data.Record.Internal.RecordInfo
+import Data.Record.Internal.TH.Util
 import Data.Record.QQ.CodeGen.HSE
-import Data.Record.QQ.CodeGen.View
+import Data.Record.QQ.CodeGen.Parser
 import Data.Record.QQ.Runtime.MatchHasField
-import Data.Record.TH.CodeGen.Name (FieldName)
-import Data.Record.TH.CodeGen.TH
 import Data.Record.TH.CodeGen.Tree
 import Data.Record.TH.Config.Naming
 
-import qualified Data.Record.TH.CodeGen.Name as N
+import qualified Data.Record.Internal.TH.Name as N
 
 {-------------------------------------------------------------------------------
   Top-level quasi-quoter
@@ -135,7 +135,7 @@ construct = \case
   where
     go :: Exp -> m Exp
     go e = do
-        mTerm <- matchRecordExp e
+        mTerm <- parseRecordExp e
         case mTerm of
           Nothing ->
             -- Leave non-record expressions alone
@@ -146,18 +146,17 @@ construct = \case
             reportError $ "Unknown fields: "
                        ++ intercalate ", " (map N.showName unknown)
             [| undefined |]
-          Just (MatchedRecord Record{..}) -> runQ $
-            appsE $ N.varE (resolveNameConstructorFn recordConstr)
-                  : map mkArg recordFields
+          Just (ParsedRecordInfo RecordInfo{..}) -> runQ $
+            appsE $ N.varE (resolveNameConstructorFn recordInfoConstr)
+                  : map mkArg recordInfoFields
 
-    mkArg :: Field Exp -> Q Exp
-    mkArg Field{..}
-      | Just dec <- fieldDec =
-          return dec
+    mkArg :: FieldInfo Exp -> Q Exp
+    mkArg FieldInfo{..}
+      | Just e <- fieldInfoVal = return e
       | otherwise = do
-          reportWarning $ "No value for field " ++ N.showName fieldUnqual
+          reportWarning $ "No value for field " ++ N.showName fieldInfoUnqual
           [| error $ "No value given for field "
-                 ++ $(N.termLevelMetadata fieldUnqual) |]
+                 ++ $(N.termLevelMetadata fieldInfoUnqual) |]
 
 {-------------------------------------------------------------------------------
   Deconstruction
@@ -170,7 +169,7 @@ deconstruct = \pat -> do
   where
     go :: Pat -> m Pat
     go p = do
-         mTerm <- matchRecordPat p
+         mTerm <- parseRecordPat p
          case mTerm of
            Nothing -> -- Not a record pattern
              return p
@@ -180,15 +179,15 @@ deconstruct = \pat -> do
              reportError $ "Unknown fields: "
                         ++ intercalate ", " (map N.showName unknown)
              return p
-           Just (MatchedRecord Record{..}) -> runQ $
+           Just (ParsedRecordInfo RecordInfo{..}) -> runQ $
              viewP (varE 'matchHasField) $
                mkTupleP (uncurry mkPat) $
-                 nest (MaxTupleElems 2) (mapMaybe getPat recordFields)
+                 nest (MaxTupleElems 2) (mapMaybe getPat recordInfoFields)
 
-    getPat :: Field Pat -> Maybe (FieldName, Pat)
-    getPat Field{..} = (fieldUnqual, ) <$> fieldDec
+    getPat :: FieldInfo Pat -> Maybe (N.OverloadedName, Pat)
+    getPat FieldInfo{..} = (fieldInfoUnqual, ) <$> fieldInfoVal
 
-    mkPat :: FieldName -> Pat -> Q Pat
+    mkPat :: N.OverloadedName -> Pat -> Q Pat
     mkPat field =
         viewP (varE 'fieldNamed `appTypeE` N.typeLevelMetadata field)
       . return

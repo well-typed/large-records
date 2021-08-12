@@ -38,8 +38,6 @@ largeRecord defaultPureScript [d|
         deriving (Show, Eq)
     |]
 
-endOfBindingGroup
-
 example :: R
 example = [lr| MkR { ri = 5, rb = True } |]
 

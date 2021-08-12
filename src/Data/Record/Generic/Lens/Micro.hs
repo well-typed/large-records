@@ -47,7 +47,7 @@ data SimpleRecordLens a b where
 
 -- | Construct lenses for each field in the record
 --
--- TODO: This is of limited use since we cannot pattern match on the resulting
+-- NOTE: This is of limited use since we cannot pattern match on the resulting
 -- 'Rep' in any meaningful way. It is possible to go through the SOP adapter,
 -- but if we do, we incur quadratic cost again.
 --

@@ -32,16 +32,6 @@ largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
     data S a = S   { x :: Int, y :: [a] } deriving (Eq, Show)
   |]
 
--- This call just indicates to @ghc@ that we have reached the end of a binding
--- group, and so it should process all definitions. This is not necessary if
---
--- * There is another call to 'largeRecord' (or any other TH splice) in between
---   the record definition and its use
--- * The record definition and the record use are in different modules.
---
--- TODO: It'd be nicer if we could avoid this altogether.
-endOfBindingGroup
-
 inOrder :: R Bool
 inOrder = [lr| MkR { x = 1234, y = [True] } |]
 
@@ -68,8 +58,6 @@ data RegularRecord = RR { a :: Int }
 largeRecord defaultPureScript [d|
     data T = T { x :: Int, y :: S Bool, z :: RegularRecord }
   |]
-
-endOfBindingGroup
 
 valueOfT :: T
 valueOfT = [lr| T { x = 5

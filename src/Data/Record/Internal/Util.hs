@@ -1,5 +1,5 @@
 -- | Miscellaneous utility functions
-module Data.Record.TH.CodeGen.Util (
+module Data.Record.Internal.Util (
     -- * Monadic combinators
     concatM
   , concatMapM

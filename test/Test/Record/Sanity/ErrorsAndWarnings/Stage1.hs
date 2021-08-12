@@ -42,8 +42,6 @@ largeRecord defaultPureScript [d|
       data R = MkR { a :: Int, b :: Bool }
     |]
 
-endOfBindingGroup
-
 qProblemsForSyntaxErrorInExp :: Q Exp
 qProblemsForSyntaxErrorInExp = (lift =<<) $ collectOnlyProblems $
     lrExp "MkR { a = 1, b = True, c = ()"

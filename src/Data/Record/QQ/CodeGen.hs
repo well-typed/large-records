@@ -180,12 +180,15 @@ deconstruct = \pat -> do
                         ++ intercalate ", " (map N.showName unknown)
              return p
            Just (ParsedRecordInfo RecordInfo{..}) ->
-             let pattern = 
-                   viewP (varE 'matchHasField) $
-                     mkTupleP (uncurry mkPat) $
-                       nest (MaxTupleElems 2) (mapMaybe getPat recordInfoFields)
+             let recordPat =
+                   case mapMaybe getPat recordInfoFields of
+                     [] -> wildP
+                     fieldPats ->
+                       viewP (varE 'matchHasField) $
+                         mkTupleP (uncurry mkPat) $
+                           nest (MaxTupleElems 2) fieldPats
                  partialType = foldl appT (conT (N.toName recordInfoUnqual)) [wildCardT | _ <- recordInfoTVars]
-              in runQ $ sigP pattern partialType
+              in runQ $ sigP recordPat partialType
                   
 
     getPat :: FieldInfo Pat -> Maybe (N.OverloadedName, Pat)

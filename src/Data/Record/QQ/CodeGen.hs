@@ -184,9 +184,10 @@ deconstruct = \pat -> do
                    case mapMaybe getPat recordInfoFields of
                      [] -> wildP
                      fieldPats ->
-                       viewP (varE 'matchHasField) $
-                         mkTupleP (uncurry mkPat) $
-                           nest (MaxTupleElems 2) fieldPats
+                       parensP $
+                         viewP (varE 'matchHasField) $
+                           mkTupleP (uncurry mkPat) $
+                             nest (MaxTupleElems 2) fieldPats
                  partialType = foldl appT (conT (N.toName recordInfoUnqual)) [wildCardT | _ <- recordInfoTVars]
               in runQ $ sigP recordPat partialType
                   

@@ -179,10 +179,14 @@ deconstruct = \pat -> do
              reportError $ "Unknown fields: "
                         ++ intercalate ", " (map N.showName unknown)
              return p
-           Just (ParsedRecordInfo RecordInfo{..}) -> runQ $
-             viewP (varE 'matchHasField) $
-               mkTupleP (uncurry mkPat) $
-                 nest (MaxTupleElems 2) (mapMaybe getPat recordInfoFields)
+           Just (ParsedRecordInfo RecordInfo{..}) ->
+             let pattern = 
+                   viewP (varE 'matchHasField) $
+                     mkTupleP (uncurry mkPat) $
+                       nest (MaxTupleElems 2) (mapMaybe getPat recordInfoFields)
+                 partialType = foldl appT (conT (N.toName recordInfoUnqual)) [wildCardT | _ <- recordInfoTVars]
+              in runQ $ sigP pattern partialType
+                  
 
     getPat :: FieldInfo Pat -> Maybe (N.OverloadedName, Pat)
     getPat FieldInfo{..} = (fieldInfoUnqual, ) <$> fieldInfoVal

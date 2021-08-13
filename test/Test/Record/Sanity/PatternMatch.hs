@@ -14,6 +14,7 @@
 {-# LANGUAGE ViewPatterns          #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Sanity.PatternMatch (tests) where
@@ -55,14 +56,21 @@ projectNested [lr| MkS { x = a, y = MkT { x = b, y = c } } |] = (a, b, c)
 projectView :: T Bool -> Int
 projectView [lr| MkT { x = ((+1) -> a) } |] = a
 
+matchEmpty :: T Bool -> Int
+matchEmpty [lr| MkT {} |] = 42
+
+matchEmptyNoSign [lr| MkT {} |] = 42 :: Int
+
 testProjections :: Assertion
 testProjections = do
-    assertEqual "one"    (projectOne    t)  5
-    assertEqual "two"    (projectTwo    t) (5, [True])
-    assertEqual "three"  (projectThree  t) (5, [True], 1.0)
-    assertEqual "puns"   (projectPuns   t) (5, [True])
-    assertEqual "nested" (projectNested s) ('a', 2, [True, False])
-    assertEqual "view"   (projectView   t)  6
+    assertEqual "one"           (projectOne       t)  5
+    assertEqual "two"           (projectTwo       t) (5, [True])
+    assertEqual "three"         (projectThree     t) (5, [True], 1.0)
+    assertEqual "puns"          (projectPuns      t) (5, [True])
+    assertEqual "nested"        (projectNested    s) ('a', 2, [True, False])
+    assertEqual "view"          (projectView      t)  6
+    assertEqual "empty"         (matchEmpty       t)  42
+    assertEqual "empty-no-sign" (matchEmptyNoSign t)  42
   where
     t :: T Bool
     t = [lr| MkT { x = 5, y = [True], z = 1.0 } |]

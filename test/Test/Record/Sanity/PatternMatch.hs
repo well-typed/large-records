@@ -12,6 +12,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 -- {-# OPTIONS_GHC -ddump-splices #-}
 

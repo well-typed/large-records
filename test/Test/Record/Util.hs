@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE CPP                        #-}
 
 module Test.Record.Util (
     -- * Tasty/HUnit auxiliary
@@ -121,6 +122,9 @@ instance Quasi CollectProblems where
   qLookupName         = \x y -> liftQ $ qLookupName         x y
   qReify              = \x   -> liftQ $ qReify              x
   qReifyFixity        = \x   -> liftQ $ qReifyFixity        x
+#if MIN_VERSION_template_haskell(2,16,0)
+  qReifyType          = \x   -> liftQ $ qReifyType          x
+#endif
   qReifyInstances     = \x y -> liftQ $ qReifyInstances     x y
   qReifyRoles         = \x   -> liftQ $ qReifyRoles         x
   qReifyAnnotations   = \x   -> liftQ $ qReifyAnnotations   x

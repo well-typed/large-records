@@ -134,6 +134,7 @@ test-suite test-large-records
                        -Wincomplete-record-updates
                        -Wpartial-fields
                        -Widentities
+                       -Wno-partial-type-signatures
                        -ddump-to-file
                        -- Needed for the AllZip tests
                        -freduction-depth=2000

@@ -600,7 +600,7 @@ genMetadata Options{..} RecordDef{..} = do
 --
 -- TODO: Think about DeriveFunctor?
 genDeriving :: Options -> RecordDef -> Deriving -> Q Dec
-genDeriving opts r@RecordDef{..} = \case
+genDeriving opts r = \case
     DeriveEq    -> inst ''Eq   '(==)      'geq
     DeriveOrd   -> inst ''Ord  'compare   'gcompare
     DeriveShow  -> inst ''Show 'showsPrec 'gshowsPrec

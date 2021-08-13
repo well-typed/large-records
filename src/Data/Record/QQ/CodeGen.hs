@@ -189,7 +189,7 @@ deconstruct = \pat -> do
                            mkTupleP (uncurry mkPat) $
                              nest (MaxTupleElems 2) fieldPats
                  partialType = foldl appT (conT (N.toName recordInfoUnqual)) [wildCardT | _ <- recordInfoTVars]
-              in runQ $ sigP recordPat partialType
+              in runQ $ sigP (parensP recordPat) partialType
                   
 
     getPat :: FieldInfo Pat -> Maybe (N.OverloadedName, Pat)

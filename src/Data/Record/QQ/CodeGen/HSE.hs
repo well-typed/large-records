@@ -32,6 +32,7 @@ extensionFromTH = \case
     TH.RecordPuns       -> EnableExtension $ NamedFieldPuns
     TH.TypeApplications -> EnableExtension $ TypeApplications
     TH.ViewPatterns     -> EnableExtension $ ViewPatterns
+    TH.BlockArguments   -> EnableExtension $ BlockArguments
 
     -- We don't care about all extensions; there are many of them, and they vary
     -- from ghc version to ghc version. Treating them all would be a lot of work

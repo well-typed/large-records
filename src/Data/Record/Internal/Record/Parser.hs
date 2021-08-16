@@ -2,12 +2,9 @@
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Data.Record.Internal.RecordDef (
-    -- * Definition
-    RecordDef(..)
-  , FieldDef(..)
+module Data.Record.Internal.Record.Parser (
+    RecordInstances(..)
   , Deriving(..)
-    -- * Parsing
   , parseRecordDef
   ) where
 
@@ -16,49 +13,17 @@ import Data.Maybe (catMaybes)
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import Data.Record.Internal.Util
+import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util
-
-import qualified Data.Record.Internal.TH.Name as N
+import Data.Record.Internal.Util
 
 {-------------------------------------------------------------------------------
-  Definition
+  Record instances
 -------------------------------------------------------------------------------}
 
--- | Our internal representation of a record definition
---
--- We parse the 'Dec' that TH gives us and represent it in a more convenient way
--- for processing. For our running example, the internal representation looks
--- like this:
---
--- > Record {
--- >     recordUnqual = "T"
--- >   , recordConstr = "MkT"
--- >   , recordFields = [
--- >         Field {fieldUnqual = "tInt"   , fieldType = ConT 'Word          , fieldIndex = 0}
--- >       , Field {fieldUnqual = "tBool"  , fieldType = ConT 'Bool          , fieldIndex = 1}
--- >       , Field {fieldUnqual = "tChar"  , fieldType = ConT 'Char          , fieldIndex = 2}
--- >       , Field {fieldUnqual = "tA"     , fieldType = VarT a              , fieldIndex = 3}
--- >       , Field {fieldUnqual = "tListB" , fieldType = AppT ListT (VarT b) , fieldIndex = 4}
--- >       ]
--- >   , recordDeriv = [DeriveEq, DeriveShow]
--- >   , recordTVars = [PlainTV a, PlainTV b]
--- >   }
-data RecordDef = RecordDef {
-      -- | Name of the record /type/
-      recordDefUnqual :: N.Name 'TcClsName 'N.Unique
-
-      -- | The type variables in the records type
-    , recordDefTVars :: [TyVarBndr]
-
-      -- | Unqualified name of the record /constructor/
-    , recordDefConstr :: N.Name 'N.DataName 'N.Unique
-
-      -- | The fields in the record
-    , recordDefFields :: [FieldDef]
-
+data RecordInstances = RecordInstances {
       -- | Explicitly supported type class instances
-    , recordDefDeriv :: [Deriving]
+      recordInstancesDerived :: [Deriving]
 
       -- | Anyclass deriving
       --
@@ -66,26 +31,8 @@ data RecordDef = RecordDef {
       -- deriving classes when defining the newtype, rather than as standalone
       -- deriving instances. (If we don't, we need to duplicate ghc's logic for
       -- figuring out how many parameters to provide to the datatype.)
-    , recordDefAnyclass :: [Type]
+    , recordInstancesAnyclass :: [Type]
     }
-  deriving (Show)
-
-data FieldDef = FieldDef {
-      -- | Unqualified name of the field
-      fieldDefUnqual :: N.OverloadedName
-
-      -- | Type of the field
-    , fieldDefType :: Type
-
-      -- | Index of the field (field 0, field 1, ..)
-      --
-      -- This is strictly speaking redundant information, as this is already
-      -- implied by the position of the field in 'recordFields'. However, since
-      -- we do a lot of positional processing (every field corresponds to a
-      -- vector element), it is convenient to have the index readily available.
-    , fieldDefIndex  :: Int
-    }
-  deriving (Show)
 
 data Deriving =
     DeriveEq
@@ -101,7 +48,7 @@ data Deriving =
 --
 -- We use 'Maybe' in these matching functions, along with 'reportError', so that
 -- we can report multiple errors rather than stopping at the first.
-parseRecordDef :: Dec -> Q (Maybe RecordDef)
+parseRecordDef :: Dec -> Q (Maybe (Record (), RecordInstances))
 parseRecordDef (DataD
                   _cxt@[]
                   typeName
@@ -110,16 +57,24 @@ parseRecordDef (DataD
                   [RecC constrName fieldTypes]
                   derivClauses
                ) = do
-    fields <- catMaybes <$> mapM parseFieldDef (zip [0..] fieldTypes)
-    (deriv, anyclass) <- partitionEithers <$> concatMapM parseDeriv derivClauses
-    return $ Just RecordDef {
-        recordDefUnqual   = N.fromName' typeName
-      , recordDefTVars    = tyVarBndrs
-      , recordDefConstr   = N.fromName' constrName
-      , recordDefFields   = fields
-      , recordDefDeriv    = deriv
-      , recordDefAnyclass = anyclass
-      }
+
+    fields            <- catMaybes <$>
+                           mapM parseFieldDef (zip [0..] fieldTypes)
+    (deriv, anyclass) <- partitionEithers <$>
+                           concatMapM parseDeriv derivClauses
+
+    return $ Just (
+        Record {
+            recordUnqual = nameBase typeName
+          , recordTVars  = tyVarBndrs
+          , recordConstr = nameBase constrName
+          , recordFields = fields
+          }
+      , RecordInstances {
+            recordInstancesDerived  = deriv
+          , recordInstancesAnyclass = anyclass
+          }
+      )
 parseRecordDef d = do
     reportError $ "Unsupported declaration: " ++ show d
     return Nothing
@@ -149,17 +104,26 @@ parseDeriv = \case
              reportError $ "Cannot derive instance for " ++ show p
              return Nothing
 
-parseFieldDef :: (Int, VarBangType) -> Q (Maybe FieldDef)
+parseFieldDef :: (Int, VarBangType) -> Q (Maybe (Field ()))
 parseFieldDef (i, (fieldName, bng, typ)) =
     case bng of
       DefaultBang ->
-        return . Just $ FieldDef (unqualify fieldName) typ i
+        return . Just $ Field {
+            fieldUnqual = unqualify fieldName
+          , fieldType   = typ
+          , fieldIndex  = i
+          , fieldVal    = ()
+          }
       _otherwise  -> do
         reportError $ "Unsupported bang type: " ++ show bng
         return Nothing
   where
-    unqualify :: Name -> N.OverloadedName
-    unqualify = N.OverloadedName . undoDRF . nameBase
+    unqualify :: Name -> String
+    unqualify = undoDRF . nameBase
+
+{-------------------------------------------------------------------------------
+  Internal auxiliary
+-------------------------------------------------------------------------------}
 
 -- When @DuplicateRecordFields@ is enabled, it produces field names such as
 -- @$sel:a:MkY@. We don't really care much about 'DuplicateRecordFields',

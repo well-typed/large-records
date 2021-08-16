@@ -11,6 +11,8 @@
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE UndecidableInstances   #-}
 
+-- {-# OPTIONS_GHC -ddump-splices #-}
+
 module Test.Record.Prop.Show.Large (
       FromRegular(..)
     , Example1(..)

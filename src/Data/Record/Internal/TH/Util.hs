@@ -78,7 +78,7 @@ ptupleT ts = appsT (promotedTupleT (length ts)) ts
 --
 -- > f :: typ
 -- > f = body
-simpleFn :: N.Name 'N.VarName 'N.Dynamic -> Q Type -> Q Exp -> Q [Dec]
+simpleFn :: N.Name 'VarName flavour -> Q Type -> Q Exp -> Q [Dec]
 simpleFn fnName qTyp qBody = do
     typ  <- qTyp
     body <- qBody
@@ -88,7 +88,7 @@ simpleFn fnName qTyp qBody = do
         ]
   where
     fnName' :: Name
-    fnName' = N.toName fnName
+    fnName' = N.toTH fnName
 
 -- | Construct simple pattern synonym type
 --

@@ -16,35 +16,25 @@
 -- Intended for qualified import.
 module Data.Record.Internal.TH.Name (
     -- * Names
-    Flavour(..)
+    Name(..)
+  , Flavour(..)
   , NameFlavour(..)
-  , NameSpace(..)
-  , Name(..)
+    -- * Simple functions
   , nameBase
-    -- ** Singleton
-  , SFlavour(..)
-  , IsFlavour(..)
-    -- ** Conversion
-  , fromName
-  , fromName'
-  , toName
-    -- * Overloaded names
-  , OverloadedName(..)
-  , fromOverloaded
+  , mapNameBase
+    -- * Working with qualified names
+  , qualify
+  , unqualified
+  , nameQualifier
+    -- * Fresh names
+  , newName
+    -- * Conversion
+  , fromTH
+  , fromTH'
+  , toTH
     -- * Resolution
   , LookupName(..)
-  , lookupKnownName
   , reify
-    -- * Derive unique names
-  , DemoteNameSpace(..)
-  , deriveUnique
-    -- * Construction
-  , prefixNew
-  , prefixExisting
-    -- * Abstract over different kinds of names
-  , IsName(..)
-    -- * Metadata
-  , ExtractMetadata(..)
     -- * Construct TH
   , classD
   , conE
@@ -58,12 +48,12 @@ module Data.Record.Internal.TH.Name (
   , sigD
   , varBangType
   , varE
-  , varP
+  , varLocalP
+  , varGlobalP
   ) where
 
 import Data.Kind
 import Data.Maybe (fromMaybe)
-import Data.Proxy
 import Language.Haskell.TH (Q)
 import Language.Haskell.TH.Syntax (Quasi, runQ, NameSpace(..))
 
@@ -122,8 +112,32 @@ deriving instance Show (Name ns flavour)
 deriving instance Eq   (Name ns flavour)
 deriving instance Ord  (Name ns flavour)
 
+{-------------------------------------------------------------------------------
+  Simple functions
+-------------------------------------------------------------------------------}
+
 nameBase :: Name ns flavour -> String
 nameBase (Name (TH.OccName occ) _) = occ
+
+-- | Modify the unqualified part of the name
+--
+-- Since we often to do this derive one kind of name from another, the
+-- namespace of the result is not related to the namespace of the argument.
+mapNameBase :: (String -> String) -> Name ns flavour -> Name ns' flavour
+mapNameBase f (Name (TH.OccName occ) flav) = Name (TH.OccName (f occ)) flav
+
+{-------------------------------------------------------------------------------
+  Working with qualified names
+-------------------------------------------------------------------------------}
+
+qualify :: Maybe TH.ModName -> String -> Name ns 'Dynamic
+qualify qual occ = Name (TH.OccName occ) (NameDynamic qual)
+
+unqualified :: String -> Name ns 'Dynamic
+unqualified = qualify Nothing
+
+nameQualifier :: Name ns 'Dynamic -> Maybe TH.ModName
+nameQualifier (Name _ (NameDynamic qual)) = qual
 
 {-------------------------------------------------------------------------------
   Singleton
@@ -164,18 +178,17 @@ fromFlavourF (NameGlobal n p m)     = TH.NameG n p m
 -- | Translate from a dynamically typed TH name
 --
 -- Returns 'Nothing' if the TH name does not have the specified flavour.
-fromName :: IsFlavour flavour => TH.Name -> Maybe (Name ns flavour)
-fromName (TH.Name occ flavour') =
-    Name occ <$> toFlavourF isFlavour flavour'
+fromTH :: IsFlavour flavour => TH.Name -> Maybe (Name ns flavour)
+fromTH (TH.Name occ flavour') = Name occ <$> toFlavourF isFlavour flavour'
 
--- | Variation on 'fromName' that throws an exception on a flavour mismatch
-fromName' :: forall ns flavour. IsFlavour flavour => TH.Name -> Name ns flavour
-fromName' name@(TH.Name occ flavour') =
-    fromMaybe (error err) $ fromName name
+-- | Variation on 'fromTH' that throws an exception on a flavour mismatch
+fromTH' :: forall ns flavour. IsFlavour flavour => TH.Name -> Name ns flavour
+fromTH' name@(TH.Name occ flavour') =
+    fromMaybe (error err) $ fromTH name
   where
     err :: String
     err = concat [
-          "fromName': name "
+          "fromTH': name "
         , show occ
         , " has the wrong flavour: "
         , show (isFlavour :: SFlavour flavour)
@@ -184,34 +197,8 @@ fromName' name@(TH.Name occ flavour') =
         ]
 
 -- | Forget type level information
-toName :: Name ns flavour -> TH.Name
-toName (Name occ flavour) = TH.Name occ (fromFlavourF flavour)
-
-{-------------------------------------------------------------------------------
-  Overloaded names
--------------------------------------------------------------------------------}
-
--- | Overloaded name
---
--- Overloaded names only have an interpretation in context; for example, a
--- field name only means something when combined with type of the /record/ the
--- field belongs to.
---
--- We treat this as a completely separate category, because 'OverloadedName's
--- do not correspond to TH 'Name's.
-newtype OverloadedName = OverloadedName {
-      getOverloadedName :: String
-    }
-  deriving (Show, Eq, Ord)
-
--- | Construct 'Name' from an 'OverloadedName'
---
--- WARNING: The moment you do this, you lose overloading: using 'fromOverloaded'
--- to bind definitions for two fields with the same name will result in two
--- identical names within the same scope, and hence a "multiple declarations"
--- error.
-fromOverloaded :: OverloadedName -> Name ns 'Dynamic
-fromOverloaded (OverloadedName n) = mkName n
+toTH :: Name ns flavour -> TH.Name
+toTH (Name occ flavour) = TH.Name occ (fromFlavourF flavour)
 
 {-------------------------------------------------------------------------------
   Resolution
@@ -223,187 +210,107 @@ class LookupName ns where
 
 instance LookupName 'TcClsName where
   lookupName (Name occ (NameDynamic mMod)) =
-      fmap fromName' <$>
-        runQ (TH.lookupTypeName $ qualify mMod occ)
+      fmap fromTH' <$>
+        runQ (TH.lookupTypeName $ qualifyDotted mMod occ)
 
 instance LookupName 'DataName where
   lookupName (Name occ (NameDynamic mMod)) =
-      fmap fromName' <$>
-        runQ (TH.lookupValueName $ qualify mMod occ)
+      fmap fromTH' <$>
+        runQ (TH.lookupValueName $ qualifyDotted mMod occ)
 
 instance LookupName 'VarName where
   lookupName (Name occ (NameDynamic mMod)) =
-      fmap fromName' <$>
-        runQ (TH.lookupValueName $ qualify mMod occ)
-
--- | Wrapper around 'lookupName' that expects the name to be known, and fails
--- if it's not.
-lookupKnownName ::
-     ( Quasi m
-     , LookupName ns
-     , IsName (Name ns 'Dynamic)
-     )
-  => Name ns 'Dynamic -> m (Name ns 'Global)
-lookupKnownName n = do
-    mn' <- lookupName n
-    case mn' of
-      Nothing -> fail $ "lookupKnownName: " ++ showName n ++ " not in scope"
-      Just n' -> return n'
+      fmap fromTH' <$>
+        runQ (TH.lookupValueName $ qualifyDotted mMod occ)
 
 -- | Get info about the given name
 --
 -- Only global names can be reified. See 'lookupName'.
 reify :: Quasi m => Name ns 'Global -> m TH.Info
-reify = runQ . TH.reify . toName
+reify = runQ . TH.reify . toTH
 
 {-------------------------------------------------------------------------------
-  Derive unique names
--------------------------------------------------------------------------------}
-
-class DemoteNameSpace (ns :: NameSpace) where
-  demoteNameSpace :: Proxy ns -> NameSpace
-
-instance DemoteNameSpace 'TcClsName where demoteNameSpace _ = TcClsName
-instance DemoteNameSpace 'DataName  where demoteNameSpace _ = DataName
-instance DemoteNameSpace 'VarName   where demoteNameSpace _ = VarName
-
--- | Convert 'Unique name (with fresh names) to a 'Global name
--- (the fully qualified name), given the context of the name
-mkUniqueName :: forall ns.
-     DemoteNameSpace ns
-  => TH.PkgName -> TH.ModName -> Name ns 'Unique -> Name ns 'Global
-mkUniqueName pkg modl (Name occ (NameUnique _uniq)) =
-    Name occ (NameGlobal (demoteNameSpace (Proxy @ns)) pkg modl)
-
--- | Derive unique name
---
--- NOTE: Names with a 'Unique' flavour are spliced into the current module.
--- We can turn these into 'Global' names by looking up what the current module
--- /is/, but this means we should be careful when we call this function.
-deriveUnique :: forall m ns.
-     (Quasi m, DemoteNameSpace ns)
-  => Name ns 'Unique -> m (Name ns 'Global)
-deriveUnique = \n -> flip aux n <$> runQ TH.location
-  where
-    aux :: TH.Loc -> Name ns 'Unique -> Name ns 'Global
-    aux l = mkUniqueName
-              (TH.mkPkgName (TH.loc_package l))
-              (TH.mkModName (TH.loc_module  l))
-
-{-------------------------------------------------------------------------------
-  Construction
+  Fresh names
 -------------------------------------------------------------------------------}
 
 newName :: String -> Q (Name ns 'Unique)
-newName = fmap fromName' . TH.newName
-
-mkName :: String -> Name ns 'Dynamic
-mkName = fromName' . TH.mkName
-
--- | Construct a new (dynamically bound) name by prefixing another name
---
--- Only the base name ('OccName') of the input name will be used.
-prefixNew :: String -> Name ns flavour -> Name ns' 'Dynamic
-prefixNew prefix (Name (TH.OccName occ) _flavour) =
-      Name (TH.OccName (prefix ++ occ)) (NameDynamic Nothing)
-
--- | Prefix existing name
---
--- When we prefix an existing name, we want to use the package/module
--- info of the existing name, but not necessarily it's namespace: we might
--- well be deriving, say, a function name from a type name.
-prefixExisting :: String -> TH.NameSpace -> Name ns 'Global -> Name ns' 'Global
-prefixExisting prefix n (Name (TH.OccName occ) (NameGlobal _ p m)) =
-      Name (TH.OccName (prefix ++ occ)) (NameGlobal n p m)
+newName = fmap fromTH' . TH.newName
 
 {-------------------------------------------------------------------------------
-  Abstract over different kinds of names
+  /Defining/ global names
+
+  Since these are all meant to define capturable names, these functions all take
+  an 'Dynamic' name as argument.
 -------------------------------------------------------------------------------}
 
--- | Regular or overloaded names
-class IsName n where
-  -- | Make a fresh name derived from another name
-  fresh :: n -> Q (Name ns 'Unique)
+-- | Define pattern synonym
+patSynD :: Name 'DataName 'Dynamic -> _
+patSynD = TH.patSynD . toTH
 
-  -- | User-friendly representation of the name
-  showName :: n -> String
+-- | Define pattern synonym signature
+patSynSigD :: Name 'DataName 'Dynamic -> _
+patSynSigD = TH.patSynSigD . toTH
 
-instance IsName (Name ns flavour) where
-  fresh    = newName . nameBase
-  showName = nameBase
+-- | Define function signature
+sigD :: Name 'VarName 'Dynamic -> _
+sigD = TH.sigD . toTH
 
-instance IsName OverloadedName where
-  fresh    = newName . getOverloadedName
-  showName = getOverloadedName
+-- | Define record field signature
+varBangType :: Name 'VarName 'Dynamic -> _
+varBangType = TH.varBangType . toTH
 
-{-------------------------------------------------------------------------------
-  Extract metadata
--------------------------------------------------------------------------------}
+-- | Define record constructor
+recC :: Name 'DataName 'Dynamic -> _
+recC = TH.recC . toTH
 
--- | Extract metadata
---
--- Metadata is used for two purposes:
---
--- 1. Generics. In this case, this is used for things like generating JSON,
---    pretty-printing, etc. This means that scope resolution is not relevant.
--- 2. The quasi-quoter. The quasi-quoter needs to map field names to record
---    indices (this field is the @i@th field in the record). This means that the
---    field names in the metadata must be equal to the field names that the
---    user will use in the quasi-quote.
-class ExtractMetadata n where
-  termLevelMetadata :: n -> Q TH.Exp
-  typeLevelMetadata :: n -> Q TH.Type
+-- | Define class
+classD :: _ -> Name 'TcClsName 'Dynamic -> _
+classD cxt = TH.classD cxt . toTH
 
-instance ExtractMetadata OverloadedName where
-  termLevelMetadata (OverloadedName n) = TH.stringE n
-  typeLevelMetadata (OverloadedName n) = TH.litT $ TH.strTyLit n
+-- | Define newtype
+newtypeD :: _ -> Name 'TcClsName 'Dynamic -> _
+newtypeD cxt = TH.newtypeD cxt . toTH
 
-instance ExtractMetadata (Name ns flavour) where
-  termLevelMetadata (Name (TH.OccName n) _) = TH.stringE n
-  typeLevelMetadata (Name (TH.OccName n) _) = TH.litT $ TH.strTyLit n
+-- | Define record pattern synonym
+recordPatSyn :: [String] -> _
+recordPatSyn = TH.recordPatSyn . map (toTH . unqualified)
 
-{-------------------------------------------------------------------------------
-  Thin layer around TH functions that take names
--------------------------------------------------------------------------------}
-
-conE        :: Name 'DataName  flavour -> _
-conT        :: Name 'TcClsName flavour -> _
-patSynD     :: Name 'DataName 'Unique  -> _
-patSynSigD  :: Name 'DataName 'Unique  -> _
-recC        :: Name 'DataName 'Dynamic -> _
-sigD        :: Name 'VarName  'Dynamic -> _
-varBangType :: Name 'VarName  'Dynamic -> _
-varE        :: Name 'VarName   flavour -> _
-varP        :: Name 'VarName   flavour -> _
-
-conE        = TH.conE        . toName
-conT        = TH.conT        . toName
-patSynD     = TH.patSynD     . toName
-patSynSigD  = TH.patSynSigD  . toName
-recC        = TH.recC        . toName
-sigD        = TH.sigD        . toName
-varBangType = TH.varBangType . toName
-varE        = TH.varE        . toName
-varP        = TH.varP        . toName
-
-classD   :: _ -> Name 'TcClsName 'Dynamic -> _
-newtypeD :: _ -> Name 'TcClsName 'Unique  -> _
-
-classD   cxt = TH.classD   cxt . toName
-newtypeD cxt = TH.newtypeD cxt . toName
-
-recordPatSyn :: [OverloadedName] -> _
-recordPatSyn = TH.recordPatSyn . map (toName . fromOverloaded)
-
-pragCompleteD :: [Name 'DataName 'Unique] -> Maybe (Name 'TcClsName flavour) -> _
+-- | Define COMPLETE pragma
+pragCompleteD :: [Name 'DataName 'Dynamic] -> Maybe (Name 'TcClsName 'Dynamic) -> _
 pragCompleteD constrs typ =
-    TH.pragCompleteD (toName <$> constrs) (toName <$> typ)
+    TH.pragCompleteD (toTH <$> constrs) (toTH <$> typ)
+
+-- | Define pattern variable for use in a record pattern synonym
+varGlobalP :: Name 'VarName 'Dynamic -> _
+varGlobalP = TH.varP . toTH
+
+-- | Define pattern variable for use in a local pattern match
+varLocalP :: Name 'VarName 'Unique -> _
+varLocalP = TH.varP . toTH
+
+{-------------------------------------------------------------------------------
+  Referencing existing names
+
+  We can reference any flavour of name.
+-------------------------------------------------------------------------------}
+
+-- | Reference constructor
+conE :: Name 'DataName flavour -> _
+conE = TH.conE . toTH
+
+-- | Reference type
+conT :: Name 'TcClsName flavour -> _
+conT = TH.conT . toTH
+
+-- | Reference variable
+varE :: Name 'VarName flavour -> _
+varE = TH.varE . toTH
 
 {-------------------------------------------------------------------------------
   Internal auxiliary
 -------------------------------------------------------------------------------}
 
 -- | Qualify a name (for use in 'lookupTypeName' and co)
-qualify :: Maybe TH.ModName -> TH.OccName -> String
-qualify Nothing               (TH.OccName occ) = occ
-qualify (Just (TH.ModName m)) (TH.OccName occ) = m ++ "." ++ occ
+qualifyDotted :: Maybe TH.ModName -> TH.OccName -> String
+qualifyDotted Nothing               (TH.OccName occ) = occ
+qualifyDotted (Just (TH.ModName m)) (TH.OccName occ) = m ++ "." ++ occ

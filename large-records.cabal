@@ -31,15 +31,15 @@ library
                         Data.Record.TH
                         Data.Record.TH.CodeGen
                         Data.Record.TH.CodeGen.Tree
-                        Data.Record.TH.Config.Naming
                         Data.Record.TH.Config.Options
                         Data.Record.TH.Runtime
 
-                        Data.Record.Internal.RecordDef
-                        Data.Record.Internal.RecordInfo
-                        Data.Record.Internal.RecordInfo.Resolution
-                        Data.Record.Internal.RecordInfo.Resolution.GHC
-                        Data.Record.Internal.RecordInfo.Resolution.Internal
+                        Data.Record.Internal.Naming
+                        Data.Record.Internal.Record
+                        Data.Record.Internal.Record.Parser
+                        Data.Record.Internal.Record.Resolution
+                        Data.Record.Internal.Record.Resolution.GHC
+                        Data.Record.Internal.Record.Resolution.Internal
                         Data.Record.Internal.TH.Name
                         Data.Record.Internal.TH.Util
                         Data.Record.Internal.Util

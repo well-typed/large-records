@@ -1,16 +1,16 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs     #-}
 
-module Data.Record.Internal.RecordInfo.Resolution (
-    resolveRecordInfo
+module Data.Record.Internal.Record.Resolution (
+    resolveRecord
   ) where
 
-import Data.Void
-import Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Syntax (Quasi, NameSpace(..))
 
-import Data.Record.Internal.RecordInfo
+import Data.Record.Internal.Record
 
-import qualified Data.Record.Internal.RecordInfo.Resolution.GHC as GHC
-import qualified Data.Record.Internal.RecordInfo.Resolution.Internal as Internal
+import qualified Data.Record.Internal.Record.Resolution.GHC as GHC
+import qualified Data.Record.Internal.Record.Resolution.Internal as Internal
 import qualified Data.Record.Internal.TH.Name as N
 
 -- | Resolve record info
@@ -68,12 +68,12 @@ import qualified Data.Record.Internal.TH.Name as N
 -- The contents of this environment are ephemeral, of course, and certainly not
 -- stored as part of interface files, so this is merely a backup for when the
 -- 'MetadataOf' information is not available.
-resolveRecordInfo :: Quasi m
-  => N.Name 'N.DataName 'N.Global
-  -> m (Either String (RecordInfo Void))
-resolveRecordInfo constr = do
-    mInfo <- Internal.getRecordInfo constr
+resolveRecord :: Quasi m
+  => String                       -- ^ User-defined constructor
+  -> N.Name 'DataName 'N.Global   -- ^ Internal constructor
+  -> m (Either String (Record ()))
+resolveRecord userConstr internalConstr = do
+    mInfo <- Internal.getRecordInfo internalConstr
     case mInfo of
       Just info -> return $ Right info
-      Nothing   -> GHC.parseRecordInfo constr
-
+      Nothing   -> GHC.parseRecordInfo userConstr internalConstr

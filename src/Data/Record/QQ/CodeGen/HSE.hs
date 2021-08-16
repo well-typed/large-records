@@ -1,21 +1,24 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 -- | Additional utilities for working with @haskell-src-exts@
 module Data.Record.QQ.CodeGen.HSE (
     -- * Language extensions
     extensionFromTH
   , processRecordPuns
-    -- * Names
-  , resolveConstr
+    -- * Naming
+  , fromHseName
+  , resolveHseName
+  , resolveKnownHseName
   ) where
 
 import Data.Generics
 import Language.Haskell.Exts
 import Language.Haskell.TH.Syntax (Quasi)
 
-import qualified Language.Haskell.TH as TH
+import qualified Language.Haskell.TH.Syntax as TH
 
 import qualified Data.Record.Internal.TH.Name as N
 
@@ -49,21 +52,33 @@ processRecordPuns = everywhere (mkT go)
     go p = p
 
 {-------------------------------------------------------------------------------
-  Names
-
-  Unlike a regular TH quotes, the names that appear in an expression of pattern
-  parsed by @haskell-src-exts@ have not been properly renamed. We therefore have
-  to do a lookup here.
+  Naming
 -------------------------------------------------------------------------------}
 
--- | Resolve constructor name
+-- | HSE generated names are always dynamically bound
+fromHseName :: TH.Name -> N.Name flavour 'N.Dynamic
+fromHseName = N.fromTH'
+
+-- | Resolve HSE generated name
 --
--- The name we get from @haskell-src-meta@ will have a dynamic flavour (in
--- other words, will not have been through the renamer), and so we must resolve
--- it here.
-resolveConstr :: Quasi m => TH.Name -> m (N.Name 'N.DataName 'N.Global)
-resolveConstr n = do
-    mConstr <- N.lookupName $ N.fromName' n
-    case mConstr of
-      Nothing      -> fail $ "resolveConstr: " ++ show n ++ " not in scope"
-      Just constr' -> return constr'
+-- As mentioned in 'fromHseName', HSE generated names are always dynamically
+-- bound, and we therefore need to do a "renaming pass": we need to resolve the
+-- name. However, the exact name we want to lookup might not be the name as it
+-- appears in the QQ place; for if the user writes @MkR@, the name we actually
+-- want to look up might be, say, @LR__MkR@.
+resolveHseName :: (Quasi m, N.LookupName ns')
+  => (String -> String)
+  ->           N.Name ns  'N.Dynamic
+  -> m (Maybe (N.Name ns' 'N.Global))
+resolveHseName f = N.lookupName . N.mapNameBase f
+
+-- | Variation on 'resolveHseName' that fails if the name is not known
+resolveKnownHseName :: (Quasi m, N.LookupName ns')
+  => (String -> String)
+  ->    N.Name ns  'N.Dynamic
+  -> m (N.Name ns' 'N.Global)
+resolveKnownHseName f n = do
+    mn' <- resolveHseName f n
+    case mn' of
+      Just n' -> return n'
+      Nothing -> fail $ "resolveKnownHseName: " ++ N.nameBase n ++ " not in scope"

@@ -43,12 +43,12 @@ recordConstrE :: Record a -> Q Exp
 recordConstrE = stringE . recordConstr
 
 -- | The saturated type of the record (that is, with all type vars applied)
-recordTypeT :: Record () -> Q Type
+recordTypeT :: Record a -> Q Type
 recordTypeT Record{..} =
     appsT (N.conT (N.unqualified recordType)) $ map tyVarType recordTVars
 
 -- | Coerce the record to the underlying @Vector Any@
-recordToVectorE :: Record () -> Q Exp
+recordToVectorE :: Record a -> Q Exp
 recordToVectorE =
     N.varE . N.unqualified . nameRecordInternalField . recordType
 
@@ -60,17 +60,17 @@ recordToVectorE =
 -- * we know through other means that all values are already forced.
 --
 -- See also 'recordFromVectorForceE'.
-recordFromVectorDontForceE :: Record () -> Q Exp
+recordFromVectorDontForceE :: Record a -> Q Exp
 recordFromVectorDontForceE =
     N.conE . N.unqualified . nameRecordInternalConstr . recordConstr
 
 -- | The (unsafe) indexed field accessor
-recordIndexedAccessorE :: Record () -> Q Exp
+recordIndexedAccessorE :: Record a -> Q Exp
 recordIndexedAccessorE =
     N.varE . N.unqualified . nameRecordIndexedAccessor . recordType
 
 -- | The (unsafe) indexed field overwrite
-recordIndexedOverwriteE :: Record () -> Q Exp
+recordIndexedOverwriteE :: Record a -> Q Exp
 recordIndexedOverwriteE =
     N.varE . N.unqualified . nameRecordIndexedOverwrite . recordType
 
@@ -87,19 +87,19 @@ fieldNameT :: Field a -> Q Type
 fieldNameT = litT . strTyLit . fieldName
 
 -- | Type of the field
-fieldTypeT :: Field () -> Q Type
+fieldTypeT :: Field a -> Q Type
 fieldTypeT Field{..} = return fieldType
 
 -- | Index of the field
-fieldIndexE :: Field () -> Q Exp
+fieldIndexE :: Field a -> Q Exp
 fieldIndexE Field{..} = litE . integerL $ fromIntegral fieldIndex
 
 -- | The indexed field accessor, applied to this field
-fieldUntypedAccessorE :: Record () -> Field () -> Q Exp
+fieldUntypedAccessorE :: Record a -> Field a -> Q Exp
 fieldUntypedAccessorE r f =
     [| $(recordIndexedAccessorE r) $(fieldIndexE f) |]
 
 -- | The indexed field overwrite, applied to this field
-fieldUntypedOverwriteE :: Record () -> Field () -> Q Exp
+fieldUntypedOverwriteE :: Record a -> Field a -> Q Exp
 fieldUntypedOverwriteE r f =
     [| $(recordIndexedOverwriteE r) $(fieldIndexE f) |]

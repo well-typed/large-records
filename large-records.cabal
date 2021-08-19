@@ -2,13 +2,24 @@ cabal-version:      2.4
 name:               large-records
 version:            0.1.0.0
 synopsis:           Efficient compilation for large records, linear in the size of the record
-description:
+description:        For many reasons, the internal code generated for modules
+                    that contain records is quadratic in the number of record
+                    fields. For large records (more than 30 fields, say), this
+                    can become problematic, leading to large compilation times
+                    and high memory requirements for ghc. The large-records
+                    library provides a way to define records that is guaranteed
+                    to result in ghc core that is /linear/ in the number of
+                    record fields.
 bug-reports:        https://github.com/well-typed/large-records/issues
 license:            BSD-3-Clause
 author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
 extra-source-files: CHANGELOG.md
+
+source-repository head
+  type:     git
+  location: https://github.com/well-typed/large-records
 
 library
     exposed-modules:    Data.Record.Generic
@@ -70,7 +81,6 @@ library
                        -Widentities
                        -Wredundant-constraints
                        -Wmissing-export-lists
-                       -ddump-to-file
 
 test-suite test-large-records
     type:               exitcode-stdio-1.0
@@ -135,7 +145,6 @@ test-suite test-large-records
                        -Wincomplete-record-updates
                        -Wpartial-fields
                        -Widentities
-                       -ddump-to-file
                        -- Needed for the AllZip tests
                        -freduction-depth=2000
 

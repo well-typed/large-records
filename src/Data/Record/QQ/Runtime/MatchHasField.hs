@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE KindSignatures         #-}
@@ -15,6 +16,7 @@ module Data.Record.QQ.Runtime.MatchHasField (
     MatchHasField -- opaque
   , matchHasField
   , fieldNamed
+  , viewAtType
   ) where
 
 import Data.Kind
@@ -55,16 +57,27 @@ instance HasField x r a => MatchHasField r (GetField x r a) where
 instance (MatchHasField a b, MatchHasField a c) => MatchHasField a (b, c) where
   matchHasField r = (matchHasField r, matchHasField r)
 
+-- | Can be used alongside 'matchHasField' to fix the type of the argument
+--
+-- This avoids inferring types in terms of @HasField ..@; see example below.
+viewAtType :: a -> a -> a
+viewAtType = const id
+
 {-------------------------------------------------------------------------------
   Example
 -------------------------------------------------------------------------------}
 
-data Foo a
+data Foo a = MkFoo
 
 instance HasField "fooX" (Foo a) Int where hasField = undefined
 instance HasField "fooY" (Foo a) [a] where hasField = undefined
 
-_example :: Foo Char -> (Int, [Char])
-_example (matchHasField -> ( fieldNamed @"fooX" -> x
-                           , fieldNamed @"fooY" -> y
-                           ) ) = (x, y)
+_example1 :: (HasField "fooX" a b, HasField "fooY" a c) => a -> (b, c)
+_example1 (matchHasField -> ( fieldNamed @"fooX" -> x
+                            , fieldNamed @"fooY" -> y
+                            ) ) = (x, y)
+
+_example2 :: Foo a -> (Int, [a]) -- This is the inferred signature
+_example2 (viewAtType MkFoo -> matchHasField -> ( fieldNamed @"fooX" -> x
+                                                , fieldNamed @"fooY" -> y
+                                                ) ) = (x, y)

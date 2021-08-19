@@ -15,7 +15,7 @@
 module Test.Record.Sanity.Laziness (tests) where
 
 import Control.Exception
-import Control.Monad
+import Data.List (isInfixOf)
 import Data.IORef
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -25,6 +25,8 @@ import Data.Record.TH
 
 import qualified Data.Record.Generic.Rep          as Rep
 import qualified Data.Record.Generic.Rep.Internal as Rep
+
+import Test.Record.Util
 
 {-------------------------------------------------------------------------------
   Example record
@@ -87,9 +89,12 @@ test_map =
 
 -- Just to be sure: if we use map' instead of map, we get bottom
 test_map' :: Assertion
-test_map' = expectException $ do
+test_map' = expectException isExpectedException $ do
     assertEqual "" expected actual
   where
+    isExpectedException :: SomeException -> Bool
+    isExpectedException e = "undefined" `isInfixOf` show e
+
     expected, actual :: Rep (K Int) R
     expected = Rep.unsafeFromList [0, 0]
     actual   = Rep.map' (\_ -> K 0) undefined
@@ -149,15 +154,3 @@ test_czipWithM =
                         (\_ _ -> Just $ I minBound)
                         undefined
                         undefined
-
-{-------------------------------------------------------------------------------
-  Auxiliary
--------------------------------------------------------------------------------}
-
-expectException :: Assertion -> Assertion
-expectException p = do
-    success <- handle aux (p >> return True)
-    when success $ throwIO (userError "Expected exception")
-  where
-    aux :: SomeException -> IO Bool
-    aux _ = return False

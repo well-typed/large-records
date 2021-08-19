@@ -176,15 +176,19 @@ deconstruct = \pat -> do
            Just (UnknownFields unknown) -> runQ $ do
              reportError $ "Unknown fields: " ++ intercalate ", " unknown
              return p
-           Just (ParsedRecordInfo _qual r) -> runQ $
-               viewP (varE 'matchHasField)
-             $ mkTupleP mkPat
-             $ nest (MaxTupleElems 2)
-             $ recordFields
-             $ dropMissingRecordFields r
+           Just (ParsedRecordInfo qual r) -> runQ $
+             viewP (varE 'viewAtType `appE` recordUndefinedValueE qual r) $
+               case recordFields (dropMissingRecordFields r) of
+                 [] -> wildP
+                 fs -> outerViewPat fs
 
-    mkPat :: Field Pat -> Q Pat
-    mkPat f@Field{..} =
+    outerViewPat :: [Field Pat] -> Q Pat
+    outerViewPat fs =
+        viewP (varE 'matchHasField) $
+          mkTupleP innerViewPat $ nest (MaxTupleElems 2) fs
+
+    innerViewPat :: Field Pat -> Q Pat
+    innerViewPat f@Field{..} =
         viewP
           (varE 'fieldNamed `appTypeE` fieldNameT f)
           (return fieldVal)

@@ -36,6 +36,7 @@ import qualified Data.Generics         as SYB
 import qualified Language.Haskell.Exts as HSE
 import qualified Language.Haskell.Meta as HSE.Meta
 
+import Data.Record.Internal.CodeGen
 import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util

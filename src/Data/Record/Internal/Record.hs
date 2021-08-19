@@ -10,11 +10,6 @@ module Data.Record.Internal.Record (
     -- * Record description
     Record(..)
   , Field(..)
-    -- * Code generation
-  , recordUnqualE
-  , recordConstrE
-  , fieldUnqualE
-  , fieldUnqualT
     -- * Combinators
   , matchRecordFields
   , dropMissingRecordFields
@@ -70,22 +65,6 @@ data Field a = Field {
     , fieldVal :: a
     }
   deriving stock (Show, Functor, Foldable, Traversable)
-
-{-------------------------------------------------------------------------------
-  Code generation
--------------------------------------------------------------------------------}
-
-recordUnqualE :: Record a -> Q Exp
-recordUnqualE = stringE . recordUnqual
-
-recordConstrE :: Record a -> Q Exp
-recordConstrE = stringE . recordConstr
-
-fieldUnqualE :: Field a -> Q Exp
-fieldUnqualE = stringE . fieldUnqual
-
-fieldUnqualT :: Field a -> Q Type
-fieldUnqualT = litT . strTyLit . fieldUnqual
 
 {-------------------------------------------------------------------------------
   Combinators

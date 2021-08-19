@@ -6,7 +6,7 @@
 -- Since these can also be used by QQ, these functions cannot take 'Options'.
 module Data.Record.Internal.CodeGen (
     -- * Records
-    recordUnqualE
+    recordTypeE
   , recordConstrE
   , recordTypeT
   , recordToVectorE
@@ -14,8 +14,8 @@ module Data.Record.Internal.CodeGen (
   , recordIndexedAccessorE
   , recordIndexedOverwriteE
     -- * Fields
-  , fieldUnqualE
-  , fieldUnqualT
+  , fieldNameE
+  , fieldNameT
   , fieldTypeT
   , fieldIndexE
   , fieldUntypedAccessorE
@@ -35,8 +35,8 @@ import qualified Data.Record.Internal.TH.Name as N
 -------------------------------------------------------------------------------}
 
 -- | Name of the record as a term-level literal
-recordUnqualE :: Record a -> Q Exp
-recordUnqualE = stringE . recordUnqual
+recordTypeE :: Record a -> Q Exp
+recordTypeE = stringE . recordType
 
 -- | Name of the constructor as a term-level literal
 recordConstrE :: Record a -> Q Exp
@@ -45,12 +45,12 @@ recordConstrE = stringE . recordConstr
 -- | The saturated type of the record (that is, with all type vars applied)
 recordTypeT :: Record () -> Q Type
 recordTypeT Record{..} =
-    appsT (N.conT (N.unqualified recordUnqual)) $ map tyVarType recordTVars
+    appsT (N.conT (N.unqualified recordType)) $ map tyVarType recordTVars
 
 -- | Coerce the record to the underlying @Vector Any@
 recordToVectorE :: Record () -> Q Exp
 recordToVectorE =
-    N.varE . N.unqualified . nameRecordInternalField . recordUnqual
+    N.varE . N.unqualified . nameRecordInternalField . recordType
 
 -- | Construct record from the underlying @Vector Any@
 --
@@ -67,24 +67,24 @@ recordFromVectorDontForceE =
 -- | The (unsafe) indexed field accessor
 recordIndexedAccessorE :: Record () -> Q Exp
 recordIndexedAccessorE =
-    N.varE . N.unqualified . nameRecordIndexedAccessor . recordUnqual
+    N.varE . N.unqualified . nameRecordIndexedAccessor . recordType
 
 -- | The (unsafe) indexed field overwrite
 recordIndexedOverwriteE :: Record () -> Q Exp
 recordIndexedOverwriteE =
-    N.varE . N.unqualified . nameRecordIndexedOverwrite . recordUnqual
+    N.varE . N.unqualified . nameRecordIndexedOverwrite . recordType
 
 {-------------------------------------------------------------------------------
   Record fields
 -------------------------------------------------------------------------------}
 
 -- | Name of the field as a term-level literal
-fieldUnqualE :: Field a -> Q Exp
-fieldUnqualE = stringE . fieldUnqual
+fieldNameE :: Field a -> Q Exp
+fieldNameE = stringE . fieldName
 
 -- | Name of the field as a type-level literal
-fieldUnqualT :: Field a -> Q Type
-fieldUnqualT = litT . strTyLit . fieldUnqual
+fieldNameT :: Field a -> Q Type
+fieldNameT = litT . strTyLit . fieldName
 
 -- | Type of the field
 fieldTypeT :: Field () -> Q Type

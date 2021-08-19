@@ -122,11 +122,11 @@ genNewtype :: Options -> Record () -> RecordInstances -> Q Dec
 genNewtype _opts Record{..} RecordInstances{recordInstancesAnyclass} =
     N.newtypeD
       (cxt [])
-      (N.unqualified recordUnqual)
+      (N.unqualified recordType)
       recordTVars
       Nothing
       (N.recC (N.unqualified (nameRecordInternalConstr recordConstr)) [
-           N.varBangType (N.unqualified (nameRecordInternalField recordUnqual)) $
+           N.varBangType (N.unqualified (nameRecordInternalField recordType)) $
              bangType (return DefaultBang) [t| Vector Any |]
          ])
       (map anyclassDerivClause recordInstancesAnyclass)
@@ -155,7 +155,7 @@ genIndexedAccessor :: Options -> Record () -> Q [Dec]
 genIndexedAccessor _opts r@Record{..} = do
     x <- newName "x"
     simpleFn
-      (N.unqualified (nameRecordIndexedAccessor recordUnqual))
+      (N.unqualified (nameRecordIndexedAccessor recordType))
       (forallT
          (PlainTV x : recordTVars)
          (cxt [])
@@ -177,7 +177,7 @@ genIndexedOverwrite :: Options -> Record () -> Q [Dec]
 genIndexedOverwrite Options{..} r@Record{..} = do
     x <- newName "x"
     simpleFn
-      (N.unqualified (nameRecordIndexedOverwrite recordUnqual))
+      (N.unqualified (nameRecordIndexedOverwrite recordType))
       (forallT
         (PlainTV x : recordTVars)
         (cxt [])
@@ -211,7 +211,7 @@ genFieldAccessors opts r@Record{..} =
 genFieldAccessor :: Options -> Record () -> Field () -> Q [Dec]
 genFieldAccessor _opts r@Record{..} f@Field{..} = do
     simpleFn
-      (N.unqualified fieldUnqual)
+      (N.unqualified fieldName)
       (forallT recordTVars (cxt []) $
          arrT [recordTypeT r] (fieldTypeT f))
       (fieldUntypedAccessorE r f)
@@ -240,7 +240,7 @@ genHasFieldInstance _opts r f@Field{..} = do
     instanceD
       (cxt [equalityT `appT` varT x `appT` fieldTypeT f])
       (appsT (conT ''HasField) [
-          fieldUnqualT f
+          fieldNameT f
         , recordTypeT r
         , varT x
         ])
@@ -277,7 +277,7 @@ genRecordVal :: Options -> Record () -> ([Q Pat] -> Q Exp -> Q a) -> Q a
 genRecordVal opts r@Record{..} mkFn = do
     -- The constructor arguments are locally bound, and should not have the
     -- same name as the fields themselves
-    vars <- mapM (N.newName . fieldUnqual) recordFields
+    vars <- mapM (N.newName . fieldName) recordFields
     mkFn (map N.varLocalP vars) [|
         $(recordFromVectorForceStrictFieldsE opts r)
         $(vectorE qNoInlineUnsafeCo vars)
@@ -335,7 +335,7 @@ genInstanceMetadataOf _opts r@Record{..} = tySynInstD $
       (plistT $ map fieldMetadata recordFields)
   where
     fieldMetadata :: Field () -> Q Type
-    fieldMetadata f = ptupleT [fieldUnqualT f, fieldTypeT f]
+    fieldMetadata f = ptupleT [fieldNameT f, fieldTypeT f]
 
 {-------------------------------------------------------------------------------
   Generation: pattern synonym
@@ -358,7 +358,7 @@ genInstanceMetadataOf _opts r@Record{..} = tySynInstD $
 genRecordView :: Options -> Record () -> Q [Dec]
 genRecordView _opts r@Record{..} = do
     simpleFn
-      (N.unqualified (nameRecordView recordUnqual))
+      (N.unqualified (nameRecordView recordType))
       (forallT recordTVars (cxt []) $ arrT [recordTypeT r] viewType)
       viewBody
   where
@@ -403,15 +403,15 @@ genPatSynonym opts r@Record{..} = do
             (map fieldTypeT recordFields)
             (recordTypeT r)
       , N.patSynD (N.unqualified recordConstr)
-          (N.recordPatSyn $ map fieldUnqual recordFields)
+          (N.recordPatSyn $ map fieldName recordFields)
           qDir
           matchVector
       , N.pragCompleteD [N.unqualified recordConstr] Nothing
       ]
   where
     matchVector :: Q Pat
-    matchVector = viewP (N.varE (N.unqualified (nameRecordView recordUnqual))) $
-        mkTupleP (N.varGlobalP . N.unqualified . fieldUnqual) $
+    matchVector = viewP (N.varE (N.unqualified (nameRecordView recordType))) $
+        mkTupleP (N.varGlobalP . N.unqualified . fieldName) $
           nest DefaultGhcTupleLimit recordFields
 
     constrVector :: [Q Pat] -> Q Exp -> Q Clause
@@ -448,10 +448,10 @@ genConstraintsClass _opts r@Record{..} = do
     k <- [t| Kind.Type -> Kind.Constraint |]
     N.classD
       (cxt [])
-      (N.unqualified (nameRecordConstraintsClass recordUnqual))
+      (N.unqualified (nameRecordConstraintsClass recordType))
       (recordTVars ++ [KindedTV c k])
       []
-      [ N.sigD (N.unqualified (nameRecordConstraintsMethod recordUnqual)) [t|
+      [ N.sigD (N.unqualified (nameRecordConstraintsMethod recordType)) [t|
             Proxy $(varT c) -> Rep (Dict $(varT c)) $(recordTypeT r)
           |]
       ]
@@ -521,9 +521,9 @@ genConstraintsClassInstance opts r@Record{..} = do
     c <- newName "c"
     instanceD
       (genRequiredConstraints opts r (varT c))
-      (appsT (N.conT (N.unqualified (nameRecordConstraintsClass recordUnqual))) $
+      (appsT (N.conT (N.unqualified (nameRecordConstraintsClass recordType))) $
          map tyVarType recordTVars ++ [varT c])
-      [ valD (N.varGlobalP (N.unqualified (nameRecordConstraintsMethod recordUnqual)))
+      [ valD (N.varGlobalP (N.unqualified (nameRecordConstraintsMethod recordType)))
              (normalB (genDict opts r))
              []
       ]
@@ -538,7 +538,7 @@ genInstanceConstraints _opts r@Record{..} = tySynInstD $
     tySynEqn
       Nothing
       [t| Constraints $(recordTypeT r) |]
-      (appsT (N.conT (N.unqualified (nameRecordConstraintsClass recordUnqual))) $
+      (appsT (N.conT (N.unqualified (nameRecordConstraintsClass recordType))) $
          map tyVarType recordTVars)
 
 -- | Generate metadata
@@ -561,7 +561,7 @@ genMetadata :: Options -> Record () -> Q Exp
 genMetadata Options{..} r@Record{..} = do
     p <- newName "_p"
     lamE [varP p] $ recConE 'Metadata [
-        fieldExp 'recordName          $ recordUnqualE r
+        fieldExp 'recordName          $ recordTypeE r
       , fieldExp 'recordConstructor   $ recordConstrE r
       , fieldExp 'recordSize          $ litE (integerL numFields)
       , fieldExp 'recordFieldMetadata $ [| Rep.Rep $ V.fromList $fieldMetadata |]
@@ -576,7 +576,7 @@ genMetadata Options{..} r@Record{..} = do
     mkFieldMetadata :: Field () -> ExpQ
     mkFieldMetadata f = [|
           FieldMetadata
-            (Proxy :: Proxy $(fieldUnqualT f) )
+            (Proxy :: Proxy $(fieldNameT f) )
             $(if allFieldsStrict
                 then [| FieldStrict |]
                 else [| FieldLazy   |])
@@ -621,7 +621,7 @@ genDeriving opts r = \case
 genFrom :: Options -> Record () -> Q Exp
 genFrom _opts Record{..} = [|
          repFromVector
-       . $(N.varE (N.unqualified (nameRecordInternalField recordUnqual)))
+       . $(N.varE (N.unqualified (nameRecordInternalField recordType)))
     |]
 
 -- | Generate definition for `to` in the `Generic` instance
@@ -657,7 +657,7 @@ genGenericInstance opts r@Record{..} RecordInstances{recordInstancesDerived} =
                , genInstanceMetadataOf  opts r
                , valD (varP 'from)     (normalB $ genFrom opts r)                                                      []
                , valD (varP 'to)       (normalB $ genTo   opts r)                                                      []
-               , valD (varP 'dict)     (normalB $ N.varE . N.unqualified . nameRecordConstraintsMethod $ recordUnqual) []
+               , valD (varP 'dict)     (normalB $ N.varE . N.unqualified . nameRecordConstraintsMethod $ recordType) []
                , valD (varP 'metadata) (normalB $ genMetadata opts r)                                                  []
                ]
            ]

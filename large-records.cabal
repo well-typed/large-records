@@ -34,6 +34,7 @@ library
                         Data.Record.TH.Config.Options
                         Data.Record.TH.Runtime
 
+                        Data.Record.Internal.CodeGen
                         Data.Record.Internal.Naming
                         Data.Record.Internal.Record
                         Data.Record.Internal.Record.Parser

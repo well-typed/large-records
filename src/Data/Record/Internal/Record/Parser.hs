@@ -65,9 +65,9 @@ parseRecordDef (DataD
 
     return $ Just (
         Record {
-            recordUnqual = nameBase typeName
-          , recordTVars  = tyVarBndrs
+            recordType   = nameBase typeName
           , recordConstr = nameBase constrName
+          , recordTVars  = tyVarBndrs
           , recordFields = fields
           }
       , RecordInstances {
@@ -105,14 +105,14 @@ parseDeriv = \case
              return Nothing
 
 parseFieldDef :: (Int, VarBangType) -> Q (Maybe (Field ()))
-parseFieldDef (i, (fieldName, bng, typ)) =
+parseFieldDef (i, (nm, bng, typ)) =
     case bng of
       DefaultBang ->
         return . Just $ Field {
-            fieldUnqual = unqualify fieldName
-          , fieldType   = typ
-          , fieldIndex  = i
-          , fieldVal    = ()
+            fieldName  = unqualify nm
+          , fieldType  = typ
+          , fieldIndex = i
+          , fieldVal   = ()
           }
       _otherwise  -> do
         reportError $ "Unsupported bang type: " ++ show bng
@@ -134,7 +134,7 @@ parseFieldDef (i, (fieldName, bng, typ)) =
 -- <https://gitlab.haskell.org/ghc/ghc/-/wikis/records/overloaded-record-fields/duplicate-record-fields>
 -- <https://gitlab.haskell.org/ghc/ghc/-/issues/14848>
 undoDRF :: String -> String
-undoDRF fieldName =
-   case fieldName of
+undoDRF nm =
+   case nm of
      '$' : drf  -> takeWhile (/= ':') . tail . dropWhile (/= ':') $ drf
-     _otherwise -> fieldName
+     _otherwise -> nm

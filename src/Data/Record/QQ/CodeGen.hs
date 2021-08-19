@@ -36,6 +36,7 @@ import qualified Data.Generics         as SYB
 import qualified Language.Haskell.Exts as HSE
 import qualified Language.Haskell.Meta as HSE.Meta
 
+import Data.Record.Internal.CodeGen
 import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util
@@ -152,8 +153,8 @@ construct = \case
     mkArg Field{..}
       | Just e <- fieldVal = return e
       | otherwise = do
-          reportWarning $ "No value for field " ++ fieldUnqual
-          [| error $ "No value given for field " ++ $(lift fieldUnqual) |]
+          reportWarning $ "No value for field " ++ fieldName
+          [| error $ "No value given for field " ++ $(lift fieldName) |]
 
 {-------------------------------------------------------------------------------
   Deconstruction
@@ -185,7 +186,7 @@ deconstruct = \pat -> do
     mkPat :: Field Pat -> Q Pat
     mkPat f@Field{..} =
         viewP
-          (varE 'fieldNamed `appTypeE` fieldUnqualT f)
+          (varE 'fieldNamed `appTypeE` fieldNameT f)
           (return fieldVal)
 
 {-------------------------------------------------------------------------------

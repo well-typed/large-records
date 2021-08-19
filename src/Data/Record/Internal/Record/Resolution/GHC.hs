@@ -46,18 +46,18 @@ parseRecordInfo userConstr internalConstr = runExceptT $ do
       -> ([TyVarBndr], [(String, Type)])
       -> Record ()
     mkRecordInfo rType (tyVars, fieldTypes) = Record {
-          recordUnqual = rType
-        , recordTVars  = tyVars
+          recordType   = rType
         , recordConstr = userConstr
+        , recordTVars  = tyVars
         , recordFields = zipWith (uncurry mkFieldInfo) fieldTypes [0..]
         }
 
     mkFieldInfo :: String -> Type -> Int -> Field ()
     mkFieldInfo fName fType ix = Field {
-          fieldUnqual = fName
-        , fieldType   = fType
-        , fieldIndex  = ix
-        , fieldVal    = ()
+          fieldName  = fName
+        , fieldType  = fType
+        , fieldIndex = ix
+        , fieldVal   = ()
         }
 
     saturate :: Name -> [TyVarBndr] -> Type

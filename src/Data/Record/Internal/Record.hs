@@ -10,11 +10,6 @@ module Data.Record.Internal.Record (
     -- * Record description
     Record(..)
   , Field(..)
-    -- * Code generation
-  , recordUnqualE
-  , recordConstrE
-  , fieldUnqualE
-  , fieldUnqualT
     -- * Combinators
   , matchRecordFields
   , dropMissingRecordFields
@@ -37,13 +32,13 @@ import qualified Data.Map.Merge.Lazy as Map
 -- | Record description
 data Record a = Record {
       -- | Record type name
-      recordUnqual :: String
+      recordType :: String
 
       -- | Record constructor name
     , recordConstr :: String
 
       -- | Type variables in the records type
-    , recordTVars  :: [TyVarBndr]
+    , recordTVars :: [TyVarBndr]
 
       -- | Fields in the record
     , recordFields :: [Field a]
@@ -53,7 +48,7 @@ data Record a = Record {
 -- | Record field description
 data Field a = Field {
       -- | Field name
-      fieldUnqual :: String
+      fieldName :: String
 
       -- | Type of the field
     , fieldType :: Type
@@ -70,22 +65,6 @@ data Field a = Field {
     , fieldVal :: a
     }
   deriving stock (Show, Functor, Foldable, Traversable)
-
-{-------------------------------------------------------------------------------
-  Code generation
--------------------------------------------------------------------------------}
-
-recordUnqualE :: Record a -> Q Exp
-recordUnqualE = stringE . recordUnqual
-
-recordConstrE :: Record a -> Q Exp
-recordConstrE = stringE . recordConstr
-
-fieldUnqualE :: Field a -> Q Exp
-fieldUnqualE = stringE . fieldUnqual
-
-fieldUnqualT :: Field a -> Q Type
-fieldUnqualT = litT . strTyLit . fieldUnqual
 
 {-------------------------------------------------------------------------------
   Combinators
@@ -111,7 +90,7 @@ matchRecordFields values r = (
 
     defined :: Map String (Field a)
     defined = Map.fromList $
-                map (\f -> (fieldUnqual f, f)) (recordFields r)
+                map (\f -> (fieldName f, f)) (recordFields r)
 
     matched :: Map String (Field (a, Maybe b))
     unknown :: [String]

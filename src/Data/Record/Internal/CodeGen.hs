@@ -28,7 +28,7 @@ import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util
 
-import qualified Data.Record.Internal.TH.Name as N
+import qualified Data.Record.Internal.TH.Name as N hiding (unqualified)
 
 {-------------------------------------------------------------------------------
   Records
@@ -43,14 +43,14 @@ recordConstrE :: Record a -> Q Exp
 recordConstrE = stringE . recordConstr
 
 -- | The saturated type of the record (that is, with all type vars applied)
-recordTypeT :: Record a -> Q Type
-recordTypeT Record{..} =
-    appsT (N.conT (N.unqualified recordType)) $ map tyVarType recordTVars
+recordTypeT :: N.Qualifier -> Record a -> Q Type
+recordTypeT qual Record{..} =
+    appsT (N.conT (N.qualify qual recordType)) $ map tyVarType recordTVars
 
 -- | Coerce the record to the underlying @Vector Any@
-recordToVectorE :: Record a -> Q Exp
-recordToVectorE =
-    N.varE . N.unqualified . nameRecordInternalField . recordType
+recordToVectorE :: N.Qualifier -> Record a -> Q Exp
+recordToVectorE qual =
+    N.varE . N.qualify qual . nameRecordInternalField . recordType
 
 -- | Construct record from the underlying @Vector Any@
 --
@@ -60,19 +60,19 @@ recordToVectorE =
 -- * we know through other means that all values are already forced.
 --
 -- See also 'recordFromVectorForceE'.
-recordFromVectorDontForceE :: Record a -> Q Exp
-recordFromVectorDontForceE =
-    N.conE . N.unqualified . nameRecordInternalConstr . recordConstr
+recordFromVectorDontForceE :: N.Qualifier -> Record a -> Q Exp
+recordFromVectorDontForceE qual =
+    N.conE . N.qualify qual . nameRecordInternalConstr . recordConstr
 
 -- | The (unsafe) indexed field accessor
-recordIndexedAccessorE :: Record a -> Q Exp
-recordIndexedAccessorE =
-    N.varE . N.unqualified . nameRecordIndexedAccessor . recordType
+recordIndexedAccessorE :: N.Qualifier -> Record a -> Q Exp
+recordIndexedAccessorE qual =
+    N.varE . N.qualify qual . nameRecordIndexedAccessor . recordType
 
 -- | The (unsafe) indexed field overwrite
-recordIndexedOverwriteE :: Record a -> Q Exp
-recordIndexedOverwriteE =
-    N.varE . N.unqualified . nameRecordIndexedOverwrite . recordType
+recordIndexedOverwriteE :: N.Qualifier -> Record a -> Q Exp
+recordIndexedOverwriteE qual =
+    N.varE . N.qualify qual . nameRecordIndexedOverwrite . recordType
 
 {-------------------------------------------------------------------------------
   Record fields
@@ -95,11 +95,11 @@ fieldIndexE :: Field a -> Q Exp
 fieldIndexE Field{..} = litE . integerL $ fromIntegral fieldIndex
 
 -- | The indexed field accessor, applied to this field
-fieldUntypedAccessorE :: Record a -> Field a -> Q Exp
-fieldUntypedAccessorE r f =
-    [| $(recordIndexedAccessorE r) $(fieldIndexE f) |]
+fieldUntypedAccessorE :: N.Qualifier -> Record a -> Field a -> Q Exp
+fieldUntypedAccessorE qual r f =
+    [| $(recordIndexedAccessorE qual r) $(fieldIndexE f) |]
 
 -- | The indexed field overwrite, applied to this field
-fieldUntypedOverwriteE :: Record a -> Field a -> Q Exp
-fieldUntypedOverwriteE r f =
-    [| $(recordIndexedOverwriteE r) $(fieldIndexE f) |]
+fieldUntypedOverwriteE :: N.Qualifier -> Record a -> Field a -> Q Exp
+fieldUntypedOverwriteE qual r f =
+    [| $(recordIndexedOverwriteE qual r) $(fieldIndexE f) |]

@@ -159,8 +159,10 @@ genIndexedAccessor _opts r@Record{..} = do
       (forallT
          (PlainTV x : recordTVars)
          (cxt [])
-         (arrT [conT ''Int, recordTypeT r] (varT x)))
-      [| \n t -> noInlineUnsafeCo $ V.unsafeIndex ($(recordToVectorE r) t) n |]
+         (arrT [conT ''Int, recordTypeT N.Unqual r] (varT x)))
+      [| \n t -> noInlineUnsafeCo $
+           V.unsafeIndex ($(recordToVectorE N.Unqual r) t) n
+      |]
 
 -- | Generate index field overwrite
 --
@@ -181,19 +183,24 @@ genIndexedOverwrite Options{..} r@Record{..} = do
       (forallT
         (PlainTV x : recordTVars)
         (cxt [])
-        (arrT [conT ''Int, recordTypeT r, varT x] (recordTypeT r)))
+        (arrT
+          [conT ''Int, recordTypeT N.Unqual r, varT x]
+          (recordTypeT N.Unqual r))
+        )
       body
   where
     body :: Q Exp
     body
       | allFieldsStrict =
-          [| \n t !val -> $(recordFromVectorDontForceE r) (
-                 V.unsafeUpd ($(recordToVectorE r) t) [(n, noInlineUnsafeCo val)]
+          [| \n t !val -> $(recordFromVectorDontForceE N.Unqual r) (
+                 V.unsafeUpd ($(recordToVectorE N.Unqual r) t)
+                   [(n, noInlineUnsafeCo val)]
                )
            |]
       | otherwise =
-          [| \n t val -> $(recordFromVectorDontForceE r) (
-                 V.unsafeUpd ($(recordToVectorE r) t) [(n, noInlineUnsafeCo val)]
+          [| \n t val -> $(recordFromVectorDontForceE N.Unqual r) (
+                 V.unsafeUpd ($(recordToVectorE N.Unqual r) t)
+                   [(n, noInlineUnsafeCo val)]
                )
            |]
 
@@ -213,8 +220,8 @@ genFieldAccessor _opts r@Record{..} f@Field{..} = do
     simpleFn
       (N.unqualified fieldName)
       (forallT recordTVars (cxt []) $
-         arrT [recordTypeT r] (fieldTypeT f))
-      (fieldUntypedAccessorE r f)
+         arrT [recordTypeT N.Unqual r] (fieldTypeT f))
+      (fieldUntypedAccessorE N.Unqual r f)
 
 -- | Generate 'HasField' instances for all fields
 genHasFieldInstances :: Options -> Record () -> Q [Dec]
@@ -241,12 +248,12 @@ genHasFieldInstance _opts r f@Field{..} = do
       (cxt [equalityT `appT` varT x `appT` fieldTypeT f])
       (appsT (conT ''HasField) [
           fieldNameT f
-        , recordTypeT r
+        , recordTypeT N.Unqual r
         , varT x
         ])
       [valD (varP 'hasField) (normalB [|
-          \t -> ( $(fieldUntypedOverwriteE r f) t
-                , $(fieldUntypedAccessorE  r f) t
+          \t -> ( $(fieldUntypedOverwriteE N.Unqual r f) t
+                , $(fieldUntypedAccessorE  N.Unqual r f) t
                 )
         |]) []]
 
@@ -299,7 +306,10 @@ genConstructorFn opts r@Record{..} = do
     simpleFn
       (N.unqualified (nameRecordTypedConstructorFn recordConstr))
       (forallT recordTVars (cxt []) $
-         arrT (map fieldTypeT recordFields) (recordTypeT r))
+         arrT
+           (map fieldTypeT recordFields)
+           (recordTypeT N.Unqual r)
+      )
       (genRecordVal opts r lamE)
 
 {-------------------------------------------------------------------------------
@@ -331,7 +341,7 @@ genInstanceMetadataOf :: Options -> Record () -> Q Dec
 genInstanceMetadataOf _opts r@Record{..} = tySynInstD $
     tySynEqn
       Nothing
-      [t| MetadataOf $(recordTypeT r) |]
+      [t| MetadataOf $(recordTypeT N.Unqual r) |]
       (plistT $ map fieldMetadata recordFields)
   where
     fieldMetadata :: Field () -> Q Type
@@ -359,7 +369,9 @@ genRecordView :: Options -> Record () -> Q [Dec]
 genRecordView _opts r@Record{..} = do
     simpleFn
       (N.unqualified (nameRecordView recordType))
-      (forallT recordTVars (cxt []) $ arrT [recordTypeT r] viewType)
+      (forallT recordTVars (cxt []) $
+         arrT [recordTypeT N.Unqual r] viewType
+      )
       viewBody
   where
     viewType :: Q Type
@@ -377,7 +389,7 @@ genRecordView _opts r@Record{..} = do
     -- are instead derived from the pattern synonym by GHC. Since the synonym
     -- requires the view, we therefore use the untyped accessor here.
     viewField :: Name -> Field () -> Q Exp
-    viewField x f = [| $(fieldUntypedAccessorE r f) $(varE x) |]
+    viewField x f = [| $(fieldUntypedAccessorE N.Unqual r f) $(varE x) |]
 
 -- | Generate pattern synonym
 --
@@ -401,7 +413,7 @@ genPatSynonym opts r@Record{..} = do
           simplePatSynType
             recordTVars
             (map fieldTypeT recordFields)
-            (recordTypeT r)
+            (recordTypeT N.Unqual r)
       , N.patSynD (N.unqualified recordConstr)
           (N.recordPatSyn $ map fieldName recordFields)
           qDir
@@ -452,7 +464,7 @@ genConstraintsClass _opts r@Record{..} = do
       (recordTVars ++ [KindedTV c k])
       []
       [ N.sigD (N.unqualified (nameRecordConstraintsMethod recordType)) [t|
-            Proxy $(varT c) -> Rep (Dict $(varT c)) $(recordTypeT r)
+            Proxy $(varT c) -> Rep (Dict $(varT c)) $(recordTypeT N.Unqual r)
           |]
       ]
 
@@ -537,7 +549,7 @@ genInstanceConstraints :: Options -> Record () -> Q Dec
 genInstanceConstraints _opts r@Record{..} = tySynInstD $
     tySynEqn
       Nothing
-      [t| Constraints $(recordTypeT r) |]
+      [t| Constraints $(recordTypeT N.Unqual r) |]
       (appsT (N.conT (N.unqualified (nameRecordConstraintsClass recordType))) $
          map tyVarType recordTVars)
 
@@ -610,7 +622,7 @@ genDeriving opts r = \case
     inst clss fn gfn =
         instanceD
           (genRequiredConstraints opts r (conT clss))
-          [t| $(conT clss) $(recordTypeT r) |]
+          [t| $(conT clss) $(recordTypeT N.Unqual r) |]
           [valD (varP fn) (normalB (varE gfn)) []]
 
 -- | Generate definition for `from` in the `Generic` instance
@@ -652,7 +664,7 @@ genGenericInstance opts r@Record{..} RecordInstances{recordInstancesDerived} =
            , genConstraintsClassInstance opts r
            , instanceD
                (cxt [])
-               [t| Generic $(recordTypeT r) |]
+               [t| Generic $(recordTypeT N.Unqual r) |]
                [ genInstanceConstraints opts r
                , genInstanceMetadataOf  opts r
                , valD (varP 'from)     (normalB $ genFrom opts r)                                                      []
@@ -684,12 +696,12 @@ genGhcGenericsInstances :: Options -> Record () -> Q [Dec]
 genGhcGenericsInstances _opts r = sequenceA [
       instanceD
         (cxt [])
-        [t| GHC.Generic $(recordTypeT r) |]
+        [t| GHC.Generic $(recordTypeT N.Unqual r) |]
         [ tySynInstD $
             tySynEqn
               Nothing
-              [t| GHC.Rep $(recordTypeT r) |]
-              [t| ThroughLRGenerics $(recordTypeT r) |]
+              [t| GHC.Rep $(recordTypeT N.Unqual r) |]
+              [t| ThroughLRGenerics $(recordTypeT N.Unqual r) |]
         , valD (varP 'GHC.from) (normalB (conE 'WrapThroughLRGenerics))   []
         , valD (varP 'GHC.to)   (normalB (varE 'unwrapThroughLRGenerics)) []
         ]
@@ -708,10 +720,10 @@ genGhcGenericsInstances _opts r = sequenceA [
 recordFromVectorForceStrictFieldsE :: Options -> Record () -> Q Exp
 recordFromVectorForceStrictFieldsE Options{..} r
     | allFieldsStrict = [|
-          (\v -> rnfVectorAny v `seq` $(recordFromVectorDontForceE r) v)
+          \v -> rnfVectorAny v `seq` $(recordFromVectorDontForceE N.Unqual r) v
         |]
     | otherwise =
-        recordFromVectorDontForceE r
+        recordFromVectorDontForceE N.Unqual r
 
 {-------------------------------------------------------------------------------
   Fix TH naming

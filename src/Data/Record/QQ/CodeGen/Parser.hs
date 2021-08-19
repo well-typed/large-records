@@ -34,7 +34,7 @@ data ParsedRecordInfo a =
     --
     -- In addition to the record info, we also record the qualifier used in
     -- the original name.
-  | ParsedRecordInfo (Maybe TH.ModName) (Record (Maybe a))
+  | ParsedRecordInfo N.Qualifier (Record (Maybe a))
 
 parseRecordExp :: Quasi m => Exp -> m (Maybe (ParsedRecordInfo Exp))
 parseRecordExp = traverse (uncurry parseRecordInfo) . termExp

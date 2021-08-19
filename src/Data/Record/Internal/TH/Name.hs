@@ -23,6 +23,7 @@ module Data.Record.Internal.TH.Name (
   , nameBase
   , mapNameBase
     -- * Working with qualified names
+  , Qualifier(..)
   , qualify
   , unqualified
   , nameQualifier
@@ -130,14 +131,18 @@ mapNameBase f (Name (TH.OccName occ) flav) = Name (TH.OccName (f occ)) flav
   Working with qualified names
 -------------------------------------------------------------------------------}
 
-qualify :: Maybe TH.ModName -> String -> Name ns 'Dynamic
-qualify qual occ = Name (TH.OccName occ) (NameDynamic qual)
+data Qualifier = Unqual | Qual TH.ModName
+
+qualify :: Qualifier -> String -> Name ns 'Dynamic
+qualify Unqual   occ = Name (TH.OccName occ) (NameDynamic Nothing)
+qualify (Qual m) occ = Name (TH.OccName occ) (NameDynamic (Just m))
 
 unqualified :: String -> Name ns 'Dynamic
-unqualified = qualify Nothing
+unqualified = qualify Unqual
 
-nameQualifier :: Name ns 'Dynamic -> Maybe TH.ModName
-nameQualifier (Name _ (NameDynamic qual)) = qual
+nameQualifier :: Name ns 'Dynamic -> Qualifier
+nameQualifier (Name _ (NameDynamic (Just m))) = Qual m
+nameQualifier (Name _ (NameDynamic Nothing))  = Unqual
 
 {-------------------------------------------------------------------------------
   Singleton

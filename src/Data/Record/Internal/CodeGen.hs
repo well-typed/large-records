@@ -13,6 +13,7 @@ module Data.Record.Internal.CodeGen (
   , recordFromVectorDontForceE
   , recordIndexedAccessorE
   , recordIndexedOverwriteE
+  , recordUndefinedValueE
     -- * Fields
   , fieldNameE
   , fieldNameT
@@ -73,6 +74,10 @@ recordIndexedAccessorE qual =
 recordIndexedOverwriteE :: N.Qualifier -> Record a -> Q Exp
 recordIndexedOverwriteE qual =
     N.varE . N.qualify qual . nameRecordIndexedOverwrite . recordType
+
+recordUndefinedValueE :: N.Qualifier -> Record a -> Q Exp
+recordUndefinedValueE qual r =
+    [| $(recordFromVectorDontForceE qual r) undefined |]
 
 {-------------------------------------------------------------------------------
   Record fields

@@ -3,11 +3,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE CPP                        #-}
 
 module Test.Record.Util (
     -- * Tasty/HUnit auxiliary
     assertPrefix
   , assertJust
+  , expectException
     -- * TH error collection
   , Problem(..)
   , CollectProblems -- opaque
@@ -15,6 +17,7 @@ module Test.Record.Util (
   , collectOnlyProblems
   ) where
 
+import Control.Exception
 import Control.Monad.Except hiding (lift)
 import Control.Monad.State hiding (lift)
 import Data.Bifunctor
@@ -37,6 +40,27 @@ assertPrefix xs ys =
 assertJust :: String -> Maybe a -> (a -> Assertion) -> Assertion
 assertJust msg Nothing  _ = assertFailure msg
 assertJust _   (Just a) k = k a
+
+-- | Only used internally in 'expectException'
+data Result =
+    NoException
+  | ExpectedException
+  | UnexpectedException SomeException
+
+expectException :: (SomeException -> Bool) -> Assertion -> Assertion
+expectException p k = do
+    result <- handle (return . aux) (k >> return NoException)
+    case result of
+      ExpectedException ->
+        return ()
+      NoException ->
+        assertFailure $ "Expected exception, but none was raised"
+      UnexpectedException e ->
+        assertFailure $ "Raised exception does not match predicate: " ++ show e
+  where
+    aux :: SomeException -> Result
+    aux e | p e       = ExpectedException
+          | otherwise = UnexpectedException e
 
 {-------------------------------------------------------------------------------
   TH error collection
@@ -121,6 +145,9 @@ instance Quasi CollectProblems where
   qLookupName         = \x y -> liftQ $ qLookupName         x y
   qReify              = \x   -> liftQ $ qReify              x
   qReifyFixity        = \x   -> liftQ $ qReifyFixity        x
+#if MIN_VERSION_template_haskell(2,16,0)
+  qReifyType          = \x   -> liftQ $ qReifyType          x
+#endif
   qReifyInstances     = \x y -> liftQ $ qReifyInstances     x y
   qReifyRoles         = \x   -> liftQ $ qReifyRoles         x
   qReifyAnnotations   = \x   -> liftQ $ qReifyAnnotations   x

@@ -235,7 +235,7 @@ genHasFieldInstances opts r@Record{..} =
 -- > instance x ~ Word => HasField "tInt" (T a b) x where
 -- >   hasField = \t -> (unsafeSetIndexT 0 t, unsafeGetIndexT 0 t)
 genHasFieldInstance :: Options -> Record () -> Field () -> Q Dec
-genHasFieldInstance _opts r f@Field{..} = do
+genHasFieldInstance _opts r f = do
     requiresExtensions [
         DataKinds
       , FlexibleInstances

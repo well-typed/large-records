@@ -1,4 +1,6 @@
 {-# LANGUAGE ConstraintKinds     #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Functions to support the TH code (i.e., functions called by generated code)
@@ -14,6 +16,7 @@ module Data.Record.TH.Runtime (
   , repToVector
   , rnfVectorAny
   , noInlineUnsafeCo
+  , Constructor(..)
   ) where
 
 import Data.Coerce (coerce)
@@ -25,6 +28,9 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Vector as V
 
 import Data.Record.Generic
+
+class Constructor arg result | result -> arg  where
+  construct :: result
 
 {-------------------------------------------------------------------------------
   Miscellaneous

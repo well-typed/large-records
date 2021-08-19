@@ -84,6 +84,7 @@ genAll opts@Options{..} (r, instances) = do
           ]
       , when generateConstructorFn [
             genConstructorFn opts r
+          , genConstructorInstance opts r
           ]
       , when generatePatternSynonym $ [
             genRecordView opts r
@@ -311,6 +312,16 @@ genConstructorFn opts r@Record{..} = do
            (recordTypeT N.Unqual r)
       )
       (genRecordVal opts r lamE)
+
+genConstructorInstance :: Options -> RecordDef -> Q [Dec]
+genConstructorInstance opts r@RecordDef{..} = do
+    sequenceA [
+      instanceD
+        (cxt [])
+        [t| Constructor $(recordTypeT opts r) $(arrT (map (fieldTypeT opts) recordDefFields) (recordTypeT opts r)) |]
+        [ valD (varP 'construct) (normalB [| $(N.varE $ constructNameConstructorFn recordDefConstr) |]) []
+        ]
+      ]
 
 {-------------------------------------------------------------------------------
   Generation: type-level metadata

@@ -4,6 +4,7 @@
 {-# LANGUAGE ViewPatterns     #-}
 
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+-- {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Sanity.QualifiedImports (tests) where
 

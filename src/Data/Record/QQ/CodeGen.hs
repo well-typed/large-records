@@ -28,7 +28,6 @@ module Data.Record.QQ.CodeGen (
   ) where
 
 import Data.List (intercalate)
-import Data.Maybe (mapMaybe)
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax
@@ -37,13 +36,13 @@ import qualified Data.Generics         as SYB
 import qualified Language.Haskell.Exts as HSE
 import qualified Language.Haskell.Meta as HSE.Meta
 
-import Data.Record.Internal.RecordInfo
+import Data.Record.Internal.Naming
+import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util
 import Data.Record.QQ.CodeGen.HSE
 import Data.Record.QQ.CodeGen.Parser
 import Data.Record.QQ.Runtime.MatchHasField
 import Data.Record.TH.CodeGen.Tree
-import Data.Record.TH.Config.Naming
 
 import qualified Data.Record.Internal.TH.Name as N
 
@@ -127,8 +126,8 @@ lrPat = \str -> do
 construct :: forall m. Quasi m => Exp -> m Exp
 construct = \case
     ConE constr -> do
-      constr' <- resolveConstr constr
-      runQ $ N.varE $ resolveNameConstructorFn constr'
+      constrFn <- resolveKnownHseName nameRecordTypedConstructorFn (fromHseName constr)
+      runQ $ N.varE constrFn
     expr ->
       -- Assume this is a record construction expression
       SYB.everywhereM (SYB.mkM go) expr
@@ -143,20 +142,18 @@ construct = \case
           Just NotKnownLargeRecord ->
             return e
           Just (UnknownFields unknown) -> runQ $ do
-            reportError $ "Unknown fields: "
-                       ++ intercalate ", " (map N.showName unknown)
+            reportError $ "Unknown fields: " ++ intercalate ", " unknown
             [| undefined |]
-          Just (ParsedRecordInfo RecordInfo{..}) -> runQ $
-            appsE $ N.varE (resolveNameConstructorFn recordInfoConstr)
-                  : map mkArg recordInfoFields
+          Just (ParsedRecordInfo qual Record{..}) -> runQ $ do
+            appsE $ N.varE (N.qualify qual (nameRecordTypedConstructorFn recordConstr))
+                  : map mkArg recordFields
 
-    mkArg :: FieldInfo Exp -> Q Exp
-    mkArg FieldInfo{..}
-      | Just e <- fieldInfoVal = return e
+    mkArg :: Field (Maybe Exp) -> Q Exp
+    mkArg Field{..}
+      | Just e <- fieldVal = return e
       | otherwise = do
-          reportWarning $ "No value for field " ++ N.showName fieldInfoUnqual
-          [| error $ "No value given for field "
-                 ++ $(N.termLevelMetadata fieldInfoUnqual) |]
+          reportWarning $ "No value for field " ++ fieldUnqual
+          [| error $ "No value given for field " ++ $(lift fieldUnqual) |]
 
 {-------------------------------------------------------------------------------
   Deconstruction
@@ -176,21 +173,20 @@ deconstruct = \pat -> do
            Just NotKnownLargeRecord ->
              return p
            Just (UnknownFields unknown) -> runQ $ do
-             reportError $ "Unknown fields: "
-                        ++ intercalate ", " (map N.showName unknown)
+             reportError $ "Unknown fields: " ++ intercalate ", " unknown
              return p
-           Just (ParsedRecordInfo RecordInfo{..}) -> runQ $
-             viewP (varE 'matchHasField) $
-               mkTupleP (uncurry mkPat) $
-                 nest (MaxTupleElems 2) (mapMaybe getPat recordInfoFields)
+           Just (ParsedRecordInfo _qual r) -> runQ $
+               viewP (varE 'matchHasField)
+             $ mkTupleP mkPat
+             $ nest (MaxTupleElems 2)
+             $ recordFields
+             $ dropMissingRecordFields r
 
-    getPat :: FieldInfo Pat -> Maybe (N.OverloadedName, Pat)
-    getPat FieldInfo{..} = (fieldInfoUnqual, ) <$> fieldInfoVal
-
-    mkPat :: N.OverloadedName -> Pat -> Q Pat
-    mkPat field =
-        viewP (varE 'fieldNamed `appTypeE` N.typeLevelMetadata field)
-      . return
+    mkPat :: Field Pat -> Q Pat
+    mkPat f@Field{..} =
+        viewP
+          (varE 'fieldNamed `appTypeE` fieldUnqualT f)
+          (return fieldVal)
 
 {-------------------------------------------------------------------------------
   Auxiliary

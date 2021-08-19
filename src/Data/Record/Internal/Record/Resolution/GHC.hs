@@ -3,20 +3,19 @@
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
 
-module Data.Record.Internal.RecordInfo.Resolution.GHC (
+module Data.Record.Internal.Record.Resolution.GHC (
     parseRecordInfo
   ) where
 
 import Control.Monad.Except
 import Data.Maybe (fromMaybe)
-import Data.Void
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 import qualified Control.Monad.Except as Except
 
 import Data.Record.Generic
-import Data.Record.Internal.RecordInfo
+import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util
 
 import qualified Data.Record.Internal.TH.Name as N
@@ -33,31 +32,32 @@ import qualified Data.Record.Internal.TH.Name as N
 -- 'Nothing' if this wasn't a type created using @large-records@.
 parseRecordInfo :: forall m.
      Quasi m
-  => N.Name 'N.DataName 'N.Global
-  -> m (Either String (RecordInfo Void))
-parseRecordInfo constr = runExceptT $ do
-    parent    <- Except.lift (N.reify constr) >>= getDataConParent
+  => String                       -- ^ User-defined constructor
+  -> N.Name 'DataName 'N.Global   -- ^ Internal constructor
+  -> m (Either String (Record ()))
+parseRecordInfo userConstr internalConstr = runExceptT $ do
+    parent    <- Except.lift (N.reify internalConstr) >>= getDataConParent
     saturated <- Except.lift (N.reify parent) >>= getSaturatedType
     parsed    <- Except.lift (getMetadataInstance saturated) >>= parseTySynInst
-    return $ mkRecordInfo parent parsed
+    return $ mkRecordInfo (N.nameBase parent) parsed
   where
     mkRecordInfo ::
-         N.Name 'N.TcClsName 'N.Global
-      -> ([TyVarBndr], [(N.OverloadedName, Type)])
-      -> RecordInfo Void
-    mkRecordInfo rType (tyVars, fieldTypes) = RecordInfo {
-          recordInfoUnqual = rType
-        , recordInfoTVars  = tyVars
-        , recordInfoConstr = constr
-        , recordInfoFields = zipWith (uncurry mkFieldInfo) fieldTypes [0..]
+         String
+      -> ([TyVarBndr], [(String, Type)])
+      -> Record ()
+    mkRecordInfo rType (tyVars, fieldTypes) = Record {
+          recordUnqual = rType
+        , recordTVars  = tyVars
+        , recordConstr = userConstr
+        , recordFields = zipWith (uncurry mkFieldInfo) fieldTypes [0..]
         }
 
-    mkFieldInfo :: N.OverloadedName -> Type -> Int -> FieldInfo Void
-    mkFieldInfo fName fType ix = FieldInfo {
-          fieldInfoUnqual = fName
-        , fieldInfoType   = fType
-        , fieldInfoIndex  = ix
-        , fieldInfoVal    = Nothing
+    mkFieldInfo :: String -> Type -> Int -> Field ()
+    mkFieldInfo fName fType ix = Field {
+          fieldUnqual = fName
+        , fieldType   = fType
+        , fieldIndex  = ix
+        , fieldVal    = ()
         }
 
     saturate :: Name -> [TyVarBndr] -> Type
@@ -72,21 +72,21 @@ parseRecordInfo constr = runExceptT $ do
     getSaturatedType i =
         unexpected i "newtype"
 
-    getDataConParent :: Info -> ExceptT String m (N.Name 'N.TcClsName 'N.Global)
+    getDataConParent :: Info -> ExceptT String m (N.Name 'TcClsName 'N.Global)
     getDataConParent (DataConI _ _ parent) =
-        return $ N.fromName' parent
+        return $ N.fromTH' parent
     getDataConParent i =
         unexpected i "data constructor"
 
     parseTySynInst ::
          [InstanceDec]
-      -> ExceptT String m ([TyVarBndr], [(N.OverloadedName, Type)])
+      -> ExceptT String m ([TyVarBndr], [(String, Type)])
     parseTySynInst [TySynInstD (TySynEqn vars _lhs rhs)] =
         (fromMaybe [] vars, ) <$> parseList rhs
     parseTySynInst is =
         unexpected is "type instance"
 
-    parseList :: Type -> ExceptT String m [(N.OverloadedName, Type)]
+    parseList :: Type -> ExceptT String m [(String, Type)]
     parseList (AppT (AppT PromotedConsT t) ts) =
         (:) <$> parseTuple t <*> parseList ts
     parseList PromotedNilT =
@@ -95,9 +95,9 @@ parseRecordInfo constr = runExceptT $ do
         parseList t
     parseList t = unexpected t "list"
 
-    parseTuple :: Type -> ExceptT String m (N.OverloadedName, Type)
+    parseTuple :: Type -> ExceptT String m (String, Type)
     parseTuple (AppT (AppT (PromotedTupleT 2) (LitT (StrTyLit f))) t) =
-        return (N.OverloadedName f, t)
+        return (f, t)
     parseTuple t = unexpected t "tuple"
 
     unexpected :: Show a => a -> String -> ExceptT String m b

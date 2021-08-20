@@ -9,7 +9,15 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 
-module Data.Record.Generic.Lens.Micro (
+-- | van Laarhoven lenses for large records.
+-- The type synonym
+--
+-- @
+--   type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
+-- @
+-- Appears below, however it is not exported to avoid conflicts with other
+-- libraries defining equivalent synonyms.
+module Data.Record.Generic.Lens.VL (
     -- * Lenses for records
     SimpleRecordLens(..)
   , HKRecordLens(..)
@@ -31,12 +39,14 @@ module Data.Record.Generic.Lens.Micro (
   ) where
 
 import Data.Kind
-import Lens.Micro (Lens')
 
 import Data.Record.Generic
 import Data.Record.Generic.Transform
 
 import qualified Data.Record.Generic.Rep as Rep
+
+-- | The standard van Laarhoven representation for a monomorphic lens
+type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
 
 {-------------------------------------------------------------------------------
   Simple records (in contrast to higher-kinded records, see below)

@@ -26,7 +26,7 @@ library
                         Data.Record.Generic.Eq
                         Data.Record.Generic.GHC
                         Data.Record.Generic.JSON
-                        Data.Record.Generic.Lens.Micro
+                        Data.Record.Generic.Lens.VL
                         Data.Record.Generic.LowerBound
                         Data.Record.Generic.Rep
                         Data.Record.Generic.Rep.Internal
@@ -62,7 +62,6 @@ library
                       , generics-sop     >= 0.5    && < 0.6
                       , haskell-src-exts >= 1.21.1 && < 1.24
                       , haskell-src-meta >= 0.8.3  && < 0.9
-                      , microlens        >= 0.1.5  && < 0.5
                       , mtl              >= 2.2.1  && < 2.3
                       , record-hasfield  >= 1.0    && < 1.1
                       , sop-core         >= 0.5    && < 0.6

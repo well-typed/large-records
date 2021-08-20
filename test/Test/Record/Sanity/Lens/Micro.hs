@@ -24,7 +24,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Generic
-import Data.Record.Generic.Lens.Micro
+import Data.Record.Generic.Lens.VL
 import Data.Record.Generic.SOP
 import Data.Record.Generic.Transform
 import Data.Record.QQ.CodeGen

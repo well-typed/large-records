@@ -1,5 +1,6 @@
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds        #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 -- | Functions to support the TH code (i.e., functions called by generated code)
 --
@@ -14,6 +15,7 @@ module Data.Record.TH.Runtime (
   , repToVector
   , rnfVectorAny
   , noInlineUnsafeCo
+  , Construct(construct)
   ) where
 
 import Data.Coerce (coerce)
@@ -56,3 +58,5 @@ noInlineUnsafeCo :: forall a b. a -> b
 {-# NOINLINE noInlineUnsafeCo #-}
 noInlineUnsafeCo = unsafeCoerce
 
+class Construct fields record | record -> fields where
+  construct :: record -> fields -> record

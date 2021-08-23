@@ -91,6 +91,7 @@ genAll opts@Options{..} (r, instances) = do
           ]
       , genGenericInstance opts r instances
       , genGhcGenericsInstances opts r
+      , genConstructInstance opts r
       ]
   where
     when :: Bool -> [Q [Dec]] -> Q [Dec]
@@ -292,6 +293,18 @@ genRecordVal opts r@Record{..} mkFn = do
   where
     qNoInlineUnsafeCo :: N.Name 'VarName 'N.Unique -> Q Exp
     qNoInlineUnsafeCo x = [| noInlineUnsafeCo $(N.varE x) |]
+
+genConstructInstance :: Options -> Record () -> Q [Dec]
+genConstructInstance opts r@Record{recordFields} = sequence
+  [ instanceD
+      (cxt [])
+      [t| Construct $fieldsTuple $(recordTypeT N.Unqual r) |]
+      [funD 'construct [clause [tildeP wildP] (normalB constructLam) []]]
+  ]
+  where
+    fieldsTuple = mkTupleT fieldTypeT (nest DefaultGhcTupleLimit recordFields)
+    constructLam = genRecordVal opts r $ \pats ->
+      lamE [mkTupleP id (nest DefaultGhcTupleLimit pats)]
 
 -- | Generate constructor function
 --

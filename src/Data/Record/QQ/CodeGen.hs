@@ -37,15 +37,13 @@ import qualified Language.Haskell.Exts as HSE
 import qualified Language.Haskell.Meta as HSE.Meta
 
 import Data.Record.Internal.CodeGen
-import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util
 import Data.Record.QQ.CodeGen.HSE
 import Data.Record.QQ.CodeGen.Parser
 import Data.Record.QQ.Runtime.MatchHasField
 import Data.Record.TH.CodeGen.Tree
-
-import qualified Data.Record.Internal.TH.Name as N
+import qualified Data.Record.TH.Runtime as TH.Runtime (construct)
 
 {-------------------------------------------------------------------------------
   Top-level quasi-quoter
@@ -125,13 +123,7 @@ lrPat = \str -> do
 -------------------------------------------------------------------------------}
 
 construct :: forall m. Quasi m => Exp -> m Exp
-construct = \case
-    ConE constr -> do
-      constrFn <- resolveKnownHseName nameRecordTypedConstructorFn (fromHseName constr)
-      runQ $ N.varE constrFn
-    expr ->
-      -- Assume this is a record construction expression
-      SYB.everywhereM (SYB.mkM go) expr
+construct = SYB.everywhereM (SYB.mkM go)
   where
     go :: Exp -> m Exp
     go e = do
@@ -145,9 +137,12 @@ construct = \case
           Just (UnknownFields unknown) -> runQ $ do
             reportError $ "Unknown fields: " ++ intercalate ", " unknown
             [| undefined |]
-          Just (ParsedRecordInfo qual Record{..}) -> runQ $ do
-            appsE $ N.varE (N.qualify qual (nameRecordTypedConstructorFn recordConstr))
-                  : map mkArg recordFields
+          Just (ParsedRecordInfo qual r@Record{..}) -> runQ $ do
+            appsE
+              [ varE 'TH.Runtime.construct
+              , recordUndefinedValueE qual r
+              , mkTupleE mkArg (nest DefaultGhcTupleLimit recordFields)
+              ]
 
     mkArg :: Field (Maybe Exp) -> Q Exp
     mkArg Field{..}

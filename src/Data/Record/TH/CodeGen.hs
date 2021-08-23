@@ -298,13 +298,16 @@ genConstructInstance :: Options -> Record () -> Q [Dec]
 genConstructInstance opts r@Record{recordFields} = sequence
   [ instanceD
       (cxt [])
-      [t| Construct $fieldsTuple $(recordTypeT N.Unqual r) |]
-      [funD 'construct [clause [tildeP wildP] (normalB constructLam) []]]
+      [t| Construct $recordType |]
+      [ tySynInstD (tySynEqn Nothing [t| FieldsTuple $recordType |] fieldsTupleT)
+      , genRecordVal opts r $ \pats value ->
+          let fieldsTupleP = mkTupleP id (nest DefaultGhcTupleLimit pats)
+           in funD 'construct [clause [tildeP wildP, fieldsTupleP] (normalB value) []]
+      ]
   ]
   where
-    fieldsTuple = mkTupleT fieldTypeT (nest DefaultGhcTupleLimit recordFields)
-    constructLam = genRecordVal opts r $ \pats ->
-      lamE [mkTupleP id (nest DefaultGhcTupleLimit pats)]
+    recordType = recordTypeT N.Unqual r
+    fieldsTupleT = mkTupleT fieldTypeT (nest DefaultGhcTupleLimit recordFields)
 
 -- | Generate constructor function
 --

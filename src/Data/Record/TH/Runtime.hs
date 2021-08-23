@@ -1,6 +1,6 @@
 {-# LANGUAGE ConstraintKinds        #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TypeFamilies           #-}
 
 -- | Functions to support the TH code (i.e., functions called by generated code)
 --
@@ -15,7 +15,7 @@ module Data.Record.TH.Runtime (
   , repToVector
   , rnfVectorAny
   , noInlineUnsafeCo
-  , Construct(construct)
+  , Construct(FieldsTuple, construct)
   ) where
 
 import Data.Coerce (coerce)
@@ -58,5 +58,32 @@ noInlineUnsafeCo :: forall a b. a -> b
 {-# NOINLINE noInlineUnsafeCo #-}
 noInlineUnsafeCo = unsafeCoerce
 
-class Construct fields record | record -> fields where
-  construct :: record -> fields -> record
+-- | Typeclass instead of construct_X because of explicit imports/exports
+--
+-- Note: We use type family instead of class parameter because
+-- the head of instance shouldn't contain type familes
+--
+-- Example:
+-- 
+-- > type family F a b = r | r -> a where
+-- >   F a b = Maybe b
+-- >
+-- > largeRecord .. [d|
+-- >   data X a = X { a, b :: F a Int }
+-- >  |]
+-- >
+-- > x = [lr| X { a = Just 1, b = Just 2 } |]
+--
+-- generates
+--
+-- > newtype X a = LR__X ...
+-- >
+-- > instance Construct (X a) where
+-- >   type FieldsTuple (X a) = (F a Int, F b Int)
+-- >   construct ~_ (a, b) = ...
+-- >
+-- > x = construct (LR__X undefined) (Just 1, Just 2)
+class Construct record where
+  type FieldsTuple record 
+  construct :: record -> FieldsTuple record -> record
+

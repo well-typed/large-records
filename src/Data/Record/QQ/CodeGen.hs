@@ -47,6 +47,7 @@ import Data.Record.QQ.CodeGen.Parser
 import Data.Record.QQ.Runtime.Constructor
 import Data.Record.QQ.Runtime.MatchHasField
 import Data.Record.TH.CodeGen.Tree
+import Data.Record.TH.Config.Options (GenPatSynonym(..))
 
 import qualified Data.Record.Internal.TH.Name as N
 
@@ -163,7 +164,7 @@ construct = \case
 
 resolveRecordConstr :: N.Qualifier -> Record a -> Q Exp
 resolveRecordConstr qual r = [|
-      __recordConstructor $(recordUndefinedValueE qual r)
+      __recordConstructor $(recordUndefinedValueE UseQuasiQuoter qual r)
     |]
 
 {-------------------------------------------------------------------------------
@@ -187,7 +188,10 @@ deconstruct = \pat -> do
              reportError $ "Unknown fields: " ++ intercalate ", " unknown
              return p
            Just (ParsedRecordInfo qual r) -> runQ $
-             viewP (varE 'viewAtType `appE` recordUndefinedValueE qual r) $
+             viewP (   varE 'viewAtType
+                     `appE`
+                       recordUndefinedValueE UseQuasiQuoter qual r
+                   ) $
                case recordFields (dropMissingRecordFields r) of
                  [] -> wildP
                  fs -> outerViewPat fs

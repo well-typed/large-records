@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-module Test.Record.Sanity.QualifiedImports.B where
+module Test.Record.Sanity.QualifiedImports.B (T(..)) where
 
 import Data.Record.TH
 

@@ -11,6 +11,7 @@ import Language.Haskell.TH.Syntax (Quasi, NameSpace(..))
 import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.QQ.CodeGen.HSE
+import Data.Record.TH.Config.Options (GenPatSynonym(..))
 
 import qualified Data.Record.Internal.Record.Resolution.GHC as GHC
 import qualified Data.Record.Internal.Record.Resolution.Internal as Internal
@@ -71,13 +72,17 @@ import qualified Data.Record.Internal.TH.Name as N
 -- The contents of this environment are ephemeral, of course, and certainly not
 -- stored as part of interface files, so this is merely a backup for when the
 -- 'MetadataOf' information is not available.
+--
+-- NOTE: We assume that this is only called by the quasi-quoter, and that since
+-- the quasi-quoter is used, we did not generate a pattern synonym.
 resolveRecord ::
      Quasi m
   => N.Name 'DataName 'N.Dynamic -- ^ User-defined constructor
   -> m (Either String (Record ()))
 resolveRecord userConstr = runExceptT $ do
     internalConstr <- do
-      mInternalConstr <- lift $ resolveHseName nameRecordInternalConstr userConstr
+      mInternalConstr <- lift $
+        resolveHseName (nameRecordInternalConstr UseQuasiQuoter) userConstr
       case mInternalConstr of
         Just c  -> return c
         Nothing -> throwError $ "Not in scope: " ++ show userConstr

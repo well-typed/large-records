@@ -75,7 +75,7 @@ instance InjectInterpreted I Maybe (Uninterpreted a) where
 instance InjectInterpreted I Maybe String where
   injectInterpreted = liftInterpreted $ id
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
+largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
     data A (f :: Type -> Type) = A {
           aI :: f Int
         , aB :: f Bool
@@ -121,7 +121,7 @@ justA = gjust
   Example with two variables
 -------------------------------------------------------------------------------}
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
+largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
     data B (f :: Type -> Type) (g :: Type -> Type) = B {
           bI :: f Int
         , bB :: g Bool
@@ -227,7 +227,7 @@ applyColumnar' _ f fx gx = getColumnar' <$> f (Columnar' fx) (Columnar' gx)
   Beam test
 -------------------------------------------------------------------------------}
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
+largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
     data TableA (f :: Type -> Type) = TableA {
           taFieldI :: PrimaryKey TableA f
         , taFieldB :: Columnar f Bool

@@ -80,13 +80,14 @@ genAll opts@Options{..} (r, instances) = do
           ]
         -- If we generate the pattern synonym, there is no need to generate
         -- field accessors, because GHC will generate them from the synonym
-      , when (generateFieldAccessors && not generatePatternSynonym) $ [
+        -- TODO: That logic needs to be changed with 9.2 (NoFieldSelectors).
+      , when (generateFieldAccessors && generatePatternSynonym /= GenPatSynonym) $ [
             genFieldAccessors opts r
           ]
       , when generateConstructorFn [
             genConstructorFn opts r
           ]
-      , when generatePatternSynonym $ [
+      , when (generatePatternSynonym == GenPatSynonym) $ [
             genRecordView opts r
           , genPatSynonym opts r
           ]
@@ -120,13 +121,15 @@ genAll opts@Options{..} (r, instances) = do
 -- > newtype T a b = TFromVector {vectorFromT :: Vector Any}
 -- >   deriving anyclass C -- where applicable
 genNewtype :: Options -> Record () -> RecordInstances -> Q Dec
-genNewtype _opts Record{..} RecordInstances{recordInstancesAnyclass} =
+genNewtype Options{generatePatternSynonym}
+           Record{..}
+           RecordInstances{recordInstancesAnyclass} =
     N.newtypeD
       (cxt [])
       (N.unqualified recordType)
       recordTVars
       Nothing
-      (N.recC (N.unqualified (nameRecordInternalConstr recordConstr)) [
+      (N.recC (N.unqualified (nameRecordInternalConstr generatePatternSynonym recordConstr)) [
            N.varBangType (N.unqualified (nameRecordInternalField recordType)) $
              bangType (return DefaultBang) [t| Vector Any |]
          ])
@@ -193,17 +196,20 @@ genIndexedOverwrite Options{..} r@Record{..} = do
     body :: Q Exp
     body
       | allFieldsStrict =
-          [| \n t !val -> $(recordFromVectorDontForceE N.Unqual r) (
+          [| \n t !val -> $fromVector (
                  V.unsafeUpd ($(recordToVectorE N.Unqual r) t)
                    [(n, noInlineUnsafeCo val)]
                )
            |]
       | otherwise =
-          [| \n t val -> $(recordFromVectorDontForceE N.Unqual r) (
+          [| \n t val -> $fromVector (
                  V.unsafeUpd ($(recordToVectorE N.Unqual r) t)
                    [(n, noInlineUnsafeCo val)]
                )
            |]
+
+    fromVector :: Q Exp
+    fromVector = recordFromVectorDontForceE generatePatternSynonym N.Unqual r
 
 -- | Generate field accessors for all fields
 genFieldAccessors :: Options -> Record () -> Q [Dec]
@@ -738,11 +744,11 @@ genGhcGenericsInstances _opts r = sequenceA [
 -- See also 'recordFromVectorDontForceE'.
 recordFromVectorForceStrictFieldsE :: Options -> Record () -> Q Exp
 recordFromVectorForceStrictFieldsE Options{..} r
-    | allFieldsStrict = [|
-          \v -> rnfVectorAny v `seq` $(recordFromVectorDontForceE N.Unqual r) v
-        |]
-    | otherwise =
-        recordFromVectorDontForceE N.Unqual r
+  | allFieldsStrict = [| \v -> rnfVectorAny v `seq` $fromVector v |]
+  | otherwise       =                                fromVector
+  where
+    fromVector :: Q Exp
+    fromVector = recordFromVectorDontForceE generatePatternSynonym N.Unqual r
 
 {-------------------------------------------------------------------------------
   Fix TH naming

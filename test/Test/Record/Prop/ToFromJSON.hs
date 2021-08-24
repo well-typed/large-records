@@ -28,7 +28,7 @@ import Test.Tasty.QuickCheck
   Test that gtoJSON and gfromJSON are inverse
 -------------------------------------------------------------------------------}
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
+largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
     data A = MkA {
           ax :: Int
         , ay :: Bool

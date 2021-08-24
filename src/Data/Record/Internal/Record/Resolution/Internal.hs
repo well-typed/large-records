@@ -13,6 +13,7 @@ import qualified Data.Map as Map
 
 import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
+import Data.Record.TH.Config.Options (GenPatSynonym(..))
 
 import qualified Data.Record.Internal.TH.Name as N
 
@@ -56,12 +57,16 @@ putRecordInfo info = do
     -- In order to be able to resolve the record info later, we need to properly
     -- quantify the record name. We do this by requesting the /current/ TH
     -- location. This is justified by the precondition to the function.
+    --
+    -- Moreover, since only the quasi-quoter will do this resolution, the name
+    -- we use as a key in the environment is the name that the quasi-quoter
+    -- would use.
 
     loc <- runQ location
     let internalConstr :: N.Name 'DataName 'N.Global
         internalConstr =
           N.Name
-            (OccName (nameRecordInternalConstr (recordConstr info)))
+            (OccName (nameRecordInternalConstr UseQuasiQuoter (recordConstr info)))
             (N.NameGlobal
               DataName
               (mkPkgName (loc_package loc))

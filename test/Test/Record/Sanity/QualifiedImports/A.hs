@@ -8,7 +8,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-module Test.Record.Sanity.QualifiedImports.A where
+-- The explicit export of MkT here is intentional: it tests for regressions
+-- of issue #31.
+module Test.Record.Sanity.QualifiedImports.A (T(MkT)) where
 
 import Data.Record.TH
 

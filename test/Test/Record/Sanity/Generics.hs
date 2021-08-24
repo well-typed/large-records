@@ -47,7 +47,7 @@ import qualified Data.Record.Generic.Rep as Rep
   Small test record
 -------------------------------------------------------------------------------}
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = True }) [d|
+largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
   data T a b = MkT {
         tInt   :: Word
       , tBool  :: Bool

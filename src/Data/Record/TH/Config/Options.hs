@@ -1,6 +1,7 @@
 -- | Options that influence TH code generation
 module Data.Record.TH.Config.Options (
     Options(..)
+  , GenPatSynonym(..)
   , defaultStrictOptions
   , defaultLazyOptions
   , defaultPureScript
@@ -26,21 +27,8 @@ module Data.Record.TH.Config.Options (
 data Options = Options {
       -- | Generate a pattern synonym for the record
       --
-      -- > pattern MkT :: Word -> Bool -> Char -> a -> [b] -> T a b
-      -- > pattern MkT{tInt, tBool, tChar, tA, tListB} <- ..
-      -- >   where
-      -- >     MkT tInt' tBool' tChar' tA' tListB' = ..
-      --
-      -- The pattern synonym makes it possible to construct or pattern match on
-      -- @T@ values as if it had been defined like a normal record.
-      --
-      -- We do /not/ do this by default, however, because unfortunately when
-      -- we define a record pattern synonym in @ghc@, @ghc@ also (unnecessarily
-      -- but currently unavoidably) introduces field accessors for all fields
-      -- in the record, and we're back to code that is quadratic in size.
-      --
-      -- Avoid if possible.
-      generatePatternSynonym :: Bool
+      -- See 'GenPatSynonym' for details. Defaults to 'UseQuasiQuoter'.
+      generatePatternSynonym :: GenPatSynonym
 
       -- | Generate a "constructor function" for the record
       --
@@ -80,13 +68,71 @@ data Options = Options {
     , allFieldsStrict :: Bool
     }
 
+-- | Do we want to generate a pattern synonym for the record?
+data GenPatSynonym =
+    -- | Generate pattern synonym
+    --
+    -- If generating a pattern synonym is enabled, 'largeRecord' will generate
+    -- something like
+    --
+    -- > pattern MkT :: Word -> Bool -> Char -> a -> [b] -> T a b
+    -- > pattern MkT{tInt, tBool, tChar, tA, tListB} <- ..
+    -- >   where
+    -- >     MkT tInt' tBool' tChar' tA' tListB' = ..
+    --
+    -- The pattern synonym makes it possible to construct or pattern match on
+    -- @T@ values as if it had been defined like a normal record.
+    --
+    -- We do /not/ do this by default, however, because unfortunately when
+    -- we define a record pattern synonym in @ghc@, @ghc@ also (unnecessarily
+    -- but currently unavoidably) introduces field accessors for all fields
+    -- in the record, and we're back to code that is quadratic in size. There
+    -- is hope that this situation will be better from ghc 9.2 forward
+    -- (new `NoFieldSelectors` extension) but it's unclear at present.
+    --
+    -- For now, avoid if possible (see 'UseQuasiQuoter').
+    GenPatSynonym
+
+    -- | Do not generate the pattern synonym
+    --
+    -- In the absence of a pattern synonym, the main way to interact with
+    -- records is through the 'HasField' instances (i.e., by using lenses).
+    -- However, it is sometimes still useful to be able to pattern match on
+    -- records or construct explicit records values. The quasi-quoter makes
+    -- this possible. It can be used in three ways:
+    --
+    -- o In pattern matches:
+    --
+    --   > foo :: T a b -> Word
+    --   > foo [lr| MkT { tInt = x } |] = x
+    --
+    -- o In record construction:
+    --
+    --    > bar :: T () Double
+    --    > bar = [lr| MkT {
+    --    >       tInt   = 0
+    --    >     , tBool  = False
+    --    >     , tChar  = 'a'
+    --    >     , tA     = ()
+    --    >     , tListB = [0.0]
+    --    >     } |]
+    --
+    -- o As a constructor:
+    --
+    --    > baz :: T () Double
+    --    > baz = [lr| MkT |] 0 False 'a' () [0.0]
+    --
+    -- NOTE: The quasi-quoter can NOT be used if the pattern synonym is enabled.
+  | UseQuasiQuoter
+  deriving (Show, Eq)
+
 {-------------------------------------------------------------------------------
   Defaults
 -------------------------------------------------------------------------------}
 
 defaultLazyOptions :: Options
 defaultLazyOptions = Options {
-      generatePatternSynonym    = False
+      generatePatternSynonym    = UseQuasiQuoter
     , generateConstructorFn     = True
     , generateHasFieldInstances = True
     , generateFieldAccessors    = True
@@ -95,7 +141,7 @@ defaultLazyOptions = Options {
 
 defaultStrictOptions :: Options
 defaultStrictOptions = Options {
-      generatePatternSynonym    = False
+      generatePatternSynonym    = UseQuasiQuoter
     , generateConstructorFn     = True
     , generateHasFieldInstances = True
     , generateFieldAccessors    = True
@@ -125,7 +171,7 @@ defaultStrictOptions = Options {
 -- what @record-dot-preprocessor@ encourages anyway), all is fine.
 defaultPureScript :: Options
 defaultPureScript = Options {
-      generatePatternSynonym    = False
+      generatePatternSynonym    = UseQuasiQuoter
     , generateConstructorFn     = True
     , generateHasFieldInstances = True
     , generateFieldAccessors    = False

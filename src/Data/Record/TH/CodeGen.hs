@@ -80,13 +80,14 @@ genAll opts@Options{..} (r, instances) = do
           ]
         -- If we generate the pattern synonym, there is no need to generate
         -- field accessors, because GHC will generate them from the synonym
-      , when (generateFieldAccessors && not generatePatternSynonym) $ [
+        -- TODO: That logic needs to be changed with 9.2 (NoFieldSelectors).
+      , when (generateFieldAccessors && generatePatternSynonym /= GenPatSynonym) $ [
             genFieldAccessors opts r
           ]
       , when generateConstructorFn [
             genConstructorFn opts r
           ]
-      , when generatePatternSynonym $ [
+      , when (generatePatternSynonym == GenPatSynonym) $ [
             genRecordView opts r
           , genPatSynonym opts r
           ]

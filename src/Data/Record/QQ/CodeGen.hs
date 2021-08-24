@@ -3,6 +3,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE DataKinds #-}
 
 -- | Quasi-quoter support for large records
 --
@@ -37,11 +39,12 @@ import qualified Language.Haskell.Exts as HSE
 import qualified Language.Haskell.Meta as HSE.Meta
 
 import Data.Record.Internal.CodeGen
-import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
+import Data.Record.Internal.Record.Resolution
 import Data.Record.Internal.TH.Util
 import Data.Record.QQ.CodeGen.HSE
 import Data.Record.QQ.CodeGen.Parser
+import Data.Record.QQ.Runtime.Constructor
 import Data.Record.QQ.Runtime.MatchHasField
 import Data.Record.TH.CodeGen.Tree
 
@@ -126,9 +129,11 @@ lrPat = \str -> do
 
 construct :: forall m. Quasi m => Exp -> m Exp
 construct = \case
-    ConE constr -> do
-      constrFn <- resolveKnownHseName nameRecordTypedConstructorFn (fromHseName constr)
-      runQ $ N.varE constrFn
+    ConE (fromHseName -> constr) -> do
+      mr <- resolveRecord constr
+      runQ $ case mr of
+               Left  _ -> fail $ "Not in scope: " ++ show (N.nameBase constr)
+               Right r -> resolveRecordConstr (N.nameQualifier constr) r
     expr ->
       -- Assume this is a record construction expression
       SYB.everywhereM (SYB.mkM go) expr
@@ -145,8 +150,8 @@ construct = \case
           Just (UnknownFields unknown) -> runQ $ do
             reportError $ "Unknown fields: " ++ intercalate ", " unknown
             [| undefined |]
-          Just (ParsedRecordInfo qual Record{..}) -> runQ $ do
-            appsE $ N.varE (N.qualify qual (nameRecordTypedConstructorFn recordConstr))
+          Just (ParsedRecordInfo qual r@Record{..}) -> runQ $ do
+            appsE $ resolveRecordConstr qual r
                   : map mkArg recordFields
 
     mkArg :: Field (Maybe Exp) -> Q Exp
@@ -155,6 +160,11 @@ construct = \case
       | otherwise = do
           reportWarning $ "No value for field " ++ fieldName
           [| error $ "No value given for field " ++ $(lift fieldName) |]
+
+resolveRecordConstr :: N.Qualifier -> Record a -> Q Exp
+resolveRecordConstr qual r = [|
+      __recordConstructor $(recordUndefinedValueE qual r)
+    |]
 
 {-------------------------------------------------------------------------------
   Deconstruction

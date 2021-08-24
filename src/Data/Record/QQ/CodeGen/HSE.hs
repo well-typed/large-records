@@ -73,6 +73,7 @@ resolveHseName :: (Quasi m, N.LookupName ns')
 resolveHseName f = N.lookupName . N.mapNameBase f
 
 -- | Variation on 'resolveHseName' that fails if the name is not known
+-- TODO: Delete
 resolveKnownHseName :: (Quasi m, N.LookupName ns')
   => (String -> String)
   ->    N.Name ns  'N.Dynamic

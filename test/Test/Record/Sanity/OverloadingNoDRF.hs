@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -34,10 +35,10 @@ testOverloading = do
     assertEqual "Y" y.a "hi"
   where
     x :: X
-    x = _construct_MkX 0
+    x = [lr| MkX {a = 0} |]
 
     y :: Y
-    y = _construct_MkY "hi"
+    y = [lr| MkY {a = "hi"} |]
 
 tests :: TestTree
 tests = testGroup "Test.Record.Sanity.OverloadingNoDRF" [

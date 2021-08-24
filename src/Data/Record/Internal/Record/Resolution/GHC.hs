@@ -34,8 +34,8 @@ parseRecordInfo :: forall m.
      Quasi m
   => String                       -- ^ User-defined constructor
   -> N.Name 'DataName 'N.Global   -- ^ Internal constructor
-  -> m (Either String (Record ()))
-parseRecordInfo userConstr internalConstr = runExceptT $ do
+  -> ExceptT String m (Record ())
+parseRecordInfo userConstr internalConstr = do
     parent    <- Except.lift (N.reify internalConstr) >>= getDataConParent
     saturated <- Except.lift (N.reify parent) >>= getSaturatedType
     parsed    <- Except.lift (getMetadataInstance saturated) >>= parseTySynInst

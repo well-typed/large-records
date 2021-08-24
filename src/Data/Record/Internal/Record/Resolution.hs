@@ -5,9 +5,12 @@ module Data.Record.Internal.Record.Resolution (
     resolveRecord
   ) where
 
+import Control.Monad.Except (runExceptT, lift, MonadError (throwError))
 import Language.Haskell.TH.Syntax (Quasi, NameSpace(..))
 
+import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
+import Data.Record.QQ.CodeGen.HSE
 
 import qualified Data.Record.Internal.Record.Resolution.GHC as GHC
 import qualified Data.Record.Internal.Record.Resolution.Internal as Internal
@@ -68,12 +71,17 @@ import qualified Data.Record.Internal.TH.Name as N
 -- The contents of this environment are ephemeral, of course, and certainly not
 -- stored as part of interface files, so this is merely a backup for when the
 -- 'MetadataOf' information is not available.
-resolveRecord :: Quasi m
-  => String                       -- ^ User-defined constructor
-  -> N.Name 'DataName 'N.Global   -- ^ Internal constructor
+resolveRecord ::
+     Quasi m
+  => N.Name 'DataName 'N.Dynamic -- ^ User-defined constructor
   -> m (Either String (Record ()))
-resolveRecord userConstr internalConstr = do
-    mInfo <- Internal.getRecordInfo internalConstr
+resolveRecord userConstr = runExceptT $ do
+    internalConstr <- do
+      mInternalConstr <- lift $ resolveHseName nameRecordInternalConstr userConstr
+      case mInternalConstr of
+        Just c  -> return c
+        Nothing -> throwError $ "Not in scope: " ++ show userConstr
+    mInfo <- lift $ Internal.getRecordInfo internalConstr
     case mInfo of
-      Just info -> return $ Right info
-      Nothing   -> GHC.parseRecordInfo userConstr internalConstr
+      Just i  -> return i
+      Nothing -> GHC.parseRecordInfo (N.nameBase userConstr) internalConstr

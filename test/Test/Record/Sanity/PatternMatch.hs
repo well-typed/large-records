@@ -107,7 +107,11 @@ testProjections = do
       assertEqual "sig-nonempty" useNoSigNonEmpty ()
   where
     isExpectedTypeError :: SomeException -> Bool
-    isExpectedTypeError e = "Couldn't match expected type" `isInfixOf` show e
+    isExpectedTypeError e = and [
+        "Couldn't match" `isInfixOf` show e
+      , "T"              `isInfixOf` show e
+      , "T2"             `isInfixOf` show e
+      ]
 
     t :: T Bool
     t = [lr| MkT { x = 5, y = [True], z = 1.0 } |]
@@ -116,6 +120,6 @@ testProjections = do
     s = [lr| MkS { x = 'a', y = MkT { x = 2, y = [True, False], z = 1.0 } } |]
 
 tests :: TestTree
-tests = testGroup "Test.Record.Sanity.Projection" [
+tests = testGroup "Test.Record.Sanity.PatternMatch" [
       testCase "projections" testProjections
     ]

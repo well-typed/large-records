@@ -60,8 +60,11 @@ instance (MatchHasField a b, MatchHasField a c) => MatchHasField a (b, c) where
 -- | Can be used alongside 'matchHasField' to fix the type of the argument
 --
 -- This avoids inferring types in terms of @HasField ..@; see example below.
+--
+-- The first argument will usually be instantiated to some form of @undefined@;
+-- we use it instead of a proxy to avoid difficulties with type variables.
 viewAtType :: a -> a -> a
-viewAtType = const id
+viewAtType ~_proxy = id
 
 {-------------------------------------------------------------------------------
   Example

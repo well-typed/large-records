@@ -15,6 +15,8 @@
 {-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
 #endif
 
+-- {-# OPTIONS_GHC -ddump-splices #-}
+
 module Test.Record.Size.After.R0010 where
 
 import Data.Aeson (ToJSON(..))

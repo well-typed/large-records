@@ -38,6 +38,7 @@ library
                         Data.Record.QQ.CodeGen
                         Data.Record.QQ.CodeGen.HSE
                         Data.Record.QQ.CodeGen.Parser
+                        Data.Record.QQ.Runtime.Constructor
                         Data.Record.QQ.Runtime.MatchHasField
 
                         Data.Record.TH

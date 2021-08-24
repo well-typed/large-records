@@ -7,7 +7,6 @@
 module Data.Record.Internal.Naming (
     -- * Names based on the constructor
     nameRecordInternalConstr
-  , nameRecordTypedConstructorFn
     -- * Names based on the type
   , nameRecordConstraintsClass
   , nameRecordConstraintsMethod
@@ -37,14 +36,6 @@ module Data.Record.Internal.Naming (
 --    requirement).
 nameRecordInternalConstr :: String -> String
 nameRecordInternalConstr = ("LR__" ++)
-
--- | Name of the record constructor function
---
--- Unlike the internal constructor (which takes a @Vector Any@ as argument),
--- this function takes @n@ arguments, one for each record field, of the
--- appropriate types.
-nameRecordTypedConstructorFn :: String -> String
-nameRecordTypedConstructorFn = ("_construct_" ++)
 
 {-------------------------------------------------------------------------------
   Names based on the type

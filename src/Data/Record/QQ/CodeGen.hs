@@ -193,7 +193,7 @@ deconstruct = \pat -> do
                        recordUndefinedValueE UseQuasiQuoter qual r
                    ) $
                case recordFields (dropMissingRecordFields r) of
-                 [] -> wildP
+                 [] -> bangP wildP
                  fs -> outerViewPat fs
 
     outerViewPat :: [Field Pat] -> Q Pat

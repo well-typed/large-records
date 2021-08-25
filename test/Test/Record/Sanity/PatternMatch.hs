@@ -62,6 +62,11 @@ projectView [lr| MkT { x = ((+1) -> a) } |] = a
 matchEmpty :: T Bool -> Int
 matchEmpty [lr| MkT {} |] = 42
 
+-- | A pattern match on a record that does not extract any variables should
+-- nonetheless be strict
+matchEmptyUndefined :: Int
+matchEmptyUndefined = matchEmpty (error "boom")
+
 {-------------------------------------------------------------------------------
   Verify inferred types
 
@@ -101,11 +106,17 @@ testProjections = do
     assertEqual "view"   (projectView   t)  6
     assertEqual "empty"  (matchEmpty    t)  42
 
+    expectException isBoom $
+      assertEqual "empty-undefined" matchEmptyUndefined 42
+
     expectException isExpectedTypeError $
       assertEqual "sig-empty"    useNoSigEmpty    ()
     expectException isExpectedTypeError $
       assertEqual "sig-nonempty" useNoSigNonEmpty ()
   where
+    isBoom :: SomeException -> Bool
+    isBoom e = "boom" `isInfixOf` show e
+
     isExpectedTypeError :: SomeException -> Bool
     isExpectedTypeError e = and [
         "Couldn't match" `isInfixOf` show e

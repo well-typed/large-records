@@ -88,9 +88,26 @@ library
 test-suite test-large-records
     type:               exitcode-stdio-1.0
     main-is:            TestLargeRecords.hs
-    other-modules:      Test.Record.Prop.Show
-                        Test.Record.Prop.Show.Regular
+    other-modules:      Test.Record.Experiments.ConstraintFamily
+                        Test.Record.Experiments.ConstraintFamily.CF010
+                        Test.Record.Experiments.Generic
+                        Test.Record.Experiments.Generic.GH010
+                        Test.Record.Experiments.Generic.Instance.LargeRecords
+                        Test.Record.Experiments.Generic.Instance.SOP
+                        Test.Record.Experiments.HList
+                        Test.Record.Experiments.HList.HL010
+                        Test.Record.Experiments.Induction.List
+                        Test.Record.Experiments.Induction.List.LI010
+                        Test.Record.Experiments.Induction.Tree
+                        Test.Record.Experiments.Induction.Tree.TI010
+                        Test.Record.Experiments.ToTreeAtUseSite
+                        Test.Record.Experiments.ToTreeAtUseSite.TU010
+                        Test.Record.Experiments.ToTreeEnum
+                        Test.Record.Experiments.ToTreeEnum.TE010
+                        Test.Record.Experiments.Util
+                        Test.Record.Prop.Show
                         Test.Record.Prop.Show.Large
+                        Test.Record.Prop.Show.Regular
                         Test.Record.Prop.ToFromJSON
                         Test.Record.Sanity.Derive
                         Test.Record.Sanity.EqualFieldTypes
@@ -156,7 +173,23 @@ test-suite test-large-records
       cpp-options: -DUSE_GHC_DUMP
       build-depends: ghc-dump-core
 
+    if flag(blog2-variant-quadratic)
+      cpp-options: -DBLOG2_VARIANT_QUADRATIC
+
+    if flag(blog2-variant-logarithmic)
+      cpp-options: -DBLOG2_VARIANT_LOGARITHMIC
+
+    if flag(blog2-variant-sop)
+      cpp-options: -DBLOG2_VARIANT_SOP
+
+    -- Only one of these variants should be enabled
+    -- Unfortunately, we currently have no good way to express this.
+    -- See also <https://github.com/haskell/cabal/issues/3526>
+    if (flag(blog2-variant-quadratic) && flag(blog2-variant-logarithmic)) || (flag(blog2-variant-quadratic) && flag(blog2-variant-sop)) || (flag(blog2-variant-logarithmic) && flag(blog2-variant-sop))
+      build-depends: base <0
+
     if flag(build-all-modules)
+      cpp-options: -DBUILD_ALL_MODULES
       other-modules: Test.Record.Size.After.HK020
                      Test.Record.Size.After.HK030
                      Test.Record.Size.After.HK040
@@ -193,6 +226,69 @@ test-suite test-large-records
                      Test.Record.Size.Before.R080
                      Test.Record.Size.Before.R090
                      Test.Record.Size.Before.R100
+                     Test.Record.Experiments.ConstraintFamily.CF020
+                     Test.Record.Experiments.ConstraintFamily.CF030
+                     Test.Record.Experiments.ConstraintFamily.CF040
+                     Test.Record.Experiments.ConstraintFamily.CF050
+                     Test.Record.Experiments.ConstraintFamily.CF060
+                     Test.Record.Experiments.ConstraintFamily.CF070
+                     Test.Record.Experiments.ConstraintFamily.CF080
+                     Test.Record.Experiments.ConstraintFamily.CF090
+                     Test.Record.Experiments.ConstraintFamily.CF100
+                     Test.Record.Experiments.Generic.GH020
+                     Test.Record.Experiments.Generic.GH030
+                     Test.Record.Experiments.Generic.GH040
+                     Test.Record.Experiments.Generic.GH050
+                     Test.Record.Experiments.Generic.GH060
+                     Test.Record.Experiments.Generic.GH070
+                     Test.Record.Experiments.Generic.GH080
+                     Test.Record.Experiments.Generic.GH090
+                     Test.Record.Experiments.Generic.GH100
+                     Test.Record.Experiments.HList.HL020
+                     Test.Record.Experiments.HList.HL030
+                     Test.Record.Experiments.HList.HL040
+                     Test.Record.Experiments.HList.HL050
+                     Test.Record.Experiments.HList.HL060
+                     Test.Record.Experiments.HList.HL070
+                     Test.Record.Experiments.HList.HL080
+                     Test.Record.Experiments.HList.HL090
+                     Test.Record.Experiments.HList.HL100
+                     Test.Record.Experiments.Induction.List.LI020
+                     Test.Record.Experiments.Induction.List.LI030
+                     Test.Record.Experiments.Induction.List.LI040
+                     Test.Record.Experiments.Induction.List.LI050
+                     Test.Record.Experiments.Induction.List.LI060
+                     Test.Record.Experiments.Induction.List.LI070
+                     Test.Record.Experiments.Induction.List.LI080
+                     Test.Record.Experiments.Induction.List.LI090
+                     Test.Record.Experiments.Induction.List.LI100
+                     Test.Record.Experiments.Induction.Tree.TI020
+                     Test.Record.Experiments.Induction.Tree.TI030
+                     Test.Record.Experiments.Induction.Tree.TI040
+                     Test.Record.Experiments.Induction.Tree.TI050
+                     Test.Record.Experiments.Induction.Tree.TI060
+                     Test.Record.Experiments.Induction.Tree.TI070
+                     Test.Record.Experiments.Induction.Tree.TI080
+                     Test.Record.Experiments.Induction.Tree.TI090
+                     Test.Record.Experiments.Induction.Tree.TI100
+                     Test.Record.Experiments.ToTreeAtUseSite.TU020
+                     Test.Record.Experiments.ToTreeAtUseSite.TU030
+                     Test.Record.Experiments.ToTreeAtUseSite.TU040
+                     Test.Record.Experiments.ToTreeAtUseSite.TU050
+                     Test.Record.Experiments.ToTreeAtUseSite.TU060
+                     Test.Record.Experiments.ToTreeAtUseSite.TU070
+                     Test.Record.Experiments.ToTreeAtUseSite.TU080
+                     Test.Record.Experiments.ToTreeAtUseSite.TU090
+                     Test.Record.Experiments.ToTreeAtUseSite.TU100
+                     Test.Record.Experiments.ToTreeEnum.TE020
+                     Test.Record.Experiments.ToTreeEnum.TE030
+                     Test.Record.Experiments.ToTreeEnum.TE040
+                     Test.Record.Experiments.ToTreeEnum.TE050
+                     Test.Record.Experiments.ToTreeEnum.TE060
+                     Test.Record.Experiments.ToTreeEnum.TE070
+                     Test.Record.Experiments.ToTreeEnum.TE080
+                     Test.Record.Experiments.ToTreeEnum.TE090
+                     Test.Record.Experiments.ToTreeEnum.TE100
 
 Flag build-all-modules
   Description: Build all test modules in Size
@@ -204,4 +300,16 @@ Flag use-ghc-dump
 
 Flag profile-allzip
   Description: Include experiment to verify size of AllZip is linear
+  Default: False
+
+Flag blog2-variant-logarithmic
+  Description: (For blog2 experiments) O(n log n) variant
+  Default: True
+
+Flag blog2-variant-quadratic
+  Description: (For blog2 experiments) O(n^2) variant
+  Default: False
+
+Flag blog2-variant-sop
+  Description: (For blog2 experiments) Variant that uses SOP generics rather than LR generics
   Default: False

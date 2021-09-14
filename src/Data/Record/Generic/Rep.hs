@@ -114,6 +114,7 @@ mapWithIndex f as = map' f' allIndices
   where
     f' :: Index a x -> g x
     f' ix = f ix (getAtIndex ix as)
+    
 compileToHere -- ===============================================================
 
 {-------------------------------------------------------------------------------

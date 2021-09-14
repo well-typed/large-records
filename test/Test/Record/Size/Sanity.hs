@@ -18,7 +18,7 @@ import qualified Test.Record.Size.Before.R010 as Before010
 import qualified Test.Record.Size.After.R0010 as After0010
 import qualified Test.Record.Size.After.HK010 as AfterHK10
 
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
 import Test.Record.Size.Infra (T(..))
 
 import qualified Test.Record.Size.Before.R020 as Before020
@@ -67,7 +67,7 @@ tests = testGroup "Test.Record.Size.Sanity" [
       testCase "sameValue" test_sameValue
     , testCase "sameField" test_sameField
     , testCase "showHK"    test_showHK
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
     , testCase "reallyBig" test_reallyBig
 #endif
     ]
@@ -78,7 +78,7 @@ test_sameValue = do
     assertEqual "10"
       (toJSON (SOP.glowerBound :: Before010.R))
       (toJSON ( LR.glowerBound :: After0010.R))
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
     assertEqual "20"
       (toJSON (SOP.glowerBound :: Before020.R))
       (toJSON ( LR.glowerBound :: After0020.R))
@@ -112,7 +112,7 @@ test_sameValue = do
 test_sameField :: Assertion
 test_sameField = do
     assertEqual "HasField" sop010.field1  lr010.field1
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
     assertEqual "HasField" sop020.field11 lr020.field11
     assertEqual "HasField" sop030.field21 lr030.field21
     assertEqual "HasField" sop040.field31 lr040.field31
@@ -127,7 +127,7 @@ test_sameField = do
     sop010 = SOP.glowerBound :: Before010.R
     lr010  =  LR.glowerBound :: After0010.R
 
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
     sop020 = SOP.glowerBound :: Before020.R
     sop030 = SOP.glowerBound :: Before030.R
     sop040 = SOP.glowerBound :: Before040.R
@@ -154,7 +154,7 @@ test_showHK :: Assertion
 test_showHK = do
     assertBool "some output" (not . null $ show lr010)
 
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
     assertBool "some output" (not . null $ show lr020)
     assertBool "some output" (not . null $ show lr030)
     assertBool "some output" (not . null $ show lr040)
@@ -168,7 +168,7 @@ test_showHK = do
   where
     lr010 = LR.glowerBound :: AfterHK10.HKR Identity
 
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
     lr020 = LR.glowerBound :: AfterHK20.HKR Identity
     lr030 = LR.glowerBound :: AfterHK30.HKR Identity
     lr040 = LR.glowerBound :: AfterHK40.HKR Identity
@@ -180,7 +180,7 @@ test_showHK = do
     lr100 = LR.glowerBound :: AfterH100.HKR Identity
 #endif
 
-#if USE_GHC_DUMP
+#if BUILD_ALL_MODULES
 -- | Check the value of the last field in the truly big records
 test_reallyBig :: Assertion
 test_reallyBig = do

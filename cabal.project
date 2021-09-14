@@ -1,6 +1,4 @@
 packages: ./
 
--- index-state: 2020-07-17T00:00:00Z
-
 package large-records
   tests: True

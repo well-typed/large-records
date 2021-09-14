@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -9,6 +10,7 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Test.Record.Size.Infra (
     recordOfSize
@@ -86,7 +88,7 @@ recordOfSize n = fmap (:[]) $ do
 -- See comments in 'recordOfSize' for the use of 'newName'.
 higherKindedRecordOfSize :: Integer -> Q [Dec]
 higherKindedRecordOfSize n = fmap (:[]) $ do
-    f     <- newName "f"
+    f     <- newName "field"
     k     <- [t| Type -> Type |]
     hkr   <- newName "HKR"
     mkHKR <- newName "MkHKR"
@@ -100,7 +102,7 @@ higherKindedRecordOfSize n = fmap (:[]) $ do
   where
     fields :: Name -> [Q VarBangType]
     fields f = [
-          do fieldI <- newName $ "field" ++ show i
+          do fieldI <- newName $ "f" ++ show i
              varBangType
                fieldI
                (bangType defaultBang (conT ''HK `appT` litT (numTyLit i) `appT` varT f))

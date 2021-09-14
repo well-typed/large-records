@@ -24,3 +24,8 @@ command line tool, and processed using `process.sh`.
 set yrange [0:450000] ; plot "desugar-before.csv" using 1:($2+$3+$4), "desugar-after.csv" using 1:($2+$3+$4)
 set yrange [0:450000] ; plot "simplifier-before.csv" using 1:($2+$3+$4), "simplifier-after.csv" using 1:($2+$3+$4)
 ```
+
+# Benchmarks for anonymous records
+
+See `Makefile` and `blogpost2.gnuplot` for details. The examples considered
+here are all described in the second blog post about large records.

@@ -43,7 +43,7 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 
 class Generic a where
   -- | @Constraints a c@ means "all fields of @a@ satisfy @c@"
-  type Constraints a :: (Type -> Constraint) -> Constraint
+  type Constraints a (c :: Type -> Constraint) :: Constraint
 
   -- | Type-level metadata
   type MetadataOf a :: [(Symbol, Type)]

@@ -571,14 +571,12 @@ genConstraintsClassInstance opts r@Record{..} = do
 --
 -- > type Constraints (T a b) = Constraints_T a b
 genInstanceConstraints :: Options -> Record () -> Q Dec
-genInstanceConstraints _opts r@Record{..} = do
-    c <- newName "c"
-    tySynInstD $
-      tySynEqn
-        Nothing
-        [t| Constraints $(recordTypeT N.Unqual r) $(varT c) |]
-        ((appsT (N.conT (N.unqualified (nameRecordConstraintsClass recordType))) $
-           map tyVarType recordTVars) `appT` varT c)
+genInstanceConstraints _opts r@Record{..} = tySynInstD $
+    tySynEqn
+      Nothing
+      [t| Constraints $(recordTypeT N.Unqual r) |]
+      (appsT (N.conT (N.unqualified (nameRecordConstraintsClass recordType))) $
+         map tyVarType recordTVars)
 
 -- | Generate metadata
 --

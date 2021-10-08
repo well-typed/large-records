@@ -2,6 +2,7 @@ module Main (main) where
 
 import Test.Tasty
 
+import qualified Test.Record.Experiments.Generic
 import qualified Test.Record.Prop.Show
 import qualified Test.Record.Prop.ToFromJSON
 import qualified Test.Record.Sanity.Derive
@@ -49,5 +50,8 @@ tests = testGroup "Tests" [
     , testGroup "Prop" [
           Test.Record.Prop.Show.tests
         , Test.Record.Prop.ToFromJSON.tests
+        ]
+    , testGroup "Experiments" [
+          Test.Record.Experiments.Generic.tests
         ]
     ]

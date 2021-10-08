@@ -15,7 +15,9 @@ module Data.Record.Generic.Rep.Internal (
   , sequenceA
     -- * Conversion
   , unsafeFromList
+  , unsafeFromListAny
   , collapse
+  , toListAny
     -- * Utility (for use in @.Rep@)
   , compileToHere
   ) where
@@ -64,11 +66,22 @@ sequenceA (Rep v) = Rep <$> Prelude.sequenceA (fmap unComp v)
 collapse :: Rep (K a) b -> [a]
 collapse (Rep v) = coerce (V.toList v)
 
+-- | Convert 'Rep' to list
+toListAny :: Rep f a -> [f Any]
+toListAny (Rep v) = V.toList v
+
 -- | Convert list to 'Rep'
 --
--- Does not check that the length has the right number of elements.
+-- Does not check that the list has the right number of elements.
 unsafeFromList :: [b] -> Rep (K b) a
 unsafeFromList = Rep . V.fromList . Prelude.map K
+
+-- | Convert list to 'Rep'
+--
+-- Does not check that the list has the right number of elements, nor the
+-- types of those elements.
+unsafeFromListAny :: [f Any] -> Rep f a
+unsafeFromListAny = Rep . V.fromList
 
 {-------------------------------------------------------------------------------
   Some specialised instances for 'Rep

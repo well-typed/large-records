@@ -1,6 +1,5 @@
 set datafile separator ','
 set terminal png
-set xlabel "Number of record fields"
 set ylabel "Core size (terms + types + coercions)"
 set xrange [0:100]
 
@@ -10,8 +9,15 @@ set xrange [0:100]
 
 # Recap: The problem of type arguments
 
+set xlabel "Number of elements in HList"
 set output "hl.png"
 plot "hl.csv" using 1:5 with lines title "exampleValue"
+
+##
+## From this point forward, we talk about 'record fields'
+##
+
+set xlabel "Number of record fields"
 
 # Instance induction considered harmful
 

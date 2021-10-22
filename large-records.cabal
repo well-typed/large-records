@@ -23,7 +23,12 @@ source-repository head
   location: https://github.com/well-typed/large-records
 
 library
-    exposed-modules:    Data.Record.Generic
+    exposed-modules:    Data.Record.Anonymous
+                        Data.Record.Anonymous.RedBlackTree
+                        Data.Record.Anonymous.Util.Promotion
+                        Data.Record.Anonymous.Util.Singleton
+
+                        Data.Record.Generic
                         Data.Record.Generic.Eq
                         Data.Record.Generic.GHC
                         Data.Record.Generic.JSON
@@ -106,6 +111,7 @@ test-suite test-large-records
                         Test.Record.Experiments.ToTreeEnum
                         Test.Record.Experiments.ToTreeEnum.TE010
                         Test.Record.Experiments.Util
+                        Test.Record.Prop.RedBlackTree
                         Test.Record.Prop.Show
                         Test.Record.Prop.Show.Large
                         Test.Record.Prop.Show.Regular
@@ -135,9 +141,12 @@ test-suite test-large-records
                         Test.Record.Size.Sanity
                         Test.Record.Util
 
+                        Test.Record.Anonymous.Construct.AC010
+
     build-depends:      base
                       , aeson
                       , generic-deriving
+                      , containers
                       , generics-sop
                       , json-sop
                       , large-records

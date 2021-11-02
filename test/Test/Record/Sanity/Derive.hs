@@ -1,15 +1,24 @@
-{-# LANGUAGE ConstraintKinds      #-}
-{-# LANGUAGE DeriveAnyClass       #-}
-{-# LANGUAGE DerivingStrategies   #-}
-{-# LANGUAGE KindSignatures       #-}
-{-# LANGUAGE QuasiQuotes          #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE TemplateHaskell      #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DerivingStrategies    #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE StandaloneDeriving    #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
+#if USE_RDP
 {-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
+#endif
+
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
@@ -18,6 +27,7 @@ module Test.Record.Sanity.Derive (tests) where
 import Control.Newtype
 import Data.Functor.Identity
 import Data.Kind
+import GHC.Records.Compat
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -67,7 +77,13 @@ largeRecord defaultPureScript [d|
     |]
 
 f :: LB -> LB
+#if USE_RDP
 f r = pack ((unpack r){ lb1 = r.lb2, lb2 = r.lb1 })
+#else
+f r = flip (setField @"lb1") (getField @"lb2" r)
+    . flip (setField @"lb2") (getField @"lb1" r)
+    $ r
+#endif
 
 {-------------------------------------------------------------------------------
   Class of kind @(Type -> Type) -> Constraint@
@@ -148,7 +164,11 @@ test_c1 = do
 
 test_newtype :: Assertion
 test_newtype =
+#if USE_RDP
     assertEqual "" r'.lb1 2
+#else
+    assertEqual "" (getField @"lb1" r') 2
+#endif
   where
     r :: LB
     r =  [lr| MkLB { lb1 = 1, lb2 = 2 }|]

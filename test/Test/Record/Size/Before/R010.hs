@@ -11,7 +11,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
+#if USE_RDP
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+#endif
 
 #if USE_GHC_DUMP
 {-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}
@@ -22,6 +24,7 @@ module Test.Record.Size.Before.R010 where
 import Data.Aeson
 import Generics.SOP.JSON
 import Generics.SOP.TH
+import GHC.Records.Compat
 
 import Test.Record.Size.Infra
 
@@ -47,3 +50,14 @@ deriveGeneric ''R
 
 instance ToJSON R where
   toJSON = gtoJSON defaultJsonOptions
+
+-- For the sake of testing, we define one HasField instance by hand if RDP is
+-- not used. We're careful not to depend on field selectors, so that this still
+-- works NoFieldSelectors.
+#if !USE_RDP
+instance HasField "field1" R (T 1) where
+  hasField (MkR f1 f2 f3 f4 f5 f6 f7 f8 f9 f10) = (
+        \f1' -> MkR f1' f2 f3 f4 f5 f6 f7 f8 f9 f10
+      , f1
+      )
+#endif

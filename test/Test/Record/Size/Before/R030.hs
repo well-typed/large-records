@@ -11,7 +11,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
+#if USE_RDP
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor #-}
+#endif
 
 #if USE_GHC_DUMP
 {-# OPTIONS_GHC -fplugin=GhcDump.Plugin #-}

@@ -1,6 +1,10 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP              #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE TypeApplications #-}
 
+#if USE_RDP
 {-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
+#endif
 
 -- | Sanity checks that we generate correct code for in the @Sized.*@ modules
 --
@@ -10,6 +14,10 @@ module Test.Record.Size.Sanity (tests) where
 
 import Data.Aeson
 import Data.Functor.Identity
+
+#if !USE_RDP
+import GHC.Records.Compat
+#endif
 
 import qualified Data.Record.Generic.SOP        as SOP
 import qualified Data.Record.Generic.LowerBound as LR
@@ -111,7 +119,15 @@ test_sameValue = do
 -- | Test that we have the necessary @HasField@ instances
 test_sameField :: Assertion
 test_sameField = do
-    assertEqual "HasField" sop010.field1  lr010.field1
+#if USE_RDP
+    assertEqual "HasField" sop010.field1 lr010.field1
+#else
+    assertEqual "HasField" (getField @"field1" sop010) (getField @"field1" lr010)
+#endif
+
+-- For the remaining modules, we do not provide hand-written HasField instances,
+-- so we do these only when @USE_RDP@ /and/ @BUILD_ALL_MODULES@ are enabled.
+#if USE_RDP
 #if BUILD_ALL_MODULES
     assertEqual "HasField" sop020.field11 lr020.field11
     assertEqual "HasField" sop030.field21 lr030.field21
@@ -122,6 +138,7 @@ test_sameField = do
     assertEqual "HasField" sop080.field71 lr080.field71
     assertEqual "HasField" sop090.field81 lr090.field81
     assertEqual "HasField" sop100.field91 lr100.field91
+#endif
 #endif
   where
     sop010 = SOP.glowerBound :: Before010.R

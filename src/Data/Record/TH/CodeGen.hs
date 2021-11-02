@@ -17,7 +17,7 @@ import Data.Proxy
 import Data.Vector (Vector)
 import GHC.Exts (Any)
 import GHC.Records.Compat
-import Language.Haskell.TH
+import Language.Haskell.TH hiding (TyVarBndr(..), forallT)
 import Language.Haskell.TH.Syntax (NameSpace(..))
 
 import qualified Data.Generics              as SYB
@@ -36,6 +36,7 @@ import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.Internal.Record.Parser
 import Data.Record.Internal.Record.Resolution.Internal (putRecordInfo)
+import Data.Record.Internal.TH.Compat
 import Data.Record.Internal.TH.Util
 import Data.Record.Internal.Util
 import Data.Record.QQ.Runtime.Constructor

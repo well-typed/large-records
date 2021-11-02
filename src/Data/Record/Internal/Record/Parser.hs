@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP             #-}
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -11,7 +12,10 @@ module Data.Record.Internal.Record.Parser (
 import Data.Either (partitionEithers)
 import Data.Maybe (catMaybes)
 import Language.Haskell.TH
+
+#if !MIN_VERSION_template_haskell(2,17,0)
 import Language.Haskell.TH.Syntax
+#endif
 
 import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util

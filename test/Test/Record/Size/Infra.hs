@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
@@ -6,11 +7,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 module Test.Record.Size.Infra (
     recordOfSize
@@ -29,11 +30,15 @@ import Data.Proxy
 import Data.SOP.BasicFunctors
 import GHC.TypeLits
 
-import Language.Haskell.TH hiding (Type)
-import Language.Haskell.TH.Syntax hiding (Type)
+import Language.Haskell.TH hiding (Type, TyVarBndr(..))
+
+#if !MIN_VERSION_template_haskell(2,17,0)
+import Language.Haskell.TH.Syntax hiding (Type, TyVarBndr(..))
+#endif
 
 import Data.Record.Generic.LowerBound
 import Data.Record.Generic.Transform
+import Data.Record.Internal.TH.Compat
 
 {-------------------------------------------------------------------------------
   Construct records of specified size

@@ -122,7 +122,7 @@ compileToHere -- ===============================================================
 -------------------------------------------------------------------------------}
 
 pure :: forall f a. Generic a => (forall x. f x) -> Rep f a
-pure = Rep . V.replicate (recordSize (metadata (Proxy @a)))
+pure f = Rep (V.replicate (recordSize (metadata (Proxy @a))) f)
 
 cpure ::
      (Generic a, Constraints a c)

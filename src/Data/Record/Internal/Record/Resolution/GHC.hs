@@ -9,13 +9,14 @@ module Data.Record.Internal.Record.Resolution.GHC (
 
 import Control.Monad.Except
 import Data.Maybe (fromMaybe)
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
+import Language.Haskell.TH hiding (TyVarBndr)
+import Language.Haskell.TH.Syntax hiding (TyVarBndr)
 
 import qualified Control.Monad.Except as Except
 
 import Data.Record.Generic
 import Data.Record.Internal.Record
+import Data.Record.Internal.TH.Compat
 import Data.Record.Internal.TH.Util
 
 import qualified Data.Record.Internal.TH.Name as N

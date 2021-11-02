@@ -144,7 +144,6 @@ test-suite test-large-records
                       , newtype
                       , microlens
                       , mtl
-                      , record-dot-preprocessor
                       , record-hasfield
                       , sop-core
                       , tasty
@@ -154,7 +153,6 @@ test-suite test-large-records
                       , transformers
                       , vector
                       , QuickCheck
-    build-tool-depends: record-dot-preprocessor:record-dot-preprocessor
     hs-source-dirs:     test
     default-language:   Haskell2010
     ghc-options:       -Wall
@@ -165,6 +163,11 @@ test-suite test-large-records
                        -Widentities
                        -- Needed for the AllZip tests
                        -freduction-depth=2000
+
+    if flag(use-RDP)
+      build-depends:      record-dot-preprocessor
+      build-tool-depends: record-dot-preprocessor:record-dot-preprocessor
+      cpp-options:        -DUSE_RDP
 
     if flag(profile-allzip)
       cpp-options: -DPROFILE_ALLZIP
@@ -294,6 +297,10 @@ Flag build-all-modules
   Description: Build all test modules in Size
   Default: False
 
+Flag use-RDP
+  Description: Use record-dot-preprocessor in the test suite
+  Default: True
+
 Flag use-ghc-dump
   Description: use ghc-dump to output AST sizes
   Default: False
@@ -313,3 +320,4 @@ Flag blog2-variant-quadratic
 Flag blog2-variant-sop
   Description: (For blog2 experiments) Variant that uses SOP generics rather than LR generics
   Default: False
+

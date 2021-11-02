@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -7,11 +8,15 @@
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ViewPatterns          #-}
 
+#if USE_RDP
 {-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
+#endif
+
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Sanity.HKD (
@@ -21,6 +26,10 @@ module Test.Record.Sanity.HKD (
 import Data.Functor.Identity
 import Data.Functor.Const
 import Data.Kind
+
+#if !USE_RDP
+import GHC.Records.Compat
+#endif
 
 import Data.Record.TH
 
@@ -61,11 +70,15 @@ example3 = [lr| MkT { field1 = 'a', field2 = 'b' } |]
 exampleFun :: T f -> HKD f Int
 exampleFun [lr| MkT { field1 } |] = field1
 
-testGet :: Assertion
-testGet = assertEqual "" example1.field1 1
+testGet, testSet :: Assertion
 
-testSet :: Assertion
+#if USE_RDP
+testGet = assertEqual "" example1.field1 1
 testSet = assertEqual "" (example1{ field2 = False }) example2
+#else
+testGet = assertEqual "" (getField @"field1" example1) 1
+testSet = assertEqual "" (setField @"field2" example2 False) example2
+#endif
 
 testMatch :: Assertion
 testMatch = do

@@ -17,6 +17,7 @@ import qualified Test.Record.Sanity.Lens.Micro
 import qualified Test.Record.Sanity.OverloadingNoDRF
 import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.QualifiedImports
+import qualified Test.Record.Sanity.RDP
 import qualified Test.Record.Sanity.RecordConstruction
 import qualified Test.Record.Sanity.Strictness
 import qualified Test.Record.Sanity.Transform
@@ -40,6 +41,7 @@ tests = testGroup "Tests" [
         , Test.Record.Sanity.OverloadingNoDRF.tests
         , Test.Record.Sanity.PatternMatch.tests
         , Test.Record.Sanity.QualifiedImports.tests
+        , Test.Record.Sanity.RDP.tests
         , Test.Record.Sanity.RecordConstruction.tests
         , Test.Record.Sanity.Strictness.tests
         , Test.Record.Sanity.Transform.tests

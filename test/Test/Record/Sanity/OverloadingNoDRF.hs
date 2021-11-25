@@ -1,5 +1,4 @@
 {-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -12,19 +11,13 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-#if USE_RDP
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
-#endif
-
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Sanity.OverloadingNoDRF (
     tests
   ) where
 
-#if !USE_RDP
 import GHC.Records.Compat
-#endif
 
 import Data.Record.TH
 
@@ -33,6 +26,10 @@ import Test.Tasty.HUnit
 
 {-------------------------------------------------------------------------------
   Simple test case
+
+  We don't support DRF-style overloading, but we _can_ generate records when DRF
+  is in use, provided all overloading is resolved through `HasField` instead of
+  through DRF.
 -------------------------------------------------------------------------------}
 
 largeRecord defaultPureScript [d|
@@ -42,13 +39,8 @@ largeRecord defaultPureScript [d|
 
 testOverloading :: Assertion
 testOverloading = do
-#if USE_RDP
-    assertEqual "X" x.a 0
-    assertEqual "Y" y.a "hi"
-#else
     assertEqual "X" (getField @"a" x) 0
     assertEqual "Y" (getField @"a" y) "hi"
-#endif
   where
     x :: X
     x = [lr| MkX {a = 0} |]

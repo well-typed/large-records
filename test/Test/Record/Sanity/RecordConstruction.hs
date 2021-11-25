@@ -1,5 +1,4 @@
 {-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -11,12 +10,6 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-
-#if USE_RDP
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
-#endif
-
---{-# OPTIONS_GHC -Wwarn #-}
 
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
@@ -86,16 +79,8 @@ tests = testGroup "Test.Record.Sanity.RecordConstruction" [
 
 testAllEqual :: Assertion
 testAllEqual = do
-#if USE_RDP
-    assertEqual "inOrder/outOfOrder" inOrder.x  outOfOrder.x
-    assertEqual "inOrder/withoutQQ"  inOrder.x  constructorApp.x
-    assertEqual "R/S"                inOrder.x  valueOfS.x
-    assertEqual "T/S"                valueOfT.y valueOfS
-    assertEqual "T/R"                valueOfT.z (RR 5)
-#else
     assertEqual "inOrder/outOfOrder" (getField @"x" inOrder)  (getField @"x" outOfOrder)
     assertEqual "inOrder/withoutQQ"  (getField @"x" inOrder)  (getField @"x" constructorApp)
     assertEqual "R/S"                (getField @"x" inOrder)  (getField @"x" valueOfS)
     assertEqual "T/S"                (getField @"y" valueOfT) valueOfS
     assertEqual "T/R"                (getField @"z" valueOfT) (RR 5)
-#endif

@@ -129,6 +129,7 @@ test-suite test-large-records
                         Test.Record.Sanity.QualifiedImports
                         Test.Record.Sanity.QualifiedImports.A
                         Test.Record.Sanity.QualifiedImports.B
+                        Test.Record.Sanity.RDP
                         Test.Record.Sanity.RecordConstruction
                         Test.Record.Sanity.Strictness
                         Test.Record.Sanity.Transform

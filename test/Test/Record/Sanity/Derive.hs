@@ -1,5 +1,4 @@
 {-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DerivingStrategies    #-}
@@ -14,10 +13,6 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-
-#if USE_RDP
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
-#endif
 
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 -- {-# OPTIONS_GHC -ddump-splices #-}
@@ -60,8 +55,8 @@ largeRecord defaultPureScript [d|
 
 {-------------------------------------------------------------------------------
   Class of kind @Type -> Type -> Constraint@, partially instantiated.
-  (From a purely kind point of view, this is no different to the previous
-  sectiono, of course.)
+  (Purely from a kind point of view, this is no different to the previous
+  section, of course.)
 
   To make transpilation easier, the PureScript to Haskell transpiler makes
   all records as being a "newtype of themselves" (in PureScript, something like
@@ -77,13 +72,9 @@ largeRecord defaultPureScript [d|
     |]
 
 f :: LB -> LB
-#if USE_RDP
-f r = pack ((unpack r){ lb1 = r.lb2, lb2 = r.lb1 })
-#else
 f r = flip (setField @"lb1") (getField @"lb2" r)
     . flip (setField @"lb2") (getField @"lb1" r)
     $ r
-#endif
 
 {-------------------------------------------------------------------------------
   Class of kind @(Type -> Type) -> Constraint@
@@ -164,11 +155,7 @@ test_c1 = do
 
 test_newtype :: Assertion
 test_newtype =
-#if USE_RDP
-    assertEqual "" r'.lb1 2
-#else
     assertEqual "" (getField @"lb1" r') 2
-#endif
   where
     r :: LB
     r =  [lr| MkLB { lb1 = 1, lb2 = 2 }|]

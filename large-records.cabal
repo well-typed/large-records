@@ -101,6 +101,10 @@ test-suite test-large-records
                         Test.Record.Experiments.Induction.List.LI010
                         Test.Record.Experiments.Induction.Tree
                         Test.Record.Experiments.Induction.Tree.TI010
+                        Test.Record.Experiments.PatternSynonym.PS010
+                        Test.Record.Experiments.RecordZip.RZ010
+                        Test.Record.Experiments.SimpleRecord.SR010
+                        Test.Record.Experiments.Superclasses.SC010
                         Test.Record.Experiments.ToTreeAtUseSite
                         Test.Record.Experiments.ToTreeAtUseSite.TU010
                         Test.Record.Experiments.ToTreeEnum
@@ -185,6 +189,9 @@ test-suite test-large-records
 
     if flag(blog2-variant-sop)
       cpp-options: -DBLOG2_VARIANT_SOP
+
+    if flag(nofieldselectors)
+      cpp-options: -DNOFIELDSELECTORS
 
     -- Only one of these variants should be enabled
     -- Unfortunately, we currently have no good way to express this.
@@ -275,6 +282,42 @@ test-suite test-large-records
                      Test.Record.Experiments.Induction.Tree.TI080
                      Test.Record.Experiments.Induction.Tree.TI090
                      Test.Record.Experiments.Induction.Tree.TI100
+                     Test.Record.Experiments.PatternSynonym.PS020
+                     Test.Record.Experiments.PatternSynonym.PS030
+                     Test.Record.Experiments.PatternSynonym.PS040
+                     Test.Record.Experiments.PatternSynonym.PS050
+                     Test.Record.Experiments.PatternSynonym.PS060
+                     Test.Record.Experiments.PatternSynonym.PS070
+                     Test.Record.Experiments.PatternSynonym.PS080
+                     Test.Record.Experiments.PatternSynonym.PS090
+                     Test.Record.Experiments.PatternSynonym.PS100
+                     Test.Record.Experiments.RecordZip.RZ020
+                     Test.Record.Experiments.RecordZip.RZ030
+                     Test.Record.Experiments.RecordZip.RZ040
+                     Test.Record.Experiments.RecordZip.RZ050
+                     Test.Record.Experiments.RecordZip.RZ060
+                     Test.Record.Experiments.RecordZip.RZ070
+                     Test.Record.Experiments.RecordZip.RZ080
+                     Test.Record.Experiments.RecordZip.RZ090
+                     Test.Record.Experiments.RecordZip.RZ100
+                     Test.Record.Experiments.SimpleRecord.SR020
+                     Test.Record.Experiments.SimpleRecord.SR030
+                     Test.Record.Experiments.SimpleRecord.SR040
+                     Test.Record.Experiments.SimpleRecord.SR050
+                     Test.Record.Experiments.SimpleRecord.SR060
+                     Test.Record.Experiments.SimpleRecord.SR070
+                     Test.Record.Experiments.SimpleRecord.SR080
+                     Test.Record.Experiments.SimpleRecord.SR090
+                     Test.Record.Experiments.SimpleRecord.SR100
+                     Test.Record.Experiments.Superclasses.SC020
+                     Test.Record.Experiments.Superclasses.SC030
+                     Test.Record.Experiments.Superclasses.SC040
+                     Test.Record.Experiments.Superclasses.SC050
+                     Test.Record.Experiments.Superclasses.SC060
+                     Test.Record.Experiments.Superclasses.SC070
+                     Test.Record.Experiments.Superclasses.SC080
+                     Test.Record.Experiments.Superclasses.SC090
+                     Test.Record.Experiments.Superclasses.SC100
                      Test.Record.Experiments.ToTreeAtUseSite.TU020
                      Test.Record.Experiments.ToTreeAtUseSite.TU030
                      Test.Record.Experiments.ToTreeAtUseSite.TU040
@@ -322,3 +365,6 @@ Flag blog2-variant-sop
   Description: (For blog2 experiments) Variant that uses SOP generics rather than LR generics
   Default: False
 
+Flag nofieldselectors
+  Description: Use no-field-selectors for benchmarking
+  Default: False

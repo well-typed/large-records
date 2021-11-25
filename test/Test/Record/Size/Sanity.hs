@@ -127,8 +127,7 @@ test_sameField = do
 
 -- For the remaining modules, we do not provide hand-written HasField instances,
 -- so we do these only when @USE_RDP@ /and/ @BUILD_ALL_MODULES@ are enabled.
-#if USE_RDP
-#if BUILD_ALL_MODULES
+#if USE_RDP && BUILD_ALL_MODULES
     assertEqual "HasField" sop020.field11 lr020.field11
     assertEqual "HasField" sop030.field21 lr030.field21
     assertEqual "HasField" sop040.field31 lr040.field31
@@ -139,12 +138,11 @@ test_sameField = do
     assertEqual "HasField" sop090.field81 lr090.field81
     assertEqual "HasField" sop100.field91 lr100.field91
 #endif
-#endif
   where
     sop010 = SOP.glowerBound :: Before010.R
     lr010  =  LR.glowerBound :: After0010.R
 
-#if BUILD_ALL_MODULES
+#if USE_RDP && BUILD_ALL_MODULES
     sop020 = SOP.glowerBound :: Before020.R
     sop030 = SOP.glowerBound :: Before030.R
     sop040 = SOP.glowerBound :: Before040.R
@@ -201,16 +199,16 @@ test_showHK = do
 -- | Check the value of the last field in the truly big records
 test_reallyBig :: Assertion
 test_reallyBig = do
-    assertEqual "HasField" lr0100.field100  (MkT  100)
-    assertEqual "HasField" lr0200.field200  (MkT  200)
-    assertEqual "HasField" lr0300.field300  (MkT  300)
-    assertEqual "HasField" lr0400.field400  (MkT  400)
-    assertEqual "HasField" lr0500.field500  (MkT  500)
-    assertEqual "HasField" lr0600.field600  (MkT  600)
-    assertEqual "HasField" lr0700.field700  (MkT  700)
-    assertEqual "HasField" lr0800.field800  (MkT  800)
-    assertEqual "HasField" lr0900.field900  (MkT  900)
-    assertEqual "HasField" lr1000.field1000 (MkT 1000)
+    assertEqual "HasField" (getField @"field100"  lr0100) (MkT  100)
+    assertEqual "HasField" (getField @"field200"  lr0200) (MkT  200)
+    assertEqual "HasField" (getField @"field300"  lr0300) (MkT  300)
+    assertEqual "HasField" (getField @"field400"  lr0400) (MkT  400)
+    assertEqual "HasField" (getField @"field500"  lr0500) (MkT  500)
+    assertEqual "HasField" (getField @"field600"  lr0600) (MkT  600)
+    assertEqual "HasField" (getField @"field700"  lr0700) (MkT  700)
+    assertEqual "HasField" (getField @"field800"  lr0800) (MkT  800)
+    assertEqual "HasField" (getField @"field900"  lr0900) (MkT  900)
+    assertEqual "HasField" (getField @"field1000" lr1000) (MkT 1000)
   where
     lr0100 = LR.glowerBound :: After0100.R
     lr0200 = LR.glowerBound :: After0200.R

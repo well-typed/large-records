@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -fplugin GhcDump.Plugin #-}
 #endif
 
-{-# OPTIONS_GHC -ddump-ds-preopt #-}
+-- {-# OPTIONS_GHC -ddump-ds-preopt #-}
 
 module Test.Record.Experiments.ToTreeEnum.TE010 where
 

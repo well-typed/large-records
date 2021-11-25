@@ -82,6 +82,37 @@ test_overloaded = do
     r3' = [lr| MkR3 { a = 2, b = 'b' } |]
 
 {-------------------------------------------------------------------------------
+  Nested records
+
+  Both with and without LR.
+-------------------------------------------------------------------------------}
+
+data R4A = MkR4A { r4a_x :: Int  , r4a_y :: R5A    } deriving (Show, Eq)
+data R5A = MkR5A { r5a_x :: Char , r5a_y :: Double } deriving (Show, Eq)
+
+largeRecord defaultPureScript [d|
+    data R4B = MkR4B { r4b_x :: Int  , r4b_y :: R5B    } deriving (Show, Eq)
+    data R5B = MkR5B { r5b_x :: Char , r5b_y :: Double } deriving (Show, Eq)
+  |]
+
+test_nested :: Assertion
+test_nested = do
+    assertEqual "r4a_x" r4a.r4a_y.r5a_x $ 'a'
+    assertEqual "r4b_x" r4b.r4b_y.r5b_x $ 'a'
+  where
+    r4a :: R4A
+    r4a = MkR4A { r4a_x = 1, r4a_y = r5a }
+
+    r5a :: R5A
+    r5a = MkR5A { r5a_x = 'a', r5a_y = 1.2 }
+
+    r4b :: R4B
+    r4b = [lr| MkR4B { r4b_x = 1, r4b_y = r5b } |]
+
+    r5b :: R5B
+    r5b = [lr| MkR5B { r5b_x = 'a', r5b_y = 1.2 } |]
+
+{-------------------------------------------------------------------------------
   Collect all tests
 -------------------------------------------------------------------------------}
 
@@ -89,6 +120,7 @@ tests :: TestTree
 tests = testGroup "Test.Record.Sanity.RDP" [
       testCase "simple"     test_simple
     , testCase "overloaded" test_overloaded
+    , testCase "nested"     test_nested
     ]
 
 #endif

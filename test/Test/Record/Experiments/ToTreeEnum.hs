@@ -6,8 +6,9 @@
 module Test.Record.Experiments.ToTreeEnum where
 
 import Data.Kind
-import Data.List
 import Data.Proxy
+
+import qualified Data.List as List
 
 import Test.Record.Experiments.Induction.Tree
 import Test.Record.Experiments.Util (Tree(..), treeFromList)
@@ -22,7 +23,7 @@ _genToTree = unlines $ map caseFor [0 .. 100]
     caseFor :: Int -> String
     caseFor n = concat [
           "  ToTree '["
-        , intercalate ", " args
+        , List.intercalate ", " args
         , "] = "
         , showTree (treeFromList args)
         ]

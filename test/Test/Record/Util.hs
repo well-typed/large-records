@@ -164,6 +164,10 @@ instance Quasi CollectProblems where
   qPutQ               = \x   -> liftQ $ qPutQ               x
   qIsExtEnabled       = \x   -> liftQ $ qIsExtEnabled       x
   qExtsEnabled        =         liftQ $ qExtsEnabled
+#if MIN_VERSION_template_haskell(2,18,0)
+  qPutDoc             = \x y -> liftQ $ qPutDoc             x y
+  qGetDoc             = \x   -> liftQ $ qGetDoc             x
+#endif
 
 {-------------------------------------------------------------------------------
   Internal auxiliary: figure out how TH does error handling

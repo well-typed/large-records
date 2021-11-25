@@ -249,48 +249,48 @@ newName = fmap fromTH' . TH.newName
 -------------------------------------------------------------------------------}
 
 -- | Define pattern synonym
-patSynD :: Name 'DataName 'Dynamic -> _
+patSynD :: Name 'DataName 'Dynamic -> Q _ -> _
 patSynD = TH.patSynD . toTH
 
 -- | Define pattern synonym signature
-patSynSigD :: Name 'DataName 'Dynamic -> _
+patSynSigD :: Name 'DataName 'Dynamic -> Q _ -> _
 patSynSigD = TH.patSynSigD . toTH
 
 -- | Define function signature
-sigD :: Name 'VarName 'Dynamic -> _
+sigD :: Name 'VarName 'Dynamic -> Q _ -> _
 sigD = TH.sigD . toTH
 
 -- | Define record field signature
-varBangType :: Name 'VarName 'Dynamic -> _
+varBangType :: Name 'VarName 'Dynamic -> Q _ -> _
 varBangType = TH.varBangType . toTH
 
 -- | Define record constructor
-recC :: Name 'DataName 'Dynamic -> _
+recC :: Name 'DataName 'Dynamic -> [Q _] -> _
 recC = TH.recC . toTH
 
 -- | Define class
-classD :: _ -> Name 'TcClsName 'Dynamic -> _
+classD :: Q _ -> Name 'TcClsName 'Dynamic -> _
 classD cxt = TH.classD cxt . toTH
 
 -- | Define newtype
-newtypeD :: _ -> Name 'TcClsName 'Dynamic -> _
+newtypeD :: Q _ -> Name 'TcClsName 'Dynamic -> _
 newtypeD cxt = TH.newtypeD cxt . toTH
 
 -- | Define record pattern synonym
-recordPatSyn :: [String] -> _
+recordPatSyn :: [String] -> Q _
 recordPatSyn = TH.recordPatSyn . map (toTH . unqualified)
 
 -- | Define COMPLETE pragma
-pragCompleteD :: [Name 'DataName 'Dynamic] -> Maybe (Name 'TcClsName 'Dynamic) -> _
+pragCompleteD :: [Name 'DataName 'Dynamic] -> Maybe (Name 'TcClsName 'Dynamic) -> Q _
 pragCompleteD constrs typ =
     TH.pragCompleteD (toTH <$> constrs) (toTH <$> typ)
 
 -- | Define pattern variable for use in a record pattern synonym
-varGlobalP :: Name 'VarName 'Dynamic -> _
+varGlobalP :: Name 'VarName 'Dynamic -> Q _
 varGlobalP = TH.varP . toTH
 
 -- | Define pattern variable for use in a local pattern match
-varLocalP :: Name 'VarName 'Unique -> _
+varLocalP :: Name 'VarName 'Unique -> Q _
 varLocalP = TH.varP . toTH
 
 {-------------------------------------------------------------------------------
@@ -300,15 +300,15 @@ varLocalP = TH.varP . toTH
 -------------------------------------------------------------------------------}
 
 -- | Reference constructor
-conE :: Name 'DataName flavour -> _
+conE :: Name 'DataName flavour -> Q _
 conE = TH.conE . toTH
 
 -- | Reference type
-conT :: Name 'TcClsName flavour -> _
+conT :: Name 'TcClsName flavour -> Q _
 conT = TH.conT . toTH
 
 -- | Reference variable
-varE :: Name 'VarName flavour -> _
+varE :: Name 'VarName flavour -> Q _
 varE = TH.varE . toTH
 
 {-------------------------------------------------------------------------------

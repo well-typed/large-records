@@ -20,10 +20,12 @@ import Data.List (sortBy)
 import Data.Map (Map)
 import Data.Maybe (mapMaybe)
 import Data.Ord (comparing)
-import Language.Haskell.TH
+import Language.Haskell.TH hiding (TyVarBndr)
 
 import qualified Data.Map as Map
 import qualified Data.Map.Merge.Lazy as Map
+
+import Data.Record.Internal.TH.Compat
 
 {-------------------------------------------------------------------------------
   Description

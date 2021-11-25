@@ -25,10 +25,12 @@ module Data.Record.Internal.TH.Util (
 
 import Control.Monad
 import Data.List (intercalate)
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
+import Language.Haskell.TH hiding (TyVarBndr(..), forallT)
+import Language.Haskell.TH.Syntax hiding (TyVarBndr(..))
 
 import qualified Data.Vector as V
+
+import Data.Record.Internal.TH.Compat
 
 import qualified Data.Record.Internal.TH.Name as N
 

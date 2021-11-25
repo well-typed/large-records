@@ -1,14 +1,16 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE ImpredicativeTypes    #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE ImpredicativeTypes        #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE QuasiQuotes               #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# LANGUAGE TypeApplications #-}
@@ -207,10 +209,28 @@ irregularLenses = fromJust $ toSOP rep
     rep :: Rep (SimpleRecordLens (Irregular f)) (Irregular f)
     rep = lensesForSimpleRecord
 
-(    Field (SimpleRecordLens xi1)
-  :* Field (SimpleRecordLens xi2)
-  :* Field (SimpleRecordLens xi3)
+-- Unlike the beam tutorial, we match to get these lenses in two steps: first,
+-- we get 'SimpleRecordLens' out, which does not rely on impredicativity;
+-- then we get the Van Laarhoven lenses out in three separate bindings. This
+-- avoids problems with ghc type inference which gets very confused by that
+-- pattern match.
+
+xi1' :: SimpleRecordLens (Irregular f) (f Int)
+xi2' :: SimpleRecordLens (Irregular f) (f Bool)
+xi3' :: SimpleRecordLens (Irregular f) Char
+
+(    Field xi1'
+  :* Field xi2'
+  :* Field xi3'
   :* Nil ) = irregularLenses
+
+xi1 :: Lens' (Irregular f) (f Int)
+xi2 :: Lens' (Irregular f) (f Bool)
+xi3 :: Lens' (Irregular f) Char
+
+SimpleRecordLens xi1 = xi1'
+SimpleRecordLens xi2 = xi2'
+SimpleRecordLens xi3 = xi3'
 
 {-------------------------------------------------------------------------------
   Tests proper

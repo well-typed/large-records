@@ -25,13 +25,13 @@ data RecordInstances = RecordInstances {
       -- | Explicitly supported type class instances
       recordInstancesDerived :: [Deriving]
 
-      -- | Anyclass deriving
+      -- | Non-stock deriving
       --
       -- We list these separately, because we need to add these as anyclass
       -- deriving classes when defining the newtype, rather than as standalone
       -- deriving instances. (If we don't, we need to duplicate ghc's logic for
       -- figuring out how many parameters to provide to the datatype.)
-    , recordInstancesAnyclass :: [Type]
+    , recordInstancesNonstock :: [(DerivStrategy, Type)]
     }
 
 data Deriving =
@@ -60,7 +60,7 @@ parseRecordDef (DataD
 
     fields            <- catMaybes <$>
                            mapM parseFieldDef (zip [0..] fieldTypes)
-    (deriv, anyclass) <- partitionEithers <$>
+    (stock, nonstock) <- partitionEithers <$>
                            concatMapM parseDeriv derivClauses
 
     return $ Just (
@@ -71,8 +71,8 @@ parseRecordDef (DataD
           , recordFields = fields
           }
       , RecordInstances {
-            recordInstancesDerived  = deriv
-          , recordInstancesAnyclass = anyclass
+            recordInstancesDerived  = stock
+          , recordInstancesNonstock = nonstock
           }
       )
 parseRecordDef d = do
@@ -83,17 +83,14 @@ parseRecordDef d = do
 --
 -- We return the anyclass deriving clauses separately.
 -- See 'recordAnyclass' for more details.
-parseDeriv :: DerivClause -> Q [Either Deriving Type]
+parseDeriv :: DerivClause -> Q [Either Deriving (DerivStrategy, Type)]
 parseDeriv = \case
     DerivClause Nothing cs ->
       map Left <$> derivStock cs
     DerivClause (Just StockStrategy) cs ->
       map Left <$> derivStock cs
-    DerivClause (Just AnyclassStrategy) cs ->
-      return $ map Right cs
-    DerivClause strategy _ -> do
-      reportError $ "Unsupported deriving strategy " ++ show strategy
-      return []
+    DerivClause (Just strategy) cs ->
+      return $ map (Right . (,)  strategy) cs
   where
     derivStock cs = catMaybes <$> mapM go cs
     go :: Pred -> Q (Maybe Deriving)

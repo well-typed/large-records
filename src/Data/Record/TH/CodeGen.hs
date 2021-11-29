@@ -123,7 +123,7 @@ genAll opts@Options{..} (r, instances) = do
 genNewtype :: Options -> Record () -> RecordInstances -> Q Dec
 genNewtype Options{generatePatternSynonym}
            Record{..}
-           RecordInstances{recordInstancesAnyclass} =
+           RecordInstances{recordInstancesNonstock} =
     N.newtypeD
       (cxt [])
       (N.unqualified recordType)
@@ -133,10 +133,10 @@ genNewtype Options{generatePatternSynonym}
            N.varBangType (N.unqualified (nameRecordInternalField recordType)) $
              bangType (return DefaultBang) [t| Vector Any |]
          ])
-      (map anyclassDerivClause recordInstancesAnyclass)
+      (map nonStockDerivClause recordInstancesNonstock)
   where
-    anyclassDerivClause :: Type -> DerivClauseQ
-    anyclassDerivClause clss = derivClause (Just AnyclassStrategy) [pure clss]
+    nonStockDerivClause :: (DerivStrategy, Type) -> DerivClauseQ
+    nonStockDerivClause (str, clss) = derivClause (Just str) [pure clss]
 
 {-------------------------------------------------------------------------------
   Generation: field accessors

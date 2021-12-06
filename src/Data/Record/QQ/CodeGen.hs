@@ -1,10 +1,11 @@
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE ViewPatterns        #-}
-{-# LANGUAGE DataKinds #-}
 
 -- | Quasi-quoter support for large records
 --
@@ -33,6 +34,10 @@ import Data.List (intercalate)
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax
+
+#if USE_RDP
+import RecordDotPreprocessor.Lib (recordDotPreprocessorOnFragment)
+#endif
 
 import qualified Data.Generics         as SYB
 import qualified Language.Haskell.Exts as HSE
@@ -71,9 +76,19 @@ import qualified Data.Record.Internal.TH.Name as N
 --
 -- > projectOne :: T Bool -> Int
 -- > projectOne [lr| MkT { x = a } |] = a
+--
+-- The expression quasi-quoter supports record-dot syntax (using the
+-- record-dot-preprocessor) when the library is compiled with the @use-RDP@ flag
+-- enabled (on by default). IMPORTANT: This will only work correctly with a
+-- bug in @haskell-src-meta@ fixed;
+-- see <https://github.com/DanBurton/haskell-src-meta/pull/25>.
 lr :: QuasiQuoter
 lr = QuasiQuoter {
+#if USE_RDP
+      quoteExp  = lrExp . recordDotPreprocessorOnFragment
+#else
       quoteExp  = lrExp
+#endif
     , quotePat  = lrPat
     , quoteType = unsupported
     , quoteDec  = unsupported

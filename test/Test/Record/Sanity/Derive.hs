@@ -1,18 +1,18 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DeriveAnyClass        #-}
-{-# LANGUAGE DerivingStrategies    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE DeriveAnyClass            #-}
+{-# LANGUAGE DerivingStrategies        #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE StandaloneDeriving        #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 -- {-# OPTIONS_GHC -ddump-splices #-}
@@ -148,17 +148,17 @@ test_c1 = do
     assertEqual "type of kind 'Type -> Type'" (c1 la2) "x"
   where
     la1 :: LA1
-    la1 = [lr| MkLA1 { la1_f1 = 1 } |]
+    la1 = MkLA1 { la1_f1 = 1 }
 
     la2 :: LA2 Int
-    la2 = [lr| MkLA2 { la2_f1 = 1 } |]
+    la2 = MkLA2 { la2_f1 = 1 }
 
 test_newtype :: Assertion
 test_newtype =
     assertEqual "" (getField @"lb1" r') 2
   where
     r :: LB
-    r =  [lr| MkLB { lb1 = 1, lb2 = 2 }|]
+    r =  MkLB { lb1 = 1, lb2 = 2 }
 
     r' :: LB
     r' = f r
@@ -168,18 +168,18 @@ test_c3 =
     assertEqual "" (c3 r) "x"
   where
     r :: LC Bool
-    r = [lr| MkLC { lc1 = True, lc2 = 2 } |]
+    r = MkLC { lc1 = True, lc2 = 2 }
 
 test_c4 :: Assertion
 test_c4 =
     assertEqual "" (c4 r) "x"
   where
     r :: LD Identity
-    r = [lr| MkLD { ld1 = Identity 1, ld2 = 2 } |]
+    r = MkLD { ld1 = Identity 1, ld2 = 2 }
 
 test_c5 :: Assertion
 test_c5 =
     assertEqual "" (c5 r) "MkLE {le1 = 1, le2 = True}"
   where
     r :: LE
-    r = [lr| MkLE { le1 = 1, le2 = True } |]
+    r = MkLE { le1 = 1, le2 = True }

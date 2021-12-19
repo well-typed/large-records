@@ -35,12 +35,6 @@ library
                         Data.Record.Generic.SOP
                         Data.Record.Generic.Transform
 
-                        Data.Record.QQ.CodeGen
-                        Data.Record.QQ.CodeGen.HSE
-                        Data.Record.QQ.CodeGen.Parser
-                        Data.Record.QQ.Runtime.Constructor
-                        Data.Record.QQ.Runtime.MatchHasField
-
                         Data.Record.TH
                         Data.Record.TH.CodeGen
                         Data.Record.TH.CodeGen.Tree
@@ -51,9 +45,6 @@ library
                         Data.Record.Internal.Naming
                         Data.Record.Internal.Record
                         Data.Record.Internal.Record.Parser
-                        Data.Record.Internal.Record.Resolution
-                        Data.Record.Internal.Record.Resolution.GHC
-                        Data.Record.Internal.Record.Resolution.Internal
                         Data.Record.Internal.TH.Compat
                         Data.Record.Internal.TH.Name
                         Data.Record.Internal.TH.Util
@@ -63,8 +54,6 @@ library
                       , aeson            >= 1.4.4  && < 1.6
                       , containers       >= 0.6.2  && < 0.7
                       , generics-sop     >= 0.5    && < 0.6
-                      , haskell-src-exts >= 1.21.1 && < 1.24
-                      , haskell-src-meta >= 0.8.3  && < 0.9
                       , mtl              >= 2.2.1  && < 2.3
                       , record-hasfield  >= 1.0    && < 1.1
                       , sop-core         >= 0.5    && < 0.6
@@ -123,8 +112,6 @@ test-suite test-large-records
                         Test.Record.Prop.ToFromJSON
                         Test.Record.Sanity.Derive
                         Test.Record.Sanity.EqualFieldTypes
-                        Test.Record.Sanity.ErrorsAndWarnings
-                        Test.Record.Sanity.ErrorsAndWarnings.Stage1
                         Test.Record.Sanity.Generics
                         Test.Record.Sanity.GhcGenerics
                         Test.Record.Sanity.HigherKinded
@@ -152,8 +139,6 @@ test-suite test-large-records
                       , aeson
                       , generic-deriving
                       , generics-sop
-                      , haskell-src-exts
-                      , haskell-src-meta
                       , json-sop
                       , large-records
                       , microlens
@@ -163,7 +148,6 @@ test-suite test-large-records
                       , record-hasfield
                       , sop-core
                       , tasty
-                      , tasty-expected-failure
                       , tasty-hunit
                       , tasty-quickcheck
                       , template-haskell

@@ -1,15 +1,15 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
 -- | Check that the functions on 'Rep' can be called on 'undefined'
 module Test.Record.Sanity.Laziness (tests) where
@@ -41,7 +41,7 @@ largeRecord defaultPureScript [d|
     |]
 
 example :: R
-example = [lr| MkR { ri = 5, rb = True } |]
+example = MkR { ri = 5, rb = True }
 
 {-------------------------------------------------------------------------------
   Tests proper
@@ -117,7 +117,7 @@ test_cmap =
     assertEqual "" expected actual
   where
     expected, actual :: R
-    expected = [lr| MkR { ri = 0, rb = False } |]
+    expected = MkR { ri = 0, rb = False }
     actual   = to $ Rep.cmap (Proxy @Bounded) (\_ -> I minBound) undefined
 
 test_cmapM :: Assertion
@@ -133,7 +133,7 @@ test_cmapM = do
     assertEqual "" expected actual
   where
     expected :: R
-    expected = [lr| MkR { ri = 0, rb = True } |]
+    expected = MkR { ri = 0, rb = True }
 
 test_zipWithM :: Assertion
 test_zipWithM =
@@ -148,7 +148,7 @@ test_czipWithM =
     assertEqual "" expected actual
   where
     expected, actual :: Maybe R
-    expected = Just $ [lr| MkR { ri = 0, rb = False } |]
+    expected = Just $ MkR { ri = 0, rb = False }
     actual   = to <$> Rep.czipWithM
                         (Proxy @Bounded)
                         (\_ _ -> Just $ I minBound)

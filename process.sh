@@ -19,7 +19,14 @@
 #
 ################################################################################
 
-ghc-dump summarize `find . -name '*.cbor'` | egrep 'dist|desugar|Simplifier' >log
+rm log
+for i in `find . -name '*.cbor'`
+do
+  echo $i
+  # ghc-dump can process multiple files at once but it doesn't
+  # close file descriptors as it goes, resulting in errors on OSX
+  ghc-dump summarize $i | egrep 'dist|desugar|Simplifier' >>log
+done
 
 sd '.*((After|Before).*cbor)\n' '$1 $3' log
 

@@ -11,6 +11,7 @@ module Data.Record.TH.CodeGen (
     largeRecord
   ) where
 
+import Control.Monad (forM)
 import Data.List (nub)
 import Data.Maybe (catMaybes)
 import Data.Proxy
@@ -19,12 +20,14 @@ import GHC.Exts (Any)
 import GHC.Records.Compat
 import Language.Haskell.TH hiding (TyVarBndr(..), forallT)
 import Language.Haskell.TH.Syntax (NameSpace(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Generics              as SYB
 import qualified Data.Kind                  as Kind
 import qualified Data.Vector                as V
 import qualified GHC.Generics               as GHC
 import qualified Language.Haskell.TH.Syntax as TH
+import qualified Language.Haskell.TH.Lib    as TH
 
 import Data.Record.Generic
 import Data.Record.Generic.Eq
@@ -35,12 +38,9 @@ import Data.Record.Internal.CodeGen
 import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.Internal.Record.Parser
-import Data.Record.Internal.Record.Resolution.Internal (putRecordInfo)
 import Data.Record.Internal.TH.Compat
 import Data.Record.Internal.TH.Util
 import Data.Record.Internal.Util
-import Data.Record.QQ.Runtime.Constructor
-import Data.Record.TH.CodeGen.Tree
 import Data.Record.TH.Config.Options
 import Data.Record.TH.Runtime
 
@@ -70,31 +70,17 @@ largeRecord opts decls = do
 
 -- | Generate all definitions
 genAll :: Options -> (Record (), RecordInstances) -> Q [Dec]
-genAll opts@Options{..} (r, instances) = do
-    putRecordInfo r
-    concatM $ [
-        (:[]) <$> genNewtype opts r instances
-      , genIndexedAccessor   opts r
-      , genIndexedOverwrite  opts r
-      , when generateHasFieldInstances $ [
-            genHasFieldInstances opts r
-          ]
-        -- If we generate the pattern synonym, there is no need to generate
-        -- field accessors, because GHC will generate them from the synonym
-        -- TODO: That logic needs to be changed with 9.2 (NoFieldSelectors).
-      , when (generateFieldAccessors && generatePatternSynonym /= GenPatSynonym) $ [
-            genFieldAccessors opts r
-          ]
-      , when generateConstructorFn [
-            genConstructorFn opts r
-          ]
-      , when (generatePatternSynonym == GenPatSynonym) $ [
-            genRecordView opts r
-          , genPatSynonym opts r
-          ]
-      , genGenericInstance opts r instances
-      , genGhcGenericsInstances opts r
-      ]
+genAll opts@Options{..} (r, instances) = concatM $ [
+      (:[]) <$> genDatatype opts r instances
+    , genVectorConversions opts r
+    , genIndexedAccessor   opts r
+    , genIndexedOverwrite  opts r
+    , when generateHasFieldInstances $ [
+          genHasFieldInstances opts r
+        ]
+    , genGenericInstance opts r instances
+    , genGhcGenericsInstances opts r
+    ]
   where
     when :: Bool -> [Q [Dec]] -> Q [Dec]
     when False _   = return []
@@ -115,29 +101,153 @@ genAll opts@Options{..} (r, instances) = do
   >   deriving (Eq, Show)
 -------------------------------------------------------------------------------}
 
--- | Generate the newtype that will represent the record
+-- | Generate the datatype that will represent the record
 --
--- Generates something like
+-- Currently this generates something like
+--
+-- > data T a b =
+-- >      forall f0 f1 f2 f3 f4. (
+-- >        f0 ~ Word
+-- >      , f1 ~ Bool
+-- >      , f2 ~ Char
+-- >      , f3 ~ a
+-- >      , f4 ~ [b]
+-- >      )
+-- >   => MkT {
+-- >        tInt   :: f0
+-- >      , tBool  :: f1
+-- >      , tChar  :: f2
+-- >      , tA     :: f3
+-- >      , tListB :: f4
+-- >      }
+-- >   deriving anyclass C -- where applicable
+--
+-- (possibly with strict fields). This representation accomplishes two things:
+--
+-- 1. The use of the existentials with type equalities prevents ghc from
+--    generating field accessors.
+-- 2. It can still be used in the normal way to construct record values and
+--    to pattern match on records.
+--
+-- TODO: From ghc 9.2 and up, we should generate
 --
 -- > newtype T a b = TFromVector {vectorFromT :: Vector Any}
 -- >   deriving anyclass C -- where applicable
-genNewtype :: Options -> Record () -> RecordInstances -> Q Dec
-genNewtype Options{generatePatternSynonym}
-           Record{..}
-           RecordInstances{recordInstancesAnyclass} =
-    N.newtypeD
+--
+-- instead, along with a pattern synonym.
+genDatatype :: Options -> Record () -> RecordInstances -> Q Dec
+genDatatype Options{allFieldsStrict}
+            Record{..}
+            RecordInstances{recordInstancesAnyclass} = do
+    requiresExtensions [ExistentialQuantification]
+    vars <- forM recordFields $ \f -> (f, ) <$> N.newName "f"
+    N.dataD
       (cxt [])
       (N.unqualified recordType)
       recordTVars
       Nothing
-      (N.recC (N.unqualified (nameRecordInternalConstr generatePatternSynonym recordConstr)) [
-           N.varBangType (N.unqualified (nameRecordInternalField recordType)) $
-             bangType (return DefaultBang) [t| Vector Any |]
-         ])
+      [ TH.forallC (map (N.plainLocalTV . snd) vars) (cxt $ map (uncurry eqConstraint) vars) $
+          N.recC (N.unqualified recordConstr) $
+            map (uncurry recordField) vars
+      ]
       (map anyclassDerivClause recordInstancesAnyclass)
   where
+    eqConstraint :: Field () -> N.Name 'VarName 'N.Unique -> Q Pred
+    eqConstraint Field{..} var =
+        [t| $(N.varLocalT var) ~ $(return fieldType) |]
+
+    recordField :: Field () -> N.Name 'VarName 'N.Unique -> Q TH.VarBangType
+    recordField Field{..} var =
+        N.varBangType (N.unqualified fieldName) $
+          bangType (return fieldBang) (N.varLocalT var)
+      where
+        fieldBang :: Bang
+        fieldBang = if allFieldsStrict then StrictBang else DefaultBang
+
     anyclassDerivClause :: Type -> DerivClauseQ
-    anyclassDerivClause clss = derivClause (Just AnyclassStrategy) [pure clss]
+    anyclassDerivClause clss =
+        derivClause (Just AnyclassStrategy) [pure clss]
+
+-- | Generate conversion to and from vector
+--
+-- Generates something like
+--
+-- > vectorFromT :: T a b -> Vector Any
+-- > vectorFromT = \x ->
+-- >     case x of
+-- >       MkT f0 f1 f2 f3 f4 -> V.fromList [
+-- >           unsafeCoerce f0
+-- >         , unsafeCoerce f1
+-- >         , unsafeCoerce f2
+-- >         , unsafeCoerce f3
+-- >         , unsafeCoerce f4
+-- >         ]
+-- >
+-- > vectorToT :: Vector Any -> T a b
+-- > vectorToT = \x ->
+-- >     case V.toList x of
+-- >       [f0, f1, f2, f3, f4] ->
+-- >         MkT (unsafeCoerce f0)
+-- >             (unsafeCoerce f1)
+-- >             (unsafeCoerce f2)
+-- >             (unsafeCoerce f3)
+-- >             (unsafeCoerce f4)
+-- >       _ -> error "Pattern match failure in vectorToT: vector with invalid number of elements."
+--
+-- TODO: From ghc 9.2, these could be identify functions. See 'genDatatype'
+-- for details.
+genVectorConversions :: Options -> Record () -> Q [Dec]
+genVectorConversions _ r@Record{..} = concatM [
+      simpleFn
+        (N.unqualified (nameRecordVectorFrom recordType))
+        [t| $(recordTypeT N.Unqual r) -> Vector Any |]
+        bodyToVector
+    , simpleFn
+        (N.unqualified (nameRecordVectorTo recordType))
+        [t| Vector Any -> $(recordTypeT N.Unqual r) |]
+        bodyFromVector
+    ]
+  where
+    bodyToVector :: Q Exp
+    bodyToVector = do
+        x  <- newName "x"
+        fs <- forM recordFields $ \_f -> newName "f"
+
+        let pat :: Q Pat
+            pat = N.conP (N.unqualified recordConstr) $ map varP fs
+
+            body :: Q Exp
+            body = appE (varE 'V.fromList) . listE $
+                     map (unsafeCoerceE . varE) fs
+
+        lamE [varP x] $ caseE (varE x) [
+            match pat (normalB body) []
+          ]
+
+    bodyFromVector :: Q Exp
+    bodyFromVector = do
+        x  <- newName "x"
+        fs <- forM recordFields $ \_f -> newName "f"
+
+        let pat :: Q Pat
+            pat = listP $ map varP fs
+
+            bodyErr, bodyOk :: Q Exp
+            bodyErr = appE (varE 'error) . litE . stringL $ concat [
+                          "Pattern match failure in "
+                        , nameRecordVectorTo recordType
+                        , ": vector with invalid number of elements."
+                        ]
+            bodyOk  = appsE $ N.conE (N.unqualified recordConstr)
+                            : map (unsafeCoerceE . varE) fs
+
+        lamE [varP x] $ caseE (appE (varE 'V.toList) (varE x)) [
+              match pat   (normalB bodyOk)  []
+            , match wildP (normalB bodyErr) []
+            ]
+
+    unsafeCoerceE :: Q Exp -> Q Exp
+    unsafeCoerceE = appE (varE 'unsafeCoerce)
 
 {-------------------------------------------------------------------------------
   Generation: field accessors
@@ -155,7 +265,6 @@ genNewtype Options{generatePatternSynonym}
 --
 -- > unsafeGetIndexT :: forall x a b. Int -> T a b -> x
 -- > unsafeGetIndexT = \ n t -> noInlineUnsafeCo (V.unsafeIndex (vectorFromT t) n)
-
 genIndexedAccessor :: Options -> Record () -> Q [Dec]
 genIndexedAccessor _opts r@Record{..} = do
     x <- newName "x"
@@ -181,7 +290,7 @@ genIndexedAccessor _opts r@Record{..} = do
 --
 -- TODO: We should support per-field strictness.
 genIndexedOverwrite :: Options -> Record () -> Q [Dec]
-genIndexedOverwrite Options{..} r@Record{..} = do
+genIndexedOverwrite Options{allFieldsStrict} r@Record{..} = do
     x <- newName "x"
     simpleFn
       (N.unqualified (nameRecordIndexedOverwrite recordType))
@@ -210,26 +319,7 @@ genIndexedOverwrite Options{..} r@Record{..} = do
            |]
 
     fromVector :: Q Exp
-    fromVector = recordFromVectorDontForceE generatePatternSynonym N.Unqual r
-
--- | Generate field accessors for all fields
-genFieldAccessors :: Options -> Record () -> Q [Dec]
-genFieldAccessors opts r@Record{..} =
-    concatMapM (genFieldAccessor opts r) recordFields
-
--- | Generate accessor for single field
---
--- Generates function such as
---
--- > tWord :: forall a b. T a b -> Word
--- > tWord = unsafeGetIndexT 0
-genFieldAccessor :: Options -> Record () -> Field () -> Q [Dec]
-genFieldAccessor _opts r@Record{..} f@Field{..} = do
-    simpleFn
-      (N.unqualified fieldName)
-      (forallT recordTVars (cxt []) $
-         arrT [recordTypeT N.Unqual r] (fieldTypeT f))
-      (fieldUntypedAccessorE N.Unqual r f)
+    fromVector = recordFromVectorDontForceE N.Unqual r
 
 -- | Generate 'HasField' instances for all fields
 genHasFieldInstances :: Options -> Record () -> Q [Dec]
@@ -266,79 +356,6 @@ genHasFieldInstance _opts r f = do
         |]) []]
 
 {-------------------------------------------------------------------------------
-  Generation: constructor function
--------------------------------------------------------------------------------}
-
--- | Construct a value of the record
---
--- Generates something like
---
--- > \tWord' tBool' tChar' tA' tListB' -> (..) (V.fromList [
--- >   , noInlineUnsafeCo tWord'
--- >   , noInlineUnsafeCo tBool'
--- >   , noInlineUnsafeCo tChar'
--- >   , noInlineUnsafeCo tA'
--- >   , noInlineUnsafeCo tListB'
--- >   ])
---
--- where the " constructor " on the @"(..)"@ is generated by
--- 'recordFromUnforcedVectorQ', so that we correctly deal with strict/non-strict
--- fields.
---
--- However, this function is slightly more general than this, generalizing over
--- the "kind of lambda" we want to construct. We use this both in
--- 'genPatSynonym' and in 'genConstructorFn'.
-genRecordVal :: Options -> Record () -> ([Q Pat] -> Q Exp -> Q a) -> Q a
-genRecordVal opts r@Record{..} mkFn = do
-    -- The constructor arguments are locally bound, and should not have the
-    -- same name as the fields themselves
-    vars <- mapM (N.newName . fieldName) recordFields
-    mkFn (map N.varLocalP vars) [|
-        $(recordFromVectorForceStrictFieldsE opts r)
-        $(vectorE qNoInlineUnsafeCo vars)
-      |]
-  where
-    qNoInlineUnsafeCo :: N.Name 'VarName 'N.Unique -> Q Exp
-    qNoInlineUnsafeCo x = [| noInlineUnsafeCo $(N.varE x) |]
-
--- | Generate 'RecordHasConstructor' instance
---
--- Generates something like
---
--- > instance RecordHasConstructor (T a Bool ) where
--- >   type TypeOfConstr (T a b) = Word -> Bool -> Char -> a -> [b] -> T a b
--- >
--- >   __recordConstructor ~_ x1 x2 x3 x4 x5 = LR__MkT $ V.fromList [
--- >         noInlineUnsafeCo x1
--- >       , noInlineUnsafeCo x2
--- >       , noInlineUnsafeCo x3
--- >       , noInlineUnsafeCo x4
--- >       , noInlineUnsafeCo x5
--- >       ]
---
--- where the body is generated by 'genRecordVal'.
-genConstructorFn :: Options -> Record () -> Q [Dec]
-genConstructorFn opts r@Record{..} = (:[]) <$>
-    instanceD
-      (cxt [])
-      [t| RecordHasConstructor $typ |]
-      [ tySynInstD $
-          tySynEqn
-             Nothing
-             [t| TypeOfConstr $typ |]
-             (arrT (map fieldTypeT recordFields) typ)
-      , genRecordVal opts r $ \pats value ->
-          funD '__recordConstructor [
-              -- Explicit lazy pattern match on the " proxy " so that this is
-              -- safe even if the module uses the @Strict@ language extension.
-              clause (tildeP wildP : pats) (normalB value) []
-            ]
-      ]
-  where
-    typ :: Q Type
-    typ = recordTypeT N.Unqual r
-
-{-------------------------------------------------------------------------------
   Generation: type-level metadata
 -------------------------------------------------------------------------------}
 
@@ -372,91 +389,6 @@ genInstanceMetadataOf _opts r@Record{..} = tySynInstD $
   where
     fieldMetadata :: Field () -> Q Type
     fieldMetadata f = ptupleT [fieldNameT f, fieldTypeT f]
-
-{-------------------------------------------------------------------------------
-  Generation: pattern synonym
--------------------------------------------------------------------------------}
-
--- | Generate view on the record
---
--- Generates function such as
---
--- > tupleFromT :: forall a b. T a b -> (Word, Bool, Char, a, [b])
--- > tupleFromT = \x -> (
--- >       unsafeGetIndexT 0 x
--- >     , unsafeGetIndexT 1 x
--- >     , unsafeGetIndexT 2 x
--- >     , unsafeGetIndexT 3 x
--- >     , unsafeGetIndexT 4 x
--- >     )
---
--- Modulo tuple nesting (see 'nest').
-genRecordView :: Options -> Record () -> Q [Dec]
-genRecordView _opts r@Record{..} = do
-    simpleFn
-      (N.unqualified (nameRecordView recordType))
-      (forallT recordTVars (cxt []) $
-         arrT [recordTypeT N.Unqual r] viewType
-      )
-      viewBody
-  where
-    viewType :: Q Type
-    viewType = mkTupleT fieldTypeT $
-                 nest DefaultGhcTupleLimit recordFields
-
-    viewBody :: Q Exp
-    viewBody = do
-        x <- newName "x"
-        lamE [varP x] $ mkTupleE (viewField x) $
-          nest DefaultGhcTupleLimit recordFields
-
-    -- We generate the view only if we are generating the pattern synonym,
-    -- but when we do we don't generate the typed accessors, because they
-    -- are instead derived from the pattern synonym by GHC. Since the synonym
-    -- requires the view, we therefore use the untyped accessor here.
-    viewField :: Name -> Field () -> Q Exp
-    viewField x f = [| $(fieldUntypedAccessorE N.Unqual r f) $(varE x) |]
-
--- | Generate pattern synonym
---
--- Constructs something like this:
---
--- > pattern MkT :: forall a b. Word -> Bool -> Char -> a -> [b] -> T a b
--- > pattern MkT{tWord, tBool, tChar, tA, tListB} <-
--- >     (tupleFromT -> (tWord, tBool, tChar, tA, tListB) )
--- >   where
--- >     MkT tWord' tBool' tChar' tA' tListB' = ..
--- >
--- > {-# COMPLETE MkT #-}
---
--- modulo nesting ('nest'), where the body of 'MkT' (and its arguments) are
--- constructed by 'genRecordVal'.
-genPatSynonym :: Options -> Record () -> Q [Dec]
-genPatSynonym opts r@Record{..} = do
-    requiresExtensions [PatternSynonyms, ViewPatterns]
-    sequence [
-        N.patSynSigD (N.unqualified recordConstr) $
-          simplePatSynType
-            recordTVars
-            (map fieldTypeT recordFields)
-            (recordTypeT N.Unqual r)
-      , N.patSynD (N.unqualified recordConstr)
-          (N.recordPatSyn $ map fieldName recordFields)
-          qDir
-          matchVector
-      , N.pragCompleteD [N.unqualified recordConstr] Nothing
-      ]
-  where
-    matchVector :: Q Pat
-    matchVector = viewP (N.varE (N.unqualified (nameRecordView recordType))) $
-        mkTupleP (N.varGlobalP . N.unqualified . fieldName) $
-          nest DefaultGhcTupleLimit recordFields
-
-    constrVector :: [Q Pat] -> Q Exp -> Q Clause
-    constrVector xs body = clause xs (normalB body) []
-
-    qDir :: Q PatSynDir
-    qDir = explBidir . (:[]) $ genRecordVal opts r constrVector
 
 {-------------------------------------------------------------------------------
   Generation: Generic instance
@@ -587,7 +519,7 @@ genInstanceConstraints _opts r@Record{..} = tySynInstD $
 -- >     recordName          = "T"
 -- >   , recordConstructor   = "MkT"
 -- >   , recordSize          = 5
--- >   , recordFieldMetadata = Rep $ Data.Vector.fromList [
+-- >   , recordFieldMetadata = Rep $ V.fromList [
 -- >         FieldMetadata (Proxy :: Proxy "tInt"))   FieldLazy
 -- >       , FieldMetadata (Proxy :: Proxy "tBool"))  FieldLazy
 -- >       , FieldMetadata (Proxy :: Proxy "tChar"))  FieldLazy
@@ -659,7 +591,7 @@ genDeriving opts r = \case
 genFrom :: Options -> Record () -> Q Exp
 genFrom _opts Record{..} = [|
          repFromVector
-       . $(N.varE (N.unqualified (nameRecordInternalField recordType)))
+       . $(N.varE (N.unqualified (nameRecordVectorFrom recordType)))
     |]
 
 -- | Generate definition for `to` in the `Generic` instance
@@ -744,12 +676,12 @@ genGhcGenericsInstances _opts r = sequenceA [
 --
 -- See also 'recordFromVectorDontForceE'.
 recordFromVectorForceStrictFieldsE :: Options -> Record () -> Q Exp
-recordFromVectorForceStrictFieldsE Options{..} r
+recordFromVectorForceStrictFieldsE Options{allFieldsStrict} r
   | allFieldsStrict = [| \v -> rnfVectorAny v `seq` $fromVector v |]
   | otherwise       =                                fromVector
   where
     fromVector :: Q Exp
-    fromVector = recordFromVectorDontForceE generatePatternSynonym N.Unqual r
+    fromVector = recordFromVectorDontForceE N.Unqual r
 
 {-------------------------------------------------------------------------------
   Fix TH naming

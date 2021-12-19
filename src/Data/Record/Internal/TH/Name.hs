@@ -41,6 +41,7 @@ module Data.Record.Internal.TH.Name (
   , conE
   , conT
   , newtypeD
+  , dataD
   , patSynD
   , patSynSigD
   , pragCompleteD
@@ -51,6 +52,9 @@ module Data.Record.Internal.TH.Name (
   , varE
   , varLocalP
   , varGlobalP
+  , conP
+  , varLocalT
+  , plainLocalTV
   ) where
 
 import Data.Kind
@@ -60,6 +64,8 @@ import Language.Haskell.TH.Syntax (Quasi, runQ, NameSpace(..))
 
 import qualified Language.Haskell.TH.Syntax as TH
 import qualified Language.Haskell.TH.Lib    as TH
+
+import Data.Record.Internal.TH.Compat
 
 {-------------------------------------------------------------------------------
   Names
@@ -276,6 +282,10 @@ classD cxt = TH.classD cxt . toTH
 newtypeD :: Q _ -> Name 'TcClsName 'Dynamic -> _
 newtypeD cxt = TH.newtypeD cxt . toTH
 
+-- | Define a datatype
+dataD :: Q _ -> Name 'TcClsName 'Dynamic -> _
+dataD cxt nm = TH.dataD cxt (toTH nm)
+
 -- | Define record pattern synonym
 recordPatSyn :: [String] -> Q _
 recordPatSyn = TH.recordPatSyn . map (toTH . unqualified)
@@ -292,6 +302,18 @@ varGlobalP = TH.varP . toTH
 -- | Define pattern variable for use in a local pattern match
 varLocalP :: Name 'VarName 'Unique -> Q _
 varLocalP = TH.varP . toTH
+
+-- | Constructor pattern
+conP :: Name 'DataName 'Dynamic -> [TH.PatQ] -> TH.PatQ
+conP = TH.conP . toTH
+
+-- | Reference locally bound type variable
+varLocalT :: Name 'VarName 'Unique -> Q _
+varLocalT = TH.varT . toTH
+
+-- | Create locally bound type variable
+plainLocalTV :: Name 'VarName 'Unique -> TyVarBndr
+plainLocalTV = PlainTV . toTH
 
 {-------------------------------------------------------------------------------
   Referencing existing names

@@ -7,7 +7,6 @@ import qualified Test.Record.Prop.Show
 import qualified Test.Record.Prop.ToFromJSON
 import qualified Test.Record.Sanity.Derive
 import qualified Test.Record.Sanity.EqualFieldTypes
-import qualified Test.Record.Sanity.ErrorsAndWarnings
 import qualified Test.Record.Sanity.Generics
 import qualified Test.Record.Sanity.GhcGenerics
 import qualified Test.Record.Sanity.HigherKinded
@@ -31,7 +30,6 @@ tests = testGroup "Tests" [
       testGroup "Sanity" [
           Test.Record.Sanity.Derive.tests
         , Test.Record.Sanity.EqualFieldTypes.tests
-        , Test.Record.Sanity.ErrorsAndWarnings.tests
         , Test.Record.Sanity.Generics.tests
         , Test.Record.Sanity.GhcGenerics.tests
         , Test.Record.Sanity.HigherKinded.tests

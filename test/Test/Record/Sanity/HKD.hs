@@ -1,16 +1,16 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE NamedFieldPuns            #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE ViewPatterns              #-}
 
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
@@ -53,14 +53,14 @@ tests = testGroup "Test.Record.Sanity.HKD" [
     ]
 
 example1, example2 :: T Identity
-example1 = [lr| MkT { field1 = 1, field2 = True  } |]
-example2 = [lr| MkT { field1 = 1, field2 = False } |]
+example1 = MkT { field1 = 1, field2 = True  }
+example2 = MkT { field1 = 1, field2 = False }
 
 example3 :: T (Const Char)
-example3 = [lr| MkT { field1 = 'a', field2 = 'b' } |]
+example3 = MkT { field1 = 'a', field2 = 'b' }
 
 exampleFun :: T f -> HKD f Int
-exampleFun [lr| MkT { field1 } |] = field1
+exampleFun MkT { field1 } = field1
 
 testGet, testSet :: Assertion
 testGet = assertEqual "" (getField @"field1" example1) 1

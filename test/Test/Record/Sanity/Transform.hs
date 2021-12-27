@@ -1,17 +1,18 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms       #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE StandaloneDeriving    #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE PatternSynonyms           #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE StandaloneDeriving        #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE ViewPatterns              #-}
 
 module Test.Record.Sanity.Transform (tests) where
 
@@ -75,7 +76,7 @@ instance InjectInterpreted I Maybe (Uninterpreted a) where
 instance InjectInterpreted I Maybe String where
   injectInterpreted = liftInterpreted $ id
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
+largeRecord defaultLazyOptions [d|
     data A (f :: Type -> Type) = A {
           aI :: f Int
         , aB :: f Bool
@@ -121,7 +122,7 @@ justA = gjust
   Example with two variables
 -------------------------------------------------------------------------------}
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
+largeRecord defaultLazyOptions [d|
     data B (f :: Type -> Type) (g :: Type -> Type) = B {
           bI :: f Int
         , bB :: g Bool
@@ -227,7 +228,7 @@ applyColumnar' _ f fx gx = getColumnar' <$> f (Columnar' fx) (Columnar' gx)
   Beam test
 -------------------------------------------------------------------------------}
 
-largeRecord (defaultLazyOptions { generatePatternSynonym = GenPatSynonym }) [d|
+largeRecord defaultLazyOptions [d|
     data TableA (f :: Type -> Type) = TableA {
           taFieldI :: PrimaryKey TableA f
         , taFieldB :: Columnar f Bool

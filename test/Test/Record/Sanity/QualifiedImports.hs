@@ -1,14 +1,13 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE ViewPatterns          #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
 module Test.Record.Sanity.QualifiedImports (tests) where
 
-import Data.Record.TH
 import GHC.Records.Compat
 
 import Test.Tasty
@@ -18,16 +17,16 @@ import qualified Test.Record.Sanity.QualifiedImports.A as A
 import qualified Test.Record.Sanity.QualifiedImports.B as B
 
 constructA :: A.T Bool
-constructA = [lr| A.MkT { x = 5, y = [True] } |]
+constructA = A.MkT { A.x = 5, A.y = [True] }
 
 constructB :: B.T Bool
-constructB = [lr| B.MkT { x = 'a', y = A.MkT { x = 2, y = [True, False] } } |]
+constructB = B.MkT { B.x = 'a', B.y = A.MkT { A.x = 2, A.y = [True, False] } }
 
 projectA :: A.T a -> (Int, [a])
-projectA [lr| A.MkT { x = a, y = b } |] = (a, b)
+projectA A.MkT { A.x = a, A.y = b } = (a, b)
 
 projectB :: B.T a -> (Char, Int, [a])
-projectB [lr| B.MkT { x = a, y = A.MkT { x = b, y = c } } |] = (a, b, c)
+projectB B.MkT { B.x = a, B.y = A.MkT { A.x = b, A.y = c } } = (a, b, c)
 
 tests :: TestTree
 tests = testGroup "Test.Record.Sanity.QualifiedImports" [

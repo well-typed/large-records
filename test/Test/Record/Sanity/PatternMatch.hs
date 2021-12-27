@@ -1,17 +1,17 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE DuplicateRecordFields     #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE NamedFieldPuns            #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE ViewPatterns              #-}
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# OPTIONS_GHC -fdefer-type-errors -Wno-deferred-type-errors  #-}
@@ -38,29 +38,29 @@ largeRecord defaultPureScript [d|
   |]
 
 projectOne :: T Bool -> Int
-projectOne [lr| MkT { x = a } |] = a
+projectOne MkT { x = a } = a
 
 projectTwo :: T a -> (Int, [a])
-projectTwo [lr| MkT { x = a, y = b } |] = (a, b)
+projectTwo MkT { x = a, y = b } = (a, b)
 
 -- | Test projecting more than 2 elements
 --
 -- This is an important special case, because this checks that the pattern we
 -- generate is correctedly nested to match the 'MatchHasField' instances.
 projectThree :: T a -> (Int, [a], Double)
-projectThree [lr| MkT { x = a, y = b, z = c } |] = (a, b, c)
+projectThree MkT { x = a, y = b, z = c } = (a, b, c)
 
 projectPuns :: T a -> (Int, [a])
-projectPuns [lr| MkT { x, y } |] = (x, y)
+projectPuns MkT { x, y } = (x, y)
 
 projectNested :: S a -> (Char, Int, [a])
-projectNested [lr| MkS { x = a, y = MkT { x = b, y = c } } |] = (a, b, c)
+projectNested MkS { x = a, y = MkT { x = b, y = c } } = (a, b, c)
 
 projectView :: T Bool -> Int
-projectView [lr| MkT { x = ((+1) -> a) } |] = a
+projectView MkT { x = ((+1) -> a) } = a
 
 matchEmpty :: T Bool -> Int
-matchEmpty [lr| MkT {} |] = 42
+matchEmpty MkT {} = 42
 
 -- | A pattern match on a record that does not extract any variables should
 -- nonetheless be strict
@@ -82,15 +82,15 @@ largeRecord defaultPureScript [d|
     data T2 = MkT2 { x :: Int }
   |]
 
-noSigEmpty [lr| MkT {} |] = ()
+noSigEmpty MkT {} = ()
 
-noSigNonEmpty [lr| MkT { x = a } |] = const () a
+noSigNonEmpty MkT { x = a } = const () a
 
 useNoSigEmpty :: ()
-useNoSigEmpty = noSigEmpty [lr| MkT2 { x = 5 } |]
+useNoSigEmpty = noSigEmpty MkT2 { x = 5 }
 
 useNoSigNonEmpty :: ()
-useNoSigNonEmpty = noSigNonEmpty [lr| MkT2 { x = 5 } |]
+useNoSigNonEmpty = noSigNonEmpty MkT2 { x = 5 }
 
 {-------------------------------------------------------------------------------
   Tests proper
@@ -125,10 +125,10 @@ testProjections = do
       ]
 
     t :: T Bool
-    t = [lr| MkT { x = 5, y = [True], z = 1.0 } |]
+    t = MkT { x = 5, y = [True], z = 1.0 }
 
     s :: S Bool
-    s = [lr| MkS { x = 'a', y = MkT { x = 2, y = [True, False], z = 1.0 } } |]
+    s = MkS { x = 'a', y = MkT { x = 2, y = [True, False], z = 1.0 } }
 
 tests :: TestTree
 tests = testGroup "Test.Record.Sanity.PatternMatch" [

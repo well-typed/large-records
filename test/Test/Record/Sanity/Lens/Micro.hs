@@ -1,20 +1,20 @@
 {-# LANGUAGE ConstraintKinds           #-}
 {-# LANGUAGE CPP                       #-}
 {-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE ImpredicativeTypes        #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE ViewPatterns              #-}
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Test.Record.Sanity.Lens.Micro (tests) where
 
@@ -29,7 +29,6 @@ import Data.Record.Generic
 import Data.Record.Generic.Lens.VL
 import Data.Record.Generic.SOP
 import Data.Record.Generic.Transform
-import Data.Record.QQ.CodeGen
 import Data.Record.TH
 
 import qualified Data.Record.Generic.Rep as Rep
@@ -48,20 +47,20 @@ largeRecord defaultPureScript [d|
     |]
 
 simpleExample :: Simple I
-simpleExample = [lr| MkSimple {
+simpleExample = MkSimple {
       s1 = I 5
     , s2 = I True
     , s3 = I 'a'
-    } |]
+    }
 
 simpleExampleLenses :: Simple (RegularRecordLens Simple f)
 simpleExampleLenses = lensesForRegularRecord (Proxy @DefaultInterpretation)
 
-[lr| MkSimple {
+MkSimple {
       s1 = RegularRecordLens xs1
     , s2 = RegularRecordLens xs2
     , s3 = RegularRecordLens xs3
-    } |] = simpleExampleLenses
+    } = simpleExampleLenses
 
 {-------------------------------------------------------------------------------
   Simplified version of beam's 'Columnar' type'
@@ -99,20 +98,20 @@ largeRecord defaultPureScript [d|
     |]
 
 regularExample :: Regular I
-regularExample = [lr| MkRegular {
+regularExample = MkRegular {
       r1 = 5
     , r2 = True
     , r3 = 'a'
-    } |]
+    }
 
 regularLenses :: Regular (RegularRecordLens Regular I)
 regularLenses = lensesForRegularRecord (Proxy @BeamInterpretation)
 
-[lr| MkRegular {
+MkRegular {
       r1 = RegularRecordLens xr1
     , r2 = RegularRecordLens xr2
     , r3 = RegularRecordLens xr3
-    } |] = regularLenses
+    } = regularLenses
 
 {-------------------------------------------------------------------------------
   Beam-like example
@@ -160,11 +159,11 @@ beamLikeLenses =
 regularBeamLikeLenses :: Regular (Lenses Regular I)
 regularBeamLikeLenses = beamLikeLenses
 
-[lr| MkRegular {
+MkRegular {
       r1 = WrapLens br1
     , r2 = WrapLens br2
     , r3 = WrapLens br3
-    } |] = regularBeamLikeLenses
+    } = regularBeamLikeLenses
 
 {-------------------------------------------------------------------------------
   Irregular example
@@ -180,11 +179,11 @@ largeRecord defaultPureScript [d|
     |]
 
 irregularExample :: Irregular I
-irregularExample = [lr| MkIrregular {
+irregularExample = MkIrregular {
       i1 = I 5
     , i2 = I True
     , i3 = 'a'
-    } |]
+    }
 
 -- We cannot define this now:
 --
@@ -259,11 +258,11 @@ test_simple_set =
       simpleExample & xs1 %~ mapII negate & xs3 %~ mapII succ
   where
     expected :: Simple I
-    expected = [lr| MkSimple {
+    expected = MkSimple {
           s1 = I (-5)
         , s2 = I True
         , s3 = I 'b'
-        } |]
+        }
 
 test_regular_get :: Assertion
 test_regular_get =
@@ -276,11 +275,11 @@ test_regular_set =
       regularExample & xr1 %~ mapII negate & xr3 %~ mapII succ
   where
     expected :: Regular I
-    expected = [lr| MkRegular {
+    expected = MkRegular {
           r1 = (-5)
         , r2 = True
         , r3 = 'b'
-        } |]
+        }
 
 test_beamlike_get :: Assertion
 test_beamlike_get =
@@ -293,11 +292,11 @@ test_beamlike_set =
       regularExample & br1 %~ negate & br3 %~ succ
   where
     expected :: Regular I
-    expected = [lr| MkRegular {
+    expected = MkRegular {
           r1 = (-5)
         , r2 = True
         , r3 = 'b'
-        } |]
+        }
 
 test_irregular_get :: Assertion
 test_irregular_get =
@@ -310,8 +309,8 @@ test_irregular_set =
       irregularExample & xi1 %~ mapII negate & xi3 %~ succ
   where
     expected :: Irregular I
-    expected = [lr| MkIrregular {
+    expected = MkIrregular {
           i1 = I (-5)
         , i2 = I True
         , i3 = 'b'
-        } |]
+        }

@@ -28,7 +28,6 @@ import Language.Haskell.TH
 import Data.Record.Internal.Naming
 import Data.Record.Internal.Record
 import Data.Record.Internal.TH.Util
-import Data.Record.TH.Config.Options (GenPatSynonym(..))
 
 import qualified Data.Record.Internal.TH.Name as N hiding (unqualified)
 
@@ -52,7 +51,7 @@ recordTypeT qual Record{..} =
 -- | Coerce the record to the underlying @Vector Any@
 recordToVectorE :: N.Qualifier -> Record a -> Q Exp
 recordToVectorE qual =
-    N.varE . N.qualify qual . nameRecordInternalField . recordType
+    N.varE . N.qualify qual . nameRecordVectorFrom . recordType
 
 -- | Construct record from the underlying @Vector Any@
 --
@@ -62,9 +61,9 @@ recordToVectorE qual =
 -- * we know through other means that all values are already forced.
 --
 -- See also 'recordFromVectorForceE'.
-recordFromVectorDontForceE :: GenPatSynonym -> N.Qualifier -> Record a -> Q Exp
-recordFromVectorDontForceE genPatSyn qual =
-    N.conE . N.qualify qual . nameRecordInternalConstr genPatSyn . recordConstr
+recordFromVectorDontForceE :: N.Qualifier -> Record a -> Q Exp
+recordFromVectorDontForceE qual =
+    N.varE . N.qualify qual . nameRecordVectorTo . recordType
 
 -- | The (unsafe) indexed field accessor
 recordIndexedAccessorE :: N.Qualifier -> Record a -> Q Exp
@@ -76,9 +75,9 @@ recordIndexedOverwriteE :: N.Qualifier -> Record a -> Q Exp
 recordIndexedOverwriteE qual =
     N.varE . N.qualify qual . nameRecordIndexedOverwrite . recordType
 
-recordUndefinedValueE :: GenPatSynonym -> N.Qualifier -> Record a -> Q Exp
-recordUndefinedValueE genPatSyn qual r =
-    [| $(recordFromVectorDontForceE genPatSyn qual r) undefined |]
+recordUndefinedValueE :: N.Qualifier -> Record a -> Q Exp
+recordUndefinedValueE qual r =
+    [| $(recordFromVectorDontForceE qual r) undefined |]
 
 {-------------------------------------------------------------------------------
   Record fields

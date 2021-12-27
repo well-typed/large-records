@@ -1,15 +1,15 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE DuplicateRecordFields     #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
 -- {-# OPTIONS_GHC -ddump-splices #-}
 
@@ -35,20 +35,20 @@ largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
   |]
 
 inOrder :: R Bool
-inOrder = [lr| MkR { x = 1234, y = [True] } |]
+inOrder = MkR { x = 1234, y = [True] }
 
 outOfOrder :: R Bool
-outOfOrder = [lr| MkR { y = [True], x = 1234 } |]
+outOfOrder = MkR { y = [True], x = 1234 }
 
 -- | Constructor application
 --
 -- Occassionally we cannot use the quasi-quoter (for instance, in an
 -- applicative context).
 constructorApp :: R Bool
-constructorApp = [lr| MkR |] 1234 [True]
+constructorApp = MkR 1234 [True]
 
 valueOfS :: S Bool
-valueOfS = [lr| S { x = 1234, y = [True] } |]
+valueOfS = S { x = 1234, y = [True] }
 
 {-------------------------------------------------------------------------------
   Nested records
@@ -62,11 +62,10 @@ largeRecord defaultPureScript [d|
   |]
 
 valueOfT :: T
-valueOfT = [lr| T { x = 5
-                  , y = S { x = 1234, y = [True] }
-                  , z = RR { a = 5 }
-                  }
-              |]
+valueOfT = T { x = 5
+             , y = S { x = 1234, y = [True] }
+             , z = RR { a = 5 }
+             }
 
 {-------------------------------------------------------------------------------
   Sanity check

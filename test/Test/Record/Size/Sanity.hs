@@ -15,7 +15,7 @@ module Test.Record.Size.Sanity (tests) where
 import Data.Aeson
 import Data.Functor.Identity
 
-#if !USE_RDP
+#if !USE_RDP || BUILD_ALL_MODULES
 import GHC.Records.Compat
 #endif
 

@@ -19,6 +19,7 @@ module Data.Record.Internal.TH.Util (
   , tyVarType
     -- * Bang
   , pattern DefaultBang
+  , pattern StrictBang
     -- * Extensions
   , requiresExtensions
   ) where
@@ -120,6 +121,9 @@ tyVarType = varT . tyVarName
 
 pattern DefaultBang :: Bang
 pattern DefaultBang = Bang NoSourceUnpackedness NoSourceStrictness
+
+pattern StrictBang :: Bang
+pattern StrictBang = Bang NoSourceUnpackedness SourceStrict
 
 {-------------------------------------------------------------------------------
   Extensions

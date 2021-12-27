@@ -141,7 +141,27 @@ test-suite test-large-records
                         Test.Record.Size.Sanity
                         Test.Record.Util
 
+                        Test.Record.Anonymous.Index.AI010
+                        Test.Record.Anonymous.Index.AI020
+                        Test.Record.Anonymous.Index.AI030
+                        Test.Record.Anonymous.Index.AI040
+                        Test.Record.Anonymous.Index.AI050
+                        Test.Record.Anonymous.Index.AI060
+                        Test.Record.Anonymous.Index.AI070
+                        Test.Record.Anonymous.Index.AI080
+                        Test.Record.Anonymous.Index.AI090
+                        Test.Record.Anonymous.Index.AI100
+
                         Test.Record.Anonymous.Construct.AC010
+                        Test.Record.Anonymous.Construct.AC020
+                        Test.Record.Anonymous.Construct.AC030
+                        Test.Record.Anonymous.Construct.AC040
+                        Test.Record.Anonymous.Construct.AC050
+                        Test.Record.Anonymous.Construct.AC060
+                        Test.Record.Anonymous.Construct.AC070
+                        Test.Record.Anonymous.Construct.AC080
+                        Test.Record.Anonymous.Construct.AC090
+                        Test.Record.Anonymous.Construct.AC100
 
     build-depends:      base
                       , aeson

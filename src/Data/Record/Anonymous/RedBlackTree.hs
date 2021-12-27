@@ -6,6 +6,7 @@
 {-# LANGUAGE PolyKinds            #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns         #-}
 
@@ -30,16 +31,17 @@
 -- Intended for qualified import.
 module Data.Record.Anonymous.RedBlackTree (
     Map -- opaque
-  , fromList
-  , toList
     -- * Term-level
   , empty
   , insert
   , lookup
+  , fromList
+  , toList
     -- * Type-level
   , Empty
   , Insert
   , Lookup
+  , FromList
     -- ** Relation to term level
   , Sing(..)
   , singEmpty
@@ -401,6 +403,10 @@ type family Lookup (k :: Symbol)
                    (t :: Map Symbol a)
                 :: Maybe a where
   Lookup k (MkMap t) = Find k t
+
+type family FromList (xs :: [(Symbol, a)]) :: Map Symbol a where
+  FromList '[]            = Empty
+  FromList ('(k, x) : xs) = Insert k x (FromList xs)
 
 {-------------------------------------------------------------------------------
   Singleton instances

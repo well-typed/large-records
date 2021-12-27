@@ -6,7 +6,71 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 
+module Data.Record.Anonymous (
+    Record -- opaque
+  , empty
+  , insert
+  ) where
+
+import Data.Kind
+import Data.Proxy
+import GHC.Exts (Any)
+import GHC.TypeLits
+import GHC.OverloadedLabels
+
+import Data.Record.Anonymous.RedBlackTree (Map)
+
+import qualified Data.Record.Anonymous.RedBlackTree as RB
+import Unsafe.Coerce (unsafeCoerce)
+
+-- | Anonymous record
+--
+-- TODO: One of the downsides of indexing by a tree is that they appear in
+-- error messages, which become rather difficult to read indeed. We may need
+-- to do something about that.
+newtype Record (r :: Map Symbol Type) = UnsafeRecord (Map String Any)
+
+empty :: Record RB.Empty
+empty = undefined
+
+data FldProxy (k :: Symbol) = KnownSymbol k => FldProxy (Proxy k)
+
+instance (l ~ l', KnownSymbol l) => IsLabel l (FldProxy l') where
+  fromLabel = FldProxy (Proxy @l)
+
+insert :: FldProxy k -> a -> Record r -> Record (RB.Insert k a r)
+insert (FldProxy p) a (UnsafeRecord r) = UnsafeRecord $
+    RB.insert (symbolVal p) (unsafeCoerce a) r
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-
+
+
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
+
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE GADTs #-}
 
 -- | Anonymous records
 --
@@ -104,7 +168,6 @@ get :: Has k a r => Record r ->
 
 
 newtype Record (xs :: Map Symbol Type) = R (Sing xs)
-newtype FldProxy (k :: Symbol) = FldProxy (Sing k)
 
 -- role Record phantom
 
@@ -396,5 +459,6 @@ instance Generic (Rec r) where
   from = coerce
   to   = coerce
 
+-}
 -}
 -}

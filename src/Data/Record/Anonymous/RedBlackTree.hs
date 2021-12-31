@@ -404,9 +404,26 @@ type family Lookup (k :: Symbol)
                 :: Maybe a where
   Lookup k (MkMap t) = Find k t
 
+-- | Convert list to map
+--
+-- This is intentionally a left fold, to make a type-level FromList easier to
+-- interpret:
+--
+-- > FromList '[
+-- >     '("t00", T 00)
+-- >   , '("t01", T 01)
+-- >   , '("t02", T 02)
+-- >   ]
+--
+-- Means the insertiom of t00, then t01, then t02.
 type family FromList (xs :: [(Symbol, a)]) :: Map Symbol a where
-  FromList '[]            = Empty
-  FromList ('(k, x) : xs) = Insert k x (FromList xs)
+  FromList xs = FromListAcc Empty xs
+
+type family FromListAcc (acc :: Map Symbol a)
+                        (xs  :: [(Symbol, a)])
+                     :: Map Symbol a where
+  FromListAcc acc '[]            = acc
+  FromListAcc acc ('(k, x) : xs) = FromListAcc (Insert k x acc) xs
 
 {-------------------------------------------------------------------------------
   Singleton instances

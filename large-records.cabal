@@ -181,6 +181,7 @@ test-suite test-large-records
                       , tasty-quickcheck
                       , template-haskell
                       , transformers
+                      , typelet
                       , vector
     hs-source-dirs:     test
     default-language:   Haskell2010

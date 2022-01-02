@@ -32,6 +32,7 @@ import qualified Language.Haskell.TH.Lib    as TH
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.GHC
+import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.Record.Generic.Show
 
 import Data.Record.Internal.CodeGen

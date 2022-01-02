@@ -1,4 +1,0 @@
-packages: ./
-
-package large-records
-  tests: True

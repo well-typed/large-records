@@ -13,14 +13,12 @@ module Data.Record.TH.Runtime (
   , repFromVector
   , repToVector
   , rnfVectorAny
-  , noInlineUnsafeCo
   ) where
 
 import Data.Coerce (coerce)
 import Data.Proxy
 import Data.Vector (Vector)
 import GHC.Exts (Any)
-import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector as V
 
@@ -45,14 +43,4 @@ rnfVectorAny = rnfElems . V.toList
     rnfElems :: [Any] -> ()
     rnfElems []     = ()
     rnfElems (x:xs) = x `seq` rnfElems xs
-
--- | Avoid potential segfault with ghc < 9.0
---
--- See <https://gitlab.haskell.org/ghc/ghc/-/issues/16893>.
--- I haven't actually seen this fail in large-records, but we saw it fail in
--- the compact representation branch of sop-core, and what we do here is not
--- so different, so better to play it safe.
-noInlineUnsafeCo :: forall a b. a -> b
-{-# NOINLINE noInlineUnsafeCo #-}
-noInlineUnsafeCo = unsafeCoerce
 

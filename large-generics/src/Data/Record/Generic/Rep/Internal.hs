@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RoleAnnotations     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeOperators       #-}
 
 -- | Definition of 'Rep' and functions that do not depend on ".Generic"
@@ -18,8 +16,8 @@ module Data.Record.Generic.Rep.Internal (
   , unsafeFromListAny
   , collapse
   , toListAny
-    -- * Utility (for use in @.Rep@)
-  , compileToHere
+    -- * Auxiliary
+  , noInlineUnsafeCo
   ) where
 
 import Prelude hiding (sequenceA)
@@ -29,7 +27,7 @@ import Data.Coerce (coerce)
 import Data.SOP.BasicFunctors
 import Data.Vector (Vector)
 import GHC.Exts (Any)
-import Language.Haskell.TH
+import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector as V
 
@@ -97,8 +95,16 @@ instance Eq x => Eq (Rep (K x) a) where
       == Prelude.map unK (V.toList v')
 
 {-------------------------------------------------------------------------------
-  Internal utility
+  Auxiliary
 -------------------------------------------------------------------------------}
 
-compileToHere :: Q [Dec]
-compileToHere = return []
+-- | Avoid potential segfault with ghc < 9.0
+--
+-- See <https://gitlab.haskell.org/ghc/ghc/-/issues/16893>.
+-- I haven't actually seen this fail in large-records, but we saw it fail in
+-- the compact representation branch of sop-core, and what we do here is not
+-- so different, so better to play it safe.
+noInlineUnsafeCo :: forall a b. a -> b
+{-# NOINLINE noInlineUnsafeCo #-}
+noInlineUnsafeCo = unsafeCoerce
+

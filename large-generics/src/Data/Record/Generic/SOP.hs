@@ -37,7 +37,7 @@ import qualified Generics.SOP as SOP
 
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound hiding (glowerBound)
-import Data.Record.TH.Runtime (noInlineUnsafeCo)
+import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 
 {-------------------------------------------------------------------------------
   Conversion back and forth to generics-sop records

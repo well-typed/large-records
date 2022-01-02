@@ -1,0 +1,7 @@
+packages: large-generics, large-records
+
+package large-generics
+  tests: True
+
+package large-records
+  tests: True

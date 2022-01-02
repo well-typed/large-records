@@ -1,18 +1,19 @@
-{-# LANGUAGE ConstraintKinds           #-}
-{-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
+-- {-# LANGUAGE ConstraintKinds           #-}
+-- {-# LANGUAGE DataKinds                 #-}
+-- {-# LANGUAGE ExistentialQuantification #-}
+-- {-# LANGUAGE FlexibleContexts          #-}
+-- {-# LANGUAGE FlexibleInstances         #-}
+-- {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
+-- {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE TypeFamilies              #-}
+-- {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
-{-# LANGUAGE UndecidableInstances      #-}
+-- {-# LANGUAGE UndecidableInstances      #-}
+
 
 -- | Check that the functions on 'Rep' can be called on 'undefined'
-module Test.Record.Sanity.Laziness (tests) where
+module Test.Record.Generic.Sanity.Laziness (tests) where
 
 import Control.Exception
 import Data.List (isInfixOf)
@@ -21,34 +22,19 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Generic
-import Data.Record.TH
 
 import qualified Data.Record.Generic.Rep          as Rep
 import qualified Data.Record.Generic.Rep.Internal as Rep
 
-import Test.Record.Util
-
-{-------------------------------------------------------------------------------
-  Example record
--------------------------------------------------------------------------------}
-
-largeRecord defaultPureScript [d|
-      data R = MkR {
-            ri :: Word
-          , rb :: Bool
-          }
-        deriving (Show, Eq)
-    |]
-
-example :: R
-example = MkR { ri = 5, rb = True }
+import Test.Record.Generic.Infra.Examples
+import Test.Record.Generic.Infra.Util (expectException)
 
 {-------------------------------------------------------------------------------
   Tests proper
 -------------------------------------------------------------------------------}
 
 tests :: TestTree
-tests = testGroup "Test.Record.Sanity.Laziness" [
+tests = testGroup "Test.Record.Generic.Sanity.Laziness" [
       testCase "mapWithIndex" test_mapWithIndex
     , testCase "ap"           test_ap
     , testCase "map"          test_map
@@ -64,7 +50,7 @@ test_mapWithIndex :: Assertion
 test_mapWithIndex =
     assertEqual "" expected actual
   where
-    expected, actual :: Rep (K Int) R
+    expected, actual :: Rep (K Int) SimpleRecord
     expected = Rep.unsafeFromList [0, 1]
     actual   = Rep.mapWithIndex (\ix _ -> K $ Rep.indexToInt ix) undefined
 
@@ -72,18 +58,18 @@ test_ap :: Assertion
 test_ap =
     assertEqual "" expected actual
   where
-    fns :: Rep (f -.-> I) R
-    fns = Rep.map' (\x -> Fn $ \_ -> x) (from example)
+    fns :: Rep (f -.-> I) SimpleRecord
+    fns = Rep.map' (\x -> Fn $ \_ -> x) (from exampleSimpleRecord)
 
-    expected, actual :: R
-    expected = example
+    expected, actual :: SimpleRecord
+    expected = exampleSimpleRecord
     actual   = to $ Rep.ap fns undefined
 
 test_map :: Assertion
 test_map =
     assertEqual "" expected actual
   where
-    expected, actual :: Rep (K Int) R
+    expected, actual :: Rep (K Int) SimpleRecord
     expected = Rep.unsafeFromList [0, 0]
     actual   = Rep.map (\_ -> K 0) undefined
 
@@ -95,7 +81,7 @@ test_map' = expectException isExpectedException $ do
     isExpectedException :: SomeException -> Bool
     isExpectedException e = "undefined" `isInfixOf` show e
 
-    expected, actual :: Rep (K Int) R
+    expected, actual :: Rep (K Int) SimpleRecord
     expected = Rep.unsafeFromList [0, 0]
     actual   = Rep.map' (\_ -> K 0) undefined
 
@@ -106,18 +92,21 @@ test_mapM = do
     let next :: f x -> IO (K Int x)
         next _ = atomicModifyIORef r $ \i -> (i + 1, K i)
 
-    actual :: Rep (K Int) R <- Rep.mapM next undefined
+    actual :: Rep (K Int) SimpleRecord <- Rep.mapM next undefined
     assertEqual "" expected actual
   where
-    expected :: Rep (K Int) R
+    expected :: Rep (K Int) SimpleRecord
     expected = Rep.unsafeFromList [1, 2]
 
 test_cmap :: Assertion
 test_cmap =
     assertEqual "" expected actual
   where
-    expected, actual :: R
-    expected = MkR { ri = 0, rb = False }
+    expected, actual :: SimpleRecord
+    expected = MkSimpleRecord {
+                   simpleRecordField1 = 0
+                 , simpleRecordField2 = False
+                 }
     actual   = to $ Rep.cmap (Proxy @Bounded) (\_ -> I minBound) undefined
 
 test_cmapM :: Assertion
@@ -129,17 +118,20 @@ test_cmapM = do
             b <- atomicModifyIORef r $ \b -> (not b, b)
             return . I $ if b then maxBound else minBound
 
-    actual :: R <- to <$> Rep.cmapM (Proxy @Bounded) next undefined
+    actual :: SimpleRecord <- to <$> Rep.cmapM (Proxy @Bounded) next undefined
     assertEqual "" expected actual
   where
-    expected :: R
-    expected = MkR { ri = 0, rb = True }
+    expected :: SimpleRecord
+    expected = MkSimpleRecord {
+                   simpleRecordField1 = 0
+                 , simpleRecordField2 = True
+                 }
 
 test_zipWithM :: Assertion
 test_zipWithM =
     assertEqual "" expected actual
   where
-    expected, actual :: Maybe (Rep (K Int) R)
+    expected, actual :: Maybe (Rep (K Int) SimpleRecord)
     expected = Just $ Rep.unsafeFromList [0, 0]
     actual   = Rep.zipWithM (\_ _ -> Just $ K 0) undefined undefined
 
@@ -147,8 +139,11 @@ test_czipWithM :: Assertion
 test_czipWithM =
     assertEqual "" expected actual
   where
-    expected, actual :: Maybe R
-    expected = Just $ MkR { ri = 0, rb = False }
+    expected, actual :: Maybe SimpleRecord
+    expected = Just $ MkSimpleRecord {
+                   simpleRecordField1 = 0
+                 , simpleRecordField2 = False
+                 }
     actual   = to <$> Rep.czipWithM
                         (Proxy @Bounded)
                         (\_ _ -> Just $ I minBound)

@@ -1,61 +1,43 @@
-{-# LANGUAGE ConstraintKinds           #-}
-{-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE DeriveGeneric             #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeOperators             #-}
-{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
--- {-# OPTIONS_GHC -ddump-splices #-}
 
-module Test.Record.Sanity.GhcGenerics (tests) where
+module Test.Record.Generic.Sanity.GhcGenerics (tests) where
 
 import Data.Function (on)
 import Data.Proxy
-import Data.Record.Generic.GHC
-import Data.Record.TH
 import Data.SOP.BasicFunctors
+import Generics.Deriving.Eq (GEq'(..), geqdefault)
+
+import qualified GHC.Generics as GHC
+
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import qualified Data.Record.Generic     as LR
-import qualified Data.Record.Generic.Eq  as LR
+import Data.Record.Generic.GHC
+
+import qualified Data.Record.Generic     as L
+import qualified Data.Record.Generic.Eq  as L (geq)
 import qualified Data.Record.Generic.Rep as Rep
-import qualified Generics.Deriving.Eq    as GHC
-import qualified GHC.Generics            as GHC
 
-{-------------------------------------------------------------------------------
-  Example large record
--------------------------------------------------------------------------------}
-
-largeRecord defaultPureScript [d|
-      data LargeRecord = MkLargeRecord {
-            largeField1 :: Int
-          , largeField2 :: Bool
-          }
-    |]
-
-example :: LargeRecord
-example = MkLargeRecord { largeField1 = 1, largeField2 = True }
+import Test.Record.Generic.Infra.Examples
 
 {-------------------------------------------------------------------------------
   Show that we can use geqdefault on a large record
 -------------------------------------------------------------------------------}
 
-instance ( LR.Generic a
-         , LR.Constraints a Eq
-         ) => GHC.GEq' (ThroughLRGenerics a) where
-  geq' = LR.geq `on` unwrapThroughLRGenerics
+instance ( L.Generic a
+         , L.Constraints a Eq
+         ) => GEq' (ThroughLRGenerics a) where
+  geq' = L.geq `on` unwrapThroughLRGenerics
 
-allEqualTo :: (GHC.Generic a, GHC.GEq' (GHC.Rep a)) => a -> [a] -> Bool
-allEqualTo x = all (GHC.geqdefault x)
+allEqualTo :: (GHC.Generic a, GEq' (GHC.Rep a)) => a -> [a] -> Bool
+allEqualTo x = all (geqdefault x)
 
 {-------------------------------------------------------------------------------
   Example with GHC field metadata
@@ -85,19 +67,13 @@ data Table = Table {
     }
   deriving (Show, Eq)
 
-simpleRecordToTable :: (GHC.Generic a, GRecordToTable (GHC.Rep a)) => a -> Table
-simpleRecordToTable = Table . gRecordToTable . GHC.from
-
-data SimpleRecord = MkSimpleRecord {
-      simpleField1 :: Int
-    , simpleField2 :: Bool
-    }
-  deriving (GHC.Generic)
+ghcRecordToTable :: (GHC.Generic a, GRecordToTable (GHC.Rep a)) => a -> Table
+ghcRecordToTable = Table . gRecordToTable . GHC.from
 
 -- The goal is to reuse the instance for fields
 -- TODO: We could potentially extend this to the other metadata as well
 largeRecordToTable :: forall a.
-     (LR.Generic a, LR.Constraints a Show)
+     (L.Generic a, L.Constraints a Show)
   => a -> Table
 largeRecordToTable = \x ->
     Table {
@@ -105,7 +81,7 @@ largeRecordToTable = \x ->
             Rep.czipWith
               (Proxy @Show)
               aux
-              (LR.from x)
+              (L.from x)
               (ghcMetadataFields (ghcMetadata (Proxy @a)))
       }
   where
@@ -120,35 +96,31 @@ largeRecordToTable = \x ->
 -------------------------------------------------------------------------------}
 
 tests :: TestTree
-tests = testGroup "Test.Record.Sanity.GhcGenerics" [
+tests = testGroup "Test.Record.Generic.Sanity.GhcGenerics" [
       testCase "allEqualTo"          test_allEqualTo
     , testCase "simpleRecordToTable" test_simpleRecordToTable
     , testCase "largeRecordToTable"  test_largeRecordToTable
     ]
 
 test_allEqualTo :: Assertion
-test_allEqualTo = assertEqual "" (allEqualTo example [example]) True
+test_allEqualTo =
+    assertEqual "" True $
+      allEqualTo exampleSimpleRecord [exampleSimpleRecord]
 
 -- Just a sanity check that the standard GHC generic functions works as intended
 test_simpleRecordToTable :: Assertion
 test_simpleRecordToTable =
-    assertEqual "" (simpleRecordToTable r) tbl
-  where
-    r :: SimpleRecord
-    r = MkSimpleRecord 1 True
-
-    tbl :: Table
-    tbl = Table [
-          ("simpleField1", "1")
-        , ("simpleField2", "True")
-        ]
+    assertEqual "" expectedTable $
+      ghcRecordToTable exampleSimpleRecord
 
 test_largeRecordToTable :: Assertion
 test_largeRecordToTable =
-    assertEqual "" (largeRecordToTable example) tbl
-  where
-    tbl :: Table
-    tbl = Table [
-          ("largeField1", "1")
-        , ("largeField2", "True")
-        ]
+    assertEqual "" expectedTable $
+      largeRecordToTable exampleSimpleRecord
+
+expectedTable :: Table
+expectedTable = Table [
+      ("simpleRecordField1", "5")
+    , ("simpleRecordField2", "True")
+    ]
+

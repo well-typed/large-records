@@ -6,13 +6,11 @@
 {-# LANGUAGE KindSignatures          #-}
 {-# LANGUAGE MultiParamTypeClasses   #-}
 {-# LANGUAGE PolyKinds               #-}
-{-# LANGUAGE RankNTypes              #-}
 {-# LANGUAGE ScopedTypeVariables     #-}
 {-# LANGUAGE TypeApplications        #-}
 {-# LANGUAGE TypeFamilies            #-}
 {-# LANGUAGE TypeOperators           #-}
 {-# LANGUAGE UndecidableInstances    #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 
 -- The 'HasNormalForm' constraint on 'normalize' and 'denormalize' is
 -- redundant as far as ghc is concerned (it's just 'unsafeCoerce' after all),
@@ -117,7 +115,8 @@ denormalize _ _ = unsafeCoerce
 {-------------------------------------------------------------------------------
   Specialized forms for the common case of a single type argument
 
-  The test ("Test.Record.Sanity.Transform") shows an example with two arguments.
+  The tests in "Test.Record.Generic.Sanity.Transform" show an example with
+  two arguments.
 -------------------------------------------------------------------------------}
 
 data Uninterpreted x

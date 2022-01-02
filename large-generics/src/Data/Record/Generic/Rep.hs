@@ -3,7 +3,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE TemplateHaskell     #-}
 
 -- | Operations on the generic representation
 --
@@ -69,9 +68,7 @@ import Data.Record.Generic.Rep.Internal
 
 --
 -- NOTE: In order to avoid circular definitions, this module is strictly defined
--- in order: every function only depends on the functions defined before it. To
--- enforce this, we make use of 'compileToHere' to force ghc to compile the
--- module to that point.
+-- in order: every function only depends on the functions defined before it.
 --
 
 {-------------------------------------------------------------------------------
@@ -114,8 +111,6 @@ mapWithIndex f as = map' f' allIndices
   where
     f' :: Index a x -> g x
     f' ix = f ix (getAtIndex ix as)
-    
-compileToHere -- ===============================================================
 
 {-------------------------------------------------------------------------------
   "Applicative"
@@ -139,8 +134,6 @@ ap fs as = mapWithIndex f' fs
   where
     f' :: Index a x -> (-.->) f g x -> g x
     f' ix f = f `apFn` getAtIndex ix as
-
-compileToHere -- ===============================================================
 
 {-------------------------------------------------------------------------------
   "Functor"
@@ -168,8 +161,6 @@ cmapM ::
   -> (forall x. c x => f x -> m (g x))
   -> Rep f a -> m (Rep g a)
 cmapM p f = sequenceA . cmap p (Comp . f)
-
-compileToHere -- ===============================================================
 
 {-------------------------------------------------------------------------------
   Zipping
@@ -207,5 +198,3 @@ czipWith ::
   -> Rep f a -> Rep g a -> Rep h a
 czipWith p f a b = runIdentity $
     czipWithM p (\x y -> Identity (f x y)) a b
-
-compileToHere -- ===============================================================

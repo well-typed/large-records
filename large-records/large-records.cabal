@@ -16,26 +16,14 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.8.4 || ==8.10.4
+tested-with:        GHC ==8.8.4 || ==8.10.7
 
 source-repository head
   type:     git
   location: https://github.com/well-typed/large-records
 
 library
-    exposed-modules:    Data.Record.Generic
-                        Data.Record.Generic.Eq
-                        Data.Record.Generic.GHC
-                        Data.Record.Generic.JSON
-                        Data.Record.Generic.Lens.VL
-                        Data.Record.Generic.LowerBound
-                        Data.Record.Generic.Rep
-                        Data.Record.Generic.Rep.Internal
-                        Data.Record.Generic.Show
-                        Data.Record.Generic.SOP
-                        Data.Record.Generic.Transform
-
-                        Data.Record.TH
+    exposed-modules:    Data.Record.TH
                         Data.Record.TH.CodeGen
                         Data.Record.TH.CodeGen.Tree
                         Data.Record.TH.Config.Options
@@ -51,15 +39,12 @@ library
                         Data.Record.Internal.Util
 
     build-depends:      base             >= 4.13   && < 4.17
-                      , aeson            >= 1.4.4  && < 1.6
                       , containers       >= 0.6.2  && < 0.7
-                      , generics-sop     >= 0.5    && < 0.6
                       , mtl              >= 2.2.1  && < 2.3
                       , record-hasfield  >= 1.0    && < 1.1
-                      , sop-core         >= 0.5    && < 0.6
                       , syb              >= 0.7    && < 0.8
-                      , text             >= 1.2.4  && < 1.5
                       , vector           >= 0.12   && < 0.13
+                      , large-generics   >= 0.1    && < 0.2
 
                         -- whatever version is bundled with ghc
                       , template-haskell
@@ -106,18 +91,11 @@ test-suite test-large-records
                         Test.Record.Experiments.ToTreeEnum
                         Test.Record.Experiments.ToTreeEnum.TE010
                         Test.Record.Experiments.Util
-                        Test.Record.Prop.Show
-                        Test.Record.Prop.Show.Large
-                        Test.Record.Prop.Show.Regular
-                        Test.Record.Prop.ToFromJSON
+                        Test.Record.Sanity.CodeGen
                         Test.Record.Sanity.Derive
                         Test.Record.Sanity.EqualFieldTypes
-                        Test.Record.Sanity.Generics
-                        Test.Record.Sanity.GhcGenerics
                         Test.Record.Sanity.HigherKinded
                         Test.Record.Sanity.HKD
-                        Test.Record.Sanity.Laziness
-                        Test.Record.Sanity.Lens.Micro
                         Test.Record.Sanity.OverloadingNoDRF
                         Test.Record.Sanity.PatternMatch
                         Test.Record.Sanity.QualifiedImports
@@ -126,7 +104,6 @@ test-suite test-large-records
                         Test.Record.Sanity.RDP
                         Test.Record.Sanity.RecordConstruction
                         Test.Record.Sanity.Strictness
-                        Test.Record.Sanity.Transform
                         Test.Record.Size.After.HK010
                         Test.Record.Size.After.R0010
                         Test.Record.Size.Before.Baseline
@@ -136,23 +113,20 @@ test-suite test-large-records
                         Test.Record.Util
 
     build-depends:      base
+                      , large-records
+
                       , aeson
-                      , generic-deriving
                       , generics-sop
                       , json-sop
-                      , large-records
-                      , microlens
+                      , large-generics
                       , mtl
                       , newtype
-                      , QuickCheck
                       , record-hasfield
                       , sop-core
                       , tasty
                       , tasty-hunit
-                      , tasty-quickcheck
                       , template-haskell
                       , transformers
-                      , vector
     hs-source-dirs:     test
     default-language:   Haskell2010
     ghc-options:       -Wall

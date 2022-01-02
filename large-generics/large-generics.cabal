@@ -1,0 +1,87 @@
+cabal-version:      2.4
+name:               large-generics
+version:            0.1.0.0
+synopsis:           Generic programming API for large-records and large-anon
+description:        The large-generics package offers a style of generic
+                    programming inspired by generics-sop, but optimized for
+                    compilation time. For more information, see the blog posts
+                    "Avoiding quadratic core code size with large records"
+                    <https://well-typed.com/blog/2021/08/large-records/>.
+bug-reports:        https://github.com/well-typed/large-records/issues
+license:            BSD-3-Clause
+author:             Edsko de Vries
+maintainer:         edsko@well-typed.com
+category:           Generics
+extra-source-files: CHANGELOG.md
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.1 || ==9.2.1
+
+library
+  exposed-modules:
+      -- General infrastructure
+      Data.Record.Generic
+      Data.Record.Generic.Rep
+      Data.Record.Generic.Rep.Internal
+      Data.Record.Generic.Transform
+
+      -- Interop with other generics approaches
+      Data.Record.Generic.GHC
+      Data.Record.Generic.SOP
+
+      -- Specific generic functions
+      Data.Record.Generic.Eq
+      Data.Record.Generic.JSON
+      Data.Record.Generic.Lens.VL
+      Data.Record.Generic.LowerBound
+      Data.Record.Generic.Show
+  default-language:
+      Haskell2010
+  ghc-options:
+      -Wall
+      -Wredundant-constraints
+  hs-source-dirs:
+      src
+  build-depends:
+      base         >= 4.13  && < 4.17
+    , aeson        >= 1.4.4 && < 2.1
+    , generics-sop >= 0.5   && < 0.6
+    , sop-core     >= 0.5   && < 0.6
+    , vector       >= 0.12  && < 0.13
+
+test-suite test-large-generics
+  type:
+      exitcode-stdio-1.0
+  main-is:
+      TestLargeGenerics.hs
+  other-modules:
+      Test.Record.Generic.Infra.Examples
+      Test.Record.Generic.Infra.Beam.Interpretation
+      Test.Record.Generic.Infra.Beam.Mini
+      Test.Record.Generic.Infra.Util
+      Test.Record.Generic.Prop.Show
+      Test.Record.Generic.Prop.ToFromJSON
+      Test.Record.Generic.Sanity.GhcGenerics
+      Test.Record.Generic.Sanity.Laziness
+      Test.Record.Generic.Sanity.Lens.VL
+      Test.Record.Generic.Sanity.Rep
+      Test.Record.Generic.Sanity.Transform
+  default-language:
+      Haskell2010
+  ghc-options:
+      -Wall
+      -Wredundant-constraints
+  hs-source-dirs:
+      test
+  build-depends:
+      base
+    , large-generics
+
+    , aeson
+    , generic-deriving
+    , generics-sop
+    , microlens
+    , mtl
+    , QuickCheck
+    , sop-core
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck

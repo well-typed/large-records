@@ -6,10 +6,10 @@ module Data.Record.Internal.TH.Compat (
     TyVarBndr
   , pattern PlainTV
   , pattern KindedTV
-  , forallT
+  , forallT, forallC
   ) where
 
-import Language.Haskell.TH hiding (TyVarBndr(..), forallT)
+import Language.Haskell.TH hiding (TyVarBndr(..), forallT, forallC)
 -- import Language.Haskell.TH.Lib hiding (forallT)
 
 import qualified Language.Haskell.TH as TH
@@ -40,3 +40,9 @@ forallT = TH.forallT . map (fmap (const SpecifiedSpec))
 forallT = TH.forallT
 #endif
 
+forallC :: [TyVarBndr] -> CxtQ -> ConQ -> ConQ
+#if MIN_VERSION_template_haskell(2,17,0)
+forallC = TH.forallC . map (fmap (const SpecifiedSpec))
+#else
+forallC = TH.forallC
+#endif

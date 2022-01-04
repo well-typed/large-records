@@ -18,7 +18,7 @@ import Data.Proxy
 import Data.Vector (Vector)
 import GHC.Exts (Any)
 import GHC.Records.Compat
-import Language.Haskell.TH hiding (TyVarBndr(..), forallT)
+import Language.Haskell.TH hiding (TyVarBndr(..), forallC, forallT)
 import Language.Haskell.TH.Syntax (NameSpace(..))
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -27,7 +27,6 @@ import qualified Data.Kind                  as Kind
 import qualified Data.Vector                as V
 import qualified GHC.Generics               as GHC
 import qualified Language.Haskell.TH.Syntax as TH
-import qualified Language.Haskell.TH.Lib    as TH
 
 import Data.Record.Generic
 import Data.Record.Generic.Eq
@@ -147,7 +146,7 @@ genDatatype Options{allFieldsStrict}
       (N.unqualified recordType)
       recordTVars
       Nothing
-      [ TH.forallC (map (N.plainLocalTV . snd) vars) (cxt $ map (uncurry eqConstraint) vars) $
+      [ forallC (map (N.plainLocalTV . snd) vars) (cxt $ map (uncurry eqConstraint) vars) $
           N.recC (N.unqualified recordConstr) $
             map (uncurry recordField) vars
       ]

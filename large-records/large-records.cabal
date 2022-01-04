@@ -1,0 +1,339 @@
+cabal-version:      2.4
+name:               large-records
+version:            0.1.0.0
+synopsis:           Efficient compilation for large records, linear in the size of the record
+description:        For many reasons, the internal code generated for modules
+                    that contain records is quadratic in the number of record
+                    fields. For large records (more than 30 fields, say), this
+                    can become problematic, leading to large compilation times
+                    and high memory requirements for ghc. The large-records
+                    library provides a way to define records that is guaranteed
+                    to result in ghc core that is /linear/ in the number of
+                    record fields.
+bug-reports:        https://github.com/well-typed/large-records/issues
+license:            BSD-3-Clause
+author:             Edsko de Vries
+maintainer:         edsko@well-typed.com
+category:           Generics
+extra-source-files: CHANGELOG.md
+tested-with:        GHC ==8.8.4 || ==8.10.7
+
+source-repository head
+  type:     git
+  location: https://github.com/well-typed/large-records
+
+library
+    exposed-modules:    Data.Record.TH
+                        Data.Record.TH.CodeGen
+                        Data.Record.TH.CodeGen.Tree
+                        Data.Record.TH.Config.Options
+                        Data.Record.TH.Runtime
+
+                        Data.Record.Internal.CodeGen
+                        Data.Record.Internal.Naming
+                        Data.Record.Internal.Record
+                        Data.Record.Internal.Record.Parser
+                        Data.Record.Internal.TH.Compat
+                        Data.Record.Internal.TH.Name
+                        Data.Record.Internal.TH.Util
+                        Data.Record.Internal.Util
+
+    build-depends:      base             >= 4.13   && < 4.17
+                      , containers       >= 0.6.2  && < 0.7
+                      , mtl              >= 2.2.1  && < 2.3
+                      , record-hasfield  >= 1.0    && < 1.1
+                      , syb              >= 0.7    && < 0.8
+                      , vector           >= 0.12   && < 0.13
+                      , large-generics   >= 0.1    && < 0.2
+
+                        -- whatever version is bundled with ghc
+                      , template-haskell
+    hs-source-dirs:     src
+    default-language:   Haskell2010
+    default-extensions: NoStarIsType
+    ghc-options:       -Wall
+                       -Wcompat
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wpartial-fields
+                       -Widentities
+                       -Wredundant-constraints
+                       -Wmissing-export-lists
+
+    if flag(use-RDP)
+      -- 0.2.12 introduces RecordDotPreprocessor.Lib
+      -- (and specifically, recordDotPreprocessorOnFragment)
+      build-depends:   record-dot-preprocessor >= 0.2.12
+      cpp-options:     -DUSE_RDP
+
+
+test-suite test-large-records
+    type:               exitcode-stdio-1.0
+    main-is:            TestLargeRecords.hs
+    other-modules:      Test.Record.Experiments.ConstraintFamily
+                        Test.Record.Experiments.ConstraintFamily.CF010
+                        Test.Record.Experiments.Generic
+                        Test.Record.Experiments.Generic.GH010
+                        Test.Record.Experiments.Generic.Instance.LargeRecords
+                        Test.Record.Experiments.Generic.Instance.SOP
+                        Test.Record.Experiments.HList
+                        Test.Record.Experiments.HList.HL010
+                        Test.Record.Experiments.Induction.List
+                        Test.Record.Experiments.Induction.List.LI010
+                        Test.Record.Experiments.Induction.Tree
+                        Test.Record.Experiments.Induction.Tree.TI010
+                        Test.Record.Experiments.PatternSynonym.PS010
+                        Test.Record.Experiments.RecordZip.RZ010
+                        Test.Record.Experiments.SimpleRecord.SR010
+                        Test.Record.Experiments.Superclasses.SC010
+                        Test.Record.Experiments.ToTreeAtUseSite
+                        Test.Record.Experiments.ToTreeAtUseSite.TU010
+                        Test.Record.Experiments.ToTreeEnum
+                        Test.Record.Experiments.ToTreeEnum.TE010
+                        Test.Record.Experiments.Util
+                        Test.Record.Sanity.CodeGen
+                        Test.Record.Sanity.Derive
+                        Test.Record.Sanity.EqualFieldTypes
+                        Test.Record.Sanity.HigherKinded
+                        Test.Record.Sanity.HKD
+                        Test.Record.Sanity.OverloadingNoDRF
+                        Test.Record.Sanity.PatternMatch
+                        Test.Record.Sanity.QualifiedImports
+                        Test.Record.Sanity.QualifiedImports.A
+                        Test.Record.Sanity.QualifiedImports.B
+                        Test.Record.Sanity.RDP
+                        Test.Record.Sanity.RecordConstruction
+                        Test.Record.Sanity.Strictness
+                        Test.Record.Size.After.HK010
+                        Test.Record.Size.After.R0010
+                        Test.Record.Size.Before.Baseline
+                        Test.Record.Size.Before.R010
+                        Test.Record.Size.Infra
+                        Test.Record.Size.Sanity
+                        Test.Record.Util
+
+    build-depends:      base
+                      , large-records
+
+                      , aeson
+                      , generics-sop
+                      , json-sop
+                      , large-generics
+                      , mtl
+                      , newtype
+                      , record-hasfield
+                      , sop-core
+                      , tasty
+                      , tasty-hunit
+                      , template-haskell
+                      , transformers
+    hs-source-dirs:     test
+    default-language:   Haskell2010
+    ghc-options:       -Wall
+                       -Wcompat
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wpartial-fields
+                       -Widentities
+                       -- Needed for the AllZip tests
+                       -freduction-depth=2000
+
+    if flag(use-RDP)
+      build-depends:      record-dot-preprocessor
+      build-tool-depends: record-dot-preprocessor:record-dot-preprocessor
+      cpp-options:        -DUSE_RDP
+
+    if flag(profile-allzip)
+      cpp-options: -DPROFILE_ALLZIP
+
+    if flag(use-ghc-dump)
+      cpp-options: -DUSE_GHC_DUMP
+      build-depends: ghc-dump-core
+
+    if flag(blog2-variant-quadratic)
+      cpp-options: -DBLOG2_VARIANT_QUADRATIC
+
+    if flag(blog2-variant-logarithmic)
+      cpp-options: -DBLOG2_VARIANT_LOGARITHMIC
+
+    if flag(blog2-variant-sop)
+      cpp-options: -DBLOG2_VARIANT_SOP
+
+    if flag(nofieldselectors)
+      cpp-options: -DNOFIELDSELECTORS
+
+    -- Only one of these variants should be enabled
+    -- Unfortunately, we currently have no good way to express this.
+    -- See also <https://github.com/haskell/cabal/issues/3526>
+    if (flag(blog2-variant-quadratic) && flag(blog2-variant-logarithmic)) || (flag(blog2-variant-quadratic) && flag(blog2-variant-sop)) || (flag(blog2-variant-logarithmic) && flag(blog2-variant-sop))
+      build-depends: base <0
+
+    if flag(build-all-modules)
+      cpp-options: -DBUILD_ALL_MODULES
+      other-modules: Test.Record.Size.After.HK020
+                     Test.Record.Size.After.HK030
+                     Test.Record.Size.After.HK040
+                     Test.Record.Size.After.HK050
+                     Test.Record.Size.After.HK060
+                     Test.Record.Size.After.HK070
+                     Test.Record.Size.After.HK080
+                     Test.Record.Size.After.HK090
+                     Test.Record.Size.After.HK100
+                     Test.Record.Size.After.R0020
+                     Test.Record.Size.After.R0030
+                     Test.Record.Size.After.R0040
+                     Test.Record.Size.After.R0050
+                     Test.Record.Size.After.R0060
+                     Test.Record.Size.After.R0070
+                     Test.Record.Size.After.R0080
+                     Test.Record.Size.After.R0090
+                     Test.Record.Size.After.R0100
+                     Test.Record.Size.After.R0200
+                     Test.Record.Size.After.R0300
+                     Test.Record.Size.After.R0400
+                     Test.Record.Size.After.R0500
+                     Test.Record.Size.After.R0600
+                     Test.Record.Size.After.R0700
+                     Test.Record.Size.After.R0800
+                     Test.Record.Size.After.R0900
+                     Test.Record.Size.After.R1000
+                     Test.Record.Size.Before.R020
+                     Test.Record.Size.Before.R030
+                     Test.Record.Size.Before.R040
+                     Test.Record.Size.Before.R050
+                     Test.Record.Size.Before.R060
+                     Test.Record.Size.Before.R070
+                     Test.Record.Size.Before.R080
+                     Test.Record.Size.Before.R090
+                     Test.Record.Size.Before.R100
+                     Test.Record.Experiments.ConstraintFamily.CF020
+                     Test.Record.Experiments.ConstraintFamily.CF030
+                     Test.Record.Experiments.ConstraintFamily.CF040
+                     Test.Record.Experiments.ConstraintFamily.CF050
+                     Test.Record.Experiments.ConstraintFamily.CF060
+                     Test.Record.Experiments.ConstraintFamily.CF070
+                     Test.Record.Experiments.ConstraintFamily.CF080
+                     Test.Record.Experiments.ConstraintFamily.CF090
+                     Test.Record.Experiments.ConstraintFamily.CF100
+                     Test.Record.Experiments.Generic.GH020
+                     Test.Record.Experiments.Generic.GH030
+                     Test.Record.Experiments.Generic.GH040
+                     Test.Record.Experiments.Generic.GH050
+                     Test.Record.Experiments.Generic.GH060
+                     Test.Record.Experiments.Generic.GH070
+                     Test.Record.Experiments.Generic.GH080
+                     Test.Record.Experiments.Generic.GH090
+                     Test.Record.Experiments.Generic.GH100
+                     Test.Record.Experiments.HList.HL020
+                     Test.Record.Experiments.HList.HL030
+                     Test.Record.Experiments.HList.HL040
+                     Test.Record.Experiments.HList.HL050
+                     Test.Record.Experiments.HList.HL060
+                     Test.Record.Experiments.HList.HL070
+                     Test.Record.Experiments.HList.HL080
+                     Test.Record.Experiments.HList.HL090
+                     Test.Record.Experiments.HList.HL100
+                     Test.Record.Experiments.Induction.List.LI020
+                     Test.Record.Experiments.Induction.List.LI030
+                     Test.Record.Experiments.Induction.List.LI040
+                     Test.Record.Experiments.Induction.List.LI050
+                     Test.Record.Experiments.Induction.List.LI060
+                     Test.Record.Experiments.Induction.List.LI070
+                     Test.Record.Experiments.Induction.List.LI080
+                     Test.Record.Experiments.Induction.List.LI090
+                     Test.Record.Experiments.Induction.List.LI100
+                     Test.Record.Experiments.Induction.Tree.TI020
+                     Test.Record.Experiments.Induction.Tree.TI030
+                     Test.Record.Experiments.Induction.Tree.TI040
+                     Test.Record.Experiments.Induction.Tree.TI050
+                     Test.Record.Experiments.Induction.Tree.TI060
+                     Test.Record.Experiments.Induction.Tree.TI070
+                     Test.Record.Experiments.Induction.Tree.TI080
+                     Test.Record.Experiments.Induction.Tree.TI090
+                     Test.Record.Experiments.Induction.Tree.TI100
+                     Test.Record.Experiments.PatternSynonym.PS020
+                     Test.Record.Experiments.PatternSynonym.PS030
+                     Test.Record.Experiments.PatternSynonym.PS040
+                     Test.Record.Experiments.PatternSynonym.PS050
+                     Test.Record.Experiments.PatternSynonym.PS060
+                     Test.Record.Experiments.PatternSynonym.PS070
+                     Test.Record.Experiments.PatternSynonym.PS080
+                     Test.Record.Experiments.PatternSynonym.PS090
+                     Test.Record.Experiments.PatternSynonym.PS100
+                     Test.Record.Experiments.RecordZip.RZ020
+                     Test.Record.Experiments.RecordZip.RZ030
+                     Test.Record.Experiments.RecordZip.RZ040
+                     Test.Record.Experiments.RecordZip.RZ050
+                     Test.Record.Experiments.RecordZip.RZ060
+                     Test.Record.Experiments.RecordZip.RZ070
+                     Test.Record.Experiments.RecordZip.RZ080
+                     Test.Record.Experiments.RecordZip.RZ090
+                     Test.Record.Experiments.RecordZip.RZ100
+                     Test.Record.Experiments.SimpleRecord.SR020
+                     Test.Record.Experiments.SimpleRecord.SR030
+                     Test.Record.Experiments.SimpleRecord.SR040
+                     Test.Record.Experiments.SimpleRecord.SR050
+                     Test.Record.Experiments.SimpleRecord.SR060
+                     Test.Record.Experiments.SimpleRecord.SR070
+                     Test.Record.Experiments.SimpleRecord.SR080
+                     Test.Record.Experiments.SimpleRecord.SR090
+                     Test.Record.Experiments.SimpleRecord.SR100
+                     Test.Record.Experiments.Superclasses.SC020
+                     Test.Record.Experiments.Superclasses.SC030
+                     Test.Record.Experiments.Superclasses.SC040
+                     Test.Record.Experiments.Superclasses.SC050
+                     Test.Record.Experiments.Superclasses.SC060
+                     Test.Record.Experiments.Superclasses.SC070
+                     Test.Record.Experiments.Superclasses.SC080
+                     Test.Record.Experiments.Superclasses.SC090
+                     Test.Record.Experiments.Superclasses.SC100
+                     Test.Record.Experiments.ToTreeAtUseSite.TU020
+                     Test.Record.Experiments.ToTreeAtUseSite.TU030
+                     Test.Record.Experiments.ToTreeAtUseSite.TU040
+                     Test.Record.Experiments.ToTreeAtUseSite.TU050
+                     Test.Record.Experiments.ToTreeAtUseSite.TU060
+                     Test.Record.Experiments.ToTreeAtUseSite.TU070
+                     Test.Record.Experiments.ToTreeAtUseSite.TU080
+                     Test.Record.Experiments.ToTreeAtUseSite.TU090
+                     Test.Record.Experiments.ToTreeAtUseSite.TU100
+                     Test.Record.Experiments.ToTreeEnum.TE020
+                     Test.Record.Experiments.ToTreeEnum.TE030
+                     Test.Record.Experiments.ToTreeEnum.TE040
+                     Test.Record.Experiments.ToTreeEnum.TE050
+                     Test.Record.Experiments.ToTreeEnum.TE060
+                     Test.Record.Experiments.ToTreeEnum.TE070
+                     Test.Record.Experiments.ToTreeEnum.TE080
+                     Test.Record.Experiments.ToTreeEnum.TE090
+                     Test.Record.Experiments.ToTreeEnum.TE100
+
+Flag build-all-modules
+  Description: Build all test modules in Size
+  Default: False
+
+Flag use-RDP
+  Description: Use record-dot-preprocessor in the test suite
+  Default: True
+
+Flag use-ghc-dump
+  Description: use ghc-dump to output AST sizes
+  Default: False
+
+Flag profile-allzip
+  Description: Include experiment to verify size of AllZip is linear
+  Default: False
+
+Flag blog2-variant-logarithmic
+  Description: (For blog2 experiments) O(n log n) variant
+  Default: True
+
+Flag blog2-variant-quadratic
+  Description: (For blog2 experiments) O(n^2) variant
+  Default: False
+
+Flag blog2-variant-sop
+  Description: (For blog2 experiments) Variant that uses SOP generics rather than LR generics
+  Default: False
+
+Flag nofieldselectors
+  Description: Use no-field-selectors for benchmarking
+  Default: False

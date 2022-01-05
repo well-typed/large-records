@@ -1,0 +1,91 @@
+cabal-version:      2.4
+name:               beam-large-records
+version:            0.1.0.0
+synopsis:           Integration of large-records with beam-core.
+description:        This package provides the necessary instances that make
+                    it possible to use records defined with large-records as
+                    beam database tables or beam databases.
+bug-reports:        https://github.com/well-typed/beam-large-records/issues
+license:            BSD-3-Clause
+author:             Edsko de Vries
+maintainer:         edsko@well-typed.com
+category:           Database
+extra-source-files: CHANGELOG.md
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.1
+
+source-repository head
+  type:     git
+  location: https://github.com/well-typed/beam-large-records
+
+library
+  exposed-modules:
+      Data.Record.Beam
+  other-modules:
+      Data.Record.Beam.Constraints
+      Data.Record.Beam.DbSettings
+      Data.Record.Beam.FromBackendRow
+      Data.Record.Beam.Lenses
+      Data.Record.Beam.Internal
+      Data.Record.Beam.Interpretation
+      Data.Record.Beam.Skeleton
+      Data.Record.Beam.ZipDatabase
+      Data.Record.Beam.ZipTables
+  build-depends:
+      base >= 4.13 && < 4.17
+    , beam-core >= 0.9
+    , large-generics
+    , microlens
+    , sop-core
+    , text
+  hs-source-dirs:
+      src
+  default-language:
+      Haskell2010
+  ghc-options:
+      -Wall
+      -Wredundant-constraints
+      -fmax-refinement-hole-fits=0
+      -- The proxying from GHC generics to LR generics needs orphans
+      -Wno-orphans
+
+test-suite test-beam-large-records
+  type:
+      exitcode-stdio-1.0
+  main-is:
+      TestBeamLargeRecords.hs
+  other-modules:
+      Test.Record.Beam.Andres
+      Test.Record.Beam.SimpleSQL
+      Test.Record.Beam.Tutorial1
+      Test.Record.Beam.Tutorial2
+      Test.Record.Beam.Tutorial3
+      Test.Record.Beam.Zipping
+      Test.Record.Beam.Util.Compat
+      Test.Record.Beam.Util.Orphans
+      Test.Record.Beam.Util.SQLite
+  hs-source-dirs:
+      test
+  default-language:
+      Haskell2010
+  other-extensions:
+      TemplateHaskell
+  build-depends:
+      base
+    , beam-core
+    , beam-large-records
+    , beam-sqlite
+    , large-generics
+    , large-records
+    , microlens
+    , record-hasfield
+    , sqlite-simple
+    , tasty
+    , tasty-hunit
+    , text
+    , time
+  build-tool-depends:
+      record-dot-preprocessor:record-dot-preprocessor
+  ghc-options:
+      -Wall
+      -Wredundant-constraints
+      -fmax-refinement-hole-fits=0

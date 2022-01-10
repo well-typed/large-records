@@ -53,7 +53,7 @@ no-tests-no-benchmarks: True
 unconstrained: True
 
 -- Use head.hackage repository. Also marks as allow-failures
-head-hackage: >=9.3
+head-hackage: >=9.2
 
 -- Run tests with GHCJS (experimental, relies on cabal-plan finding test-suites)
 ghcjs-tests: False

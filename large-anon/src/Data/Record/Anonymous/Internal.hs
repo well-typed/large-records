@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE InstanceSigs          #-}
@@ -8,7 +9,7 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 module Data.Record.Anonymous.Internal (
     -- * Types
@@ -26,9 +27,13 @@ module Data.Record.Anonymous.Internal (
   , unsafeFieldMetadata
   ) where
 
+import Data.Aeson
 import Data.Kind
 import Data.Map (Map)
 import Data.Proxy
+import Data.Record.Generic.Eq
+import Data.Record.Generic.JSON
+import Data.Record.Generic.Show
 import Data.SOP.BasicFunctors
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
@@ -114,6 +119,34 @@ instance RecordMetadata r => Generic (Record r) where
 
       aux :: String -> I Any -> (String, Any)
       aux name (I x) = (name, x)
+
+{-------------------------------------------------------------------------------
+  Instances
+
+  These could be defined outside of the @Internal@ module: we do not need access
+  to the low-level representation. We define them here anyway for two reasons:
+
+  1. Avoid orphans
+  2. The doctest examples in this module rely on them.
+-------------------------------------------------------------------------------}
+
+instance (RecordConstraints r Show, RecordMetadata r) => Show (Record r) where
+  showsPrec = gshowsPrec
+
+instance (RecordConstraints r Eq, RecordMetadata r) => Eq (Record r) where
+  (==) = geq
+
+instance ( RecordConstraints r Eq
+         , RecordConstraints r Ord
+         , RecordMetadata r
+         ) => Ord (Record r) where
+  compare = gcompare
+
+instance RecordConstraints r ToJSON => ToJSON (Record r) where
+  toJSON = gtoJSON
+
+instance RecordConstraints r FromJSON => FromJSON (Record r) where
+  parseJSON = gparseJSON
 
 {-------------------------------------------------------------------------------
   Internal API

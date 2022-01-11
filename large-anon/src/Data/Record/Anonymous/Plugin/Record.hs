@@ -39,7 +39,6 @@ import Data.Record.Anonymous.Plugin.Parsing
   General case
 -------------------------------------------------------------------------------}
 
--- TODO: Will need extension for the polymorphic case
 data Fields =
     FieldsCons Field Fields
   | FieldsNil
@@ -53,6 +52,9 @@ data FieldLabel =
   deriving (Eq)
 
 -- | Find field type by name
+--
+-- TODO: This currently does not correctly deal with unknown fields
+-- (which might lead to type errors).
 findField :: FastString -> Fields -> Maybe Type
 findField nm = go
   where
@@ -97,10 +99,6 @@ forKnownRecord (KnownRecord fields) f = fmap KnownRecord $
     aux nm (KnownField typ a) = KnownField typ <$> f nm typ a
 
 -- | Return map from field name to type, /if/ all fields are statically known
---
--- TODO: For our current 'Fields' definition, this will /always/ be the case,
--- but if we extend the parser to deal with field name variables or list
--- variables, this will no longer be the case.
 allFieldsKnown :: Fields -> Maybe (KnownRecord ())
 allFieldsKnown = go []
   where

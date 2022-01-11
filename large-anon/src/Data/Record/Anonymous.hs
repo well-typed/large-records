@@ -1,7 +1,6 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 
 -- See discussion avbout orphans, below.
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -24,11 +23,9 @@ module Data.Record.Anonymous (
   , module Data.Record.Generic
   ) where
 
-import Data.Aeson
 import Data.List (intercalate)
 import Data.Proxy
 import Data.Record.Generic
-import Data.Record.Generic.JSON
 import Data.Typeable
 import GHC.Records.Compat
 
@@ -57,69 +54,7 @@ set :: forall l r a.
 set _ = flip (setField @l @(Record r))
 
 {-------------------------------------------------------------------------------
-  Instances
-
-  Technically these are orphans, but we define them here anyway to keep the
-  scope of the internal module as small as possible: we do not need access to
-  the low-level details of the record implementation here.
--------------------------------------------------------------------------------}
-
-instance (RecordConstraints r Show, RecordMetadata r) => Show (Record r) where
-  show = gshowRecord
-
-instance (RecordConstraints r Eq, RecordMetadata r) => Eq (Record r) where
-  (==) = geqRecord
-
-instance ( RecordConstraints r Eq
-         , RecordConstraints r Ord
-         , RecordMetadata r
-         ) => Ord (Record r) where
-  compare = gcompareRecord
-
-instance RecordConstraints r ToJSON => ToJSON (Record r) where
-  toJSON = gtoJSON
-
-instance RecordConstraints r FromJSON => FromJSON (Record r) where
-  parseJSON = gparseJSON
-
-{-------------------------------------------------------------------------------
-  Generic functions to support the instances above
--------------------------------------------------------------------------------}
-
-gshowRecord :: forall r. RecordConstraints r Show => Record r -> String
-gshowRecord =
-      combine
-    . Rep.collapse
-    . Rep.czipWith (Proxy @Show) (mapKIK aux) names
-    . from
-  where
-    names :: Rep (K String) (Record r)
-    names = recordFieldNames $ metadata (Proxy @(Record r))
-
-    aux :: Show x => String -> x -> String
-    aux name x = name ++ " = " ++ show x
-
-    combine :: [String] -> String
-    combine fs = concat [
-          "Record {"
-        , intercalate ", " fs
-        , "}"
-        ]
-
-geqRecord :: RecordConstraints r Eq => Record r -> Record r -> Bool
-geqRecord r r' =
-      and
-    . Rep.collapse
-    $ Rep.czipWith (Proxy @Eq) (mapIIK (==)) (from r) (from r')
-
-gcompareRecord :: RecordConstraints r Ord => Record r -> Record r -> Ordering
-gcompareRecord r r' =
-      mconcat
-    . Rep.collapse
-    $ Rep.czipWith (Proxy @Ord) (mapIIK compare) (from r) (from r')
-
-{-------------------------------------------------------------------------------
-  Addittional functions
+  Additional functions
 -------------------------------------------------------------------------------}
 
 -- | Show type of every field in the record

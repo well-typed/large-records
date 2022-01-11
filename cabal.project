@@ -1,10 +1,13 @@
-packages: large-generics, large-records, beam-large-records
+packages: large-generics
+        , large-records
+        , large-anon
+        , beam-large-records
 
 source-repository-package
   type: git
   location: https://github.com/well-typed/beam
-  tag: f38b6fedd5260b5dd853a2625095cfed4cd2d933 
-  subdir: beam-core beam-migrate
+  tag: 320adcf19109daa2c0a44c51b255d9bd18058f75
+  subdir: beam-core beam-migrate beam-sqlite
 
 -- enable for 9.2
 --repository head.hackage.ghc.haskell.org
@@ -29,3 +32,7 @@ package large-records
 package beam-large-records
   tests: True
   ghc-options: -Werror
+
+package large-anon
+  tests: True
+  ghc-options: -dcore-lint -ddump-ds-preopt -ddump-to-file

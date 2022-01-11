@@ -46,18 +46,46 @@ import Data.Record.Generic
 
 import qualified Data.Record.Generic.Rep.Internal as Rep
 
+-- $setup
+-- >>> :set -XDataKinds
+-- >>> :set -XFlexibleContexts
+-- >>> :set -XOverloadedLabels
+-- >>> :set -XScopedTypeVariables
+-- >>> :set -XTypeApplications
+-- >>> import GHC.Records.Compat
+-- >>> :set -fplugin=Data.Record.Anonymous.Plugin
+-- >>> let example :: Record '[ '("a", Bool) ] = insert #a True empty
+
 {-------------------------------------------------------------------------------
   Types
 -------------------------------------------------------------------------------}
 
 -- | Anonymous record
 --
--- To access fields of the record, either use the 'HasFie;d' instances
+-- To access fields of the record, either use the 'HasField' instances
 -- (possibly using the record-dot-preprocessor to get record-dot syntax),
 -- or using the simple wrappers 'get' and 'set'. The 'HasField' instances
 -- are resolved by the plugin, so be sure to use
 --
 -- > {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+--
+-- Some examples, using
+--
+-- > example :: Record '[ '("a", Bool) ]
+-- > example = insert #a True empty
+--
+-- >>> getField @"a" example -- or @example.a@ if using RecordDotSyntax
+-- True
+--
+-- >>> getField @"b" example
+-- ...
+-- ...No instance for (HasField "b" (Record...
+-- ...
+--
+-- >>> getField @"a" example :: Int
+-- ...
+-- ...Couldn't match...Int...Bool...
+-- ...
 newtype Record (r :: [(Symbol, Type)]) = MkR (Map String Any)
 
 data Field l where

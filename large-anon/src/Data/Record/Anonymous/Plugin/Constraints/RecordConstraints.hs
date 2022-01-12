@@ -57,10 +57,10 @@ parseRecordConstraints ::
      ResolvedNames
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CRecordConstraints)
-parseRecordConstraints ResolvedNames{..} =
+parseRecordConstraints rn@ResolvedNames{..} =
     parseConstraint' clsRecordConstraints $ \case
       args@[r, c] -> do
-        fields <- parseFields r
+        fields <- parseFields rn r
         return CRecordConstraints {
             recordConstraintsFields         = fields
           , recordConstraintsTypeRaw        = args

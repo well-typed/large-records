@@ -52,10 +52,10 @@ parseRecordMetadata ::
      ResolvedNames
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CRecordMetadata)
-parseRecordMetadata ResolvedNames{..} =
+parseRecordMetadata rn@ResolvedNames{..} =
     parseConstraint' clsRecordMetadata $ \case
       [r] -> do
-        fields <- parseFields r
+        fields <- parseFields rn r
         return CRecordMetadata {
             recordMetadataFields     = fields
           , recordMetadataTypeRecord = r

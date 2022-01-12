@@ -8,9 +8,11 @@
 module Data.Record.Anonymous (
     Record -- Opaque
   , Field  -- Opaque (use @#foo@ to create values)
+  , Merge
     -- * Core API
   , empty
   , insert
+  , merge
     -- * Additional convenience functions
   , get
   , set
@@ -32,26 +34,6 @@ import GHC.Records.Compat
 import qualified Data.Record.Generic.Rep as Rep
 
 import Data.Record.Anonymous.Internal
-
-{-------------------------------------------------------------------------------
-  Convenience functions
--------------------------------------------------------------------------------}
-
--- | Get record field
---
--- This is a simple wrapper for 'getField'.
-get :: forall l r a.
-     HasField l (Record r) a
-  => Field l -> Record r -> a
-get _ = getField @l @(Record r)
-
--- | Set record field
---
--- This is a simple wrapper for 'setField'.
-set :: forall l r a.
-     HasField l (Record r) a
-  => Field l -> a -> Record r -> Record r
-set _ = flip (setField @l @(Record r))
 
 {-------------------------------------------------------------------------------
   Additional functions

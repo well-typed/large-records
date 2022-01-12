@@ -28,6 +28,7 @@ data ResolvedNames = ResolvedNames {
     , tyConDict              :: TyCon
     , tyConFieldMetadata     :: TyCon
     , tyConRecord            :: TyCon
+    , tyConMerge             :: TyCon
     }
 
 nameResolution :: TcPluginM 'Init ResolvedNames
@@ -59,6 +60,7 @@ nameResolution = do
     tyConDict          <- getTyCon dsd  "Dict"
     tyConFieldMetadata <- getTyCon drg  "FieldMetadata"
     tyConRecord        <- getTyCon drai "Record"
+    tyConMerge         <- getTyCon drai "Merge"
 
     return $ ResolvedNames {..}
 

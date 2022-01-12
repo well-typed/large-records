@@ -67,7 +67,7 @@ parseHasField ::
 parseHasField rn@ResolvedNames{..} =
     parseConstraint isRelevant $ \(args, x, tyFields, a) -> do
       label  <- parseFieldLabel x
-      fields <- parseFields tyFields
+      fields <- parseFields rn tyFields
 
       return $ CHasField {
           hasFieldLabel      = label

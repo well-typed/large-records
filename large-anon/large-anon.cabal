@@ -62,7 +62,8 @@ test-suite test-large-anon
   main-is:
       TestLargeAnon.hs
   other-modules:
-      Test.Record.Anonymous.Sanity
+      Test.Record.Anonymous.Sanity.Basics
+      Test.Record.Anonymous.Sanity.Merging
       Test.Record.Anonymous.Sanity.Named.Record1
       Test.Record.Anonymous.Sanity.Named.Record2
   build-depends:
@@ -84,3 +85,4 @@ test-suite test-large-anon
     , sop-core
   ghc-options:
       -Wall
+      -fno-show-valid-hole-fits

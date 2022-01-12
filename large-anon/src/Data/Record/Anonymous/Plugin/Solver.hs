@@ -22,7 +22,7 @@ import Data.Record.Anonymous.Plugin.Parsing
 
 solve :: ResolvedNames -> TcPluginSolver
 solve rn given wanted =
---  trace _debugInput $
+--  trace _debugInput  $
 --  trace _debugParsed $
     do (solved, new) <- fmap (bimap catMaybes concat . unzip) $ concatM [
            forM parsedHasField          $ uncurry (solveHasField          rn)

@@ -3,9 +3,8 @@
 {-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
-{-# OPTIONS_GHC -fno-show-valid-hole-fits #-}
 
-module Test.Record.Anonymous.Sanity (tests) where
+module Test.Record.Anonymous.Sanity.Basics (tests) where
 
 import Data.Aeson
 
@@ -18,7 +17,7 @@ import qualified Test.Record.Anonymous.Sanity.Named.Record1 as R1
 import qualified Test.Record.Anonymous.Sanity.Named.Record2 as R2
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity" [
+tests = testGroup "Test.Record.Anonymous.Sanity.Basics" [
       testCase "HasField"       test_HasField
     , testCase "Show"           test_Show
     , testCase "Eq"             test_Eq
@@ -28,9 +27,7 @@ tests = testGroup "Test.Record.Anonymous.Sanity" [
     ]
 
 {-------------------------------------------------------------------------------
-  HasField
-
-  These are not size tests, we don't worry about type-level sharing here.
+  Tests proper
 -------------------------------------------------------------------------------}
 
 record1 :: A.Record '[ '("x", Bool), '("y", Char), '("z", ()) ]

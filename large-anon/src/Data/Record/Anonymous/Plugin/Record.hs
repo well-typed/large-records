@@ -53,17 +53,21 @@ data FieldLabel =
 
 -- | Find field type by name
 --
--- TODO: This currently does not correctly deal with unknown fields
--- (which might lead to type errors).
+-- Since records are left-biased, we report the /first/ match, independent of
+-- what is in the record tail. If however we encounter an unknown (variable)
+-- field, we stop the search: even if a later field matches the one we're
+-- looking for, the unknown field might too and, crucially, might not have the
+-- same type.
 findField :: FastString -> Fields -> Maybe Type
 findField nm = go
   where
     go :: Fields -> Maybe Type
-    go (FieldsCons (Field label typ) fs)
-      | label == FieldKnown nm = Just typ
-      | otherwise              = go fs
-    go FieldsNil     = Nothing
-    go (FieldsVar _) = Nothing
+    go FieldsNil                         = Nothing
+    go (FieldsVar _)                     = Nothing
+    go (FieldsCons (Field label typ) fs) =
+        case label of
+          FieldKnown nm' -> if nm == nm' then Just typ else go fs
+          FieldVar _     -> Nothing
 
 {-------------------------------------------------------------------------------
   Records of statically known shape

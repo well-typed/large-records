@@ -52,8 +52,9 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- >>> :set -XOverloadedLabels
 -- >>> :set -XScopedTypeVariables
 -- >>> :set -XTypeApplications
--- >>> import GHC.Records.Compat
 -- >>> :set -fplugin=Data.Record.Anonymous.Plugin
+-- >>> :set -dppr-cols=200
+-- >>> import GHC.Records.Compat
 -- >>> let example :: Record '[ '("a", Bool) ] = insert #a True empty
 
 {-------------------------------------------------------------------------------
@@ -69,10 +70,12 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 --
 -- > {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 --
--- Some examples, using
+-- Let's consider a few examples. After we define
 --
 -- > example :: Record '[ '("a", Bool) ]
 -- > example = insert #a True empty
+--
+-- we get
 --
 -- >>> getField @"a" example -- or @example.a@ if using RecordDotSyntax
 -- True
@@ -86,6 +89,19 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- ...
 -- ...Couldn't match...Int...Bool...
 -- ...
+--
+-- When part of the record is not known, it might not be possible to resolve a
+-- 'HasField' constraint until later. For example, in
+--
+-- >>> (\r -> getField @"x" r) :: Record '[ '(f, a), '("x", b) ] -> b
+-- ...
+-- ...No instance for (HasField "x" (...
+-- ...
+--
+-- This is important, because if @f == "x"@, this would only be sound if also
+-- @a == b@. We /could/ introduce a new constraint to say precisely that, but
+-- it would have little benefit; instead we just leave the 'HasField' constraint
+-- unresolved until we know more about the record.
 newtype Record (r :: [(Symbol, Type)]) = MkR (Map String Any)
 
 data Field l where

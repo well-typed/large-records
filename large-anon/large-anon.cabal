@@ -36,7 +36,7 @@ library
       -- TODO: Bounds
     , aeson
     , containers
-    , ghc-tcplugin-api >= 0.7
+    , ghc-tcplugin-api >= 0.7.1
     , large-generics
     , record-hasfield
     , sop-core

@@ -154,12 +154,12 @@ solveRecordConstraints rn@ResolvedNames{clsRecordMetadata}
         return (Nothing, [])
       Just fields -> do
         -- RecordConstraints has a superclass constraint on RecordMetadata
-        evMeta  <- newWanted' l $
+        evMeta  <- newWanted l $
                      mkClassPred
                        clsRecordMetadata
                        [recordConstraintsTypeRecord]
         fields' <- forKnownRecord fields $ \_name typ () -> do
-                     newWanted' l $ mkAppTy recordConstraintsTypeConstraint typ
+                     newWanted l $ mkAppTy recordConstraintsTypeConstraint typ
         ev      <- evidenceRecordConstraints rn cr (getEvVar evMeta) $
                      getEvVar <$> fields'
         return (

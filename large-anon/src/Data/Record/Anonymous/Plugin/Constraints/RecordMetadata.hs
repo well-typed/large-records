@@ -139,7 +139,7 @@ solveRecordMetadata rn@ResolvedNames{..}
         return (Nothing, [])
       Just fields -> do
         fields' <- forKnownRecord fields $ \name _typ () -> do
-                     newWanted' l $ mkClassPred clsKnownSymbol [mkStrLitTy name]
+                     newWanted l $ mkClassPred clsKnownSymbol [mkStrLitTy name]
         ev <- evidenceRecordMetadata rn cm $ getEvVar <$> fields'
         return (
             Just (ev, orig)

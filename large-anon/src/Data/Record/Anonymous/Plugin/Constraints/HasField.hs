@@ -133,6 +133,6 @@ solveHasField rn orig (L l hf@CHasField{hasFieldLabel = FieldKnown name, ..}) =
         -- error here rather than leaving the constraint unsolved
         return (Nothing, [])
       Just typ -> do
-        eq <- newWanted' l $ mkPrimEqPredRole Nominal hasFieldTypeField typ
+        eq <- newWanted l $ mkPrimEqPredRole Nominal hasFieldTypeField typ
         ev <- evidenceHasField rn hf name
         return (Just (ev, orig), [mkNonCanonical eq])

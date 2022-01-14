@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeFamilies     #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
@@ -12,8 +13,9 @@ import Data.Record.Anonymous
 
 tests :: TestTree
 tests = testGroup "Test.Record.Anonymous.Sanity.Merging" [
-      testCase "concrete"    test_concrete
-    , testCase "polymorphic" test_polymorphic
+      testCase "concrete"     test_concrete
+    , testCase "polymorphic"  test_polymorphic
+    , testCase "eqConstraint" test_eqConstraint
     ]
 
 {-------------------------------------------------------------------------------
@@ -63,5 +65,31 @@ test_polymorphic = do
       -> Record (Merge '[ '("a", Bool), '("b", Int)] r)
     setPoly = set #a False
 
+-- | Test that type equalities are handled correctly
+test_eqConstraint :: Assertion
+test_eqConstraint = do
+    assertEqual "a" True $ f1 ab
+    assertEqual "b" 1    $ f2 ab
+    assertEqual "c" 3.14 $ f3 ab
+  where
+    -- Single simple equality
+    f1 :: row ~ Merge '[ '("a", Bool), '("b", Int)]
+                      '[ '("c", Double), '("d", Char)]
+       => Record row -> Bool
+    f1 = get #a
 
+    -- Multiple (transitive) equalities
+    f2 :: ( tf1 ~ tf2
+          , tf2 ~ Merge
+          , row ~ tf1 '[ '("a", Bool), '("b", Int)]
+                      '[ '("c", Double), '("d", Char)]
+          )
+       => Record row -> Int
+    f2 = get #b
 
+    -- Equality with partial application
+    f3 :: ( merge ~ Merge '[ '("a", Bool), '("b", Int)]
+          , row   ~ merge '[ '("c", Double), '("d", Char)]
+          )
+       => Record row -> Double
+    f3 = get #c

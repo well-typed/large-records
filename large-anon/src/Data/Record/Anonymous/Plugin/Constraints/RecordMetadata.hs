@@ -17,6 +17,7 @@ import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
+import Data.Record.Anonymous.Plugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Definition
@@ -49,13 +50,14 @@ instance Outputable CRecordMetadata where
 -------------------------------------------------------------------------------}
 
 parseRecordMetadata ::
-     ResolvedNames
+     TyConSubst
+  -> ResolvedNames
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CRecordMetadata)
-parseRecordMetadata rn@ResolvedNames{..} =
+parseRecordMetadata tcs rn@ResolvedNames{..} =
     parseConstraint' clsRecordMetadata $ \case
       [r] -> do
-        fields <- parseFields rn r
+        fields <- parseFields tcs rn r
         return CRecordMetadata {
             recordMetadataFields     = fields
           , recordMetadataTypeRecord = r

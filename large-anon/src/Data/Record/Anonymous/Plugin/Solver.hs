@@ -15,6 +15,7 @@ import Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
+import Data.Record.Anonymous.Plugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Top-level solver
@@ -31,16 +32,19 @@ solve rn given wanted =
          ]
        return $ TcPluginOk solved new
   where
+    tcs :: TyConSubst
+    tcs = mkTyConSubst given
+
     parsedHasField          :: [(Ct, GenLocated CtLoc CHasField)]
     parsedRecordConstraints :: [(Ct, GenLocated CtLoc CRecordConstraints)]
     parsedRecordMetadata    :: [(Ct, GenLocated CtLoc CRecordMetadata)]
 
     parsedHasField =
-        parseAll' (withOrig (parseHasField rn)) wanted
+        parseAll' (withOrig (parseHasField tcs rn)) wanted
     parsedRecordConstraints =
-        parseAll' (withOrig (parseRecordConstraints rn)) wanted
+        parseAll' (withOrig (parseRecordConstraints tcs rn)) wanted
     parsedRecordMetadata =
-        parseAll' (withOrig (parseRecordMetadata rn)) wanted
+        parseAll' (withOrig (parseRecordMetadata tcs rn)) wanted
 
     _debugInput :: String
     _debugInput = unlines [
@@ -69,6 +73,10 @@ solve rn given wanted =
         , concat [
               "parsedRecordMetadata: "
             , showSDocUnsafe (ppr parsedRecordMetadata)
+            ]
+        , concat [
+              "tcs (TyConSubst): "
+            , showSDocUnsafe (ppr tcs)
             ]
         ]
 

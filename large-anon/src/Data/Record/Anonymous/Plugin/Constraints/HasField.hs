@@ -17,6 +17,7 @@ import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
+import Data.Record.Anonymous.Plugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Definition
@@ -61,13 +62,14 @@ instance Outputable CHasField where
 
 parseHasField ::
      HasCallStack
-  => ResolvedNames
+  => TyConSubst
+  -> ResolvedNames
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CHasField)
-parseHasField rn@ResolvedNames{..} =
+parseHasField tcs rn@ResolvedNames{..} =
     parseConstraint isRelevant $ \(args, x, tyFields, a) -> do
       label  <- parseFieldLabel x
-      fields <- parseFields rn tyFields
+      fields <- parseFields tcs rn tyFields
 
       return $ CHasField {
           hasFieldLabel      = label
@@ -87,9 +89,9 @@ parseHasField rn@ResolvedNames{..} =
     isRelevant :: Class -> [Type] -> Maybe ([Type], Type, Type, Type)
     isRelevant cls args@[k, x, r, a] = do
         guard $ cls == clsHasField
-        tcSymbol <- tyConAppTyCon_maybe k
+        tcSymbol <- tyConAppTyCon_maybe k -- TODO: equal up to equalities..?
         guard $ tcSymbol == typeSymbolKindCon
-        tyFields <- parseRecord rn r
+        tyFields <- parseRecord tcs rn r
         return (args, x, tyFields, a)
     isRelevant _ _ = Nothing
 

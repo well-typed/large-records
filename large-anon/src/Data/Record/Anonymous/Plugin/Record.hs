@@ -34,6 +34,7 @@ import Data.Traversable (for)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
+import Data.Record.Anonymous.Plugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   General case
@@ -177,36 +178,34 @@ instance Outputable FieldLabel where
 -- | Parse @Record r@
 --
 -- Returns the argument @r@
-parseRecord :: ResolvedNames -> Type -> Maybe Type
-parseRecord ResolvedNames{..} r = asum [
-      do (tyRecord, tyFields) <- splitAppTy_maybe r
-         tcRecord <- tyConAppTyCon_maybe tyRecord
-         guard $ tcRecord == tyConRecord
-         return tyFields
-    ]
+parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe Type
+parseRecord tcs ResolvedNames{..} t = do
+    args <- parseInjTyConApp tcs tyConRecord t
+    case args of
+      [r]        -> Just r
+      _otherwise -> Nothing
 
-parseFields :: ResolvedNames -> Type -> Maybe Fields
-parseFields ResolvedNames{..} = go
+parseFields :: TyConSubst -> ResolvedNames -> Type -> Maybe Fields
+parseFields tcs ResolvedNames{..} = go
   where
     go :: Type -> Maybe Fields
     go fields = asum [
-          do (f, fs) <- parseCons fields
-             f' <- parseField f
+          do (f, fs) <- parseCons tcs fields
+             f' <- parseField tcs f
              (FieldsCons f') <$> go fs
-        , do parseNil fields
+        , do parseNil tcs fields
              return FieldsNil
         , do FieldsVar <$> getTyVar_maybe fields
-        , do (tyCon, args) <- splitTyConApp_maybe fields
-             guard $ tyCon == tyConMerge
+        , do args <- parseInjTyConApp tcs tyConMerge fields
              (left, right) <- case args of
                                 [l, r]     -> return (l, r)
                                 _otherwise -> mzero
              FieldsMerge <$> go left <*> go right
         ]
 
-parseField :: Type -> Maybe Field
-parseField field = do
-    (label, typ) <- parsePair field
+parseField :: TyConSubst -> Type -> Maybe Field
+parseField tcs field = do
+    (label, typ) <- parsePair tcs field
     label' <- parseFieldLabel label
     return $ Field label' typ
 

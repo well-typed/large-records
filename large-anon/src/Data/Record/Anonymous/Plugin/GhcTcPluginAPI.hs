@@ -13,9 +13,6 @@ module Data.Record.Anonymous.Plugin.GhcTcPluginAPI (
   , module GHC.Builtin.Types.Prim
   , module GHC.Core.Make
   , module GHC.Utils.Outputable
-
-    -- * New shims
-  , newWanted'
   ) where
 
 import GHC.TcPlugin.API
@@ -28,10 +25,3 @@ import GHC.Utils.Outputable
 -- Orphan instance, for debugging
 instance Outputable CtLoc where
   ppr _ = text "<CtLoc>"
-
--- | Construct a new wanted constraint.
---
--- This works around a bug in GHC, making sure the source location is correct.
--- See https://gitlab.haskell.org/ghc/ghc/-/issues/20895.
-newWanted' :: CtLoc -> PredType -> TcPluginM 'Solve CtEvidence
-newWanted' l w = setCtLocM l $ newWanted l w

@@ -39,11 +39,11 @@ import Data.Record.Anonymous.Plugin.Parsing
   General case
 -------------------------------------------------------------------------------}
 
--- TODO: Will need extension for the polymorphic case
 data Fields =
     FieldsCons Field Fields
   | FieldsNil
   | FieldsVar TyVar
+  | FieldsMerge Fields Fields
 
 data Field = Field FieldLabel Type
 
@@ -53,15 +53,39 @@ data FieldLabel =
   deriving (Eq)
 
 -- | Find field type by name
+--
+-- Since records are left-biased, we report the /first/ match, independent of
+-- what is in the record tail. If however we encounter an unknown (variable)
+-- field, we stop the search: even if a later field matches the one we're
+-- looking for, the unknown field might too and, crucially, might not have the
+-- same type.
+--
+-- Put another way: unlike in 'allFieldsKnown', we do not insist that /all/
+-- fields are known here, but only the fields up to (including) the one we're
+-- looking for.
 findField :: FastString -> Fields -> Maybe Type
-findField nm = go
+findField nm = go . (:[])
   where
-    go :: Fields -> Maybe Type
-    go (FieldsCons (Field label typ) fs)
-      | label == FieldKnown nm = Just typ
-      | otherwise              = go fs
-    go FieldsNil     = Nothing
-    go (FieldsVar _) = Nothing
+    go :: [Fields] -> Maybe Type
+    go []       = Nothing
+    go (fs:fss) =
+        case fs of
+          FieldsNil ->
+            go fss
+          FieldsVar _ ->
+            -- The moment we encounter a variable (unknown part of the record),
+            -- we must say that the field is unknown (see discussion above)
+            Nothing
+          FieldsCons (Field (FieldKnown nm') typ) fs' ->
+            if nm == nm' then
+              Just typ
+            else
+              go (fs':fss)
+          FieldsCons (Field (FieldVar _) _) _ ->
+            -- We must also stop when we see a field with an unknown name
+            Nothing
+          FieldsMerge l r ->
+            go (l:r:fss)
 
 {-------------------------------------------------------------------------------
   Records of statically known shape
@@ -97,29 +121,25 @@ forKnownRecord (KnownRecord fields) f = fmap KnownRecord $
     aux nm (KnownField typ a) = KnownField typ <$> f nm typ a
 
 -- | Return map from field name to type, /if/ all fields are statically known
---
--- TODO: For our current 'Fields' definition, this will /always/ be the case,
--- but if we extend the parser to deal with field name variables or list
--- variables, this will no longer be the case.
 allFieldsKnown :: Fields -> Maybe (KnownRecord ())
-allFieldsKnown = go []
+allFieldsKnown = go [] . (:[])
   where
     go :: [(FastString, KnownField ())]
-       -> Fields
+       -> [Fields]
        -> Maybe (KnownRecord ())
-    go acc = \case
-        FieldsNil ->
-          Just KnownRecord {
-              knownFields = reverse acc
-            }
-        FieldsCons (Field label typ) fs ->
-          case label of
-            FieldKnown nm ->
-              go ((nm, knownField typ) : acc) fs
-            FieldVar _ ->
-              Nothing
-        FieldsVar _ ->
-          Nothing
+    go acc []       = Just KnownRecord { knownFields = reverse acc }
+    go acc (fs:fss) =
+        case fs of
+          FieldsNil ->
+            go acc fss
+          FieldsCons (Field (FieldKnown nm) typ) fs' ->
+            go ((nm, knownField typ) : acc) (fs':fss)
+          FieldsCons (Field (FieldVar _) _) _ ->
+            Nothing
+          FieldsVar _ ->
+            Nothing
+          FieldsMerge l r ->
+            go acc (l:r:fss)
 
     knownField :: Type -> KnownField ()
     knownField typ = KnownField {
@@ -136,8 +156,9 @@ instance Outputable Fields where
           text "FieldsCons"
       <+> ppr f
       <+> ppr fs
-  ppr FieldsNil       = text "FieldsNil"
-  ppr (FieldsVar var) = parens $ text "FieldsVar" <+> ppr var
+  ppr FieldsNil         = text "FieldsNil"
+  ppr (FieldsVar var)   = parens $ text "FieldsVar" <+> ppr var
+  ppr (FieldsMerge l r) = parens $ text "Merge" <+> ppr l <+> ppr r
 
 instance Outputable Field where
   ppr (Field label typ) = parens $
@@ -164,15 +185,24 @@ parseRecord ResolvedNames{..} r = asum [
          return tyFields
     ]
 
-parseFields :: Type -> Maybe Fields
-parseFields fields = asum [
-      do (f, fs) <- parseCons fields
-         f' <- parseField f
-         (FieldsCons f') <$> parseFields fs
-    , do parseNil fields
-         return FieldsNil
-    , do FieldsVar <$> getTyVar_maybe fields
-    ]
+parseFields :: ResolvedNames -> Type -> Maybe Fields
+parseFields ResolvedNames{..} = go
+  where
+    go :: Type -> Maybe Fields
+    go fields = asum [
+          do (f, fs) <- parseCons fields
+             f' <- parseField f
+             (FieldsCons f') <$> go fs
+        , do parseNil fields
+             return FieldsNil
+        , do FieldsVar <$> getTyVar_maybe fields
+        , do (tyCon, args) <- splitTyConApp_maybe fields
+             guard $ tyCon == tyConMerge
+             (left, right) <- case args of
+                                [l, r]     -> return (l, r)
+                                _otherwise -> mzero
+             FieldsMerge <$> go left <*> go right
+        ]
 
 parseField :: Type -> Maybe Field
 parseField field = do

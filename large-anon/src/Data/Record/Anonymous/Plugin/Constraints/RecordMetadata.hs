@@ -52,10 +52,10 @@ parseRecordMetadata ::
      ResolvedNames
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CRecordMetadata)
-parseRecordMetadata ResolvedNames{..} =
+parseRecordMetadata rn@ResolvedNames{..} =
     parseConstraint' clsRecordMetadata $ \case
       [r] -> do
-        fields <- parseFields r
+        fields <- parseFields rn r
         return CRecordMetadata {
             recordMetadataFields     = fields
           , recordMetadataTypeRecord = r
@@ -139,7 +139,7 @@ solveRecordMetadata rn@ResolvedNames{..}
         return (Nothing, [])
       Just fields -> do
         fields' <- forKnownRecord fields $ \name _typ () -> do
-                     newWanted' l $ mkClassPred clsKnownSymbol [mkStrLitTy name]
+                     newWanted l $ mkClassPred clsKnownSymbol [mkStrLitTy name]
         ev <- evidenceRecordMetadata rn cm $ getEvVar <$> fields'
         return (
             Just (ev, orig)

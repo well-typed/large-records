@@ -25,6 +25,7 @@ library
       Data.Record.Anonymous.Plugin.EquivClasses
   other-modules:
       Data.Record.Anonymous.Plugin.Constraints.HasField
+      Data.Record.Anonymous.Plugin.Constraints.Isomorphic
       Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
       Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
       Data.Record.Anonymous.Plugin.GhcTcPluginAPI
@@ -67,6 +68,7 @@ test-suite test-large-anon
       TestLargeAnon.hs
   other-modules:
       Test.Record.Anonymous.Sanity.Basics
+      Test.Record.Anonymous.Sanity.Casting
       Test.Record.Anonymous.Sanity.Merging
       Test.Record.Anonymous.Sanity.Named.Record1
       Test.Record.Anonymous.Sanity.Named.Record2

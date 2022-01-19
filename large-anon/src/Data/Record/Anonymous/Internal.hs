@@ -11,15 +11,19 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+
 module Data.Record.Anonymous.Internal (
     -- * Types
     Record -- Opaque
   , Field  -- Opaque
   , Merge
+  , Isomorphic
     -- * User-visible API
   , empty
   , insert
   , merge
+  , castRecord
     -- * Convenience functions
   , get
   , set
@@ -145,6 +149,11 @@ instance (l ~ l', KnownSymbol l) => IsLabel l' (Field l) where
 -- See 'merge' for additional information.
 type family Merge :: [(Symbol, Type)] -> [(Symbol, Type)] -> [(Symbol, Type)]
 
+-- | Record isomorphism
+--
+-- See 'castRecord' for details.
+class Isomorphic (xs :: [(Symbol, Type)]) (ys :: [(Symbol, Type)])
+
 {-------------------------------------------------------------------------------
   User-visible API
 -------------------------------------------------------------------------------}
@@ -195,6 +204,46 @@ insert (Field l) a (MkR r) = MkR $ Map.insert (symbolVal l) (unsafeCoerce a) r
 -- ...
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge (MkR r) (MkR r') = MkR $ Map.union r r'
+
+-- | Cast record
+--
+-- Some examples of valid casts. We can cast a record to itself:
+--
+-- >>> castRecord example :: Record '[ '("a", Bool) ]
+-- Record {a = True}
+--
+-- We can reorder fields:
+--
+-- >>> castRecord (insert #a True $ insert #b 'a' $ empty) :: Record '[ '("b", Char), '("a", Bool) ]
+-- Record {b = 'a', a = True}
+--
+-- We can flatten merged records:
+--
+-- >>> castRecord (merge (insert #a True empty) (insert #b 'a' empty)) :: Record '[ '("a", Bool), '("b", Char) ]
+-- Record {a = True, b = 'a'}
+--
+-- Some examples of invalid casts. We cannot change the types of the fields:
+--
+-- >>> castRecord example :: Record '[ '("a", Int) ]
+-- ...
+-- ...Couldn't match...Bool...Int...
+-- ...
+--
+-- We cannot drop fields:
+--
+-- >>> castRecord (insert #a True $ insert #b 'a' $ empty) :: Record '[ '("a", Bool) ]
+-- ...
+-- ...No instance for (Isomorphic...
+-- ...
+--
+-- We cannot add fields:
+--
+-- >>> castRecord example :: Record '[ '("a", Bool), '("b", Char) ]
+-- ...
+-- ...No instance for (Isomorphic...
+-- ...
+castRecord :: Isomorphic r r' => Record r -> Record r'
+castRecord = unsafeCoerce
 
 {-------------------------------------------------------------------------------
   Convenience functions

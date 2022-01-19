@@ -5,7 +5,6 @@
 module Data.Record.Anonymous.Plugin.Constraints.HasField (
     CHasField(..)
   , parseHasField
-  , evidenceHasField
   , solveHasField
   ) where
 
@@ -128,13 +127,13 @@ solveHasField ::
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
 solveHasField _ _ (L _ CHasField{hasFieldLabel = FieldVar _}) =
     return (Nothing, [])
-solveHasField rn orig (L l hf@CHasField{hasFieldLabel = FieldKnown name, ..}) =
+solveHasField rn orig (L loc hf@CHasField{hasFieldLabel = FieldKnown name, ..}) =
     case findField name hasFieldRecord of
       Nothing ->
         -- TODO: If the record is fully known, we should issue a custom type
         -- error here rather than leaving the constraint unsolved
         return (Nothing, [])
       Just typ -> do
-        eq <- newWanted l $ mkPrimEqPredRole Nominal hasFieldTypeField typ
+        eq <- newWanted loc $ mkPrimEqPredRole Nominal hasFieldTypeField typ
         ev <- evidenceHasField rn hf name
         return (Just (ev, orig), [mkNonCanonical eq])

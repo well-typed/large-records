@@ -2,3 +2,4 @@ tags
 dist-newstyle
 *.log
 unversioned
+.envrc

@@ -58,6 +58,7 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- >>> :set -XOverloadedLabels
 -- >>> :set -XScopedTypeVariables
 -- >>> :set -XTypeApplications
+-- >>> :set -XTypeFamilies
 -- >>> :set -fplugin=Data.Record.Anonymous.Plugin
 -- >>> :set -dppr-cols=200
 -- >>> import GHC.Records.Compat
@@ -116,9 +117,32 @@ data Field l where
 instance (l ~ l', KnownSymbol l) => IsLabel l' (Field l) where
   fromLabel = Field (Proxy @l)
 
--- | Result of merging two records
+-- | Merge two records
 --
--- See 'merge' for details.
+-- The 'Merge' type family does not reduce: the following two types are /not/
+-- considered to be equal:
+--
+-- > Record '[ '("a", Bool) ']
+-- > Record (Merge '[ '("a", Bool) '] '[])
+--
+-- They are /isomorphic/ (see 'castRecord'), but not /equal/.
+--
+-- As a consequence, the 'Merge' type family is injective: if
+--
+-- > Merge xs ys ~ Merge xs' ys'
+--
+-- then @xs ~ xs'@ and @ys ~ ys'@. Example:
+--
+-- >>> :{
+--   let foo :: Merge '[ '("a", Bool) ] '[] ~ Merge '[] '[ '("a", Bool) ] => ()
+--       foo = ()
+--   in foo
+-- :}
+-- ...
+-- ...Couldn't match...[]...
+-- ...
+--
+-- See 'merge' for additional information.
 type family Merge :: [(Symbol, Type)] -> [(Symbol, Type)] -> [(Symbol, Type)]
 
 {-------------------------------------------------------------------------------
@@ -169,8 +193,6 @@ insert (Field l) a (MkR r) = MkR $ Map.insert (symbolVal l) (unsafeCoerce a) r
 -- ...
 -- ...No instance for (HasField "b" (...
 -- ...
---
--- TODO: Talk about 'castRecord'.
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge (MkR r) (MkR r') = MkR $ Map.union r r'
 

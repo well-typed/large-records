@@ -17,6 +17,7 @@ import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
+import Data.Record.Anonymous.Plugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Definition
@@ -54,13 +55,14 @@ instance Outputable CRecordConstraints where
 -------------------------------------------------------------------------------}
 
 parseRecordConstraints ::
-     ResolvedNames
+     TyConSubst
+  -> ResolvedNames
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CRecordConstraints)
-parseRecordConstraints rn@ResolvedNames{..} =
+parseRecordConstraints tcs rn@ResolvedNames{..} =
     parseConstraint' clsRecordConstraints $ \case
       args@[r, c] -> do
-        fields <- parseFields rn r
+        fields <- parseFields tcs rn r
         return CRecordConstraints {
             recordConstraintsFields         = fields
           , recordConstraintsTypeRaw        = args

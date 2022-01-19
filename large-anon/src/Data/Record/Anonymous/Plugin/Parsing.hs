@@ -18,14 +18,16 @@ module Data.Record.Anonymous.Plugin.Parsing (
   , parseCons
   , parseNil
   , parsePair
+  , parseInjTyConApp
   ) where
 
-import Control.Monad
 import Data.Bifunctor
+import Data.Foldable (toList)
 import Data.Void
 import GHC.Stack
 
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
+import Data.Record.Anonymous.Plugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Basic infrastructure
@@ -85,6 +87,7 @@ parseConstraint ::
   -> Ct                           -- ^ Constraint to parse
   -> ParseResult e (GenLocated CtLoc b)
 parseConstraint p f ct = fmap (L $ ctLoc ct) $
+    -- TODO: classify up to equalities..?
     case classifyPredType (ctPred ct) of
       ClassPred cls args | Just a <- p cls args ->
         case f a of
@@ -115,34 +118,48 @@ parseConstraint' cls = parseConstraint p
     p cls' args = if cls == cls' then Just args else Nothing
 
 -- | Parse @x ': xs == (':) x xs == ((':) x) xs@
-parseCons :: Type -> Maybe (Type, Type)
-parseCons t = do
-    ( t'  , xs ) <- splitAppTy_maybe t
-    ( t'' , x  ) <- splitAppTy_maybe t'
-    tcCons <- tyConAppTyCon_maybe t''
-    guard $ tcCons == promotedConsDataCon
-    return (x, xs)
+parseCons :: TyConSubst -> Type -> Maybe (Type, Type)
+parseCons tcs t = do
+    args <- parseInjTyConApp tcs promotedConsDataCon t
+    case args of
+      [_k, x, xs] -> Just (x, xs)
+      _otherwise  -> Nothing
 
 -- | Parse @'[]@
-parseNil :: Type -> Maybe ()
-parseNil t = do
-    tcNil <- tyConAppTyCon_maybe t
-    guard $ tcNil == promotedNilDataCon
-    return ()
+parseNil :: TyConSubst -> Type -> Maybe ()
+parseNil tcs t = do
+    args <- parseInjTyConApp tcs promotedNilDataCon t
+    case args of
+      [_k]       -> Just ()
+      _otherwise -> Nothing
 
 -- | Parse @'(x, y) == '(,) x y == ('(,) x) y@
-parsePair :: Type -> Maybe (Type, Type)
-parsePair t = do
-    ( t'  , y ) <- splitAppTy_maybe t
-    ( t'' , x ) <- splitAppTy_maybe t'
-    tcPair <- tyConAppTyCon_maybe t''
-    guard $ tcPair == promotedTupleDataCon Boxed 2
-    return (x, y)
+parsePair :: TyConSubst -> Type -> Maybe (Type, Type)
+parsePair tcs t = do
+    args <- parseInjTyConApp tcs (promotedTupleDataCon Boxed 2) t
+    case args of
+      [_kx, _ky, x, y] -> Just (x, y)
+      _otherwise       -> Nothing
 
+-- | Parse application of an injective type constructor
+parseInjTyConApp :: TyConSubst -> TyCon -> Type -> Maybe [Type]
+parseInjTyConApp tcs tyCon t = do
+    splits <- splitTyConApp_upTo tcs t
 
-
-
-
-
-
-
+    -- At this point we might have multiple matches
+    --
+    -- > t ~ TyCon1 args1
+    -- > t ~ TyCon1 args1'
+    -- > t ~ TyCon2 args2
+    -- > ..
+    --
+    -- We are only interested in the equalities with @tyCon@ at the head, but
+    -- this may still leave us with multiple equalities
+    --
+    -- > t ~ tyCon args1
+    -- > t ~ tyCon args1'
+    --
+    -- When this is the case, however, by injectivity of 'tyCon' we know that
+    -- @args1 ~ args1'@, so we can just return /any/ of the matches; we will
+    -- return the first.
+    lookup tyCon (toList splits)

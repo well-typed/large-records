@@ -13,6 +13,7 @@ import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 -- Listed alphabetically.
 data ResolvedNames = ResolvedNames {
       clsHasField            :: Class
+    , clsIsomorphic          :: Class
     , clsKnownSymbol         :: Class
     , clsRecordConstraints   :: Class
     , clsRecordMetadata      :: Class
@@ -42,6 +43,7 @@ nameResolution = do
     uc   <- getModule "base"            "Unsafe.Coerce"
 
     clsHasField          <- getClass grc  "HasField"
+    clsIsomorphic        <- getClass drai "Isomorphic"
     clsKnownSymbol       <- tcLookupClass knownSymbolClassName
     clsRecordConstraints <- getClass drai "RecordConstraints"
     clsRecordMetadata    <- getClass drai "RecordMetadata"

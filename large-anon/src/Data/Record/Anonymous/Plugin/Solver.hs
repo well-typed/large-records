@@ -10,6 +10,7 @@ import Data.Maybe (catMaybes)
 import Data.Traversable (forM)
 
 import Data.Record.Anonymous.Plugin.Constraints.HasField
+import Data.Record.Anonymous.Plugin.Constraints.Isomorphic
 import Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
 import Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
@@ -29,6 +30,7 @@ solve rn given wanted =
            forM parsedHasField          $ uncurry (solveHasField          rn)
          , forM parsedRecordConstraints $ uncurry (solveRecordConstraints rn)
          , forM parsedRecordMetadata    $ uncurry (solveRecordMetadata    rn)
+         , forM parsedIsomorphic        $ uncurry (solveIsomorphic        rn)
          ]
        return $ TcPluginOk solved new
   where
@@ -38,6 +40,7 @@ solve rn given wanted =
     parsedHasField          :: [(Ct, GenLocated CtLoc CHasField)]
     parsedRecordConstraints :: [(Ct, GenLocated CtLoc CRecordConstraints)]
     parsedRecordMetadata    :: [(Ct, GenLocated CtLoc CRecordMetadata)]
+    parsedIsomorphic        :: [(Ct, GenLocated CtLoc CIsomorphic)]
 
     parsedHasField =
         parseAll' (withOrig (parseHasField tcs rn)) wanted
@@ -45,6 +48,8 @@ solve rn given wanted =
         parseAll' (withOrig (parseRecordConstraints tcs rn)) wanted
     parsedRecordMetadata =
         parseAll' (withOrig (parseRecordMetadata tcs rn)) wanted
+    parsedIsomorphic =
+        parseAll' (withOrig (parseIsomorphic tcs rn)) wanted
 
     _debugInput :: String
     _debugInput = unlines [
@@ -73,6 +78,10 @@ solve rn given wanted =
         , concat [
               "parsedRecordMetadata: "
             , showSDocUnsafe (ppr parsedRecordMetadata)
+            ]
+        , concat [
+              "parsedIsomorphic: "
+            , showSDocUnsafe (ppr parsedIsomorphic)
             ]
         , concat [
               "tcs (TyConSubst): "

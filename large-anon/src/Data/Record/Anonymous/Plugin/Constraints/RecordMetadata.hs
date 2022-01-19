@@ -6,7 +6,6 @@
 module Data.Record.Anonymous.Plugin.Constraints.RecordMetadata (
     CRecordMetadata(..)
   , parseRecordMetadata
-  , evidenceRecordMetadata
   , solveRecordMetadata
   ) where
 
@@ -133,7 +132,7 @@ solveRecordMetadata ::
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
 solveRecordMetadata rn@ResolvedNames{..}
                        orig
-                       (L l cm@CRecordMetadata{..})
+                       (L loc cm@CRecordMetadata{..})
                      = do
     -- See 'solveRecordConstraints' for a discussion of 'allFieldsKnown'
     case allFieldsKnown recordMetadataFields of
@@ -141,7 +140,7 @@ solveRecordMetadata rn@ResolvedNames{..}
         return (Nothing, [])
       Just fields -> do
         fields' <- forKnownRecord fields $ \name _typ () -> do
-                     newWanted l $ mkClassPred clsKnownSymbol [mkStrLitTy name]
+                     newWanted loc $ mkClassPred clsKnownSymbol [mkStrLitTy name]
         ev <- evidenceRecordMetadata rn cm $ getEvVar <$> fields'
         return (
             Just (ev, orig)

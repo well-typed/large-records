@@ -9,10 +9,12 @@ module Data.Record.Anonymous (
     Record -- Opaque
   , Field  -- Opaque (use @#foo@ to create values)
   , Merge
+  , Isomorphic
     -- * Core API
   , empty
   , insert
   , merge
+  , castRecord
     -- * Additional convenience functions
   , get
   , set

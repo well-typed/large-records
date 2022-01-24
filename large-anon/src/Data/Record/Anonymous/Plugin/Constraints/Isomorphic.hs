@@ -8,7 +8,6 @@ module Data.Record.Anonymous.Plugin.Constraints.Isomorphic (
   ) where
 
 import Control.Monad (forM)
-import Data.List (sortOn)
 import Data.Void
 
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
@@ -16,6 +15,7 @@ import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
+import qualified Data.Map as Map
 
 {-------------------------------------------------------------------------------
   Definition
@@ -90,74 +90,19 @@ solveIsomorphic ::
   -> GenLocated CtLoc CIsomorphic
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
 solveIsomorphic rn orig (L loc iso@CIsomorphic{..}) =
-    case ( allFieldsKnown isomorphicFieldsLHS
-         , allFieldsKnown isomorphicFieldsRHS
+    case ( checkAllFieldsKnown isomorphicFieldsLHS
+         , checkAllFieldsKnown isomorphicFieldsRHS
          ) of
-      (Just (KnownRecord lhs), Just (KnownRecord rhs)) ->
-        -- TODO: Think carefully about duplicated fields
-        -- Can (only?) arise here as a result of a merge..?
-        case matchKnownFields lhs rhs of
-          Right match -> do
-            eqs <- forM match $ \(l, r) ->
+      (Just lhs, Just rhs) ->
+        case knownRecordIsomorphic lhs rhs of
+          (inBoth, [], []) -> do
+            eqs <- forM (Map.elems inBoth) $ \((l, r), _info) ->
                      newWanted loc $ mkPrimEqPredRole Nominal l r
-            ev <- evidenceIsomorphic rn iso
+            ev  <- evidenceIsomorphic rn iso
             return (Just (ev, orig), map mkNonCanonical eqs)
-          Left _notIso ->
+          _otherwise ->
             -- TODO: Return a custom error message
             return (Nothing, [])
       _otherwise ->
         return (Nothing, [])
 
-{-------------------------------------------------------------------------------
-  Internal: the actual isomorphism check
--------------------------------------------------------------------------------}
-
--- | Evidence that two records are not isomorphic
---
--- Invariant:
---
--- > (not . null) (notIsoMissingFromRight ++ notIsoMissingFromLeft)
-data NotIso = NotIso {
-      -- | Fields that are in the LHS but not in the RHS
-      notIsoMissingFromRight :: [FastString]
-
-      -- | Fields that are in the RHS but not in the LHS
-    , notIsoMissingFromLeft  :: [FastString]
-    }
-
--- | Check if known records have the same fields
---
--- If so, returns the types of those fields that must be pairwise equal.
-matchKnownFields ::
-     [(FastString, KnownField a)]
-  -> [(FastString, KnownField a)]
-  -> Either NotIso [(Type, Type)]
-matchKnownFields = \lhs rhs ->
-    go [] [] [] (sortOn fst lhs) (sortOn fst rhs)
-  where
-    go :: [FastString]   -- Accumulator: missing from right
-       -> [FastString]   -- Accumulator: missing from left
-       -> [(Type, Type)] -- Accumulator: fields that should be equal
-       -> [(FastString, KnownField a)]
-       -> [(FastString, KnownField a)]
-       -> Either NotIso [(Type, Type)]
-    go missR missL match lhs rhs =
-        case (lhs, rhs) of
-          ([], []) -> finishWith              missR               missL  match
-          (ls, []) -> finishWith (names ls ++ missR)              missL  match
-          ([], rs) -> finishWith              missR  (names rs ++ missL) match
-          (l@(n, KnownField t _):ls, r@(n', KnownField t' _):rs)
-            | n < n'    -> go (n:missR)     missL          match     ls (r:rs)
-            | n > n'    -> go    missR  (n':missL)         match  (l:ls)   rs
-            | otherwise -> go    missR      missL  ((t,t'):match)    ls    rs
-
-    finishWith ::
-         [FastString]
-      -> [FastString]
-      -> [(Type, Type)]
-      -> Either NotIso [(Type, Type)]
-    finishWith []        []       match = Right match
-    finishWith missR missL _     = Left (NotIso missL missR)
-
-    names :: [(FastString, KnownField a)] -> [FastString]
-    names = map fst

@@ -115,6 +115,8 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- unresolved until we know more about the record.
 newtype Record (r :: [(Symbol, Type)]) = MkR (Map String Any)
 
+-- TODO: Give role annotation (representational)
+
 data Field l where
   Field :: KnownSymbol l => Proxy l -> Field l
 
@@ -267,7 +269,6 @@ set :: forall l r a.
      HasField l (Record r) a
   => Field l -> a -> Record r -> Record r
 set _ = flip (setField @l @(Record r))
-
 
 {-------------------------------------------------------------------------------
   Generics

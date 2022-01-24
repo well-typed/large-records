@@ -98,8 +98,7 @@ evidenceRecordConstraints ResolvedNames{..}
         , mkCoreApps (Var idUnsafeDictRecord) [
               Type recordConstraintsTypeRecord
             , Type recordConstraintsTypeConstraint
-            , mkListExpr dictType $
-                map (mkDictAny . snd) (knownFields fields)
+            , mkListExpr dictType $ map mkDictAny (knownRecordFields fields)
             ]
         ]
   where
@@ -150,7 +149,7 @@ solveRecordConstraints rn@ResolvedNames{clsRecordMetadata}
     --   and the order is determined by the field names (see also the 'Generic'
     --   instance for 'Record'). The 'Map' constructed by 'allFieldsKnown'
     --   gives us this ordering.
-    case allFieldsKnown recordConstraintsFields of
+    case checkAllFieldsKnown recordConstraintsFields of
       Nothing ->
         return (Nothing, [])
       Just fields -> do
@@ -159,8 +158,11 @@ solveRecordConstraints rn@ResolvedNames{clsRecordMetadata}
                      mkClassPred
                        clsRecordMetadata
                        [recordConstraintsTypeRecord]
-        fields' <- forKnownRecord fields $ \_name typ () -> do
-                     newWanted loc $ mkAppTy recordConstraintsTypeConstraint typ
+        fields' <- knownRecordTraverse fields $ \fld ->
+                     newWanted loc $
+                       mkAppTy
+                         recordConstraintsTypeConstraint
+                         (knownFieldType fld)
         ev      <- evidenceRecordConstraints rn cr (getEvVar evMeta) $
                      getEvVar <$> fields'
         return (

@@ -42,9 +42,9 @@ import Data.Record.Anonymous.Internal
 -------------------------------------------------------------------------------}
 
 -- | Show type of every field in the record
-describeRecord :: forall proxy r.
-     RecordConstraints r Typeable
-  => proxy r  -- Proxy for the record (note: can use a record itself as a proxy)
+describeRecord :: forall proxy f r.
+     RecordConstraints f r Typeable
+  => proxy f r  -- Proxy for the record (note: can use a record itself as a proxy)
   -> String
 describeRecord _ =
       combine
@@ -52,9 +52,12 @@ describeRecord _ =
     . Rep.cmap (Proxy @Typeable) aux
     $ names
   where
-    names :: Rep (K String) (Record r)
-    names = recordFieldNames $ metadata (Proxy @(Record r))
+    names :: Rep (K String) (Record f r)
+    names = recordFieldNames $ metadata (Proxy @(Record f r))
 
+    -- @x@ here will be of the form @f x'@, for some @x'@, and we have a
+    -- constraint @Typeable (f x')@ in scope. We therefore do not need to
+    -- manually apply @f@ here.
     aux :: forall x. Typeable x => K String x -> K String x
     aux (K name) = K $ name ++ " :: " ++ show (typeRep (Proxy @x))
 

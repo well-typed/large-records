@@ -294,14 +294,14 @@ instance Outputable FieldLabel where
   Parser
 -------------------------------------------------------------------------------}
 
--- | Parse @Record r@
+-- | Parse @Record f r@
 --
--- Returns the argument @r@
-parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe Type
+-- Returns the argument @f, r@
+parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type)
 parseRecord tcs ResolvedNames{..} t = do
     args <- parseInjTyConApp tcs tyConRecord t
     case args of
-      [r]        -> Just r
+      [f, r]     -> Just (f, r)
       _otherwise -> Nothing
 
 parseFields :: TyConSubst -> ResolvedNames -> Type -> Maybe Fields

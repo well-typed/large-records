@@ -22,18 +22,21 @@ import Data.Record.Anonymous.Plugin.TyConSubst
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of a @RecordConstraints r c@ constraint
+-- | Parsed form of @RecordConstraints f r c@
 data CRecordConstraints = CRecordConstraints {
-      -- | Fields of the record
+      -- | Fields of the record (parsed form of @r@)
       recordConstraintsFields :: Fields
 
       -- | Raw arguments to @RecordConstraints@ (for evidence construction)
     , recordConstraintsTypeRaw :: [Type]
 
-      -- | Type of the record (@r@)
+      -- | Type of the functor (@f@)
+    , recordConstraintsTypeFunctor :: Type
+
+      -- | Type of the record fields (@r@)
     , recordConstraintsTypeRecord :: Type
 
-      -- | Cconstraint that we need for every field (@c@)
+      -- | Constraint that we need for every field (@c@)
     , recordConstraintsTypeConstraint :: Type
     }
 
@@ -42,12 +45,14 @@ data CRecordConstraints = CRecordConstraints {
 -------------------------------------------------------------------------------}
 
 instance Outputable CRecordConstraints where
-  ppr (CRecordConstraints fields typeRaw typeRecord typeConstraint) = parens $
-          text "CRecordConstraints"
-      <+> ppr fields
-      <+> ppr typeRaw
-      <+> ppr typeRecord
-      <+> ppr typeConstraint
+  ppr (CRecordConstraints fields typeRaw typeRecord typeFunctor typeConstraint) = parens $
+      text "CRecordConstraints" <+> braces (vcat [
+          text "recordConstraintsFields"         <+> text "=" <+> ppr fields
+        , text "recordConstraintsTypeRaw"        <+> text "=" <+> ppr typeRaw
+        , text "recordConstraintsTypeFunctor"    <+> text "=" <+> ppr typeFunctor
+        , text "recordConstraintsTypeRecord"     <+> text "=" <+> ppr typeRecord
+        , text "recordConstraintsTypeConstraint" <+> text "=" <+> ppr typeConstraint
+        ])
 
 {-------------------------------------------------------------------------------
   Parser
@@ -60,11 +65,12 @@ parseRecordConstraints ::
   -> ParseResult Void (GenLocated CtLoc CRecordConstraints)
 parseRecordConstraints tcs rn@ResolvedNames{..} =
     parseConstraint' clsRecordConstraints $ \case
-      args@[r, c] -> do
+      args@[f, r, c] -> do
         fields <- parseFields tcs rn r
         return CRecordConstraints {
             recordConstraintsFields         = fields
           , recordConstraintsTypeRaw        = args
+          , recordConstraintsTypeFunctor    = f
           , recordConstraintsTypeRecord     = r
           , recordConstraintsTypeConstraint = c
           }
@@ -96,7 +102,8 @@ evidenceRecordConstraints ResolvedNames{..}
         recordConstraintsTypeRaw
         [ Var evMeta
         , mkCoreApps (Var idUnsafeDictRecord) [
-              Type recordConstraintsTypeRecord
+              Type recordConstraintsTypeFunctor
+            , Type recordConstraintsTypeRecord
             , Type recordConstraintsTypeConstraint
             , mkListExpr dictType $ map mkDictAny (knownRecordFields fields)
             ]
@@ -106,7 +113,7 @@ evidenceRecordConstraints ResolvedNames{..}
     dictType = mkTyConApp tyConDict [
           liftedTypeKind
         , recordConstraintsTypeConstraint
-        , anyType
+        , recordConstraintsTypeFunctor `mkAppTy` anyType
         ]
 
     mkDictAny :: KnownField EvVar -> EvExpr
@@ -116,10 +123,10 @@ evidenceRecordConstraints ResolvedNames{..}
         mkCoreConApps dataConDict [
             Type liftedTypeKind
           , Type recordConstraintsTypeConstraint
-          , Type anyType
+          , Type (recordConstraintsTypeFunctor `mkAppTy` anyType)
           , mkCoreApps (Var idUnsafeCoerce) [
-                Type $ mkAppTy recordConstraintsTypeConstraint fieldType
-              , Type $ mkAppTy recordConstraintsTypeConstraint anyType
+                Type $ mkAppTy recordConstraintsTypeConstraint (recordConstraintsTypeFunctor `mkAppTy` fieldType)
+              , Type $ mkAppTy recordConstraintsTypeConstraint (recordConstraintsTypeFunctor `mkAppTy` anyType)
               , Var dict
               ]
           ]
@@ -157,12 +164,14 @@ solveRecordConstraints rn@ResolvedNames{clsRecordMetadata}
         evMeta  <- newWanted loc $
                      mkClassPred
                        clsRecordMetadata
-                       [recordConstraintsTypeRecord]
+                       [ recordConstraintsTypeFunctor
+                       , recordConstraintsTypeRecord
+                       ]
         fields' <- knownRecordTraverse fields $ \fld ->
                      newWanted loc $
                        mkAppTy
                          recordConstraintsTypeConstraint
-                         (knownFieldType fld)
+                         (recordConstraintsTypeFunctor `mkAppTy` knownFieldType fld)
         ev      <- evidenceRecordConstraints rn cr (getEvVar evMeta) $
                      getEvVar <$> fields'
         return (

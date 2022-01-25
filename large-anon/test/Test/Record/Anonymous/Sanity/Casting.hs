@@ -21,23 +21,23 @@ tests = testGroup "Test.Record.Anonymous.Sanity.Casting" [
   Example values
 -------------------------------------------------------------------------------}
 
-recordA :: Record '[ '("a", Bool), '("b", Char) ]
+recordA :: Record I '[ '("a", Bool), '("b", Char) ]
 recordA =
-      insert #a True
-    $ insert #b 'a'
+      insert #a (I True)
+    $ insert #b (I 'a')
     $ empty
 
-recordA' :: Record '[ '("b", Char), '("a", Bool) ]
+recordA' :: Record I '[ '("b", Char), '("a", Bool) ]
 recordA' =
-      insert #b 'a'
-    $ insert #a True
+      insert #b (I 'a')
+    $ insert #a (I True)
     $ empty
 
-recordWithMerge :: Record (Merge '[ '("a", Bool) ] '[ '("b", Char) ])
+recordWithMerge :: Record I (Merge '[ '("a", Bool) ] '[ '("b", Char) ])
 recordWithMerge =
     merge
-      (insert #a True $ empty)
-      (insert #b 'a'  $ empty)
+      (insert #a (I True) $ empty)
+      (insert #b (I 'a')  $ empty)
 
 {-------------------------------------------------------------------------------
   Tests proper

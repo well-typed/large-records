@@ -22,38 +22,44 @@ test_insertSameType :: Assertion
 test_insertSameType = do
     assertEqual "" expected actual
   where
-    actual :: Record '[ '("a", Bool) ]
-    actual = castRecord $ insert #a True $ insert #a False $ empty
+    actual :: Record I '[ '("a", Bool) ]
+    actual = castRecord $ insert #a (I True)
+                        $ insert #a (I False)
+                        $ empty
 
-    expected :: Record '[ '("a", Bool) ]
-    expected = insert #a True $ empty
+    expected :: Record I '[ '("a", Bool) ]
+    expected = insert #a (I True) empty
 
 test_insertDifferentType :: Assertion
 test_insertDifferentType = do
     assertEqual "" expected actual
   where
-    actual :: Record '[ '("a", Bool) ]
-    actual = castRecord $ insert #a True $ insert #a 'a' $ empty
+    actual :: Record I '[ '("a", Bool) ]
+    actual = castRecord $ insert #a (I True)
+                        $ insert #a (I 'a')
+                        $ empty
 
-    expected :: Record '[ '("a", Bool) ]
-    expected = insert #a True $ empty
+    expected :: Record I '[ '("a", Bool) ]
+    expected = insert #a (I True) empty
 
 test_mergeSameType :: Assertion
 test_mergeSameType = do
     assertEqual "" expected actual
   where
-    actual :: Record '[ '("a", Bool) ]
-    actual = castRecord $ merge (insert #a True empty) (insert #a False empty)
+    actual :: Record I '[ '("a", Bool) ]
+    actual = castRecord $ merge (insert #a (I True)  empty)
+                                (insert #a (I False) empty)
 
-    expected :: Record '[ '("a", Bool) ]
-    expected = insert #a True $ empty
+    expected :: Record I '[ '("a", Bool) ]
+    expected = insert #a (I True) empty
 
 test_mergeDifferentType :: Assertion
 test_mergeDifferentType = do
     assertEqual "" expected actual
   where
-    actual :: Record '[ '("a", Bool) ]
-    actual = castRecord $ merge (insert #a True empty) (insert #a 'a' empty)
+    actual :: Record I '[ '("a", Bool) ]
+    actual = castRecord $ merge (insert #a (I True) empty)
+                                (insert #a (I 'a')  empty)
 
-    expected :: Record '[ '("a", Bool) ]
-    expected = insert #a True $ empty
+    expected :: Record I '[ '("a", Bool) ]
+    expected = insert #a (I True) empty

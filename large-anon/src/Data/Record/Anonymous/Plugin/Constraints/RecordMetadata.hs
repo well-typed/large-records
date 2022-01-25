@@ -79,7 +79,7 @@ evidenceRecordMetadata ::
   -> TcPluginM 'Solve EvTerm
 evidenceRecordMetadata ResolvedNames{..}
                        CRecordMetadata{..}
-                       KnownRecord{..}
+                       r
                      = do
     nameRecord <- mkStringExpr "Record"
     nameConstr <- mkStringExpr "Record"
@@ -91,11 +91,11 @@ evidenceRecordMetadata ResolvedNames{..}
               Type $ mkTyConApp tyConRecord [recordMetadataTypeRecord]
             , nameRecord
             , nameConstr
-            , mkUncheckedIntExpr (fromIntegral (length knownFields))
+            , mkUncheckedIntExpr (fromIntegral (length (knownRecordFields r)))
             , mkCoreApps (Var idUnsafeFieldMetadata) [
                   Type recordMetadataTypeRecord
                 , mkListExpr fieldMetadataType $
-                    map (uncurry mkFieldInfoAny) knownFields
+                    map mkFieldInfoAny (knownRecordFields r)
                 ]
             ]
         ]
@@ -103,15 +103,15 @@ evidenceRecordMetadata ResolvedNames{..}
     fieldMetadataType :: Type
     fieldMetadataType = mkTyConApp tyConFieldMetadata [anyType]
 
-    mkFieldInfoAny :: FastString -> KnownField EvVar -> EvExpr
-    mkFieldInfoAny fieldName KnownField{knownFieldInfo = dict} =
+    mkFieldInfoAny :: KnownField EvVar -> EvExpr
+    mkFieldInfoAny KnownField{knownFieldName = name, knownFieldInfo = dict} =
         mkCoreConApps dataConFieldMetadata [
             Type anyType
-          , Type (mkStrLitTy fieldName)
+          , Type (mkStrLitTy name)
           , Var dict
           , mkCoreConApps dataConProxy [
                 Type $ mkTyConTy typeSymbolKindCon
-              , Type $ mkStrLitTy fieldName
+              , Type $ mkStrLitTy name
               ]
             -- TODO: Think about strict/lazy fields
           , mkCoreConApps dataConFieldLazy []
@@ -135,12 +135,15 @@ solveRecordMetadata rn@ResolvedNames{..}
                        (L loc cm@CRecordMetadata{..})
                      = do
     -- See 'solveRecordConstraints' for a discussion of 'allFieldsKnown'
-    case allFieldsKnown recordMetadataFields of
+    case checkAllFieldsKnown recordMetadataFields of
       Nothing ->
         return (Nothing, [])
       Just fields -> do
-        fields' <- forKnownRecord fields $ \name _typ () -> do
-                     newWanted loc $ mkClassPred clsKnownSymbol [mkStrLitTy name]
+        fields' <- knownRecordTraverse fields $ \fld -> do
+                     newWanted loc $
+                       mkClassPred clsKnownSymbol [
+                           mkStrLitTy (knownFieldName fld)
+                         ]
         ev <- evidenceRecordMetadata rn cm $ getEvVar <$> fields'
         return (
             Just (ev, orig)

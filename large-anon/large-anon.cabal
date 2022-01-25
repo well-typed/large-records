@@ -43,9 +43,11 @@ library
     , containers
     , ghc-tcplugin-api >= 0.7.1
     , large-generics
+    , mtl
     , record-hasfield
     , sop-core
     , text
+    , vector
 
       -- Whatever version is bundled with ghc
     , ghc
@@ -69,6 +71,7 @@ test-suite test-large-anon
   other-modules:
       Test.Record.Anonymous.Sanity.Basics
       Test.Record.Anonymous.Sanity.Casting
+      Test.Record.Anonymous.Sanity.DuplicateFields
       Test.Record.Anonymous.Sanity.Merging
       Test.Record.Anonymous.Sanity.Named.Record1
       Test.Record.Anonymous.Sanity.Named.Record2

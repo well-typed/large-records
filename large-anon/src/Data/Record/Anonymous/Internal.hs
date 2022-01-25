@@ -12,6 +12,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# LANGUAGE RoleAnnotations #-}
 
 module Data.Record.Anonymous.Internal (
     -- * Types
@@ -42,13 +43,13 @@ import Data.Map (Map)
 import Data.Proxy
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
+import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.Record.Generic.Show
 import Data.SOP.BasicFunctors
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
-import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Map as Map
 
@@ -65,8 +66,9 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- >>> :set -XTypeFamilies
 -- >>> :set -fplugin=Data.Record.Anonymous.Plugin
 -- >>> :set -dppr-cols=200
+-- >>> import Data.SOP.BasicFunctors
 -- >>> import GHC.Records.Compat
--- >>> let example :: Record '[ '("a", Bool) ] = insert #a True empty
+-- >>> let example :: Record I '[ '("a", Bool) ] = insert #a (I True) empty
 
 {-------------------------------------------------------------------------------
   Types
@@ -89,14 +91,14 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- we get
 --
 -- >>> get #a example -- or @example.a@ if using RecordDotSyntax
--- True
+-- I True
 --
 -- >>> get #b example
 -- ...
 -- ...No instance for (HasField "b" (Record...
 -- ...
 --
--- >>> get #a example :: Int
+-- >>> get #a example :: I Int
 -- ...
 -- ...Couldn't match...Int...Bool...
 -- ...
@@ -104,7 +106,7 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- When part of the record is not known, it might not be possible to resolve a
 -- 'HasField' constraint until later. For example, in
 --
--- >>> (\r -> get #x r) :: Record '[ '(f, a), '("x", b) ] -> b
+-- >>> (\r -> get #x r) :: Record I '[ '(f, a), '("x", b) ] -> I b
 -- ...
 -- ...No instance for (HasField "x" (...
 -- ...
@@ -113,9 +115,9 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- @a == b@. We /could/ introduce a new constraint to say precisely that, but
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
-newtype Record (r :: [(Symbol, Type)]) = MkR (Map String Any)
+newtype Record f (r :: [(Symbol, Type)]) = MkR (Map String (f Any))
 
--- TODO: Give role annotation (representational)
+type role Record nominal representational
 
 data Field l where
   Field :: KnownSymbol l => Proxy l -> Field l
@@ -161,14 +163,17 @@ class Isomorphic (xs :: [(Symbol, Type)]) (ys :: [(Symbol, Type)])
 -------------------------------------------------------------------------------}
 
 -- | Empty record
-empty :: Record '[]
+empty :: Record f '[]
 empty = MkR Map.empty
 
 -- | Insert a new field into a record
 --
 -- If a field with this name already exists, the new field will override it.
-insert :: Field l -> a -> Record r -> Record ('(l, a) ': r)
-insert (Field l) a (MkR r) = MkR $ Map.insert (symbolVal l) (unsafeCoerce a) r
+insert :: Field l -> f a -> Record f r -> Record f ('(l, a) ': r)
+insert (Field l) a (MkR r) = MkR $ Map.insert (symbolVal l) (co a) r
+  where
+    co :: f a -> f Any
+    co = noInlineUnsafeCo
 
 -- | Merge two records
 --
@@ -179,73 +184,76 @@ insert (Field l) a (MkR r) = MkR $ Map.insert (symbolVal l) (unsafeCoerce a) r
 -- Simple example, completely known record:
 --
 -- >>> :{
---   let example :: Record (Merge '[ '("a", Bool)] '[ '("b", Char)])
---       example = merge (insert #a True empty) (insert #b 'a' empty)
+--   let example :: Record I (Merge '[ '("a", Bool)] '[ '("b", Char)])
+--       example = merge (insert #a (I True) empty) (insert #b (I 'a') empty)
 --   in get #b example
 -- :}
--- 'a'
+-- I 'a'
 --
 -- Slightly more sophisticated, only part of the record known:
 --
 -- >>> :{
---   let example :: Record (Merge '[ '("a", Bool)] r) -> Bool
+--   let example :: Record I (Merge '[ '("a", Bool)] r) -> I Bool
 --       example = get #a
---   in example (merge (insert #a True empty) (insert #b 'a' empty))
+--   in example (merge (insert #a (I True) empty) (insert #b (I 'a') empty))
 -- :}
--- True
+-- I True
 --
 -- Rejected example: first part of the record unknown:
 --
 -- >>> :{
---   let example :: Record (Merge r '[ '("b", Char)]) -> Char
+--   let example :: Record I (Merge r '[ '("b", Char)]) -> I Char
 --       example = get #b
---   in example (merge (insert #a True empty) (insert #b 'a' empty))
+--   in example (merge (insert #a (I True) empty) (insert #b (I 'a') empty))
 -- :}
 -- ...
 -- ...No instance for (HasField "b" (...
 -- ...
-merge :: Record r -> Record r' -> Record (Merge r r')
+merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (MkR r) (MkR r') = MkR $ Map.union r r'
 
 -- | Cast record
 --
 -- Some examples of valid casts. We can cast a record to itself:
 --
--- >>> castRecord example :: Record '[ '("a", Bool) ]
--- Record {a = True}
+-- >>> castRecord example :: Record I '[ '("a", Bool) ]
+-- Record {a = I True}
 --
 -- We can reorder fields:
 --
--- >>> castRecord (insert #a True $ insert #b 'a' $ empty) :: Record '[ '("b", Char), '("a", Bool) ]
--- Record {b = 'a', a = True}
+-- >>> castRecord (insert #a (I True) $ insert #b (I 'a') $ empty) :: Record I '[ '("b", Char), '("a", Bool) ]
+-- Record {b = I 'a', a = I True}
 --
 -- We can flatten merged records:
 --
--- >>> castRecord (merge (insert #a True empty) (insert #b 'a' empty)) :: Record '[ '("a", Bool), '("b", Char) ]
--- Record {a = True, b = 'a'}
+-- >>> castRecord (merge (insert #a (I True) empty) (insert #b (I 'a') empty)) :: Record I '[ '("a", Bool), '("b", Char) ]
+-- Record {a = I True, b = I 'a'}
 --
 -- Some examples of invalid casts. We cannot change the types of the fields:
 --
--- >>> castRecord example :: Record '[ '("a", Int) ]
+-- >>> castRecord example :: Record I '[ '("a", Int) ]
 -- ...
 -- ...Couldn't match...Bool...Int...
 -- ...
 --
 -- We cannot drop fields:
 --
--- >>> castRecord (insert #a True $ insert #b 'a' $ empty) :: Record '[ '("a", Bool) ]
+-- >>> castRecord (insert #a (I True) $ insert #b (I 'a') $ empty) :: Record I '[ '("a", Bool) ]
 -- ...
 -- ...No instance for (Isomorphic...
 -- ...
 --
 -- We cannot add fields:
 --
--- >>> castRecord example :: Record '[ '("a", Bool), '("b", Char) ]
+-- >>> castRecord example :: Record I '[ '("a", Bool), '("b", Char) ]
 -- ...
 -- ...No instance for (Isomorphic...
 -- ...
-castRecord :: Isomorphic r r' => Record r -> Record r'
-castRecord = unsafeCoerce
+castRecord :: Isomorphic r r' => Record f r -> Record f r'
+castRecord = co
+  where
+    co :: Record f r -> Record f r'
+    co = noInlineUnsafeCo
 
 {-------------------------------------------------------------------------------
   Convenience functions
@@ -257,32 +265,32 @@ castRecord = unsafeCoerce
 -- | Get record field
 --
 -- This is a simple wrapper for 'getField'.
-get :: forall l r a.
-     HasField l (Record r) a
-  => Field l -> Record r -> a
-get _ = getField @l @(Record r)
+get :: forall l f r a.
+     HasField l (Record f r) (f a)
+  => Field l -> Record f r -> f a
+get _ = getField @l @(Record f r)
 
 -- | Set record field
 --
 -- This is a simple wrapper for 'setField'.
-set :: forall l r a.
-     HasField l (Record r) a
-  => Field l -> a -> Record r -> Record r
-set _ = flip (setField @l @(Record r))
+set :: forall l f r a.
+     HasField l (Record f r) (f a)
+  => Field l -> f a -> Record f r -> Record f r
+set _ = flip (setField @l @(Record f r))
 
 {-------------------------------------------------------------------------------
   Generics
 -------------------------------------------------------------------------------}
 
-class RecordMetadata (r :: [(Symbol, Type)]) where
-  recordMetadata :: Metadata (Record r)
+class RecordMetadata (f :: Type -> Type) (r :: [(Symbol, Type)]) where
+  recordMetadata :: Metadata (Record f r)
 
-class RecordMetadata r => RecordConstraints r c where
-  dictRecord :: Proxy c -> Rep (Dict c) (Record r)
+class RecordMetadata f r => RecordConstraints f r c where
+  dictRecord :: Proxy c -> Rep (Dict c) (Record f r)
 
-instance RecordMetadata r => Generic (Record r) where
-  type Constraints (Record r) = RecordConstraints r
-  type MetadataOf  (Record r) = r
+instance RecordMetadata f r => Generic (Record f r) where
+  type Constraints (Record f r) = RecordConstraints f r
+  type MetadataOf  (Record f r) = '[] -- TODO
 
   dict       = dictRecord
   metadata _ = recordMetadata
@@ -292,27 +300,34 @@ instance RecordMetadata r => Generic (Record r) where
   --
   -- TODO: Can we avoid the O(n log n) cost?
 
-  from :: Record r -> Rep I (Record r)
+  from :: Record f r -> Rep I (Record f r)
   from (MkR r) =
       Rep.unsafeFromListAny $ map aux names
     where
       names :: [String]
-      names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record r))
+      names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record f r))
 
       aux :: String -> I Any
       aux nm = case Map.lookup nm r of
-                 Just x  -> I x
+                 Just x  -> I (co x)
                  Nothing -> error "impossible: non-existent field"
 
-  to :: Rep I (Record r) -> Record r
+      co :: f Any -> Any
+      co = noInlineUnsafeCo
+
+
+  to :: Rep I (Record f r) -> Record f r
   to =
       MkR . Map.fromList . zipWith aux names . Rep.toListAny
     where
       names :: [String]
-      names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record r))
+      names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record f r))
 
-      aux :: String -> I Any -> (String, Any)
-      aux name (I x) = (name, x)
+      aux :: String -> I Any -> (String, f Any)
+      aux name (I x) = (name, co x)
+
+      co :: Any -> f Any
+      co = noInlineUnsafeCo
 
 {-------------------------------------------------------------------------------
   Instances
@@ -324,22 +339,21 @@ instance RecordMetadata r => Generic (Record r) where
   2. The doctest examples in this module rely on them.
 -------------------------------------------------------------------------------}
 
-instance (RecordConstraints r Show, RecordMetadata r) => Show (Record r) where
+instance RecordConstraints f r Show => Show (Record f r) where
   showsPrec = gshowsPrec
 
-instance (RecordConstraints r Eq, RecordMetadata r) => Eq (Record r) where
+instance RecordConstraints f r Eq => Eq (Record f r) where
   (==) = geq
 
-instance ( RecordConstraints r Eq
-         , RecordConstraints r Ord
-         , RecordMetadata r
-         ) => Ord (Record r) where
+instance ( RecordConstraints f r Eq
+         , RecordConstraints f r Ord
+         ) => Ord (Record f r) where
   compare = gcompare
 
-instance RecordConstraints r ToJSON => ToJSON (Record r) where
+instance RecordConstraints f r ToJSON => ToJSON (Record f r) where
   toJSON = gtoJSON
 
-instance RecordConstraints r FromJSON => FromJSON (Record r) where
+instance RecordConstraints f r FromJSON => FromJSON (Record f r) where
   parseJSON = gparseJSON
 
 {-------------------------------------------------------------------------------
@@ -348,14 +362,17 @@ instance RecordConstraints r FromJSON => FromJSON (Record r) where
 
 -- | Used by the plugin during evidence construction for 'HasField'
 --
--- Precondition: the record must have the specified field with type @a@
--- (this precondition is verified by the plugin before generating "evidence"
--- that uses this function).
-unsafeRecordHasField :: forall r a. String -> Record r -> (a -> Record r, a)
+-- Precondition: the record must have the specified field with type @a@, (where
+-- @a@ will be of the form @f a'@ for some @a'). This precondition is verified
+-- by the plugin before generating "evidence" that uses this function.
+unsafeRecordHasField :: forall f r a.
+     String
+  -> Record f r
+  -> (a -> Record f r, a)
 unsafeRecordHasField label (MkR r) = (
-      \a -> MkR $ Map.insert label (unsafeCoerce a) r
+      \a -> MkR $ Map.insert label (co a) r
     , case Map.lookup label r of
-        Just f  -> unsafeCoerce f
+        Just f  -> co' f
         Nothing -> error preconditionViolation
     )
   where
@@ -366,15 +383,28 @@ unsafeRecordHasField label (MkR r) = (
         , " not found"
         ]
 
+    co  :: a -> f Any
+    co' :: f Any -> a
+
+    co  = noInlineUnsafeCo
+    co' = noInlineUnsafeCo
+
 -- | Used by the plugin during evidence construction for 'RecordConstraints'
-unsafeDictRecord :: forall r c.
-     [Dict c Any]  -- ^ Dictionary for each field, in order
+
+unsafeDictRecord :: forall f r c.
+     [Dict c (f Any)]  -- ^ Dictionary for each field, in order
   -> Proxy c
-  -> Rep (Dict c) (Record r)
-unsafeDictRecord ds _ = Rep.unsafeFromListAny ds
+  -> Rep (Dict c) (Record f r)
+unsafeDictRecord ds _ = Rep.unsafeFromListAny (map co ds)
+  where
+    co :: Dict c (f Any) -> Dict c Any
+    co = noInlineUnsafeCo
 
 -- | Used by the plugin during evidence construction for 'RecordMetadata'
-unsafeFieldMetadata :: forall r.
-     [FieldMetadata Any]
-  -> Rep FieldMetadata (Record r)
-unsafeFieldMetadata = Rep.unsafeFromListAny
+unsafeFieldMetadata :: forall f r.
+     [FieldMetadata (f Any)]
+  -> Rep FieldMetadata (Record f r)
+unsafeFieldMetadata = Rep.unsafeFromListAny . map co
+  where
+    co :: FieldMetadata (f Any) -> FieldMetadata Any
+    co = noInlineUnsafeCo

@@ -23,24 +23,24 @@ tests = testGroup "Test.Record.Anonymous.Sanity.Merging" [
 -------------------------------------------------------------------------------}
 
 ab, ab' ::
-    Record (Merge '[ '("a", Bool), '("b", Int)]
-                  '[ '("c", Double), '("d", Char)])
+    Record I (Merge '[ '("a", Bool), '("b", Int)]
+                    '[ '("c", Double), '("d", Char)])
 ab  = merge a b
 ab' = merge a' b
 
-a, a' :: Record '[ '("a", Bool), '("b", Int)]
+a, a' :: Record I '[ '("a", Bool), '("b", Int)]
 a =
-    insert #a True
-  $ insert #b (1 :: Int)
+    insert #a (I True)
+  $ insert #b (I (1 :: Int))
   $ empty
 a' =
-    insert #a False
-  $ insert #b (1 :: Int)
+    insert #a (I False)
+  $ insert #b (I (1 :: Int))
   $ empty
 
-b :: Record '[ '("c", Double), '("d", Char)]
-b = insert #c 3.14
-  $ insert #d 'a'
+b :: Record I '[ '("c", Double), '("d", Char)]
+b = insert #c (I 3.14)
+  $ insert #d (I 'a')
   $ empty
 
 {-------------------------------------------------------------------------------
@@ -49,33 +49,33 @@ b = insert #c 3.14
 
 test_concrete :: Assertion
 test_concrete = do
-    assertEqual "get" True $ get #a ab
-    assertEqual "set" ab'  $ set #a False ab
+    assertEqual "get" (I True) $ get #a ab
+    assertEqual "set" ab'      $ set #a (I False) ab
 
 test_polymorphic :: Assertion
 test_polymorphic = do
-    assertEqual "get" 1   $ getPoly ab
-    assertEqual "set" ab' $ setPoly ab
+    assertEqual "get" (I 1) $ getPoly ab
+    assertEqual "set" ab'   $ setPoly ab
   where
-    getPoly :: Record (Merge '[ '("a", Bool), '("b", Int)] r) -> Int
+    getPoly :: Record I (Merge '[ '("a", Bool), '("b", Int)] r) -> I Int
     getPoly = get #b
 
     setPoly ::
-         Record (Merge '[ '("a", Bool), '("b", Int)] r)
-      -> Record (Merge '[ '("a", Bool), '("b", Int)] r)
-    setPoly = set #a False
+         Record I (Merge '[ '("a", Bool), '("b", Int)] r)
+      -> Record I (Merge '[ '("a", Bool), '("b", Int)] r)
+    setPoly = set #a (I False)
 
 -- | Test that type equalities are handled correctly
 test_eqConstraint :: Assertion
 test_eqConstraint = do
-    assertEqual "a" True $ f1 ab
-    assertEqual "b" 1    $ f2 ab
-    assertEqual "c" 3.14 $ f3 ab
+    assertEqual "a" (I True) $ f1 ab
+    assertEqual "b" (I 1)    $ f2 ab
+    assertEqual "c" (I 3.14) $ f3 ab
   where
     -- Single simple equality
     f1 :: row ~ Merge '[ '("a", Bool), '("b", Int)]
                       '[ '("c", Double), '("d", Char)]
-       => Record row -> Bool
+       => Record I row -> I Bool
     f1 = get #a
 
     -- Multiple (transitive) equalities
@@ -84,12 +84,12 @@ test_eqConstraint = do
           , row ~ tf1 '[ '("a", Bool), '("b", Int)]
                       '[ '("c", Double), '("d", Char)]
           )
-       => Record row -> Int
+       => Record I row -> I Int
     f2 = get #b
 
     -- Equality with partial application
     f3 :: ( merge ~ Merge '[ '("a", Bool), '("b", Int)]
           , row   ~ merge '[ '("c", Double), '("d", Char)]
           )
-       => Record row -> Double
+       => Record I row -> I Double
     f3 = get #c

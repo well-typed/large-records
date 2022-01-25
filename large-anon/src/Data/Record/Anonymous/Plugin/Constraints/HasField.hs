@@ -22,12 +22,12 @@ import Data.Record.Anonymous.Plugin.TyConSubst
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of a @HasField x r a@ constraint
+-- | Parsed form of a @HasField x r a@, where @r = Record f r'@
 data CHasField = CHasField {
       -- | Label we're looking for (@x@)
       hasFieldLabel :: FieldLabel
 
-      -- | Fields of the record
+      -- | Fields of the record (parsed form of @r'@)
       --
       -- These may be fully or partially known, or completely unknown.
     , hasFieldRecord :: Fields
@@ -35,10 +35,17 @@ data CHasField = CHasField {
       -- | Raw arguments to @HasField@ (for evidence construction)
     , hasFieldTypeRaw :: [Type]
 
+      -- | Record functor argument (@f@)
+    , hasFieldTypeFunctor :: Type
+
       -- | Type of the record (@r@)
     , hasFieldTypeRecord :: Type
 
       -- | Type of the record field we're looking for (@a@)
+      --
+      -- Although @a@ will be of the form @f a'@ for some @a'@, we do not
+      -- enforce that here (but instead generate a new wanted equality
+      -- constraint to enforce this).
     , hasFieldTypeField :: Type
     }
 
@@ -47,13 +54,15 @@ data CHasField = CHasField {
 -------------------------------------------------------------------------------}
 
 instance Outputable CHasField where
-  ppr (CHasField label record typeRaw typeRecord typeField) = parens $
-          text "CHasField"
-      <+> ppr label
-      <+> ppr record
-      <+> ppr typeRaw
-      <+> ppr typeRecord
-      <+> ppr typeField
+  ppr (CHasField label record typeRaw typeRecord typeFunctor typeField) = parens $
+      text "CHasField" <+> braces (vcat [
+          text "hasFieldLabel"       <+> text "=" <+> ppr label
+        , text "hasFieldRecord"      <+> text "=" <+> ppr record
+        , text "hasFieldTypeRaw"     <+> text "=" <+> ppr typeRaw
+        , text "hasFieldTypeFunctor" <+> text "=" <+> ppr typeFunctor
+        , text "hasFieldTypeRecord"  <+> text "=" <+> ppr typeRecord
+        , text "hasFieldTypeField"   <+> text "=" <+> ppr typeField
+        ])
 
 {-------------------------------------------------------------------------------
   Parser
@@ -66,26 +75,27 @@ parseHasField ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CHasField)
 parseHasField tcs rn@ResolvedNames{..} =
-    parseConstraint isRelevant $ \(args, x, tyFields, a) -> do
+    parseConstraint isRelevant $ \(args, x, (f, tyFields), a) -> do
       label  <- parseFieldLabel x
       fields <- parseFields tcs rn tyFields
 
       return $ CHasField {
-          hasFieldLabel      = label
-        , hasFieldRecord     = fields
-        , hasFieldTypeRaw    = args
-        , hasFieldTypeRecord = tyFields
-        , hasFieldTypeField  = a
+          hasFieldLabel       = label
+        , hasFieldRecord      = fields
+        , hasFieldTypeRaw     = args
+        , hasFieldTypeFunctor = f
+        , hasFieldTypeRecord  = tyFields
+        , hasFieldTypeField   = a
         }
   where
     -- The constraint is relevant if
     --
     -- o It is of the form @HasField k x r a@
     -- o @k == Symbol@
-    -- o @r == Record r'@
+    -- o @r == Record f r'@
     --
-    -- When it is, return @(x, r', a)@ as well as the raw arguments [k, x, r, a]
-    isRelevant :: Class -> [Type] -> Maybe ([Type], Type, Type, Type)
+    -- If relevant, returns the raw arguments @[k, x, r, a]@ and @(x, (f, r'), a)@
+    isRelevant :: Class -> [Type] -> Maybe ([Type], Type, (Type, Type), Type)
     isRelevant cls args@[k, x, r, a] = do
         guard $ cls == clsHasField
         tcSymbol <- tyConAppTyCon_maybe k -- TODO: equal up to equalities..?
@@ -110,7 +120,8 @@ evidenceHasField ResolvedNames{..} CHasField{..} name = do
         (classDataCon clsHasField)
         hasFieldTypeRaw
         [ mkCoreApps (Var idUnsafeRecordHasField) [
-              Type hasFieldTypeRecord
+              Type hasFieldTypeFunctor
+            , Type hasFieldTypeRecord
             , Type hasFieldTypeField
             , str
             ]
@@ -134,6 +145,9 @@ solveHasField rn orig (L loc hf@CHasField{hasFieldLabel = FieldKnown name, ..}) 
         -- error here rather than leaving the constraint unsolved
         return (Nothing, [])
       Just typ -> do
-        eq <- newWanted loc $ mkPrimEqPredRole Nominal hasFieldTypeField typ
+        eq <- newWanted loc $
+                mkPrimEqPredRole Nominal
+                  hasFieldTypeField
+                  (hasFieldTypeFunctor `mkAppTy` typ)
         ev <- evidenceHasField rn hf name
         return (Just (ev, orig), [mkNonCanonical eq])

@@ -5,6 +5,8 @@
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -12,7 +14,6 @@
 {-# LANGUAGE UndecidableInstances  #-}
 
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
-{-# LANGUAGE RoleAnnotations #-}
 
 module Data.Record.Anonymous.Internal (
     -- * Types
@@ -28,6 +29,21 @@ module Data.Record.Anonymous.Internal (
     -- * Convenience functions
   , get
   , set
+    -- * Combinators
+    -- ** "Functor"
+  , map
+  , mapM
+    -- ** Zipping
+  , zip
+  , zipWith
+  , zipWithM
+    -- ** "Foldable"
+  , collapse
+    -- ** "Traversable"
+  , sequenceA
+    -- ** "Applicative"
+  , pure
+  , ap
     -- * Generics
   , RecordConstraints(..)
   , RecordMetadata(..)
@@ -38,7 +54,12 @@ module Data.Record.Anonymous.Internal (
   , unsafeFieldMetadata
   ) where
 
+import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
+import qualified Prelude
+
 import Data.Aeson
+import Data.Coerce (coerce)
+import Data.Functor.Product
 import Data.Kind
 import Data.Map (Map)
 import Data.Proxy
@@ -52,7 +73,9 @@ import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 
-import qualified Data.Map as Map
+import qualified Data.Foldable       as Foldable
+import qualified Data.Map            as Map
+import qualified Data.Map.Merge.Lazy as Map
 
 import Data.Record.Generic
 
@@ -116,6 +139,8 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- @a == b@. We /could/ introduce a new constraint to say precisely that, but
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
+--
+-- TODO: Think about laziness/strictness (here and elsewhere)
 newtype Record f (r :: [(Symbol, Type)]) = MkR (Map String (f Any))
 
 type role Record nominal representational
@@ -280,6 +305,71 @@ set :: forall l f r a.
 set _ = flip (setField @l @(Record f r))
 
 {-------------------------------------------------------------------------------
+  Simple (non-constrained) combinators
+-------------------------------------------------------------------------------}
+
+-- | Internal function
+recordToMap :: Record f r -> Map String (f Any)
+recordToMap (MkR r) = r
+
+-- | Internal function
+recordFromMap :: Map String (f Any) -> Record f r
+recordFromMap = MkR
+
+map :: (forall x. f x -> g x) -> Record f r -> Record g r
+map f = recordFromMap . fmap f . recordToMap
+
+mapM ::
+     Applicative m
+  => (forall x. f x -> m (g x))
+  -> Record f r -> m (Record g r)
+mapM f = fmap recordFromMap . traverse f . recordToMap
+
+zip :: Record f r -> Record g r -> Record (Product f g) r
+zip = zipWith Pair
+
+zipWith ::
+     (forall x. f x -> g x -> h x)
+  -> Record f r -> Record g r -> Record h r
+zipWith f a b = recordFromMap $
+    Map.intersectionWith f (recordToMap a) (recordToMap b)
+
+zipWithM ::
+     Applicative m
+  => (forall x. f x -> g x -> m (h x))
+  -> Record f r -> Record g r -> m (Record h r)
+zipWithM f a b = fmap recordFromMap $
+    Map.mergeA
+      Map.dropMissing -- can't actually happen
+      Map.dropMissing -- can't actually happen
+      (Map.zipWithAMatched $ const f)
+      (recordToMap a)
+      (recordToMap b)
+
+collapse :: Record (K a) r -> [a]
+collapse = co . Foldable.toList . recordToMap
+  where
+    co :: [K a Any] -> [a]
+    co = coerce
+
+sequenceA :: Applicative m => Record (m :.: f) r -> m (Record f r)
+sequenceA = fmap recordFromMap . traverse unComp . recordToMap
+
+pure :: forall f r. RecordMetadata f r => (forall x. f x) -> Record f r
+pure f = recordFromMap $ aux recordMetadata
+  where
+    aux :: Metadata (Record f r) -> Map String (f Any)
+    aux =
+          Map.fromList
+        . Prelude.map (($ f) . (,))
+        . Rep.collapse
+        . recordFieldNames
+
+ap :: Record (f -.-> g) r -> Record f r -> Record g r
+ap fs as = recordFromMap $
+    Map.intersectionWith apFn (recordToMap fs) (recordToMap as)
+
+{-------------------------------------------------------------------------------
   Generics
 -------------------------------------------------------------------------------}
 
@@ -306,7 +396,7 @@ instance RecordMetadata f r => Generic (Record f r) where
 
   from :: Record f r -> Rep I (Record f r)
   from (MkR r) =
-      Rep.unsafeFromListAny $ map aux names
+      Rep.unsafeFromListAny $ Prelude.map aux names
     where
       names :: [String]
       names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record f r))
@@ -321,7 +411,7 @@ instance RecordMetadata f r => Generic (Record f r) where
 
   to :: Rep I (Record f r) -> Record f r
   to =
-      MkR . Map.fromList . zipWith aux names . Rep.toListAny
+      MkR . Map.fromList . Prelude.zipWith aux names . Rep.toListAny
     where
       names :: [String]
       names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record f r))
@@ -397,7 +487,7 @@ unsafeDictRecord :: forall f r c.
      [Dict c (f Any)]  -- ^ Dictionary for each field, in order
   -> Proxy c
   -> Rep (Dict c) (Record f r)
-unsafeDictRecord ds _ = Rep.unsafeFromListAny (map co ds)
+unsafeDictRecord ds _ = Rep.unsafeFromListAny (Prelude.map co ds)
   where
     co :: Dict c (f Any) -> Dict c Any
     co = noInlineUnsafeCo
@@ -406,7 +496,7 @@ unsafeDictRecord ds _ = Rep.unsafeFromListAny (map co ds)
 unsafeFieldMetadata :: forall f r.
      [FieldMetadata (f Any)]
   -> Rep FieldMetadata (Record f r)
-unsafeFieldMetadata = Rep.unsafeFromListAny . map co
+unsafeFieldMetadata = Rep.unsafeFromListAny . Prelude.map co
   where
     co :: FieldMetadata (f Any) -> FieldMetadata Any
     co = noInlineUnsafeCo

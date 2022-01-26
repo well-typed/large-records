@@ -5,6 +5,7 @@ import GHC.TcPlugin.API
 import qualified GHC.Plugins
 
 import Data.Record.Anonymous.Plugin.NameResolution
+import Data.Record.Anonymous.Plugin.Rewriter
 import Data.Record.Anonymous.Plugin.Solver
 
 plugin :: GHC.Plugins.Plugin
@@ -17,7 +18,7 @@ tcPlugin :: TcPlugin
 tcPlugin = TcPlugin {
       tcPluginInit    = nameResolution
     , tcPluginSolve   = solve
-    , tcPluginRewrite = const $ emptyUFM
+    , tcPluginRewrite = rewrite
     , tcPluginStop    = const $ return ()
     }
 

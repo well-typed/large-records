@@ -290,6 +290,16 @@ instance Outputable FieldLabel where
   ppr (FieldKnown nm)  = parens $ text "FieldKnown" <+> ppr nm
   ppr (FieldVar   var) = parens $ text "FieldVar"   <+> ppr var
 
+instance Outputable a => Outputable (KnownRecord a) where
+  ppr = ppr . knownRecordFields
+
+instance Outputable a => Outputable (KnownField a) where
+  ppr (KnownField name typ info) = parens $
+          text "KnownField"
+      <+> ppr name
+      <+> ppr typ
+      <+> ppr info
+
 {-------------------------------------------------------------------------------
   Parser
 -------------------------------------------------------------------------------}

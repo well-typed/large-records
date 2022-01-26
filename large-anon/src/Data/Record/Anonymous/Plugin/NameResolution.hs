@@ -28,8 +28,9 @@ data ResolvedNames = ResolvedNames {
     , idUnsafeRecordHasField :: Id
     , tyConDict              :: TyCon
     , tyConFieldMetadata     :: TyCon
-    , tyConRecord            :: TyCon
     , tyConMerge             :: TyCon
+    , tyConRecord            :: TyCon
+    , tyConRecordMetadataOf  :: TyCon
     }
 
 nameResolution :: TcPluginM 'Init ResolvedNames
@@ -49,20 +50,21 @@ nameResolution = do
     clsRecordMetadata    <- getClass drai "RecordMetadata"
 
     dataConDict          <- getDataCon dsd "Dict"
-    dataConFieldMetadata <- getDataCon drg "FieldMetadata"
     dataConFieldLazy     <- getDataCon drg "FieldLazy"
+    dataConFieldMetadata <- getDataCon drg "FieldMetadata"
     dataConMetadata      <- getDataCon drg "Metadata"
     dataConProxy         <- getDataCon dp  "Proxy"
 
     idUnsafeCoerce         <- getVar uc   "unsafeCoerce"
+    idUnsafeDictRecord     <- getVar drai "unsafeDictRecord"
     idUnsafeFieldMetadata  <- getVar drai "unsafeFieldMetadata"
     idUnsafeRecordHasField <- getVar drai "unsafeRecordHasField"
-    idUnsafeDictRecord     <- getVar drai "unsafeDictRecord"
 
-    tyConDict          <- getTyCon dsd  "Dict"
-    tyConFieldMetadata <- getTyCon drg  "FieldMetadata"
-    tyConRecord        <- getTyCon drai "Record"
-    tyConMerge         <- getTyCon drai "Merge"
+    tyConDict             <- getTyCon dsd  "Dict"
+    tyConFieldMetadata    <- getTyCon drg  "FieldMetadata"
+    tyConMerge            <- getTyCon drai "Merge"
+    tyConRecord           <- getTyCon drai "Record"
+    tyConRecordMetadataOf <- getTyCon drai "RecordMetadataOf"
 
     return $ ResolvedNames {..}
 

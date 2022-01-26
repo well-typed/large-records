@@ -22,6 +22,7 @@ module Data.Record.Anonymous (
     -- * Generics
   , RecordConstraints(..)
   , RecordMetadata(..)
+  , RecordMetadataOf
     -- ** Re-exports
   , module GHC.Records.Compat
   , module Data.Record.Generic

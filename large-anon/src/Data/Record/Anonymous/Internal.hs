@@ -31,6 +31,7 @@ module Data.Record.Anonymous.Internal (
     -- * Generics
   , RecordConstraints(..)
   , RecordMetadata(..)
+  , RecordMetadataOf
     -- * Internal API
   , unsafeRecordHasField
   , unsafeDictRecord
@@ -288,9 +289,12 @@ class RecordMetadata (f :: Type -> Type) (r :: [(Symbol, Type)]) where
 class RecordMetadata f r => RecordConstraints f r c where
   dictRecord :: Proxy c -> Rep (Dict c) (Record f r)
 
+type family RecordMetadataOf (f :: Type -> Type) (r :: [(Symbol, Type)]) :: [(Symbol, Type)]
+  -- Rewritten by the plugin
+
 instance RecordMetadata f r => Generic (Record f r) where
   type Constraints (Record f r) = RecordConstraints f r
-  type MetadataOf  (Record f r) = '[] -- TODO
+  type MetadataOf  (Record f r) = RecordMetadataOf  f r
 
   dict       = dictRecord
   metadata _ = recordMetadata
@@ -314,7 +318,6 @@ instance RecordMetadata f r => Generic (Record f r) where
 
       co :: f Any -> Any
       co = noInlineUnsafeCo
-
 
   to :: Rep I (Record f r) -> Record f r
   to =
@@ -390,7 +393,6 @@ unsafeRecordHasField label (MkR r) = (
     co' = noInlineUnsafeCo
 
 -- | Used by the plugin during evidence construction for 'RecordConstraints'
-
 unsafeDictRecord :: forall f r c.
      [Dict c (f Any)]  -- ^ Dictionary for each field, in order
   -> Proxy c

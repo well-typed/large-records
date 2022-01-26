@@ -40,14 +40,17 @@ import GHC.Utils.Outputable
 import TcRnTypes (Ct(..))
 import Type (splitAppTys)
 #endif
+
 #if __GLASGOW_HASKELL__ >= 810 &&  __GLASGOW_HASKELL__ < 900
 import Constraint (Ct(..))
 import Type (splitAppTys)
 #endif
+
 #if __GLASGOW_HASKELL__ >= 900 &&  __GLASGOW_HASKELL__ < 902
 import GHC.Core.Type (splitAppTys)
 import GHC.Tc.Types.Constraint (Ct(..))
 #endif
+
 #if __GLASGOW_HASKELL__ >= 902
 import GHC.Core.Type (splitAppTys)
 import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..))

@@ -70,6 +70,10 @@ test-suite test-large-anon
   main-is:
       TestLargeAnon.hs
   other-modules:
+      Test.Record.Anonymous.Prop.Combinators.Simple
+      Test.Record.Anonymous.Prop.Model
+      Test.Record.Anonymous.Prop.Model.Generator
+      Test.Record.Anonymous.Prop.Model.Orphans
       Test.Record.Anonymous.Sanity.Basics
       Test.Record.Anonymous.Sanity.Casting
       Test.Record.Anonymous.Sanity.DuplicateFields
@@ -81,8 +85,11 @@ test-suite test-large-anon
       base
     , aeson
     , large-anon
+    , mtl
+    , QuickCheck
     , tasty
     , tasty-hunit
+    , tasty-quickcheck
 
       -- TODO: The dependencies below are unfortunate, and /should/ not be
       -- necessary: users should not have to declare dependencies on

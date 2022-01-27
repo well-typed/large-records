@@ -19,6 +19,21 @@ module Data.Record.Anonymous (
   , get
   , set
   , describeRecord
+    -- * Combinators
+    -- ** "Functor"
+  , map
+  , mapM
+    -- ** Zipping
+  , zip
+  , zipWith
+  , zipWithM
+    -- ** "Foldable"
+  , collapse
+    -- ** "Traversable"
+  , sequenceA
+    -- ** "Applicative"
+  , pure
+  , ap
     -- * Generics
   , RecordConstraints(..)
   , RecordMetadata(..)
@@ -27,6 +42,8 @@ module Data.Record.Anonymous (
   , module GHC.Records.Compat
   , module Data.Record.Generic
   ) where
+
+import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 
 import Data.List (intercalate)
 import Data.Proxy

@@ -119,7 +119,7 @@ evidenceHasField ResolvedNames{..} CHasField{..} name = do
       evDataConApp
         (classDataCon clsHasField)
         hasFieldTypeRaw
-        [ mkCoreApps (Var idUnsafeRecordHasField) [
+        [ mkCoreApps (Var idEvidenceHasField) [
               Type hasFieldTypeFunctor
             , Type hasFieldTypeRecord
             , Type hasFieldTypeField

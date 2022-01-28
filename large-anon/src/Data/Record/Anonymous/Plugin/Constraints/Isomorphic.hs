@@ -24,10 +24,10 @@ import qualified Data.Map as Map
 -- | Parsed form of an @Isomorphic r r'@ constraint
 data CIsomorphic = CIsomorphic {
       -- | Fields on the LHS
-      isomorphicFieldsLHS :: Fields
+      isomorphicParsedLHS :: Fields
 
       -- | Fields on the RHS
-    , isomorphicFieldsRHS :: Fields
+    , isomorphicParsedRHS :: Fields
 
       -- | Left-hand side of the isomorphism (@r@)
     , isomorphicTypeLHS :: Type
@@ -41,12 +41,13 @@ data CIsomorphic = CIsomorphic {
 -------------------------------------------------------------------------------}
 
 instance Outputable CIsomorphic where
-  ppr (CIsomorphic fieldsLHS fieldsRHS typeLHS typeRHS) = parens $
-          text "CIsomorphic"
-      <+> ppr fieldsLHS
-      <+> ppr fieldsRHS
-      <+> ppr typeLHS
-      <+> ppr typeRHS
+  ppr (CIsomorphic parsedLHS parsedRHS typeLHS typeRHS) = parens $
+      text "CIsomorphic" <+> braces (vcat [
+          text "isomorphicParsedLHS" <+> text "=" <+> ppr parsedLHS
+        , text "isomorphicParsedRHS" <+> text "=" <+> ppr parsedRHS
+        , text "isomorphicTypeLHS"   <+> text "=" <+> ppr typeLHS
+        , text "isomorphicTypeRHS"   <+> text "=" <+> ppr typeRHS
+        ])
 
 {-------------------------------------------------------------------------------
   Parser
@@ -62,8 +63,8 @@ parseIsomorphic tcs rn@ResolvedNames{..} =
       fieldsLHS <- parseFields tcs rn typeLHS
       fieldsRHS <- parseFields tcs rn typeRHS
       return $ CIsomorphic {
-            isomorphicFieldsLHS = fieldsLHS
-          , isomorphicFieldsRHS = fieldsRHS
+            isomorphicParsedLHS = fieldsLHS
+          , isomorphicParsedRHS = fieldsRHS
           , isomorphicTypeLHS   = typeLHS
           , isomorphicTypeRHS   = typeRHS
           }
@@ -90,8 +91,8 @@ solveIsomorphic ::
   -> GenLocated CtLoc CIsomorphic
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
 solveIsomorphic rn orig (L loc iso@CIsomorphic{..}) =
-    case ( checkAllFieldsKnown isomorphicFieldsLHS
-         , checkAllFieldsKnown isomorphicFieldsRHS
+    case ( checkAllFieldsKnown isomorphicParsedLHS
+         , checkAllFieldsKnown isomorphicParsedRHS
          ) of
       (Just lhs, Just rhs) ->
         case knownRecordIsomorphic lhs rhs of

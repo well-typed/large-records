@@ -22,7 +22,8 @@ import GHC.TypeLits
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous
+import Data.Record.Anonymous.Advanced (Record)
+import qualified Data.Record.Anonymous.Advanced as Anon
 
 tests :: TestTree
 tests = testGroup "Test.Record.Anonymous.Sanity.TypeLevelMetadata" [
@@ -36,9 +37,9 @@ tests = testGroup "Test.Record.Anonymous.Sanity.TypeLevelMetadata" [
 
 recordA :: Record I '[ '("a", Bool), '("b", Char) ]
 recordA =
-      insert #a (I True)
-    $ insert #b (I 'a')
-    $ empty
+      Anon.insert #a (I True)
+    $ Anon.insert #b (I 'a')
+    $ Anon.empty
 
 {-------------------------------------------------------------------------------
   Auxiliary infrastructure
@@ -66,10 +67,10 @@ instance ( KnownSymbol (Fst x)
 
 -- | Reflect field metadata from the type-level information
 reflectFieldMetadata :: forall f r.
-     ReflectMetadata (RecordMetadataOf f r)
+     ReflectMetadata (Anon.FieldTypes f r)
   => Record f r  -- ^ Serves as a proxy only
   -> [(String, String)]
-reflectFieldMetadata _ = reflectMetadata (Proxy @(RecordMetadataOf f r))
+reflectFieldMetadata _ = reflectMetadata (Proxy @(Anon.FieldTypes f r))
 
 {-------------------------------------------------------------------------------
   Tests proper

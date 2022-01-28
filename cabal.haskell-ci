@@ -152,7 +152,8 @@ doctest-filter-packages:
 doctest-skip:
 
 -- Enable Docspec job
-docspec: True
+-- TODO: Re-enable docspec
+docspec: False 
 
 -- Additional Docspec options
 docspec-options:

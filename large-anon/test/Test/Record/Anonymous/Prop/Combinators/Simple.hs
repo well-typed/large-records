@@ -1,6 +1,7 @@
-{-# LANGUAGE GADTs         #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE ViewPatterns  #-}
+{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators    #-}
+{-# LANGUAGE ViewPatterns     #-}
 
 module Test.Record.Anonymous.Prop.Combinators.Simple (tests) where
 
@@ -8,7 +9,7 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.SOP
 
-import qualified Data.Record.Anonymous as Anon
+import qualified Data.Record.Anonymous.Advanced as Anon
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
@@ -32,6 +33,13 @@ tests = testGroup "Test.Record.Anonymous.Prop.Combinators.Simple" [
     ]
 
 {-------------------------------------------------------------------------------
+  Auxiliary
+-------------------------------------------------------------------------------}
+
+pTop :: Proxy Top
+pTop = Proxy
+
+{-------------------------------------------------------------------------------
   Tests proper
 -------------------------------------------------------------------------------}
 
@@ -40,8 +48,8 @@ test_map ::
   -> Fun Int Int
   -> Property
 test_map r (applyFun -> f) =
-        onModlRecord (Modl.map f') r
-    === onAnonRecord (Anon.map f') r
+        onModlRecord pTop (Modl.map f') r
+    === onAnonRecord pTop (Anon.map f') r
   where
     f' :: K Int x -> K Int x
     f' = mapKK f
@@ -51,8 +59,8 @@ test_mapM ::
   -> Fun (Int, Word) (Int, Word)
   -> Property
 test_mapM r (applyFun -> f) =
-        (run $ onModlRecordM (Modl.mapM f') r)
-    === (run $ onAnonRecordM (Anon.mapM f') r)
+        (run $ onModlRecordM pTop (Modl.mapM f') r)
+    === (run $ onAnonRecordM pTop (Anon.mapM f') r)
   where
     run :: State Word a -> a
     run = flip evalState 0
@@ -64,16 +72,16 @@ test_zip ::
      SomeRecordPair (K Int) (K Int)
   -> Property
 test_zip r =
-        onModlRecordPair Modl.zip r
-    === onAnonRecordPair Anon.zip r
+        onModlRecordPair pTop Modl.zip r
+    === onAnonRecordPair pTop Anon.zip r
 
 test_zipWith ::
      SomeRecordPair (K Int) (K Int)
   -> Fun (Int, Int) Int
   -> Property
 test_zipWith r (applyFun -> f) =
-        onModlRecordPair (Modl.zipWith f') r
-    === onAnonRecordPair (Anon.zipWith f') r
+        onModlRecordPair pTop (Modl.zipWith f') r
+    === onAnonRecordPair pTop (Anon.zipWith f') r
   where
     f' :: K Int x -> K Int x -> K Int x
     f' (K x) (K y) = K $ f (x, y)
@@ -83,8 +91,8 @@ test_zipWithM ::
   -> Fun (Int, Int, Word) (Int, Word)
   -> Property
 test_zipWithM r (applyFun -> f) =
-        (run $ onModlRecordPairM (Modl.zipWithM f') r)
-    === (run $ onAnonRecordPairM (Anon.zipWithM f') r)
+        (run $ onModlRecordPairM pTop (Modl.zipWithM f') r)
+    === (run $ onAnonRecordPairM pTop (Anon.zipWithM f') r)
   where
     run :: State Word a -> a
     run = flip evalState 0
@@ -104,29 +112,29 @@ test_sequenceA ::
   -> Fun (Int, Word) (Int, Word)
   -> Property
 test_sequenceA r (applyFun -> f) =
-        (run $ onModlRecordM Modl.sequenceA r')
-    === (run $ onAnonRecordM Anon.sequenceA r')
+        (run $ onModlRecordM pTop Modl.sequenceA r')
+    === (run $ onAnonRecordM pTop Anon.sequenceA r')
   where
     run :: State Word a -> a
     run = flip evalState 0
 
     r' :: SomeRecord (State Word :.: K Int)
-    r' = onModlRecord (Modl.map f') r
+    r' = onModlRecord pTop (Modl.map f') r
 
     f' :: K Int x -> (State Word :.: K Int) x
     f' (K x) = Comp $ state $ \s -> first K $ f (x, s)
 
 test_pure :: SomeFields -> Property
 test_pure sf =
-        someModlRecord sf (\mf -> Modl.pure mf (K True))
-    === someAnonRecord sf (       Anon.pure    (K True))
+        someModlRecord      sf (\mf -> Modl.pure mf (K True))
+    === someAnonRecord pTop sf (       Anon.pure    (K True))
 
 test_ap ::
      SomeRecordPair (K Int) (K Int)
   -> Property
 test_ap (SR2 mf rx ry) =
-        onModlRecordPair Modl.ap r'
-    === onAnonRecordPair Anon.ap r'
+        onModlRecordPair pTop Modl.ap r'
+    === onAnonRecordPair pTop Anon.ap r'
   where
     r' :: SomeRecordPair (K Int -.-> K Int) (K Int)
     r' = SR2 mf (Modl.map f rx) ry

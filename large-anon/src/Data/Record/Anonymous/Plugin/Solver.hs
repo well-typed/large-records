@@ -9,10 +9,10 @@ import Data.Bifunctor
 import Data.Maybe (catMaybes)
 import Data.Traversable (forM)
 
+import Data.Record.Anonymous.Plugin.Constraints.AllFields
 import Data.Record.Anonymous.Plugin.Constraints.HasField
 import Data.Record.Anonymous.Plugin.Constraints.Isomorphic
-import Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
-import Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
+import Data.Record.Anonymous.Plugin.Constraints.KnownFields
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
@@ -27,29 +27,25 @@ solve rn given wanted =
 --  trace _debugInput  $
 --  trace _debugParsed $
     do (solved, new) <- fmap (bimap catMaybes concat . unzip) $ concatM [
-           forM parsedHasField          $ uncurry (solveHasField          rn)
-         , forM parsedRecordConstraints $ uncurry (solveRecordConstraints rn)
-         , forM parsedRecordMetadata    $ uncurry (solveRecordMetadata    rn)
-         , forM parsedIsomorphic        $ uncurry (solveIsomorphic        rn)
+           forM parsedHasField    $ uncurry (solveHasField    rn)
+         , forM parsedAllFields   $ uncurry (solveAllFields   rn)
+         , forM parsedKnownFields $ uncurry (solveKnownFields rn)
+         , forM parsedIsomorphic  $ uncurry (solveIsomorphic  rn)
          ]
        return $ TcPluginOk solved new
   where
     tcs :: TyConSubst
     tcs = mkTyConSubst given
 
-    parsedHasField          :: [(Ct, GenLocated CtLoc CHasField)]
-    parsedRecordConstraints :: [(Ct, GenLocated CtLoc CRecordConstraints)]
-    parsedRecordMetadata    :: [(Ct, GenLocated CtLoc CRecordMetadata)]
-    parsedIsomorphic        :: [(Ct, GenLocated CtLoc CIsomorphic)]
+    parsedHasField    :: [(Ct, GenLocated CtLoc CHasField)]
+    parsedAllFields   :: [(Ct, GenLocated CtLoc CAllFields)]
+    parsedKnownFields :: [(Ct, GenLocated CtLoc CKnownFields)]
+    parsedIsomorphic  :: [(Ct, GenLocated CtLoc CIsomorphic)]
 
-    parsedHasField =
-        parseAll' (withOrig (parseHasField tcs rn)) wanted
-    parsedRecordConstraints =
-        parseAll' (withOrig (parseRecordConstraints tcs rn)) wanted
-    parsedRecordMetadata =
-        parseAll' (withOrig (parseRecordMetadata tcs rn)) wanted
-    parsedIsomorphic =
-        parseAll' (withOrig (parseIsomorphic tcs rn)) wanted
+    parsedHasField    = parseAll' (withOrig (parseHasField    tcs rn)) wanted
+    parsedAllFields   = parseAll' (withOrig (parseAllFields   tcs rn)) wanted
+    parsedKnownFields = parseAll' (withOrig (parseKnownFields tcs rn)) wanted
+    parsedIsomorphic  = parseAll' (withOrig (parseIsomorphic  tcs rn)) wanted
 
     _debugInput :: String
     _debugInput = unlines [
@@ -72,12 +68,12 @@ solve rn given wanted =
             , showSDocUnsafe (ppr parsedHasField)
             ]
         , concat [
-              "parsedRecordConstraints: "
-            , showSDocUnsafe (ppr parsedRecordConstraints)
+              "parsedAllFields  : "
+            , showSDocUnsafe (ppr parsedAllFields  )
             ]
         , concat [
-              "parsedRecordMetadata: "
-            , showSDocUnsafe (ppr parsedRecordMetadata)
+              "parsedKnownFields   : "
+            , showSDocUnsafe (ppr parsedKnownFields   )
             ]
         , concat [
               "parsedIsomorphic: "

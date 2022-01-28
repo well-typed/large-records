@@ -160,15 +160,6 @@ jobs:
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
           cabal-plan --version
-      - name: install cabal-docspec
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20211114/cabal-docspec-0.0.0.20211114.xz > cabal-docspec.xz
-          echo 'e224700d9e8c9ec7ec6bc3f542ba433cd9925a5d356676c62a9bd1f2c8be8f8a  cabal-docspec.xz' | sha256sum -c -
-          xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
-          rm -f cabal-docspec.xz
-          chmod a+x $HOME/.cabal/bin/cabal-docspec
-          cabal-docspec --version
       - name: checkout
         uses: actions/checkout@v2
         with:
@@ -215,27 +206,22 @@ jobs:
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
           cat >> cabal.project <<EOF
-          allow-newer: ghc-prim
-          allow-newer: bytestring
-          allow-newer: template-haskell
-          allow-newer: attoparsec
-
           source-repository-package
             type:     git
             location: https://github.com/well-typed/beam
-            tag:      320adcf19109daa2c0a44c51b255d9bd18058f75
+            tag:      bdafa58bd3ced2f8f9efef3443cdcdeee507fa1f
             subdir:   beam-core
 
           source-repository-package
             type:     git
             location: https://github.com/well-typed/beam
-            tag:      320adcf19109daa2c0a44c51b255d9bd18058f75
+            tag:      bdafa58bd3ced2f8f9efef3443cdcdeee507fa1f
             subdir:   beam-migrate
 
           source-repository-package
             type:     git
             location: https://github.com/well-typed/beam
-            tag:      320adcf19109daa2c0a44c51b255d9bd18058f75
+            tag:      bdafa58bd3ced2f8f9efef3443cdcdeee507fa1f
             subdir:   beam-sqlite
           EOF
           if $HEADHACKAGE; then
@@ -267,10 +253,6 @@ jobs:
       - name: tests
         run: |
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
-      - name: docspec
-        run: |
-          $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all
-          cabal-docspec $ARG_COMPILER
       - name: cabal check
         run: |
           cd ${PKGDIR_large_generics} || false

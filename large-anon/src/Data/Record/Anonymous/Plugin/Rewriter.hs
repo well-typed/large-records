@@ -9,7 +9,7 @@ import Data.Record.Anonymous.Plugin.TyConSubst
 
 rewrite :: ResolvedNames -> UniqFM TyCon TcPluginRewriter
 rewrite rn@ResolvedNames{..} = listToUFM [
-      (tyConRecordMetadataOf, rewriteRecordMetadataOf rn)
+      (tyConFieldTypes, rewriteRecordMetadataOf rn)
     ]
 
 rewriteRecordMetadataOf :: ResolvedNames -> TcPluginRewriter
@@ -26,7 +26,7 @@ rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[functor, fields] =
                mkTyFamAppReduction
                  "large-anon"
                  Nominal
-                 tyConRecordMetadataOf
+                 tyConFieldTypes
                  args
                  (computeMetadataOf functor knownFields)
           }

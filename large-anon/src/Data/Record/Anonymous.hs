@@ -1,9 +1,8 @@
+{-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
-
--- See discussion avbout orphans, below.
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Data.Record.Anonymous (
     Record -- Opaque
@@ -23,21 +22,32 @@ module Data.Record.Anonymous (
     -- ** "Functor"
   , map
   , mapM
+  , cmap
+  , cmapM
     -- ** Zipping
   , zip
   , zipWith
   , zipWithM
+  , czipWith
+  , czipWithM
     -- ** "Foldable"
   , collapse
     -- ** "Traversable"
   , sequenceA
     -- ** "Applicative"
   , pure
+  , cpure
   , ap
     -- * Generics
-  , RecordConstraints(..)
-  , RecordMetadata(..)
+    -- ** Metadata
+  , RecordMetadata -- opaque
+  , recordMetadata
   , RecordMetadataOf
+    -- ** Constraints
+  , RecordDicts(..)
+  , RecordDictsF
+  , recordDictsF
+  , RecordConstraints(..)
     -- ** Re-exports
   , module GHC.Records.Compat
   , module Data.Record.Generic
@@ -48,12 +58,57 @@ import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 import Data.List (intercalate)
 import Data.Proxy
 import Data.Record.Generic
+import Data.SOP (fn_2)
 import Data.Typeable
 import GHC.Records.Compat
 
 import qualified Data.Record.Generic.Rep as Rep
 
 import Data.Record.Anonymous.Internal
+
+{-------------------------------------------------------------------------------
+  Constrained combinators
+
+  These are defined here rather than in Internal because these do not use
+  the internal representation directly (but instead are defined in terms of the
+  non-constrained combinators).
+-------------------------------------------------------------------------------}
+
+cpure ::
+     RecordDicts r c
+  => Proxy c
+  -> (forall x. c x => f x)
+  -> Record f r
+cpure p f = map (\Dict -> f) (recordDicts p)
+
+cmap :: forall f g r c.
+     RecordDicts r c
+  => Proxy c
+  -> (forall x. c x => f x -> g x)
+  -> Record f r -> Record g r
+cmap p f = ap (cpure p (Fn f))
+
+cmapM ::
+     (Applicative m, RecordDicts r c)
+  => Proxy c
+  -> (forall x. c x => f x -> m (g x))
+  -> Record f r -> m (Record g r)
+cmapM p f = sequenceA . cmap p (Comp . f)
+
+czipWithM ::
+     (Applicative m, RecordDicts r c)
+  => Proxy c
+  -> (forall x. c x => f x -> g x -> m (h x))
+  -> Record f r -> Record g r -> m (Record h r)
+czipWithM p f a b = sequenceA $
+    cpure p (fn_2 $ \x y -> Comp $ f x y) `ap` a `ap` b
+
+czipWith ::
+     RecordDicts r c
+  => Proxy c
+  -> (forall x. c x => f x -> g x -> h x)
+  -> Record f r -> Record g r -> Record h r
+czipWith p f a b = unI $ czipWithM p (\x y -> I (f x y)) a b
 
 {-------------------------------------------------------------------------------
   Additional functions

@@ -12,6 +12,7 @@ import Data.Traversable (forM)
 import Data.Record.Anonymous.Plugin.Constraints.HasField
 import Data.Record.Anonymous.Plugin.Constraints.Isomorphic
 import Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
+import Data.Record.Anonymous.Plugin.Constraints.RecordDicts
 import Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
@@ -29,6 +30,7 @@ solve rn given wanted =
     do (solved, new) <- fmap (bimap catMaybes concat . unzip) $ concatM [
            forM parsedHasField          $ uncurry (solveHasField          rn)
          , forM parsedRecordConstraints $ uncurry (solveRecordConstraints rn)
+         , forM parsedRecordDicts       $ uncurry (solveRecordDicts       rn)
          , forM parsedRecordMetadata    $ uncurry (solveRecordMetadata    rn)
          , forM parsedIsomorphic        $ uncurry (solveIsomorphic        rn)
          ]
@@ -39,6 +41,7 @@ solve rn given wanted =
 
     parsedHasField          :: [(Ct, GenLocated CtLoc CHasField)]
     parsedRecordConstraints :: [(Ct, GenLocated CtLoc CRecordConstraints)]
+    parsedRecordDicts       :: [(Ct, GenLocated CtLoc CRecordDicts)]
     parsedRecordMetadata    :: [(Ct, GenLocated CtLoc CRecordMetadata)]
     parsedIsomorphic        :: [(Ct, GenLocated CtLoc CIsomorphic)]
 
@@ -46,6 +49,8 @@ solve rn given wanted =
         parseAll' (withOrig (parseHasField tcs rn)) wanted
     parsedRecordConstraints =
         parseAll' (withOrig (parseRecordConstraints tcs rn)) wanted
+    parsedRecordDicts =
+        parseAll' (withOrig (parseRecordDicts tcs rn)) wanted
     parsedRecordMetadata =
         parseAll' (withOrig (parseRecordMetadata tcs rn)) wanted
     parsedIsomorphic =
@@ -74,6 +79,10 @@ solve rn given wanted =
         , concat [
               "parsedRecordConstraints: "
             , showSDocUnsafe (ppr parsedRecordConstraints)
+            ]
+        , concat [
+              "parsedRecordDicts: "
+            , showSDocUnsafe (ppr parsedRecordDicts)
             ]
         , concat [
               "parsedRecordMetadata: "

@@ -27,6 +27,7 @@ library
       Data.Record.Anonymous.Plugin.Constraints.HasField
       Data.Record.Anonymous.Plugin.Constraints.Isomorphic
       Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
+      Data.Record.Anonymous.Plugin.Constraints.RecordDicts
       Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
       Data.Record.Anonymous.Plugin.GhcTcPluginAPI
       Data.Record.Anonymous.Plugin.NameResolution
@@ -70,17 +71,20 @@ test-suite test-large-anon
   main-is:
       TestLargeAnon.hs
   other-modules:
+      Test.Record.Anonymous.Prop.Combinators.Constrained
       Test.Record.Anonymous.Prop.Combinators.Simple
       Test.Record.Anonymous.Prop.Model
       Test.Record.Anonymous.Prop.Model.Generator
       Test.Record.Anonymous.Prop.Model.Orphans
-      Test.Record.Anonymous.Sanity.Basics
       Test.Record.Anonymous.Sanity.Casting
       Test.Record.Anonymous.Sanity.DuplicateFields
+      Test.Record.Anonymous.Sanity.Generics
+      Test.Record.Anonymous.Sanity.HasField
       Test.Record.Anonymous.Sanity.Merging
-      Test.Record.Anonymous.Sanity.TypeLevelMetadata
       Test.Record.Anonymous.Sanity.Named.Record1
       Test.Record.Anonymous.Sanity.Named.Record2
+      Test.Record.Anonymous.Sanity.RecordDicts
+      Test.Record.Anonymous.Sanity.TypeLevelMetadata
   build-depends:
       base
     , aeson

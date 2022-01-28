@@ -164,9 +164,7 @@ solveRecordConstraints rn@ResolvedNames{clsRecordMetadata}
         evMeta  <- newWanted loc $
                      mkClassPred
                        clsRecordMetadata
-                       [ recordConstraintsTypeFunctor
-                       , recordConstraintsTypeRecord
-                       ]
+                       [recordConstraintsTypeRecord]
         fields' <- knownRecordTraverse fields $ \fld ->
                      newWanted loc $
                        mkAppTy

@@ -66,19 +66,13 @@ data SomeRecordPair f g where
 
 someModlRecord ::
      SomeFields
-  -> ( forall r.
-            SListI (Types r)
-         => ModelFields r -> ModelRecord f r
-     )
+  -> (forall r. SListI (Types r) => ModelFields r -> ModelRecord f r)
   -> SomeRecord f
 someModlRecord (SF mf) f = SR mf (f mf)
 
 someAnonRecord :: forall f.
      SomeFields
-  -> ( forall r.
-            RecordMetadata f r
-         => Record f r
-     )
+  -> (forall r. RecordMetadata r => Record f r)
   -> SomeRecord f
 someAnonRecord (SF mf) f = SR mf (Model.fromRecord mf $ f' mf)
   where

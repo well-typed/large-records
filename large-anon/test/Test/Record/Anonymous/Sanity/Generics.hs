@@ -1,16 +1,16 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 {-# OPTIONS_GHC -Wno-orphans #-} -- for the ToJSON/FromJSON instances
 
-module Test.Record.Anonymous.Sanity.Basics (tests) where
+module Test.Record.Anonymous.Sanity.Generics (tests) where
 
 import Data.Aeson
-import Data.SOP.BasicFunctors -- TODO: Should this be exported from large-anon?
+import Data.SOP.BasicFunctors
 
-import qualified Data.Record.Anonymous as A
+import Data.Record.Anonymous (Record)
+import qualified Data.Record.Anonymous as Anon
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -18,10 +18,11 @@ import Test.Tasty.HUnit
 import qualified Test.Record.Anonymous.Sanity.Named.Record1 as R1
 import qualified Test.Record.Anonymous.Sanity.Named.Record2 as R2
 
+-- add test with non-I functor
+
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.Basics" [
-      testCase "HasField"       test_HasField
-    , testCase "Show"           test_Show
+tests = testGroup "Test.Record.Anonymous.Sanity.Generics" [
+      testCase "Show"           test_Show
     , testCase "Eq"             test_Eq
     , testCase "Ord"            test_Ord
     , testCase "describeRecord" test_describeRecord
@@ -29,59 +30,55 @@ tests = testGroup "Test.Record.Anonymous.Sanity.Basics" [
     ]
 
 {-------------------------------------------------------------------------------
-  Tests proper
+  Example values
 -------------------------------------------------------------------------------}
 
-record1 :: A.Record I '[ '("x", Bool), '("y", Char), '("z", ()) ]
+record1 :: Record I '[ '("x", Bool), '("y", Char), '("z", ()) ]
 record1 =
-      A.insert #x (I True)
-    $ A.insert #y (I 'a')
-    $ A.insert #z (I ())
-    $ A.empty
+      Anon.insert #x (I True)
+    $ Anon.insert #y (I 'a')
+    $ Anon.insert #z (I ())
+    $ Anon.empty
 
--- | Second example, where the fields do not appear in alphabetical order
+-- | Example where the fields do not appear in alphabetical order
 --
 -- Ordering matters in the 'Generic' instance.
-record2 :: A.Record I '[ '("y", Char), '("x", Bool) ]
+record2 :: Record I '[ '("y", Char), '("x", Bool) ]
 record2 =
-      A.insert #y (I 'a')
-    $ A.insert #x (I True)
-    $ A.empty
+      Anon.insert #y (I 'a')
+    $ Anon.insert #x (I True)
+    $ Anon.empty
 
-test_HasField :: Assertion
-test_HasField = do
-    assertEqual "get field 1" (I True) $ (A.get #x record1)
-    assertEqual "get field 2" (I 'a')  $ (A.get #y record1)
-    assertEqual "get field 3" (I ())   $ (A.get #z record1)
+-- | Example that doesn't use I as the functor
+record3 :: Record (K ()) '[ '("y", Char), '("x", Bool) ]
+record3 =
+      Anon.insert #y (K ())
+    $ Anon.insert #x (K ())
+    $ Anon.empty
 
-    -- TODO: We should do whole-record comparisons, but for that we need
-    -- Show and Eq instances, which will depend on generics
-
-    assertEqual "set field 1, then get field 1" (I False) $
-      A.get #x (A.set #x (I False) record1)
-    assertEqual "set field 1, then get field 2" (I 'a') $
-      (A.get #y (A.set #x (I False) record1))
-
-    -- TODO: think about and test what happens with duplicate labels
+{-------------------------------------------------------------------------------
+  Tests proper
+-------------------------------------------------------------------------------}
 
 test_Show :: Assertion
 test_Show = do
     assertEqual "R1" (show (R1.Record (I True) (I 'a') (I ()))) $ show record1
-    assertEqual "R2" (show (R2.Record (I 'a') (I True)))        $ show record2
+    assertEqual "R2" (show (R2.Record (I 'a')  (I True)))       $ show record2
+    assertEqual "R3" (show (R2.Record (K ())   (K ())))         $ show record3
 
 test_Eq :: Assertion
 test_Eq = do
     assertEqual "equal" True $
       record1 == record1
     assertEqual "not equal" False $
-      record1 == (A.set #x (I False) record1)
+      record1 == (Anon.set #x (I False) record1)
 
 test_Ord :: Assertion
 test_Ord = do
     assertEqual "R1" (compare (R1.Record (I True) (I 'a') (I ())) (R1.Record (I False) (I 'a') (I ()))) $
-      compare record1 (A.set #x (I False) record1)
+      compare record1 (Anon.set #x (I False) record1)
     assertEqual "R2" (compare (R2.Record (I 'a') (I True)) (R2.Record (I 'a') (I False))) $
-      compare record2 (A.set #x (I False) record2)
+      compare record2 (Anon.set #x (I False) record2)
 
 -- Test 'describeRecord'
 --
@@ -91,7 +88,7 @@ test_Ord = do
 -- need to be taken into account by the @large-anon@ plugin.
 test_describeRecord :: Assertion
 test_describeRecord = do
-    assertEqual "" expected $ A.describeRecord record1
+    assertEqual "" expected $ Anon.describeRecord record1
   where
     expected :: String
     expected = "Record {x :: I Bool, y :: I Char, z :: I ()}"

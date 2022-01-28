@@ -22,16 +22,13 @@ import Data.Record.Anonymous.Plugin.TyConSubst
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of a @RecordMetadata f r@ constraint
+-- | Parsed form of a @RecordMetadata r@ constraint
 data CRecordMetadata = CRecordMetadata {
       -- | Fields of the record
       recordMetadataFields :: Fields
 
       -- | Raw arguments to @RecordMetadata@ (for evidence construction)
     , recordMetadataTypeRaw :: [Type]
-
-      -- | Type of the functor (@f@)
-    , recordMetadataTypeFunctor :: Type
 
       -- | Type of the record fields (@r@)
     , recordMetadataTypeRecord :: Type
@@ -42,12 +39,11 @@ data CRecordMetadata = CRecordMetadata {
 -------------------------------------------------------------------------------}
 
 instance Outputable CRecordMetadata where
-  ppr (CRecordMetadata fields typeRaw typeFunctor typeRecord) = parens $
+  ppr (CRecordMetadata fields typeRaw typeRecord) = parens $
       text "CRecordMetadata" <+> braces (vcat [
-          text "recordMetadataFields"      <+> text "+" <+> ppr fields
-        , text "recordMetadataTypeRaw"     <+> text "+" <+> ppr typeRaw
-        , text "recordMetadataTypeFunctor" <+> text "+" <+> ppr typeFunctor
-        , text "recordMetadataTypeRecord"  <+> text "+" <+> ppr typeRecord
+          text "recordMetadataFields"     <+> text "+" <+> ppr fields
+        , text "recordMetadataTypeRaw"    <+> text "+" <+> ppr typeRaw
+        , text "recordMetadataTypeRecord" <+> text "+" <+> ppr typeRecord
         ])
 
 {-------------------------------------------------------------------------------
@@ -61,12 +57,11 @@ parseRecordMetadata ::
   -> ParseResult Void (GenLocated CtLoc CRecordMetadata)
 parseRecordMetadata tcs rn@ResolvedNames{..} =
     parseConstraint' clsRecordMetadata $ \case
-      args@[f, r] -> do
+      args@[r] -> do
         fields <- parseFields tcs rn r
         return CRecordMetadata {
             recordMetadataFields      = fields
           , recordMetadataTypeRaw     = args
-          , recordMetadataTypeFunctor = f
           , recordMetadataTypeRecord  = r
           }
       _invalidNumArgs ->
@@ -89,40 +84,24 @@ evidenceRecordMetadata ResolvedNames{..}
                        CRecordMetadata{..}
                        r
                      = do
-    nameRecord <- mkStringExpr "Record"
-    nameConstr <- mkStringExpr "Record"
     return $
       evDataConApp
         (classDataCon clsRecordMetadata)
-        [ recordMetadataTypeFunctor
-        , recordMetadataTypeRecord
-        ]
-        [ mkCoreConApps dataConMetadata [
-              Type $ mkTyConApp tyConRecord [
-                  recordMetadataTypeFunctor
-                , recordMetadataTypeRecord
-                ]
-            , nameRecord
-            , nameConstr
-            , mkUncheckedIntExpr (fromIntegral (length (knownRecordFields r)))
-            , mkCoreApps (Var idUnsafeFieldMetadata) [
-                  Type recordMetadataTypeFunctor
-                , Type recordMetadataTypeRecord
-                , mkListExpr fieldMetadataType $
-                    map mkFieldInfoAny (knownRecordFields r)
-                ]
+        [recordMetadataTypeRecord]
+        [ mkCoreApps (Var idUnsafeRecordMetadata) [
+              Type recordMetadataTypeRecord
+            , mkListExpr fieldMetadataType $
+                map mkFieldInfoAny (knownRecordFields r)
             ]
         ]
   where
     fieldMetadataType :: Type
-    fieldMetadataType = mkTyConApp tyConFieldMetadata [
-          recordMetadataTypeFunctor `mkAppTy` anyType
-        ]
+    fieldMetadataType = mkTyConApp tyConFieldMetadata [anyType]
 
     mkFieldInfoAny :: KnownField EvVar -> EvExpr
     mkFieldInfoAny KnownField{knownFieldName = name, knownFieldInfo = dict} =
         mkCoreConApps dataConFieldMetadata [
-            Type (recordMetadataTypeFunctor `mkAppTy` anyType)
+            Type anyType
           , Type (mkStrLitTy name)
           , Var dict
           , mkCoreConApps dataConProxy [

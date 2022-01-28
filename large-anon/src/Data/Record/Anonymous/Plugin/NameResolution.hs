@@ -15,17 +15,18 @@ data ResolvedNames = ResolvedNames {
       clsHasField            :: Class
     , clsIsomorphic          :: Class
     , clsKnownSymbol         :: Class
-    , clsRecordConstraints   :: Class
+    , clsRecordConstraints   :: Class -- TODO: remove
+    , clsRecordDicts         :: Class
     , clsRecordMetadata      :: Class
     , dataConDict            :: DataCon
     , dataConFieldLazy       :: DataCon
     , dataConFieldMetadata   :: DataCon
-    , dataConMetadata        :: DataCon
     , dataConProxy           :: DataCon
     , idUnsafeCoerce         :: Id
     , idUnsafeDictRecord     :: Id
-    , idUnsafeFieldMetadata  :: Id
+    , idUnsafeRecordDicts    :: Id
     , idUnsafeRecordHasField :: Id
+    , idUnsafeRecordMetadata :: Id
     , tyConDict              :: TyCon
     , tyConFieldMetadata     :: TyCon
     , tyConMerge             :: TyCon
@@ -47,18 +48,19 @@ nameResolution = do
     clsIsomorphic        <- getClass drai "Isomorphic"
     clsKnownSymbol       <- tcLookupClass knownSymbolClassName
     clsRecordConstraints <- getClass drai "RecordConstraints"
+    clsRecordDicts       <- getClass drai "RecordDicts"
     clsRecordMetadata    <- getClass drai "RecordMetadata"
 
     dataConDict          <- getDataCon dsd "Dict"
     dataConFieldLazy     <- getDataCon drg "FieldLazy"
     dataConFieldMetadata <- getDataCon drg "FieldMetadata"
-    dataConMetadata      <- getDataCon drg "Metadata"
     dataConProxy         <- getDataCon dp  "Proxy"
 
     idUnsafeCoerce         <- getVar uc   "unsafeCoerce"
     idUnsafeDictRecord     <- getVar drai "unsafeDictRecord"
-    idUnsafeFieldMetadata  <- getVar drai "unsafeFieldMetadata"
+    idUnsafeRecordDicts    <- getVar drai "unsafeRecordDicts"
     idUnsafeRecordHasField <- getVar drai "unsafeRecordHasField"
+    idUnsafeRecordMetadata <- getVar drai "unsafeRecordMetadata"
 
     tyConDict             <- getTyCon dsd  "Dict"
     tyConFieldMetadata    <- getTyCon drg  "FieldMetadata"

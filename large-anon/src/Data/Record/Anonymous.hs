@@ -38,6 +38,9 @@ module Data.Record.Anonymous (
   , pure
   , cpure
   , ap
+    -- * Intersection
+  , Intersection(..)
+  , intersect
     -- * Generics
     -- ** Metadata
   , RecordMetadata -- opaque

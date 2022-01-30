@@ -45,6 +45,9 @@ module Data.Record.Anonymous.Internal (
     -- ** "Applicative"
   , pure
   , ap
+    -- * Intersection
+  , Intersection(..)
+  , intersect
     -- * Generics
     -- ** Metadata
   , RecordMetadata -- opaque
@@ -160,7 +163,7 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- unresolved until we know more about the record.
 --
 -- TODO: Think about laziness/strictness (here and elsewhere)
-newtype Record f (r :: [(Symbol, Type)]) = MkR (Map String (f Any))
+newtype Record (f :: Type -> Type) (r :: [(Symbol, Type)]) = MkR (Map String (f Any))
 
 type role Record nominal representational
 
@@ -487,6 +490,30 @@ recordDictsF _ = map aux $ recordDicts (Proxy @(Compose c f))
   where
     aux :: Dict (Compose c f) x -> (Dict c :.: f) x
     aux Dict = Comp Dict
+
+{-------------------------------------------------------------------------------
+  Intersection
+-------------------------------------------------------------------------------}
+
+data Intersection r1 r2 where
+  Intersection ::
+    forall i d1 d2 r1 r2.
+    { project :: forall f g. Record f r1 -> Record g r2 -> ( Record (f `Product` g) i, Record f d1, Record g d2 )
+    , injectL :: forall f. Record f i  -> Record f d1 -> Record f r1
+    , injectR :: forall g. Record g i  -> Record g d2 -> Record g r2
+    } -> Intersection r1 r2
+
+intersect :: forall r1 r2. Intersection r1 r2
+intersect = Intersection { project = proj, injectL = injL, injectR = injR }
+  where
+    proj :: Record f r1 -> Record g r2 -> ( Record (f `Product` g) Any, Record f Any, Record g Any )
+    proj (MkR r1) (MkR r2) =
+      let i = Map.intersectionWith Pair r1 r2 in
+      ( MkR i, MkR (Map.difference r1 i), MkR (Map.difference r2 i) )
+    injL :: Record f Any -> Record f Any -> Record f r1
+    injL (MkR i) (MkR d1) = MkR (Map.union i d1)
+    injR :: Record g Any -> Record g Any -> Record g r2
+    injR (MkR i) (MkR d2) = MkR (Map.union i d2)
 
 {-------------------------------------------------------------------------------
   Generics: Metadata

@@ -20,6 +20,7 @@ module Data.Record.Anonymous.Plugin.GhcTcPluginAPI (
 
     -- * Additional exports
   , splitAppTys
+  , mkFastStringUniqueIntExpr
 
     -- * New functonality
   , isCanonicalVarEq
@@ -39,21 +40,25 @@ import GHC.Utils.Outputable
 #if __GLASGOW_HASKELL__ >= 808 &&  __GLASGOW_HASKELL__ < 810
 import TcRnTypes (Ct(..))
 import Type (splitAppTys)
+import FastString (FastString(..), mkFastString)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 810 &&  __GLASGOW_HASKELL__ < 900
 import Constraint (Ct(..))
 import Type (splitAppTys)
+import FastString (FastString(..), mkFastString)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 900 &&  __GLASGOW_HASKELL__ < 902
 import GHC.Core.Type (splitAppTys)
 import GHC.Tc.Types.Constraint (Ct(..))
+import GHC.Data.FastString (FastString(..), mkFastString)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 902
 import GHC.Core.Type (splitAppTys)
 import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..))
+import GHC.Data.FastString (FastString(..), mkFastString)
 #endif
 
 isCanonicalVarEq :: Ct -> Maybe (TcTyVar, Type)
@@ -88,3 +93,7 @@ instance Outputable a => Outputable (NonEmpty a) where
 instance (Outputable l, Outputable e) => Outputable (GenLocated l e) where
   ppr (L l e) = parens $ text "L" <+> ppr l <+> ppr e
 #endif
+
+mkFastStringUniqueIntExpr :: FastString -> CoreExpr
+mkFastStringUniqueIntExpr fs =
+  mkUncheckedIntExpr $ fromIntegral (uniq fs)

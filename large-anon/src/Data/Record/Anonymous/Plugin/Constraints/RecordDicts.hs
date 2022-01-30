@@ -94,7 +94,7 @@ evidenceRecordDicts ResolvedNames{..} CRecordDicts{..} fields = do
         [ mkCoreApps (Var idUnsafeRecordDicts) [
               Type recordDictsTypeConstraint
             , Type recordDictsTypeFields
-            , mkListExpr (mkTupleTy Boxed [stringTy, dictType]) fields'
+            , mkListExpr (mkTupleTy Boxed [intTy, dictType]) fields'
             ]
         ]
   where
@@ -110,9 +110,8 @@ evidenceRecordDicts ResolvedNames{..} CRecordDicts{..} fields = do
                            , knownFieldType = fieldType
                            , knownFieldInfo = dict
                            } = do
-        str <- mkStringExprFS name
         return $ mkCoreTup [
-            str
+            mkFastStringUniqueIntExpr name
           , mkCoreConApps dataConDict [
                 Type liftedTypeKind
               , Type recordDictsTypeConstraint

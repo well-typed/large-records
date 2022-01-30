@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -20,6 +21,7 @@ module Data.Record.Anonymous.Internal (
     -- * Types
     Record -- Opaque
   , Field  -- Opaque
+  , KnownFieldLabel(..)
   , Merge
   , Isomorphic
     -- * User-visible API
@@ -78,7 +80,7 @@ import Data.Aeson
 import Data.Coerce (coerce)
 import Data.Functor.Product
 import Data.Kind
-import Data.Map (Map)
+import Data.IntMap (IntMap)
 import Data.Proxy
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
@@ -92,9 +94,10 @@ import GHC.Records.Compat
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.Foldable       as Foldable
-import qualified Data.Map            as Map
-import qualified Data.Map.Merge.Lazy as Map
+import qualified Data.IntMap            as IntMap
+import qualified Data.IntMap.Merge.Lazy as IntMap
+import qualified Data.Foldable          as Foldable
+import qualified Data.Vector            as Vector
 
 import Data.Record.Generic
 
@@ -158,16 +161,17 @@ import qualified Data.Record.Generic.Rep.Internal as Rep
 -- @a == b@. We /could/ introduce a new constraint to say precisely that, but
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
---
--- TODO: Think about laziness/strictness (here and elsewhere)
-newtype Record f (r :: [(Symbol, Type)]) = MkR (Map String (f Any))
+newtype Record f (r :: [(Symbol, Type)]) = MkR (IntMap (f Any))
 
 type role Record nominal representational
 
-data Field l where
-  Field :: KnownSymbol l => Proxy l -> Field l
+class KnownFieldLabel (f :: Symbol) where
+  fieldLabelUnique :: Int
 
-instance (l ~ l', KnownSymbol l) => IsLabel l' (Field l) where
+data Field l where
+  Field :: KnownFieldLabel l => Proxy l -> Field l
+
+instance (l ~ l', KnownFieldLabel l) => IsLabel l' (Field l) where
   fromLabel = Field (Proxy @l)
 
 -- | Merge two records
@@ -207,10 +211,10 @@ class Isomorphic (xs :: [(Symbol, Type)]) (ys :: [(Symbol, Type)])
   Internal API
 -------------------------------------------------------------------------------}
 
-recordToMap :: Record f r -> Map String (f Any)
+recordToMap :: Record f r -> IntMap (f Any)
 recordToMap (MkR r) = r
 
-recordFromMap :: Map String (f Any) -> Record f r
+recordFromMap :: IntMap (f Any) -> Record f r
 recordFromMap = MkR
 
 {-------------------------------------------------------------------------------
@@ -219,16 +223,17 @@ recordFromMap = MkR
 
 -- | Empty record
 empty :: Record f '[]
-empty = MkR Map.empty
+empty = MkR IntMap.empty
 
 -- | Insert a new field into a record
 --
 -- If a field with this name already exists, the new field will override it.
-insert :: Field l -> f a -> Record f r -> Record f ('(l, a) ': r)
-insert (Field l) a (MkR r) = MkR $ Map.insert (symbolVal l) (co a) r
-  where
-    co :: f a -> f Any
-    co = noInlineUnsafeCo
+insert :: forall l f a r. Field l -> f a -> Record f r -> Record f ('(l, a) ': r)
+insert (Field {}) a (MkR r) =
+  MkR $ IntMap.insert (fieldLabelUnique @l) (co a) r
+    where
+      co :: f a -> f Any
+      co = noInlineUnsafeCo
 
 -- | Merge two records
 --
@@ -265,7 +270,7 @@ insert (Field l) a (MkR r) = MkR $ Map.insert (symbolVal l) (co a) r
 -- ...No instance for (HasField "b" (...
 -- ...
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
-merge (MkR r) (MkR r') = MkR $ Map.union r r'
+merge (MkR r) (MkR r') = MkR $ IntMap.union r r'
 
 -- | Cast record
 --
@@ -353,17 +358,17 @@ zipWith ::
      (forall x. f x -> g x -> h x)
   -> Record f r -> Record g r -> Record h r
 zipWith f a b = recordFromMap $
-    Map.intersectionWith f (recordToMap a) (recordToMap b)
+    IntMap.intersectionWith f (recordToMap a) (recordToMap b)
 
 zipWithM ::
      Applicative m
   => (forall x. f x -> g x -> m (h x))
   -> Record f r -> Record g r -> m (Record h r)
 zipWithM f a b = fmap recordFromMap $
-    Map.mergeA
-      Map.dropMissing -- can't actually happen
-      Map.dropMissing -- can't actually happen
-      (Map.zipWithAMatched $ const f)
+    IntMap.mergeA
+      IntMap.dropMissing -- can't actually happen
+      IntMap.dropMissing -- can't actually happen
+      (IntMap.zipWithAMatched $ const f)
       (recordToMap a)
       (recordToMap b)
 
@@ -377,18 +382,18 @@ sequenceA :: Applicative m => Record (m :.: f) r -> m (Record f r)
 sequenceA = fmap recordFromMap . traverse unComp . recordToMap
 
 pure :: forall f r. RecordMetadata r => (forall x. f x) -> Record f r
-pure f = recordFromMap $ aux recordMetadata
+pure f = recordFromMap $ aux recordMetadata'
   where
-    aux :: Metadata (Record f r) -> Map String (f Any)
+    aux :: Rep FieldMetadata' (Record Irrelevant r) -> IntMap (f Any)
     aux =
-          Map.fromList
+          IntMap.fromList
         . Prelude.map (($ f) . (,))
         . Rep.collapse
-        . recordFieldNames
+        . recordFieldUniques
 
 ap :: Record (f -.-> g) r -> Record f r -> Record g r
 ap fs as = recordFromMap $
-    Map.intersectionWith apFn (recordToMap fs) (recordToMap as)
+    IntMap.intersectionWith apFn (recordToMap fs) (recordToMap as)
 
 {-------------------------------------------------------------------------------
   Constraints
@@ -492,17 +497,35 @@ recordDictsF _ = map aux $ recordDicts (Proxy @(Compose c f))
   Generics: Metadata
 -------------------------------------------------------------------------------}
 
+data FieldMetadata' x where
+  FieldMetadata' ::
+       (KnownSymbol name, KnownFieldLabel name)
+    => Proxy name
+    -> FieldMetadata' x
+
 -- | For the record metadata, the functor used for the 'Record' is irrelevant
 data Irrelevant (a :: Type)
 
 class RecordMetadata (r :: [(Symbol, Type)]) where
-  recordMetadata' :: Metadata (Record Irrelevant r)
+  recordMetadata' :: Rep FieldMetadata' (Record Irrelevant r)
 
-recordMetadata :: RecordMetadata r => Metadata (Record f r)
-recordMetadata = co recordMetadata'
+recordMetadata :: forall f r. RecordMetadata r => Metadata (Record f r)
+recordMetadata = case recordMetadata' @r of
+  Rep vec ->
+    Metadata { recordName          = "Record"
+             , recordConstructor   = "Record"
+             , recordSize          = Vector.length vec
+             , recordFieldMetadata = Rep (Vector.map fieldMetadata vec) }
   where
-    co :: Metadata (Record Irrelevant r) -> Metadata (Record f r)
-    co = noInlineUnsafeCo
+    fieldMetadata :: FieldMetadata' a -> FieldMetadata a
+    fieldMetadata ( FieldMetadata' px ) = FieldMetadata px FieldLazy
+
+recordFieldUniques :: Rep FieldMetadata' r -> Rep (K Int) r
+recordFieldUniques ( Rep vec )
+  = Rep (Vector.map fieldUnique vec)
+  where
+    fieldUnique :: FieldMetadata' a -> K Int a
+    fieldUnique (FieldMetadata' (_ :: Proxy nm)) = K $ fieldLabelUnique @nm
 
 {-------------------------------------------------------------------------------
   Generics: Conversion to/from 'Rep'
@@ -519,7 +542,7 @@ recordMetadata = co recordMetadata'
   Both 'recordToRep' and 'recordFromRep' need the metadata:
 
   - 'recordToRep' needs the metadata to determine the right order of the fields
-  - 'recordFromRep' needs the metadata for the keys in the 'Map'
+  - 'recordFromRep' needs the metadata for the keys in the 'IntMap'
 -------------------------------------------------------------------------------}
 
 -- | Push functor argument into 'Rep', so it can be operated on
@@ -541,11 +564,11 @@ recordToRep' :: forall f g r.
 recordToRep' (MkR r) =
     Rep.unsafeFromListAny $ Prelude.map aux names
   where
-    names :: [String]
-    names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record f r))
+    names :: [Int]
+    names = Rep.collapse $ recordFieldUniques $ recordMetadata' @r
 
-    aux :: String -> f Any
-    aux nm = case Map.lookup nm r of
+    aux :: Int -> f Any
+    aux nm = case IntMap.lookup nm r of
                Just x  -> co x
                Nothing -> error "impossible: non-existent field"
 
@@ -557,16 +580,17 @@ recordFromRep' :: forall f g r.
      RecordMetadata r
   => Rep f (Record g r) -> Record (f :.: g) r
 recordFromRep' =
-    MkR . Map.fromList . Prelude.zipWith aux names . Rep.toListAny
+    MkR . IntMap.fromList . Prelude.zipWith aux names . Rep.toListAny
   where
-    names :: [String]
-    names = Rep.collapse $ recordFieldNames $ metadata (Proxy @(Record f r))
+    names :: [Int]
+    names = Rep.collapse $ recordFieldUniques $ recordMetadata' @r
 
-    aux :: String -> f Any -> (String, (f :.: g) Any)
+    aux :: Int -> f Any -> (Int, (f :.: g) Any)
     aux name x = (name, co x)
 
     co :: f Any -> (f :.: g) Any
     co = noInlineUnsafeCo
+
 
 -- | Convert @Record f@ to @Rep I@
 recordToRep :: forall f r.
@@ -648,6 +672,9 @@ instance RecordConstraints f r FromJSON => FromJSON (Record f r) where
   Internal API
 -------------------------------------------------------------------------------}
 
+--recordFieldUniques :: Metadata (Record f r) -> Rep (K Int) Irrelevant
+--recordFieldUniques = undefined
+
 -- | Used by the plugin to construct evidence for 'HasField'
 --
 -- Precondition: the record must have the specified field with type @a@, (where
@@ -655,11 +682,12 @@ instance RecordConstraints f r FromJSON => FromJSON (Record f r) where
 -- by the plugin before generating "evidence" that uses this function.
 unsafeRecordHasField :: forall f r a.
      String
+  -> Int
   -> Record f r
   -> (a -> Record f r, a)
-unsafeRecordHasField label (MkR r) = (
-      \a -> MkR $ Map.insert label (co a) r
-    , case Map.lookup label r of
+unsafeRecordHasField label uniq (MkR r) = (
+      \a -> MkR $ IntMap.insert uniq (co a) r
+    , case IntMap.lookup uniq r of
         Just f  -> co' f
         Nothing -> error preconditionViolation
     )
@@ -668,7 +696,10 @@ unsafeRecordHasField label (MkR r) = (
     preconditionViolation = concat [
           "unsafeRecordHasField precondition violation: field "
         , label
-        , " not found"
+        , " not found; unique:"
+        , show uniq
+        , "map keys:\n"
+        , show (IntMap.keys r)
         ]
 
     co  :: a -> f Any
@@ -694,19 +725,13 @@ unsafeDictRecord ds _ = Rep.unsafeFromListAny (Prelude.map co ds)
 -- Precondition: the list must have an entry for each field in the record,
 -- with an appropriate dictionary for that field.
 unsafeRecordDicts :: forall c r.
-     [(String, Dict c Any)]
+     [(Int, Dict c Any)]
   -> Proxy c
   -> Record (Dict c) r
-unsafeRecordDicts dicts _ = MkR $ Map.fromList dicts
+unsafeRecordDicts dicts _ = MkR $ IntMap.fromList dicts
 
 -- | Used by the plugin to construct evidence for 'RecordMetadata'
 unsafeRecordMetadata :: forall r.
-     [FieldMetadata Any]
-  -> Metadata (Record Irrelevant r)
-unsafeRecordMetadata fields = Metadata {
-      recordName          = "Record"
-    , recordConstructor   = "Record"
-    , recordSize          = length fields
-    , recordFieldMetadata = Rep.unsafeFromListAny fields
-    }
-
+     [FieldMetadata' Any]
+  -> Rep FieldMetadata' (Record Irrelevant r)
+unsafeRecordMetadata fields = Rep.unsafeFromListAny fields

@@ -11,6 +11,7 @@ import Data.Traversable (forM)
 
 import Data.Record.Anonymous.Plugin.Constraints.HasField
 import Data.Record.Anonymous.Plugin.Constraints.Isomorphic
+import Data.Record.Anonymous.Plugin.Constraints.KnownFieldLabel
 import Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
 import Data.Record.Anonymous.Plugin.Constraints.RecordDicts
 import Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
@@ -33,6 +34,7 @@ solve rn given wanted =
          , forM parsedRecordDicts       $ uncurry (solveRecordDicts       rn)
          , forM parsedRecordMetadata    $ uncurry (solveRecordMetadata    rn)
          , forM parsedIsomorphic        $ uncurry (solveIsomorphic        rn)
+         , forM parsedKnownFieldLabel   $ uncurry (solveKnownFieldLabel   rn)
          ]
        return $ TcPluginOk solved new
   where
@@ -44,6 +46,7 @@ solve rn given wanted =
     parsedRecordDicts       :: [(Ct, GenLocated CtLoc CRecordDicts)]
     parsedRecordMetadata    :: [(Ct, GenLocated CtLoc CRecordMetadata)]
     parsedIsomorphic        :: [(Ct, GenLocated CtLoc CIsomorphic)]
+    parsedKnownFieldLabel   :: [(Ct, GenLocated CtLoc CKnownFieldLabel)]
 
     parsedHasField =
         parseAll' (withOrig (parseHasField tcs rn)) wanted
@@ -55,6 +58,8 @@ solve rn given wanted =
         parseAll' (withOrig (parseRecordMetadata tcs rn)) wanted
     parsedIsomorphic =
         parseAll' (withOrig (parseIsomorphic tcs rn)) wanted
+    parsedKnownFieldLabel =
+        parseAll' (withOrig (parseKnownFieldLabel tcs rn)) wanted
 
     _debugInput :: String
     _debugInput = unlines [
@@ -91,6 +96,10 @@ solve rn given wanted =
         , concat [
               "parsedIsomorphic: "
             , showSDocUnsafe (ppr parsedIsomorphic)
+            ]
+        , concat [
+              "parsedKnownFieldLabel: "
+            , showSDocUnsafe (ppr parsedKnownFieldLabel)
             ]
         , concat [
               "tcs (TyConSubst): "

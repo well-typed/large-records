@@ -114,7 +114,8 @@ evidenceHasField ::
   -> FastString -- ^ Field name (we cannot produce evidence for unknown fields)
   -> TcPluginM 'Solve EvTerm
 evidenceHasField ResolvedNames{..} CHasField{..} name = do
-    str <- mkStringExprFS name
+    str_expr <- mkStringExprFS name
+    let uniq_expr = mkFastStringUniqueIntExpr name
     return $
       evDataConApp
         (classDataCon clsHasField)
@@ -123,7 +124,8 @@ evidenceHasField ResolvedNames{..} CHasField{..} name = do
               Type hasFieldTypeFunctor
             , Type hasFieldTypeRecord
             , Type hasFieldTypeField
-            , str
+            , str_expr -- (useful to pass the string, for debugging)
+            , uniq_expr
             ]
         ]
 

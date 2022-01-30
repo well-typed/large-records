@@ -26,6 +26,7 @@ library
   other-modules:
       Data.Record.Anonymous.Plugin.Constraints.HasField
       Data.Record.Anonymous.Plugin.Constraints.Isomorphic
+      Data.Record.Anonymous.Plugin.Constraints.KnownFieldLabel
       Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
       Data.Record.Anonymous.Plugin.Constraints.RecordDicts
       Data.Record.Anonymous.Plugin.Constraints.RecordMetadata

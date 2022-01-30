@@ -17,6 +17,7 @@ import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
+import Data.Record.Anonymous.Plugin.Constraints.KnownFieldLabel
 
 {-------------------------------------------------------------------------------
   Definition
@@ -74,13 +75,13 @@ parseRecordMetadata tcs rn@ResolvedNames{..} =
 -- | Construct evidence
 --
 -- For each field we need an evidence variable corresponding to the evidence
--- that that field name satisfies KnownSymbol.
+-- that that field name satisfies 'KnownFieldLabel' and 'KnownSymbol'.
 evidenceRecordMetadata ::
      ResolvedNames
   -> CRecordMetadata
   -> KnownRecord EvVar
   -> TcPluginM 'Solve EvTerm
-evidenceRecordMetadata ResolvedNames{..}
+evidenceRecordMetadata rn@ResolvedNames{..}
                        CRecordMetadata{..}
                        r
                      = do
@@ -96,20 +97,23 @@ evidenceRecordMetadata ResolvedNames{..}
         ]
   where
     fieldMetadataType :: Type
-    fieldMetadataType = mkTyConApp tyConFieldMetadata [anyType]
+    fieldMetadataType = mkTyConApp tyConFieldMetadata' [anyType]
 
     mkFieldInfoAny :: KnownField EvVar -> EvExpr
     mkFieldInfoAny KnownField{knownFieldName = name, knownFieldInfo = dict} =
-        mkCoreConApps dataConFieldMetadata [
+      let ty = mkStrLitTy name
+      in
+        mkCoreConApps dataConFieldMetadata' [
             Type anyType
-          , Type (mkStrLitTy name)
+          , Type ty
+            -- KnownSymbol dictionary
           , Var dict
+            -- KnownField dictionary
+          , evidenceKnownFieldLabel rn (CKnownFieldLabel ty name)
           , mkCoreConApps dataConProxy [
                 Type $ mkTyConTy typeSymbolKindCon
-              , Type $ mkStrLitTy name
+              , Type ty
               ]
-            -- TODO: Think about strict/lazy fields
-          , mkCoreConApps dataConFieldLazy []
           ]
 
     -- Any at kind Type

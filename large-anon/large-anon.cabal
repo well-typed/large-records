@@ -15,6 +15,7 @@ tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.1
 
 library
   exposed-modules:
+      Data.Record.Anonymous.Simple
       Data.Record.Anonymous.Advanced
       Data.Record.Anonymous.Plugin
 
@@ -97,6 +98,7 @@ test-suite test-large-anon
       Test.Record.Anonymous.Sanity.Merging
       Test.Record.Anonymous.Sanity.Named.Record1
       Test.Record.Anonymous.Sanity.Named.Record2
+      Test.Record.Anonymous.Sanity.Simple
       Test.Record.Anonymous.Sanity.TypeLevelMetadata
   build-depends:
       base

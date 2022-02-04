@@ -6,7 +6,11 @@
 --
 -- For each class defined here we additionally define the type of the
 -- dictionary for the benefit of "Data.Record.Anonymous.Internal.Evidence".
-
+--
+-- NOTE: Apart from 'FieldTypes', none of the definitions in this module take
+-- a functor argument (@f@). This is intentional: it makes then more general,
+-- and moreover useable in both the advanced and the simple interface.
+--
 -- Intended for unqualified import.
 module Data.Record.Anonymous.Internal.Row (
     -- * Isomorphic records

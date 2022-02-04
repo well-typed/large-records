@@ -17,6 +17,7 @@
 module Data.Record.Anonymous.Advanced (
     Record -- Opaque
     -- * Basic API
+  , Record.Field -- opaque
   , Record.empty
   , Record.insert
   , Record.get

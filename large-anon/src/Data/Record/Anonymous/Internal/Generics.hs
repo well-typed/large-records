@@ -64,10 +64,10 @@ instance KnownFields r => Generic (Record f r) where
   type Constraints (Record f r) = RecordConstraints f r
   type MetadataOf  (Record f r) = FieldTypes        f r
 
-  metadata _ = recordMetadata
-  from       = Rep.fromRecord
-  to         = Rep.toRecord
-  dict       = recordConstraints
+  from     = Rep.fromRecord
+  to       = Rep.toRecord
+  dict     = recordConstraints
+  metadata = const recordMetadata
 
 {-------------------------------------------------------------------------------
   Instances for standard type classes

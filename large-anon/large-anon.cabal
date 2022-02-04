@@ -15,19 +15,30 @@ tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.1
 
 library
   exposed-modules:
-      Data.Record.Anonymous
+      Data.Record.Anonymous.Advanced
       Data.Record.Anonymous.Plugin
 
-      -- Exposed for the benefit of the plugin
-      Data.Record.Anonymous.Internal
+      -- Exposed for the benefit of the plugin/docspec
+      -- TODO: Reconsider if we need to export all of this.
+      Data.Record.Anonymous.Internal.AfterUnI
+      Data.Record.Anonymous.Internal.Canonical
+      Data.Record.Anonymous.Internal.Combinators.Constrained
+      Data.Record.Anonymous.Internal.Combinators.Simple
+      Data.Record.Anonymous.Internal.Constraints
+      Data.Record.Anonymous.Internal.Diff
+      Data.Record.Anonymous.Internal.Evidence
+      Data.Record.Anonymous.Internal.Generics
+      Data.Record.Anonymous.Internal.Record
+      Data.Record.Anonymous.Internal.Rep
+      Data.Record.Anonymous.Internal.Row
 
       -- Exposed for the benefit of cabal-docspec
       Data.Record.Anonymous.Plugin.EquivClasses
   other-modules:
+      Data.Record.Anonymous.Plugin.Constraints.AllFields
       Data.Record.Anonymous.Plugin.Constraints.HasField
       Data.Record.Anonymous.Plugin.Constraints.Isomorphic
-      Data.Record.Anonymous.Plugin.Constraints.RecordConstraints
-      Data.Record.Anonymous.Plugin.Constraints.RecordMetadata
+      Data.Record.Anonymous.Plugin.Constraints.KnownFields
       Data.Record.Anonymous.Plugin.GhcTcPluginAPI
       Data.Record.Anonymous.Plugin.NameResolution
       Data.Record.Anonymous.Plugin.Parsing
@@ -40,14 +51,17 @@ library
       base             >= 4.13  && < 4.18
 
       -- TODO: Bounds
+      -- TODO: Cull
     , aeson
     , containers
     , ghc-tcplugin-api >= 0.7.1
+    , hashable
     , large-generics
     , mtl
     , record-hasfield
     , sop-core
     , text
+    , unordered-containers
     , vector
 
       -- Whatever version is bundled with ghc
@@ -70,17 +84,20 @@ test-suite test-large-anon
   main-is:
       TestLargeAnon.hs
   other-modules:
+      Test.Record.Anonymous.Prop.Combinators.Constrained
       Test.Record.Anonymous.Prop.Combinators.Simple
       Test.Record.Anonymous.Prop.Model
       Test.Record.Anonymous.Prop.Model.Generator
       Test.Record.Anonymous.Prop.Model.Orphans
-      Test.Record.Anonymous.Sanity.Basics
+      Test.Record.Anonymous.Sanity.AllFields
       Test.Record.Anonymous.Sanity.Casting
       Test.Record.Anonymous.Sanity.DuplicateFields
+      Test.Record.Anonymous.Sanity.Generics
+      Test.Record.Anonymous.Sanity.HasField
       Test.Record.Anonymous.Sanity.Merging
-      Test.Record.Anonymous.Sanity.TypeLevelMetadata
       Test.Record.Anonymous.Sanity.Named.Record1
       Test.Record.Anonymous.Sanity.Named.Record2
+      Test.Record.Anonymous.Sanity.TypeLevelMetadata
   build-depends:
       base
     , aeson

@@ -3,10 +3,10 @@
 {-# LANGUAGE NamedFieldPuns  #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anonymous.Plugin.Constraints.RecordMetadata (
-    CRecordMetadata(..)
-  , parseRecordMetadata
-  , solveRecordMetadata
+module Data.Record.Anonymous.Plugin.Constraints.KnownFields (
+    CKnownFields(..)
+  , parseKnownFields
+  , solveKnownFields
   ) where
 
 import Data.Foldable (toList)
@@ -22,52 +22,47 @@ import Data.Record.Anonymous.Plugin.TyConSubst
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of a @RecordMetadata f r@ constraint
-data CRecordMetadata = CRecordMetadata {
+-- | Parsed form of a @KnownFields r@ constraint
+data CKnownFields = CKnownFields {
       -- | Fields of the record
-      recordMetadataFields :: Fields
+      knownFieldsParsedFields :: Fields
 
-      -- | Raw arguments to @RecordMetadata@ (for evidence construction)
-    , recordMetadataTypeRaw :: [Type]
-
-      -- | Type of the functor (@f@)
-    , recordMetadataTypeFunctor :: Type
+      -- | Raw arguments to @KnownFields@ (for evidence construction)
+    , knownFieldsTypeRaw :: [Type]
 
       -- | Type of the record fields (@r@)
-    , recordMetadataTypeRecord :: Type
+    , knownFieldsTypeRecord :: Type
     }
 
 {-------------------------------------------------------------------------------
   Outputable
 -------------------------------------------------------------------------------}
 
-instance Outputable CRecordMetadata where
-  ppr (CRecordMetadata fields typeRaw typeFunctor typeRecord) = parens $
-      text "CRecordMetadata" <+> braces (vcat [
-          text "recordMetadataFields"      <+> text "+" <+> ppr fields
-        , text "recordMetadataTypeRaw"     <+> text "+" <+> ppr typeRaw
-        , text "recordMetadataTypeFunctor" <+> text "+" <+> ppr typeFunctor
-        , text "recordMetadataTypeRecord"  <+> text "+" <+> ppr typeRecord
+instance Outputable CKnownFields where
+  ppr (CKnownFields parsedFields typeRaw typeRecord) = parens $
+      text "CKnownFields" <+> braces (vcat [
+          text "knownFieldsParsedFields" <+> text "+" <+> ppr parsedFields
+        , text "knownFieldsTypeRaw"      <+> text "+" <+> ppr typeRaw
+        , text "knownFieldsTypeRecord"   <+> text "+" <+> ppr typeRecord
         ])
 
 {-------------------------------------------------------------------------------
   Parser
 -------------------------------------------------------------------------------}
 
-parseRecordMetadata ::
+parseKnownFields ::
      TyConSubst
   -> ResolvedNames
   -> Ct
-  -> ParseResult Void (GenLocated CtLoc CRecordMetadata)
-parseRecordMetadata tcs rn@ResolvedNames{..} =
-    parseConstraint' clsRecordMetadata $ \case
-      args@[f, r] -> do
+  -> ParseResult Void (GenLocated CtLoc CKnownFields)
+parseKnownFields tcs rn@ResolvedNames{..} =
+    parseConstraint' clsKnownFields $ \case
+      args@[r] -> do
         fields <- parseFields tcs rn r
-        return CRecordMetadata {
-            recordMetadataFields      = fields
-          , recordMetadataTypeRaw     = args
-          , recordMetadataTypeFunctor = f
-          , recordMetadataTypeRecord  = r
+        return CKnownFields {
+            knownFieldsParsedFields = fields
+          , knownFieldsTypeRaw      = args
+          , knownFieldsTypeRecord   = r
           }
       _invalidNumArgs ->
         Nothing
@@ -80,49 +75,33 @@ parseRecordMetadata tcs rn@ResolvedNames{..} =
 --
 -- For each field we need an evidence variable corresponding to the evidence
 -- that that field name satisfies KnownSymbol.
-evidenceRecordMetadata ::
+evidenceKnownFields ::
      ResolvedNames
-  -> CRecordMetadata
+  -> CKnownFields
   -> KnownRecord EvVar
   -> TcPluginM 'Solve EvTerm
-evidenceRecordMetadata ResolvedNames{..}
-                       CRecordMetadata{..}
+evidenceKnownFields ResolvedNames{..}
+                       CKnownFields{..}
                        r
                      = do
-    nameRecord <- mkStringExpr "Record"
-    nameConstr <- mkStringExpr "Record"
     return $
       evDataConApp
-        (classDataCon clsRecordMetadata)
-        [ recordMetadataTypeFunctor
-        , recordMetadataTypeRecord
-        ]
-        [ mkCoreConApps dataConMetadata [
-              Type $ mkTyConApp tyConRecord [
-                  recordMetadataTypeFunctor
-                , recordMetadataTypeRecord
-                ]
-            , nameRecord
-            , nameConstr
-            , mkUncheckedIntExpr (fromIntegral (length (knownRecordFields r)))
-            , mkCoreApps (Var idUnsafeFieldMetadata) [
-                  Type recordMetadataTypeFunctor
-                , Type recordMetadataTypeRecord
-                , mkListExpr fieldMetadataType $
-                    map mkFieldInfoAny (knownRecordFields r)
-                ]
+        (classDataCon clsKnownFields)
+        [knownFieldsTypeRecord]
+        [ mkCoreApps (Var idEvidenceKnownFields) [
+              Type knownFieldsTypeRecord
+            , mkListExpr fieldMetadataType $
+                map mkFieldInfoAny (knownRecordFields r)
             ]
         ]
   where
     fieldMetadataType :: Type
-    fieldMetadataType = mkTyConApp tyConFieldMetadata [
-          recordMetadataTypeFunctor `mkAppTy` anyType
-        ]
+    fieldMetadataType = mkTyConApp tyConFieldMetadata [anyType]
 
     mkFieldInfoAny :: KnownField EvVar -> EvExpr
     mkFieldInfoAny KnownField{knownFieldName = name, knownFieldInfo = dict} =
         mkCoreConApps dataConFieldMetadata [
-            Type (recordMetadataTypeFunctor `mkAppTy` anyType)
+            Type anyType
           , Type (mkStrLitTy name)
           , Var dict
           , mkCoreConApps dataConProxy [
@@ -141,17 +120,17 @@ evidenceRecordMetadata ResolvedNames{..}
   Solver
 -------------------------------------------------------------------------------}
 
-solveRecordMetadata ::
+solveKnownFields ::
      ResolvedNames
   -> Ct
-  -> GenLocated CtLoc CRecordMetadata
+  -> GenLocated CtLoc CKnownFields
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
-solveRecordMetadata rn@ResolvedNames{..}
+solveKnownFields rn@ResolvedNames{..}
                        orig
-                       (L loc cm@CRecordMetadata{..})
+                       (L loc cm@CKnownFields{..})
                      = do
     -- See 'solveRecordConstraints' for a discussion of 'allFieldsKnown'
-    case checkAllFieldsKnown recordMetadataFields of
+    case checkAllFieldsKnown knownFieldsParsedFields of
       Nothing ->
         return (Nothing, [])
       Just fields -> do
@@ -160,7 +139,7 @@ solveRecordMetadata rn@ResolvedNames{..}
                        mkClassPred clsKnownSymbol [
                            mkStrLitTy (knownFieldName fld)
                          ]
-        ev <- evidenceRecordMetadata rn cm $ getEvVar <$> fields'
+        ev <- evidenceKnownFields rn cm $ getEvVar <$> fields'
         return (
             Just (ev, orig)
           , map mkNonCanonical (toList fields')

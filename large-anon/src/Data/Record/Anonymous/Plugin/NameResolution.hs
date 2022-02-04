@@ -13,58 +13,58 @@ import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 -- Listed alphabetically.
 data ResolvedNames = ResolvedNames {
       clsHasField            :: Class
+    , clsAllFields           :: Class
     , clsIsomorphic          :: Class
+    , clsKnownFields         :: Class
     , clsKnownSymbol         :: Class
-    , clsRecordConstraints   :: Class
-    , clsRecordMetadata      :: Class
     , dataConDict            :: DataCon
     , dataConFieldLazy       :: DataCon
     , dataConFieldMetadata   :: DataCon
-    , dataConMetadata        :: DataCon
     , dataConProxy           :: DataCon
+    , idEvidenceHasField     :: Id
+    , idEvidenceAllFields    :: Id
+    , idEvidenceKnownFields  :: Id
     , idUnsafeCoerce         :: Id
-    , idUnsafeDictRecord     :: Id
-    , idUnsafeFieldMetadata  :: Id
-    , idUnsafeRecordHasField :: Id
     , tyConDict              :: TyCon
     , tyConFieldMetadata     :: TyCon
     , tyConMerge             :: TyCon
     , tyConRecord            :: TyCon
-    , tyConRecordMetadataOf  :: TyCon
+    , tyConFieldTypes        :: TyCon
     }
 
 nameResolution :: TcPluginM 'Init ResolvedNames
 nameResolution = do
 
-    dp   <- getModule "base"            "Data.Proxy"
-    drai <- getModule "large-anon"      "Data.Record.Anonymous.Internal"
-    drg  <- getModule "large-generics"  "Data.Record.Generic"
-    dsd  <- getModule "sop-core"        "Data.SOP.Dict"
-    grc  <- getModule "record-hasfield" "GHC.Records.Compat"
-    uc   <- getModule "base"            "Unsafe.Coerce"
+    dDict        <- getModule "sop-core"        "Data.SOP.Dict"
+    dProxy       <- getModule "base"            "Data.Proxy"
+    draiEvidence <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Evidence"
+    draiRecord   <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Record"
+    draiRow      <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Row"
+    drGeneric    <- getModule "large-generics"  "Data.Record.Generic"
+    grCompat     <- getModule "record-hasfield" "GHC.Records.Compat"
+    uCoerce      <- getModule "base"            "Unsafe.Coerce"
 
-    clsHasField          <- getClass grc  "HasField"
-    clsIsomorphic        <- getClass drai "Isomorphic"
-    clsKnownSymbol       <- tcLookupClass knownSymbolClassName
-    clsRecordConstraints <- getClass drai "RecordConstraints"
-    clsRecordMetadata    <- getClass drai "RecordMetadata"
+    clsAllFields    <- getClass draiRow  "AllFields"
+    clsHasField     <- getClass grCompat "HasField"
+    clsIsomorphic   <- getClass draiRow  "Isomorphic"
+    clsKnownFields  <- getClass draiRow  "KnownFields"
+    clsKnownSymbol  <- tcLookupClass knownSymbolClassName
 
-    dataConDict          <- getDataCon dsd "Dict"
-    dataConFieldLazy     <- getDataCon drg "FieldLazy"
-    dataConFieldMetadata <- getDataCon drg "FieldMetadata"
-    dataConMetadata      <- getDataCon drg "Metadata"
-    dataConProxy         <- getDataCon dp  "Proxy"
+    dataConDict          <- getDataCon dDict     "Dict"
+    dataConFieldLazy     <- getDataCon drGeneric "FieldLazy"
+    dataConFieldMetadata <- getDataCon drGeneric "FieldMetadata"
+    dataConProxy         <- getDataCon dProxy    "Proxy"
 
-    idUnsafeCoerce         <- getVar uc   "unsafeCoerce"
-    idUnsafeDictRecord     <- getVar drai "unsafeDictRecord"
-    idUnsafeFieldMetadata  <- getVar drai "unsafeFieldMetadata"
-    idUnsafeRecordHasField <- getVar drai "unsafeRecordHasField"
+    idEvidenceHasField    <- getVar draiEvidence "evidenceHasField"
+    idEvidenceAllFields   <- getVar draiEvidence "evidenceAllFields"
+    idEvidenceKnownFields <- getVar draiEvidence "evidenceKnownFields"
+    idUnsafeCoerce        <- getVar uCoerce      "unsafeCoerce"
 
-    tyConDict             <- getTyCon dsd  "Dict"
-    tyConFieldMetadata    <- getTyCon drg  "FieldMetadata"
-    tyConMerge            <- getTyCon drai "Merge"
-    tyConRecord           <- getTyCon drai "Record"
-    tyConRecordMetadataOf <- getTyCon drai "RecordMetadataOf"
+    tyConDict          <- getTyCon dDict      "Dict"
+    tyConFieldMetadata <- getTyCon drGeneric  "FieldMetadata"
+    tyConMerge         <- getTyCon draiRow    "Merge"
+    tyConRecord        <- getTyCon draiRecord "Record"
+    tyConFieldTypes    <- getTyCon draiRow    "FieldTypes"
 
     return $ ResolvedNames {..}
 

@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -33,14 +34,21 @@ module Test.Record.Anonymous.Prop.Model.Generator (
   , onAnonRecordPairM
   ) where
 
-import Data.SOP (NP(..), SListI)
+import Data.Proxy
+import Data.SOP (NP(..), SListI, All)
 import Data.SOP.BasicFunctors
 
-import Data.Record.Anonymous (Record, RecordMetadata)
+import Data.Record.Anonymous.Advanced (Record)
+import qualified Data.Record.Anonymous.Advanced as Anon
 
 import Test.QuickCheck
 
-import Test.Record.Anonymous.Prop.Model (ModelRecord(..), ModelFields(..), Types)
+import Test.Record.Anonymous.Prop.Model (
+    ModelRecord(..)
+  , ModelFields(..)
+  , ModelSatisfies
+  , Types
+  )
 
 import qualified Test.Record.Anonymous.Prop.Model as Model
 
@@ -66,98 +74,109 @@ data SomeRecordPair f g where
 
 someModlRecord ::
      SomeFields
-  -> ( forall r.
-            SListI (Types r)
-         => ModelFields r -> ModelRecord f r
-     )
+  -> (forall r. SListI (Types r) => ModelFields r -> ModelRecord f r)
   -> SomeRecord f
 someModlRecord (SF mf) f = SR mf (f mf)
 
-someAnonRecord :: forall f.
-     SomeFields
-  -> ( forall r.
-            RecordMetadata f r
-         => Record f r
-     )
+someAnonRecord :: forall c f.
+     ModelSatisfies c
+  => Proxy c
+  -> SomeFields
+  -> (forall r. (Anon.KnownFields r, Anon.AllFields r c) => Record f r)
   -> SomeRecord f
-someAnonRecord (SF mf) f = SR mf (Model.fromRecord mf $ f' mf)
+someAnonRecord _ (SF mf) f = SR mf (Model.fromRecord mf $ f' mf)
   where
     f' :: ModelFields r -> Record f r
-    f' MF0 = f
-    f' MF1 = f
-    f' MF2 = f
+    f' MF0  = f
+    f' MF1  = f
+    f' MF2  = f
+    f' MF2' = f
 
 {-------------------------------------------------------------------------------
   Mapping
 -------------------------------------------------------------------------------}
 
-onModlRecord :: forall f g.
-     ( forall r.
-            SListI (Types r)
-         => ModelRecord f r -> ModelRecord g r
-     )
+onModlRecord ::
+     ModelSatisfies c
+  => Proxy c
+  -> (forall r. All c (Types r) => ModelRecord f r -> ModelRecord g r)
   -> SomeRecord f -> SomeRecord g
-onModlRecord f = unI . onModlRecordM (I . f)
-
-onModlRecordM ::
-     Functor m
-  => ( forall r.
-            SListI (Types r)
-         => ModelRecord f r -> m (ModelRecord g r)
-     )
-  -> SomeRecord f -> m (SomeRecord g)
-onModlRecordM f (SR mf r) = SR mf <$> f r
+onModlRecord p f = unI . onModlRecordM p (I . f)
 
 onModlRecordPair ::
-     ( forall r.
-            SListI (Types r)
+     ModelSatisfies c
+  => Proxy c
+  -> ( forall r.
+            All c (Types r)
          => ModelRecord f r -> ModelRecord g r -> ModelRecord h r
      )
   -> SomeRecordPair f g -> SomeRecord h
-onModlRecordPair f = unI . onModlRecordPairM (I .: f)
+onModlRecordPair p f = unI . onModlRecordPairM p (I .: f)
+
+onModlRecordM ::
+     (Functor m, ModelSatisfies c)
+  => Proxy c
+  -> (forall r. All c (Types r) => ModelRecord f r -> m (ModelRecord g r))
+  -> SomeRecord f -> m (SomeRecord g)
+onModlRecordM p f (SR mf r) = Model.satisfyAll p mf $ SR mf <$> f r
 
 onModlRecordPairM ::
-     Functor m
-  => ( forall r.
-            SListI (Types r)
+     (Functor m, ModelSatisfies c)
+  => Proxy c
+  -> ( forall r.
+            All c (Types r)
          => ModelRecord f r -> ModelRecord g r -> m (ModelRecord h r)
      )
   -> SomeRecordPair f g -> m (SomeRecord h)
-onModlRecordPairM f (SR2 mf r r') = SR mf <$> f r r'
+onModlRecordPairM p f (SR2 mf r r') = Model.satisfyAll p mf $ SR mf <$> f r r'
 
-onAnonRecord :: forall f g.
-     (forall r. Record f r -> Record g r)
+onAnonRecord ::
+     ModelSatisfies c
+  => Proxy c
+  -> (forall r. Anon.AllFields r c => Record f r -> Record g r)
   -> SomeRecord f -> SomeRecord g
-onAnonRecord f = unI . onAnonRecordM (I . f)
+onAnonRecord p f = unI . onAnonRecordM p (I . f)
 
-onAnonRecordM :: forall m f g.
-     Functor m
-  => (forall r. Record f r -> m (Record g r))
+onAnonRecordPair ::
+     ModelSatisfies c
+  => Proxy c
+  -> ( forall r.
+            Anon.AllFields r c
+         => Record f r -> Record g r -> Record h r
+     )
+  -> SomeRecordPair f g -> SomeRecord h
+onAnonRecordPair p f = unI . onAnonRecordPairM p (I .: f)
+
+onAnonRecordM :: forall m c f g.
+     (Functor m, ModelSatisfies c)
+  => Proxy c
+  -> (forall r. Anon.AllFields r c => Record f r -> m (Record g r))
   -> SomeRecord f -> m (SomeRecord g)
-onAnonRecordM f = \(SR mf r) -> SR mf <$> f' mf r
+onAnonRecordM p f = \(SR mf r) -> SR mf <$> f' mf r
   where
     f' :: forall r. ModelFields r -> ModelRecord f r -> m (ModelRecord g r)
     f' mf r =
-        Model.fromRecord mf <$>
-          f (Model.toRecord mf r)
+        Model.toRecordOfDicts p mf $
+          Model.fromRecord mf <$>
+            f (Model.toRecord mf r)
 
-onAnonRecordPair :: forall f g h.
-     (forall r. Record f r -> Record g r -> Record h r)
-  -> SomeRecordPair f g -> SomeRecord h
-onAnonRecordPair f = unI . onAnonRecordPairM (I .: f)
-
-onAnonRecordPairM :: forall m f g h.
-     Functor m
-  => (forall r. Record f r -> Record g r -> m (Record h r))
+onAnonRecordPairM :: forall m c f g h.
+     (Functor m, ModelSatisfies c)
+  => Proxy c
+  -> ( forall r.
+            Anon.AllFields r c
+         => Record f r -> Record g r -> m (Record h r)
+     )
   -> SomeRecordPair f g -> m (SomeRecord h)
-onAnonRecordPairM f = \(SR2 mf r r') -> SR mf <$> f' mf r r'
+onAnonRecordPairM p f = \(SR2 mf r r') -> SR mf <$> f' mf r r'
   where
     f' :: forall r.
          ModelFields r
       -> ModelRecord f r -> ModelRecord g r -> m (ModelRecord h r)
     f' mf r r' =
-        Model.fromRecord mf <$>
-          f (Model.toRecord mf r) (Model.toRecord mf r')
+        Model.toRecordOfDicts p mf $
+          Model.fromRecord mf <$>
+            f (Model.toRecord mf r) (Model.toRecord mf r')
 
 {-------------------------------------------------------------------------------
   Generators for ModelRecord for concrete rows
@@ -176,9 +195,22 @@ instance ( Arbitrary (f Bool)
         (\x' -> MR (x' :* Nil)) <$> shrink x
       ]
 
-instance ( Arbitrary (f Int)
+instance ( Arbitrary (f Word)
          , Arbitrary (f Bool)
-         ) => Arbitrary (ModelRecord f '[ '("a", Int), '("b", Bool) ]) where
+         ) => Arbitrary (ModelRecord f '[ '("a", Word), '("b", Bool) ]) where
+  arbitrary =
+          (\x y -> MR (x :* y :* Nil))
+      <$> arbitrary
+      <*> arbitrary
+
+  shrink (MR (x :* y :* Nil)) = concat [
+        (\x' -> MR (x' :* y  :* Nil)) <$> shrink x
+      , (\y' -> MR (x  :* y' :* Nil)) <$> shrink y
+      ]
+
+instance ( Arbitrary (f Word)
+         , Arbitrary (f Bool)
+         ) => Arbitrary (ModelRecord f '[ '("b", Word), '("a", Bool) ]) where
   arbitrary =
           (\x y -> MR (x :* y :* Nil))
       <$> arbitrary
@@ -198,18 +230,21 @@ instance Arbitrary SomeFields where
         SF MF0
       , SF MF1
       , SF MF2
+      , SF MF2'
       ]
 
-  shrink (SF MF0) = []
-  shrink (SF MF1) = [SF MF0]
-  shrink (SF MF2) = [SF MF1]
+  shrink (SF MF0)  = []
+  shrink (SF MF1)  = [SF MF0]
+  shrink (SF MF2)  = [SF MF1]
+  shrink (SF MF2') = [SF MF1]
 
-instance ( Arbitrary (f Int), Arbitrary (f Bool)
+instance ( Arbitrary (f Word), Arbitrary (f Bool)
          ) => Arbitrary (SomeRecord f) where
   arbitrary = oneof [
-        SR MF0 <$> arbitrary
-      , SR MF1 <$> arbitrary
-      , SR MF2 <$> arbitrary
+        SR MF0  <$> arbitrary
+      , SR MF1  <$> arbitrary
+      , SR MF2  <$> arbitrary
+      , SR MF2' <$> arbitrary
       ]
 
   shrink (SR MF0 r) = concat [
@@ -223,14 +258,19 @@ instance ( Arbitrary (f Int), Arbitrary (f Bool)
         SR MF2 <$> shrink r
       , pure $ SR MF1 (dropHead r)
       ]
+  shrink (SR MF2' r) = concat [
+        SR MF2' <$> shrink r
+        -- can't remove a field here (at least, not easily)
+      ]
 
-instance ( Arbitrary (f Int), Arbitrary (f Bool)
-         , Arbitrary (g Int), Arbitrary (g Bool)
+instance ( Arbitrary (f Word), Arbitrary (f Bool)
+         , Arbitrary (g Word), Arbitrary (g Bool)
          ) => Arbitrary (SomeRecordPair f g) where
   arbitrary = oneof [
-        SR2 MF0 <$> arbitrary <*> arbitrary
-      , SR2 MF1 <$> arbitrary <*> arbitrary
-      , SR2 MF2 <$> arbitrary <*> arbitrary
+        SR2 MF0  <$> arbitrary <*> arbitrary
+      , SR2 MF1  <$> arbitrary <*> arbitrary
+      , SR2 MF2  <$> arbitrary <*> arbitrary
+      , SR2 MF2' <$> arbitrary <*> arbitrary
       ]
 
   shrink (SR2 MF0 r r') = concat [
@@ -247,6 +287,11 @@ instance ( Arbitrary (f Int), Arbitrary (f Bool)
       , SR2 MF2 <$> pure   r <*> shrink r'
       , pure $ SR2 MF1 (dropHead r) (dropHead r')
       ]
+  shrink (SR2 MF2' r r') = concat [
+        SR2 MF2' <$> shrink r <*> pure   r'
+      , SR2 MF2' <$> pure   r <*> shrink r'
+        -- can't remove a field here (at least, not easily)
+      ]
 
 {-------------------------------------------------------------------------------
   Show/Eq instances
@@ -254,33 +299,59 @@ instance ( Arbitrary (f Int), Arbitrary (f Bool)
 
 deriving instance Show SomeFields
 
-instance ( Show (f Int), Show (f Bool)
+instance ( Show (f Word), Show (f Bool)
          ) => Show (SomeRecord f) where
-  show (SR MF0 r) = show r
-  show (SR MF1 r) = show r
-  show (SR MF2 r) = show r
+  show (SR MF0  r) = show r
+  show (SR MF1  r) = show r
+  show (SR MF2  r) = show r
+  show (SR MF2' r) = show r
 
-instance ( Show (f Int), Show (f Bool)
-         , Show (g Int), Show (g Bool)
+instance ( Show (f Word), Show (f Bool)
+         , Show (g Word), Show (g Bool)
          ) => Show (SomeRecordPair f g) where
-  show (SR2 MF0 r r') = show (r, r')
-  show (SR2 MF1 r r') = show (r, r')
-  show (SR2 MF2 r r') = show (r, r')
+  show (SR2 MF0  r r') = show (r, r')
+  show (SR2 MF1  r r') = show (r, r')
+  show (SR2 MF2  r r') = show (r, r')
+  show (SR2 MF2' r r') = show (r, r')
 
-instance ( Eq (f Int), Eq (f Bool)
+instance ( Eq (f Word), Eq (f Bool)
          ) => Eq (SomeRecord f) where
-  SR MF0 r == SR MF0 r' = r == r'
-  SR MF1 r == SR MF1 r' = r == r'
-  SR MF2 r == SR MF2 r' = r == r'
-  _        == _         = False
+  x == y =
+      case (x, y) of
+        (SR MF0  r , SR MF0  r') -> r == r'
+        (SR MF1  r , SR MF1  r') -> r == r'
+        (SR MF2  r , SR MF2  r') -> r == r'
+        (SR MF2' r , SR MF2' r') -> r == r'
+        (_         , _         ) -> False
+    where
+      -- Make sure we don't omit a case above
+      _coverAllCases :: ()
+      _coverAllCases =
+          case x of
+            SR MF0  _ -> ()
+            SR MF1  _ -> ()
+            SR MF2  _ -> ()
+            SR MF2' _ -> ()
 
-instance ( Eq (f Int), Eq (f Bool)
-         , Eq (g Int), Eq (g Bool)
+instance ( Eq (f Word), Eq (f Bool)
+         , Eq (g Word), Eq (g Bool)
          ) => Eq (SomeRecordPair f g) where
-  SR2 MF0 r1 r2 == SR2 MF0 r1' r2' = r1 == r1' && r2 == r2'
-  SR2 MF1 r1 r2 == SR2 MF1 r1' r2' = r1 == r1' && r2 == r2'
-  SR2 MF2 r1 r2 == SR2 MF2 r1' r2' = r1 == r1' && r2 == r2'
-  _             == _               = False
+  x == y =
+      case (x, y) of
+        (SR2 MF0  r1 r2 , SR2 MF0  r1' r2' ) -> r1 == r1' && r2 == r2'
+        (SR2 MF1  r1 r2 , SR2 MF1  r1' r2' ) -> r1 == r1' && r2 == r2'
+        (SR2 MF2  r1 r2 , SR2 MF2  r1' r2' ) -> r1 == r1' && r2 == r2'
+        (SR2 MF2' r1 r2 , SR2 MF2' r1' r2' ) -> r1 == r1' && r2 == r2'
+        (_              , _                ) -> False
+    where
+      -- Make sure we don't omit a case above
+      _coverAllCases :: ()
+      _coverAllCases =
+          case x of
+            SR2 MF0  _ _ -> ()
+            SR2 MF1  _ _ -> ()
+            SR2 MF2  _ _ -> ()
+            SR2 MF2' _ _ -> ()
 
 {-------------------------------------------------------------------------------
   Auxiliary

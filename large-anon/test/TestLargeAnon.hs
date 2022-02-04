@@ -9,6 +9,7 @@ import qualified Test.Record.Anonymous.Sanity.Casting
 import qualified Test.Record.Anonymous.Sanity.DuplicateFields
 import qualified Test.Record.Anonymous.Sanity.TypeLevelMetadata
 import qualified Test.Record.Anonymous.Sanity.AllFields
+import qualified Test.Record.Anonymous.Sanity.Simple
 import qualified Test.Record.Anonymous.Prop.Combinators.Simple
 import qualified Test.Record.Anonymous.Prop.Combinators.Constrained
 
@@ -22,6 +23,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Record.Anonymous.Sanity.DuplicateFields.tests
         , Test.Record.Anonymous.Sanity.TypeLevelMetadata.tests
         , Test.Record.Anonymous.Sanity.AllFields.tests
+        , Test.Record.Anonymous.Sanity.Simple.tests
         ]
     , testGroup "Prop" [
           Test.Record.Anonymous.Prop.Combinators.Simple.tests

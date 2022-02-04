@@ -134,7 +134,9 @@ getAtIndex Canonical{canonValues} ix = canonValues Vector.! ix
 -- | Set fields at the specified indices
 --
 -- @O(n)@ in the size of the record (independent of the number of field updates)
+-- @O(1)@ if the list of updates is empty.
 setAtIndex :: [(Int, f Any)] -> Canonical f -> Canonical f
+setAtIndex [] c = c
 setAtIndex fs c@Canonical{canonValues} = c { canonValues = canonValues // fs }
 
 {-------------------------------------------------------------------------------
@@ -172,7 +174,9 @@ set fs c = setAtIndex (Prelude.map (first (indexOf c)) fs) c
 -- shadow any duplicate fields already present in the record.
 --
 -- @O(n)@ in the number of inserts and the size of the record.
+-- @O(1)@ if the list of inserts is empty.
 insert :: [(String, f Any)] -> Canonical f -> Canonical f
+insert []  = id
 insert new = fromList . (new ++) . toList
 
 -- | Reshuffle the fields in the record

@@ -149,9 +149,7 @@ insert f x d@Diff{..} = d {
 
 -- | Apply diff
 --
--- TODO: We should have special cases for empty diff and updates only.
---
--- @O(n)@.
+-- @O(n)@ in general, but @O(1)@ if the `Diff` is empty.
 apply :: forall f. Diff f -> Canonical f -> Canonical f
 apply d =
       Canon.insert     (diffIns' d)

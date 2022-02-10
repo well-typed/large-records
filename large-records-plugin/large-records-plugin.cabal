@@ -1,0 +1,44 @@
+cabal-version: 1.12
+
+name:           large-records-plugin
+version:        0.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      Data.Record.Plugin
+      Data.Record.Plugin.CodeGen
+      Data.Record.Plugin.GHC
+      Data.Record.Plugin.Runtime
+      Data.Record.Plugin.RuntimeNames
+      Data.Record.Plugin.Types.Exception
+      Data.Record.Plugin.Types.Options
+      Data.Record.Plugin.Types.Record
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.13 && <4.15
+    , containers
+    , ghc
+    , large-records
+    , large-generics
+    , mtl
+    , record-hasfield
+    , sop-core
+    , uniplate
+    , vector
+  default-language: Haskell2010
+
+test-suite large-records-plugin-tests
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_large_records_plugin
+  hs-source-dirs:
+      test
+  build-depends:
+      base >=4.13 && <4.15
+    , large-records-plugin
+    , record-dot-preprocessor
+    , record-hasfield
+  default-language: Haskell2010

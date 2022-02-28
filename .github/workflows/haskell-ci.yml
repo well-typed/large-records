@@ -169,6 +169,7 @@ jobs:
           touch cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
           cat cabal.project
@@ -186,6 +187,8 @@ jobs:
           echo "PKGDIR_large_generics=${PKGDIR_large_generics}" >> "$GITHUB_ENV"
           PKGDIR_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-records-[0-9.]*')"
           echo "PKGDIR_large_records=${PKGDIR_large_records}" >> "$GITHUB_ENV"
+          PKGDIR_large_records_benchmarks="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-records-benchmarks-[0-9.]*')"
+          echo "PKGDIR_large_records_benchmarks=${PKGDIR_large_records_benchmarks}" >> "$GITHUB_ENV"
           PKGDIR_large_anon="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-anon-[0-9.]*')"
           echo "PKGDIR_large_anon=${PKGDIR_large_anon}" >> "$GITHUB_ENV"
           PKGDIR_beam_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/beam-large-records-[0-9.]*')"
@@ -195,12 +198,15 @@ jobs:
           touch cabal.project.local
           echo "packages: ${PKGDIR_large_generics}" >> cabal.project
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records}" >> cabal.project ; fi
+          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_anon}" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
           echo "package large-generics" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
+          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
+          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
@@ -227,7 +233,7 @@ jobs:
           if $HEADHACKAGE; then
           echo "allow-newer: $($HCPKG list --simple-output | sed -E 's/([a-zA-Z-]+)-[0-9.]+/*:\1,/g')" >> cabal.project
           fi
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
@@ -259,6 +265,8 @@ jobs:
           ${CABAL} -vnormal check
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then cd ${PKGDIR_large_records} || false ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
+          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then cd ${PKGDIR_large_records_benchmarks} || false ; fi
+          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then cd ${PKGDIR_large_anon} || false ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then cd ${PKGDIR_beam_large_records} || false ; fi

@@ -1,0 +1,516 @@
+cabal-version:      2.4
+name:               large-records-benchmarks
+version:            0.1.0.0
+synopsis:           Benchmarks for the large-records library.
+description:        Detailed benchmarks of the compile-time performance of the
+                    large-records library, as well as various experiments
+                    testing individual aspects of the approach. See the report
+                    for detailed information.
+bug-reports:        https://github.com/well-typed/large-records/issues
+license:            BSD-3-Clause
+author:             Edsko de Vries
+maintainer:         edsko@well-typed.com
+category:           Generics
+tested-with:        GHC ==8.8.4
+
+source-repository head
+  type:     git
+  location: https://github.com/well-typed/large-records
+
+-- The library contains support code that is used by all benchmarks. It is not
+-- intended for use outside of this package.
+library
+  exposed-modules:
+      Bench.TH
+      Bench.TH.Compat
+      Bench.Types
+  default-language:
+      Haskell2010
+  hs-source-dirs:
+      lib
+  build-depends:
+      base >= 4.13 && < 4.17
+
+    , aeson
+    , large-generics
+    , template-haskell
+  ghc-options:
+      -Wall
+
+executable parse-coresize
+  main-is:
+      ParseCoresize.hs
+  hs-source-dirs:
+      tooling
+  default-language:
+      Haskell2010
+  other-modules:
+      Tooling
+  build-depends:
+      base
+
+    , bytestring
+    , cassava
+    , conduit
+    , containers
+    , optparse-applicative
+    , pcre-light
+    , unordered-containers
+    , utf8-string
+    , vector
+  ghc-options:
+      -Wall
+
+executable parse-timing
+  main-is:
+      ParseTiming.hs
+  hs-source-dirs:
+      tooling
+  default-language:
+      Haskell2010
+  other-modules:
+      Tooling
+  build-depends:
+      base
+
+    , bytestring
+    , cassava
+    , conduit
+    , containers
+    , optparse-applicative
+    , pcre-light
+    , unordered-containers
+    , utf8-string
+    , vector
+  ghc-options:
+      -Wall
+
+-- The " before " benchmark is independent of the large-records library:
+-- it tests the situation /before/ the introduction of the library.
+executable before
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      bench/before
+  default-language:
+      Haskell2010
+  default-extensions:
+      CPP
+  ghc-options:
+      -Wall
+  other-modules:
+      Before.Sized.R000
+      Before.Sized.R010
+      Before.Sized.R020
+      Before.Sized.R030
+      Before.Sized.R040
+      Before.Sized.R050
+      Before.Sized.R060
+      Before.Sized.R070
+      Before.Sized.R080
+      Before.Sized.R090
+      Before.Sized.R100
+  build-depends:
+      base
+    , large-records-benchmarks
+
+    , aeson
+    , generics-sop
+    , json-sop
+    , record-dot-preprocessor
+    , record-hasfield
+
+  if flag(profile-coresize)
+    cpp-options: -DPROFILE_CORESIZE
+  if flag(profile-timing)
+    cpp-options: -DPROFILE_TIMING
+
+executable after
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      bench/after
+  default-language:
+      Haskell2010
+  default-extensions:
+      CPP
+  ghc-options:
+      -Wall
+      -- Needed for the HasNormalForm benchmark
+      -freduction-depth=2000
+  other-modules:
+      After.Sized.R0000
+      After.Sized.R0010
+      After.Sized.R0020
+      After.Sized.R0030
+      After.Sized.R0040
+      After.Sized.R0050
+      After.Sized.R0060
+      After.Sized.R0070
+      After.Sized.R0080
+      After.Sized.R0090
+      After.Sized.R0100
+      After.Sized.R0200
+      After.Sized.R0300
+      After.Sized.R0400
+      After.Sized.R0500
+      After.Sized.R0600
+      After.Sized.R0700
+      After.Sized.R0800
+      After.Sized.R0900
+      After.Sized.R1000
+
+      HigherKinded.Sized.R000
+      HigherKinded.Sized.R010
+      HigherKinded.Sized.R020
+      HigherKinded.Sized.R030
+      HigherKinded.Sized.R040
+      HigherKinded.Sized.R050
+      HigherKinded.Sized.R060
+      HigherKinded.Sized.R070
+      HigherKinded.Sized.R080
+      HigherKinded.Sized.R090
+      HigherKinded.Sized.R100
+
+      HasNormalForm.Sized.R000
+      HasNormalForm.Sized.R010
+      HasNormalForm.Sized.R020
+      HasNormalForm.Sized.R030
+      HasNormalForm.Sized.R040
+      HasNormalForm.Sized.R050
+      HasNormalForm.Sized.R060
+      HasNormalForm.Sized.R070
+      HasNormalForm.Sized.R080
+      HasNormalForm.Sized.R090
+      HasNormalForm.Sized.R100
+  build-depends:
+      base
+    , large-records-benchmarks
+
+    , aeson
+    , large-generics
+    , large-records
+
+  if flag(profile-coresize)
+    cpp-options: -DPROFILE_CORESIZE
+  if flag(profile-timing)
+    cpp-options: -DPROFILE_TIMING
+
+-- The " experiments " benchmark is independent of the large-records library,
+-- and tests various approaches in isolation.
+-- (The "Generics" experiment depends on `large-generics`, but not on the
+-- `large-records` library itself.)
+executable experiments
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      bench/experiments
+  default-language:
+      Haskell2010
+  default-extensions:
+      CPP
+  ghc-options:
+      -Wall
+  other-modules:
+      Infra.HList
+      Infra.ShowType
+      Infra.Tree
+
+      Common.EmptyClass_List
+      Common.EmptyClass_Tree_Nominal
+      Common.EmptyClass_Tree_Phantom
+
+      Common.HListOfSize.HL010
+      Common.HListOfSize.HL020
+      Common.HListOfSize.HL030
+      Common.HListOfSize.HL040
+      Common.HListOfSize.HL050
+      Common.HListOfSize.HL060
+      Common.HListOfSize.HL070
+      Common.HListOfSize.HL080
+      Common.HListOfSize.HL090
+      Common.HListOfSize.HL100
+
+      Experiment.SimpleRecord.Sized.R000
+      Experiment.SimpleRecord.Sized.R010
+      Experiment.SimpleRecord.Sized.R020
+      Experiment.SimpleRecord.Sized.R030
+      Experiment.SimpleRecord.Sized.R040
+      Experiment.SimpleRecord.Sized.R050
+      Experiment.SimpleRecord.Sized.R060
+      Experiment.SimpleRecord.Sized.R070
+      Experiment.SimpleRecord.Sized.R080
+      Experiment.SimpleRecord.Sized.R090
+      Experiment.SimpleRecord.Sized.R100
+
+      Experiment.PatternSynonym_Default.Sized.R000
+      Experiment.PatternSynonym_Default.Sized.R010
+      Experiment.PatternSynonym_Default.Sized.R020
+      Experiment.PatternSynonym_Default.Sized.R030
+      Experiment.PatternSynonym_Default.Sized.R040
+      Experiment.PatternSynonym_Default.Sized.R050
+      Experiment.PatternSynonym_Default.Sized.R060
+      Experiment.PatternSynonym_Default.Sized.R070
+      Experiment.PatternSynonym_Default.Sized.R080
+      Experiment.PatternSynonym_Default.Sized.R090
+      Experiment.PatternSynonym_Default.Sized.R100
+
+      Experiment.PatternSynonym_NFS.Sized.R000
+      Experiment.PatternSynonym_NFS.Sized.R010
+      Experiment.PatternSynonym_NFS.Sized.R020
+      Experiment.PatternSynonym_NFS.Sized.R030
+      Experiment.PatternSynonym_NFS.Sized.R040
+      Experiment.PatternSynonym_NFS.Sized.R050
+      Experiment.PatternSynonym_NFS.Sized.R060
+      Experiment.PatternSynonym_NFS.Sized.R070
+      Experiment.PatternSynonym_NFS.Sized.R080
+      Experiment.PatternSynonym_NFS.Sized.R090
+      Experiment.PatternSynonym_NFS.Sized.R100
+
+      Experiment.Superclasses.Sized.R000
+      Experiment.Superclasses.Sized.R010
+      Experiment.Superclasses.Sized.R020
+      Experiment.Superclasses.Sized.R030
+      Experiment.Superclasses.Sized.R040
+      Experiment.Superclasses.Sized.R050
+      Experiment.Superclasses.Sized.R060
+      Experiment.Superclasses.Sized.R070
+      Experiment.Superclasses.Sized.R080
+      Experiment.Superclasses.Sized.R090
+      Experiment.Superclasses.Sized.R100
+
+      Experiment.Applicative.Sized.R000
+      Experiment.Applicative.Sized.R010
+      Experiment.Applicative.Sized.R020
+      Experiment.Applicative.Sized.R030
+      Experiment.Applicative.Sized.R040
+      Experiment.Applicative.Sized.R050
+      Experiment.Applicative.Sized.R060
+      Experiment.Applicative.Sized.R070
+      Experiment.Applicative.Sized.R080
+      Experiment.Applicative.Sized.R090
+      Experiment.Applicative.Sized.R100
+
+      Experiment.Induction_List.Sized.R000
+      Experiment.Induction_List.Sized.R010
+      Experiment.Induction_List.Sized.R020
+      Experiment.Induction_List.Sized.R030
+      Experiment.Induction_List.Sized.R040
+      Experiment.Induction_List.Sized.R050
+      Experiment.Induction_List.Sized.R060
+      Experiment.Induction_List.Sized.R070
+      Experiment.Induction_List.Sized.R080
+      Experiment.Induction_List.Sized.R090
+      Experiment.Induction_List.Sized.R100
+
+      Experiment.Induction_Tree_Nominal.Sized.R000
+      Experiment.Induction_Tree_Nominal.Sized.R010
+      Experiment.Induction_Tree_Nominal.Sized.R020
+      Experiment.Induction_Tree_Nominal.Sized.R030
+      Experiment.Induction_Tree_Nominal.Sized.R040
+      Experiment.Induction_Tree_Nominal.Sized.R050
+      Experiment.Induction_Tree_Nominal.Sized.R060
+      Experiment.Induction_Tree_Nominal.Sized.R070
+      Experiment.Induction_Tree_Nominal.Sized.R080
+      Experiment.Induction_Tree_Nominal.Sized.R090
+      Experiment.Induction_Tree_Nominal.Sized.R100
+
+      Experiment.Induction_Tree_Phantom.Sized.R000
+      Experiment.Induction_Tree_Phantom.Sized.R010
+      Experiment.Induction_Tree_Phantom.Sized.R020
+      Experiment.Induction_Tree_Phantom.Sized.R030
+      Experiment.Induction_Tree_Phantom.Sized.R040
+      Experiment.Induction_Tree_Phantom.Sized.R050
+      Experiment.Induction_Tree_Phantom.Sized.R060
+      Experiment.Induction_Tree_Phantom.Sized.R070
+      Experiment.Induction_Tree_Phantom.Sized.R080
+      Experiment.Induction_Tree_Phantom.Sized.R090
+      Experiment.Induction_Tree_Phantom.Sized.R100
+
+      Experiment.ConstraintFamily_Deep
+      Experiment.ConstraintFamily_Deep.Sized.R000
+      Experiment.ConstraintFamily_Deep.Sized.R010
+      Experiment.ConstraintFamily_Deep.Sized.R020
+      Experiment.ConstraintFamily_Deep.Sized.R030
+      Experiment.ConstraintFamily_Deep.Sized.R040
+      Experiment.ConstraintFamily_Deep.Sized.R050
+      Experiment.ConstraintFamily_Deep.Sized.R060
+      Experiment.ConstraintFamily_Deep.Sized.R070
+      Experiment.ConstraintFamily_Deep.Sized.R080
+      Experiment.ConstraintFamily_Deep.Sized.R090
+      Experiment.ConstraintFamily_Deep.Sized.R100
+
+      Experiment.ConstraintFamily_Shallow
+      Experiment.ConstraintFamily_Shallow.Sized.R000
+      Experiment.ConstraintFamily_Shallow.Sized.R010
+      Experiment.ConstraintFamily_Shallow.Sized.R020
+      Experiment.ConstraintFamily_Shallow.Sized.R030
+      Experiment.ConstraintFamily_Shallow.Sized.R040
+      Experiment.ConstraintFamily_Shallow.Sized.R050
+      Experiment.ConstraintFamily_Shallow.Sized.R060
+      Experiment.ConstraintFamily_Shallow.Sized.R070
+      Experiment.ConstraintFamily_Shallow.Sized.R080
+      Experiment.ConstraintFamily_Shallow.Sized.R090
+      Experiment.ConstraintFamily_Shallow.Sized.R100
+
+      Experiment.Generics_SOP
+      Experiment.Generics_SOP.Sized.R000
+      Experiment.Generics_SOP.Sized.R010
+      Experiment.Generics_SOP.Sized.R020
+      Experiment.Generics_SOP.Sized.R030
+      Experiment.Generics_SOP.Sized.R040
+      Experiment.Generics_SOP.Sized.R050
+      Experiment.Generics_SOP.Sized.R060
+      Experiment.Generics_SOP.Sized.R070
+      Experiment.Generics_SOP.Sized.R080
+      Experiment.Generics_SOP.Sized.R090
+      Experiment.Generics_SOP.Sized.R100
+
+      Experiment.Generics_LR
+      Experiment.Generics_LR.Sized.R000
+      Experiment.Generics_LR.Sized.R010
+      Experiment.Generics_LR.Sized.R020
+      Experiment.Generics_LR.Sized.R030
+      Experiment.Generics_LR.Sized.R040
+      Experiment.Generics_LR.Sized.R050
+      Experiment.Generics_LR.Sized.R060
+      Experiment.Generics_LR.Sized.R070
+      Experiment.Generics_LR.Sized.R080
+      Experiment.Generics_LR.Sized.R090
+      Experiment.Generics_LR.Sized.R100
+
+      Experiment.PreEval_Nominal.Sized.R000
+      Experiment.PreEval_Nominal.Sized.R010
+      Experiment.PreEval_Nominal.Sized.R020
+      Experiment.PreEval_Nominal.Sized.R030
+      Experiment.PreEval_Nominal.Sized.R040
+      Experiment.PreEval_Nominal.Sized.R050
+      Experiment.PreEval_Nominal.Sized.R060
+      Experiment.PreEval_Nominal.Sized.R070
+      Experiment.PreEval_Nominal.Sized.R080
+      Experiment.PreEval_Nominal.Sized.R090
+      Experiment.PreEval_Nominal.Sized.R100
+
+      Experiment.PreEval_Phantom.Sized.R000
+      Experiment.PreEval_Phantom.Sized.R010
+      Experiment.PreEval_Phantom.Sized.R020
+      Experiment.PreEval_Phantom.Sized.R030
+      Experiment.PreEval_Phantom.Sized.R040
+      Experiment.PreEval_Phantom.Sized.R050
+      Experiment.PreEval_Phantom.Sized.R060
+      Experiment.PreEval_Phantom.Sized.R070
+      Experiment.PreEval_Phantom.Sized.R080
+      Experiment.PreEval_Phantom.Sized.R090
+      Experiment.PreEval_Phantom.Sized.R100
+
+  build-depends:
+      base
+    , aeson
+    , generics-sop
+    , json-sop
+    , large-generics
+    , large-records-benchmarks
+    , sop-core
+
+  if flag(profile-coresize)
+    cpp-options: -DPROFILE_CORESIZE
+  if flag(profile-timing)
+    cpp-options: -DPROFILE_TIMING
+
+-- This contains some sanity checks for the various benchmarks. Instead of
+-- making each of those benchmarks their own library just for the sake of these
+-- simple tests, we instead use directory sharing.
+test-suite test-large-records-benchmarks
+  type:
+      exitcode-stdio-1.0
+  main-is:
+      TestLargeRecordsBenchmarks.hs
+  hs-source-dirs:
+      test
+      bench/after
+      bench/before
+      bench/experiments
+  default-language:
+      Haskell2010
+  default-extensions:
+      CPP
+  ghc-options:
+      -Wall
+  other-modules:
+      Test.After
+      Test.HigherKinded
+      Test.Experiment.Generics
+
+      Before.Sized.R010
+      Before.Sized.R020
+      Before.Sized.R030
+      Before.Sized.R040
+      Before.Sized.R050
+      Before.Sized.R060
+      Before.Sized.R070
+      Before.Sized.R080
+      Before.Sized.R090
+      Before.Sized.R100
+
+      After.Sized.R0010
+      After.Sized.R0020
+      After.Sized.R0030
+      After.Sized.R0040
+      After.Sized.R0050
+      After.Sized.R0060
+      After.Sized.R0070
+      After.Sized.R0080
+      After.Sized.R0090
+      After.Sized.R0100
+      After.Sized.R0200
+      After.Sized.R0300
+      After.Sized.R0400
+      After.Sized.R0500
+      After.Sized.R0600
+      After.Sized.R0700
+      After.Sized.R0800
+      After.Sized.R0900
+      After.Sized.R1000
+
+      HigherKinded.Sized.R010
+      HigherKinded.Sized.R020
+      HigherKinded.Sized.R030
+      HigherKinded.Sized.R040
+      HigherKinded.Sized.R050
+      HigherKinded.Sized.R060
+      HigherKinded.Sized.R070
+      HigherKinded.Sized.R080
+      HigherKinded.Sized.R090
+      HigherKinded.Sized.R100
+
+      Experiment.Generics_LR
+      Experiment.Generics_SOP
+
+      Infra.HList
+      Infra.ShowType
+      Infra.Tree
+  build-depends:
+      base
+    , aeson
+    , generics-sop
+    , json-sop
+    , large-generics
+    , large-records
+    , large-records-benchmarks
+    , record-hasfield
+    , sop-core
+    , tasty
+    , tasty-hunit
+
+    -- This is necessary for the 'Before' modules
+    , record-dot-preprocessor
+
+Flag profile-coresize
+  Description: Enable ghc flags for core size profiling
+  Default: False
+  Manual: True
+
+Flag profile-timing
+  Description: Enable ghc flags for compilation time profiling
+  Default: False
+  Manual: True

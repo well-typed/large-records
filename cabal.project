@@ -1,12 +1,13 @@
 packages: large-generics
         , large-records
+        , large-records-benchmarks
         , large-anon
         , beam-large-records
 
 source-repository-package
   type: git
   location: https://github.com/well-typed/beam
-  tag: bdafa58bd3ced2f8f9efef3443cdcdeee507fa1f 
+  tag: bdafa58bd3ced2f8f9efef3443cdcdeee507fa1f
   subdir: beam-core beam-migrate beam-sqlite
 
 -- enable for 9.2
@@ -26,6 +27,12 @@ package large-generics
 package large-records
   tests: True
   ghc-options: -Werror
+
+package large-records-benchmarks
+  tests: True
+  -- We are interested in compile-time performance primarily for the sake of
+  -- improving the development cycle, so we test with -O0.
+  ghc-options: -Werror -O0
 
 package beam-large-records
   tests: True

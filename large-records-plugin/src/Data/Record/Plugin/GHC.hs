@@ -15,6 +15,8 @@ module Data.Record.Plugin.GHC
   )
 where
 
+import Prelude hiding (head)
+
 import Bag (emptyBag, listToBag)
 import BasicTypes
 import Data.List (foldl')
@@ -211,7 +213,7 @@ simpleBind fnName body =
    in noLoc (FunBind noExtField (noLoc fnName) body'' WpHole [])
 
 -- | A helper for constructing @instance@ AST, mimicking Template Haskell.
-instanceD_simple :: 
+instanceD_simple ::
   -- | Instance context
   [LHsType GhcPs] ->
   -- | Instance head
@@ -245,13 +247,13 @@ classD_simple ::
   -- | Method signatures
   [LSig GhcPs] ->
   LHsDecl GhcPs
-classD_simple ctx clsName clsVars sigs = noLoc (TyClD noExtField cls)
+classD_simple ctx name clsVars sigs = noLoc (TyClD noExtField cls)
   where
     cls =
       ClassDecl
         { tcdCExt = noExtField,
           tcdCtxt = noLoc ctx,
-          tcdLName = noLoc clsName,
+          tcdLName = noLoc name,
           tcdTyVars = mkHsQTvs clsVars,
           tcdFixity = Prefix,
           tcdFDs = [],
@@ -264,11 +266,11 @@ classD_simple ctx clsName clsVars sigs = noLoc (TyClD noExtField cls)
 
 -- | A helper for constructing @import qualified@ AST.
 qimportD :: ModuleName -> LImportDecl GhcPs
-qimportD moduleName = noLoc do
+qimportD name = noLoc do
   ImportDecl
     { ideclExt = noExtField,
       ideclSourceSrc = NoSourceText,
-      ideclName = noLoc moduleName,
+      ideclName = noLoc name,
       ideclPkgQual = Nothing,
       ideclSource = False,
       ideclSafe = False,

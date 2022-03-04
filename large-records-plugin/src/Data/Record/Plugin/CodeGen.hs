@@ -6,7 +6,6 @@
 -- | The core of the plugin implementation.
 module Data.Record.Plugin.CodeGen (genLargeRecord) where
 
-import Control.Monad (when)
 import qualified Data.Generics.Uniplate.Data as Uniplate
 import Data.Record.Plugin.GHC
 import Data.Record.Plugin.RuntimeNames as Runtime
@@ -116,7 +115,7 @@ genDatatype Record {tyName, conName, tyVars, fields, derivings, options} =
           }
     )
   where
-    vars = [varRdrT ("lr_f" <> show i) | (i, _) <- zip [1 ..] fields]
+    vars = [varRdrT ("lr_f" <> show i) | (i, _) <- zip [1 :: Int ..] fields]
 
     mkEqConstr var ty = opT (varT var) typeEq (noLoc ty)
     mkRecField field var = conDeclField field (optionalBang (varT var))
@@ -129,7 +128,7 @@ genDatatype Record {tyName, conName, tyVars, fields, derivings, options} =
 --
 -- TODO: From GHC 9.2, this could be an identify function after changing the record representation.
 genVectorFrom :: Record -> [LHsDecl GhcPs]
-genVectorFrom rec@Record {tyName, conName, tyVars, fields} =
+genVectorFrom rec@Record {conName, fields} =
   let body =
         lamE
           [conP conName [varP f | (f, _) <- fields]]
@@ -145,7 +144,7 @@ genVectorFrom rec@Record {tyName, conName, tyVars, fields} =
 --
 -- TODO: From GHC 9.2, this could be an identify function after changing the record representation.
 genVectorTo :: Record -> [LHsDecl GhcPs]
-genVectorTo rec@Record {tyName, conName, tyVars, fields} =
+genVectorTo rec@Record {conName, fields} =
   let body =
         lamE [varP nameArg] do
           caseE
@@ -183,7 +182,7 @@ genUnsafeGetIndex rec =
 -- | Generate @unsafeSetIndexT@ for record @T@.
 --
 -- > unsafeSetIndexT :: Int -> T ... -> val -> T ...
--- > unsafeSetIndexT = \index arg !val -> 
+-- > unsafeSetIndexT = \index arg !val ->
 -- >   vectorToB (V.unsafeUpd (vectorFromT arg) [(index, noInlineUnsafeCo val)])
 --
 -- TODO: unlike the Template Haskell version, does not care about @allFieldsStrict@ and is always strict in @val@.
@@ -246,7 +245,7 @@ genHasFieldInstance rec index (fieldName, fieldTy) =
 -- like
 --
 -- > class (c t1, c t2, ...) => Constraints_T t1 t2 ... (c :: Type -> Constraint)
--- 
+--
 -- because then GHC would use resolve @Constraints_T@ to that tuple instead,
 -- and use lots of "tuple constraint extractor" functions, each of which have
 -- the same size as the number of constraints (another example of a

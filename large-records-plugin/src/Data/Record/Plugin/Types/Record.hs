@@ -7,7 +7,13 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Convert GHC AST definitions of records into our own representation, 'Record'.
-module Data.Record.Plugin.Types.Record where
+module Data.Record.Plugin.Types.Record (
+    Record(..)
+  , StockDeriving(..)
+  , RecordDeriving(..)
+  , viewDataDeclName
+  , viewRecord
+  ) where
 
 import Control.Monad.Except
 import Data.Record.Plugin.GHC

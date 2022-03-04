@@ -24,32 +24,33 @@ source-repository head
 
 library
     exposed-modules:
-        Data.Record.TH
-        Data.Record.TH.CodeGen
-        Data.Record.TH.CodeGen.Tree
-        Data.Record.TH.Config.Options
-        Data.Record.TH.Runtime
 
-        Data.Record.Internal.CodeGen
-        Data.Record.Internal.Naming
-        Data.Record.Internal.Record
-        Data.Record.Internal.Record.Parser
-        Data.Record.Internal.TH.Compat
-        Data.Record.Internal.TH.Name
-        Data.Record.Internal.TH.Util
-        Data.Record.Internal.Util
+--        Data.Record.TH
+--        Data.Record.TH.CodeGen
+--        Data.Record.TH.CodeGen.Tree
+--        Data.Record.TH.Config.Options
+        Data.Record.TH.Runtime
+--
+--        Data.Record.Internal.CodeGen
+--        Data.Record.Internal.Naming
+--        Data.Record.Internal.Record
+--        Data.Record.Internal.Record.Parser
+--        Data.Record.Internal.TH.Compat
+--        Data.Record.Internal.TH.Name
+--        Data.Record.Internal.TH.Util
+--        Data.Record.Internal.Util
 
     build-depends:
         base             >= 4.13   && < 4.17
-      , containers       >= 0.6.2  && < 0.7
-      , mtl              >= 2.2.1  && < 2.3
-      , record-hasfield  >= 1.0    && < 1.1
-      , syb              >= 0.7    && < 0.8
+--      , containers       >= 0.6.2  && < 0.7
+--      , mtl              >= 2.2.1  && < 2.3
+--      , record-hasfield  >= 1.0    && < 1.1
+--      , syb              >= 0.7    && < 0.8
       , vector           >= 0.12   && < 0.13
       , large-generics   >= 0.1    && < 0.2
-
-        -- whatever version is bundled with ghc
-      , template-haskell
+--
+--        -- whatever version is bundled with ghc
+--      , template-haskell
     hs-source-dirs:
         src
     default-language:
@@ -73,19 +74,19 @@ test-suite test-large-records
         TestLargeRecords.hs
     other-modules:
         Test.Record.Sanity.CodeGen
-        Test.Record.Sanity.Derive
-        Test.Record.Sanity.EqualFieldTypes
-        Test.Record.Sanity.HigherKinded
-        Test.Record.Sanity.HKD
-        Test.Record.Sanity.OverloadingNoDRF
-        Test.Record.Sanity.PatternMatch
-        Test.Record.Sanity.QualifiedImports
-        Test.Record.Sanity.QualifiedImports.A
-        Test.Record.Sanity.QualifiedImports.B
-        Test.Record.Sanity.RDP
-        Test.Record.Sanity.RecordConstruction
-        Test.Record.Sanity.Strictness
-        Test.Record.Util
+--         Test.Record.Sanity.Derive
+--         Test.Record.Sanity.EqualFieldTypes
+--         Test.Record.Sanity.HigherKinded
+--         Test.Record.Sanity.HKD
+--         Test.Record.Sanity.OverloadingNoDRF
+--         Test.Record.Sanity.PatternMatch
+--         Test.Record.Sanity.QualifiedImports
+--         Test.Record.Sanity.QualifiedImports.A
+--         Test.Record.Sanity.QualifiedImports.B
+--         Test.Record.Sanity.RDP
+--         Test.Record.Sanity.RecordConstruction
+--         Test.Record.Sanity.Strictness
+--         Test.Record.Util
 
     build-depends:
         base

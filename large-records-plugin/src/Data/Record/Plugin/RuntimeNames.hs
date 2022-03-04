@@ -1,4 +1,62 @@
-module Data.Record.Plugin.RuntimeNames where
+module Data.Record.Plugin.RuntimeNames (
+    -- TODO: Tidy up
+    fromList
+  , unsafeCoerce
+  , type_Vector
+  , type_Any
+  , toList
+  , error
+  , type_Int
+  , noInlineUnsafeCo
+  , unsafeIndex
+  , unsafeUpd
+  , type_HasField
+  , type_Type
+  , type_Constraint
+  , type_Proxy
+  , type_Rep
+  , type_Dict
+  , con_Rep
+  , dictFor
+  , type_Generic
+  , from_unqual
+  , repFromVector
+  , to_unqual
+  , seq
+  , rnfVectorAny
+  , repToVector
+  , dict_unqual
+  , metadata_unqual
+  , con_Metadata
+  , field_recordName
+  , field_recordConstructor
+  , field_recordSize
+  , field_recordFieldMetadata
+  , type_Constraints_unqual
+  , type_MetadataOf_unqual
+  , con_FieldMetadata
+  , con_FieldStrict
+  , type_GHC_Generic
+  , _GHC_from_unqual
+  , con_WrapThroughLRGenerics
+  , _GHC_to_unqual
+  , unwrapThroughLRGenerics
+  , type_GHC_Rep_unqual
+  , type_ThroughLRGenerics
+  , type_Show
+  , showsPrec
+  , gshowsPrec
+  , type_Eq
+  , eq
+  , geq
+  , type_Ord
+  , compare
+  , gcompare
+  , con_Proxy
+  , allRuntimeModules
+  ) where
+
+import Prelude hiding (error, seq, showsPrec, compare)
 
 import GHC (ModuleName, mkModuleName)
 import OccName (mkDataOcc, mkTcOcc, mkVarOcc)
@@ -55,11 +113,10 @@ geq = _name moduleRuntime "geq"
 gshowsPrec = _name moduleRuntime "gshowsPrec"
 gcompare = _name moduleRuntime "gcompare"
 
-con_Rep, con_Metadata, con_FieldMetadata, con_FieldLazy, con_FieldStrict, con_WrapThroughLRGenerics :: RdrName
+con_Rep, con_Metadata, con_FieldMetadata, con_FieldStrict, con_WrapThroughLRGenerics :: RdrName
 con_Rep = _con moduleRuntime "Rep"
 con_Metadata = _con moduleRuntime "Metadata"
 con_FieldMetadata = _con moduleRuntime "FieldMetadata"
-con_FieldLazy = _con moduleRuntime "FieldLazy"
 con_FieldStrict = _con moduleRuntime "FieldStrict"
 con_WrapThroughLRGenerics = _con moduleRuntime "WrapThroughLRGenerics"
 

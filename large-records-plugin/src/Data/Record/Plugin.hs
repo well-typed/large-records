@@ -28,15 +28,11 @@
 
 module Data.Record.Plugin (plugin, LargeRecordOptions (..)) where
 
--- import Control.Exception (throwIO)
-import Control.Monad (unless)
+import Prelude hiding (mod)
+
 import Control.Monad.Except
-import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Writer
-import Data.Data (Data)
 import Data.Foldable (fold)
-import qualified Data.Generics.Uniplate.Data as Uniplate
-import Data.Map (Map)
 import qualified Data.Map.Strict as Map
 import Data.Record.Plugin.CodeGen (genLargeRecord)
 import Data.Record.Plugin.GHC
@@ -44,26 +40,25 @@ import Data.Record.Plugin.RuntimeNames (allRuntimeModules)
 import Data.Record.Plugin.Types.Exception
 import Data.Record.Plugin.Types.Options (LargeRecordOptions (..), getLargeRecordOptions)
 import Data.Record.Plugin.Types.Record (viewDataDeclName, viewRecord)
-import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Traversable (for)
 
 plugin :: Plugin
 plugin = defaultPlugin {parsedResultAction, pluginRecompile = purePlugin}
   where
-    parsedResultAction options _ mod@HsParsedModule {hpm_module = L l module_} = do
+    parsedResultAction _options _ mod@HsParsedModule {hpm_module = L l module_} = do
       case runExcept (transformDecls module_) of
-        Right module_ -> do
-          pure mod {hpm_module = L l (addRequiredImports module_)}
+        Right module_' -> do
+          pure mod {hpm_module = L l (addRequiredImports module_')}
         Left err -> do
           dynFlags <- getDynFlags
           error (formatException dynFlags err)
 
 transformDecls :: HsModule GhcPs -> Except Exception (HsModule GhcPs)
-transformDecls mod@HsModule {hsmodDecls} = do
+transformDecls mod@HsModule {hsmodDecls = decls} = do
   let largeRecords = getLargeRecordOptions mod
 
-  (fold -> hsmodDecls, transformed) <- runWriterT $ for hsmodDecls \decl ->
+  (fold -> decls', transformed) <- runWriterT $ for decls \decl ->
     case viewDataDeclName decl of
       Just tyName | Just opts <- tyName `Map.lookup` largeRecords -> do
         tell (Set.singleton tyName)
@@ -75,8 +70,9 @@ transformDecls mod@HsModule {hsmodDecls} = do
   unless (Set.null untransformed) do
     throwError (Untransformed untransformed)
 
-  pure mod {hsmodDecls}
+  pure mod {hsmodDecls = decls'}
 
 addRequiredImports :: HsModule GhcPs -> HsModule GhcPs
 addRequiredImports module_@HsModule {hsmodImports} =
   module_ {hsmodImports = hsmodImports ++ [qimportD m | m <- allRuntimeModules]}
+

@@ -10,12 +10,9 @@
 module Data.Record.Plugin.Types.Record where
 
 import Control.Monad.Except
-import Data.Data (Data)
 import Data.Record.Plugin.GHC
 import Data.Record.Plugin.Types.Exception (Exception (..))
 import Data.Record.Plugin.Types.Options (LargeRecordOptions)
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Traversable (for)
 
 -- | A representation for records that can be processed by large-records.
@@ -108,3 +105,4 @@ viewRecordDeriving = \case
           L _ ty -> throwError (UnsupportedStockDeriving ty)
       Just (L _ strategy) -> throwError (UnsupportedStrategy strategy)
   _ -> pure []
+

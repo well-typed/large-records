@@ -1,7 +1,6 @@
 module Data.Record.Plugin.RuntimeNames where
 
-import Data.Record.Plugin.GHC (varE, varT)
-import GHC (GhcPs, LHsExpr, LHsType, ModuleName, mkModuleName)
+import GHC (ModuleName, mkModuleName)
 import OccName (mkDataOcc, mkTcOcc, mkVarOcc)
 import RdrName (RdrName, mkRdrQual, mkRdrUnqual)
 

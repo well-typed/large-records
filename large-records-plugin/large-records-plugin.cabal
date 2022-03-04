@@ -17,6 +17,7 @@ library
   hs-source-dirs:
       src
   build-depends:
+      -- TODO: purge
       base >=4.13 && <4.15
     , containers
     , ghc
@@ -28,6 +29,8 @@ library
     , uniplate
     , vector
   default-language: Haskell2010
+  ghc-options:
+      -Wall
 
 test-suite large-records-plugin-tests
   type: exitcode-stdio-1.0

@@ -4,34 +4,42 @@
 {-# LANGUAGE ParallelListComp #-}
 
 -- | The core of the plugin implementation.
+--
+-- TODO: This is the equivalent of Data.Record.TH.CodeGen. We should make sure
+-- the documentation of that module is moved here.
 module Data.Record.Plugin.CodeGen (genLargeRecord) where
 
-import qualified Data.Generics.Uniplate.Data as Uniplate
-import Data.Record.Plugin.GHC
+import Data.List (nubBy)
+
+import qualified Data.Generics as SYB
+
+import GhcPlugins (noLoc)
+
+import Data.Record.Plugin.GHC.TemplateHaskellStyle
 import Data.Record.Plugin.RuntimeNames as Runtime
 import Data.Record.Plugin.Types.Options (shouldGeneratedHasField, shouldRecordBeStrict)
 import Data.Record.Plugin.Types.Record (Record (..), RecordDeriving (..), StockDeriving (..))
 
 recordName :: Record -> String
-recordName Record {tyName} = occNameString (rdrNameOcc tyName)
+recordName Record {tyName} = nameBase tyName
 
 nameVectorFrom :: Record -> RdrName
-nameVectorFrom rec = varRdr ("vectorFrom" <> recordName rec)
+nameVectorFrom rec = ExpVar ("vectorFrom" <> recordName rec)
 
 nameVectorTo :: Record -> RdrName
-nameVectorTo rec = varRdr ("vectorTo" <> recordName rec)
+nameVectorTo rec = ExpVar ("vectorTo" <> recordName rec)
 
 nameUnsafeGetIndex :: Record -> RdrName
-nameUnsafeGetIndex rec = varRdr ("unsafeGetIndex" <> recordName rec)
+nameUnsafeGetIndex rec = ExpVar ("unsafeGetIndex" <> recordName rec)
 
 nameUnsafeSetIndex :: Record -> RdrName
-nameUnsafeSetIndex rec = varRdr ("unsafeSetIndex" <> recordName rec)
+nameUnsafeSetIndex rec = ExpVar ("unsafeSetIndex" <> recordName rec)
 
 nameConstraints :: Record -> RdrName
-nameConstraints rec = mkRdrUnqual (mkTcOcc ("Constraints_" <> recordName rec))
+nameConstraints rec = TyCon ("Constraints_" <> recordName rec)
 
 nameDictConstraints :: Record -> RdrName
-nameDictConstraints rec = varRdr ("dictConstraints_" <> recordName rec)
+nameDictConstraints rec = ExpVar ("dictConstraints_" <> recordName rec)
 
 -- | Generate all large-records definitions for a record.
 genLargeRecord :: Record -> [LHsDecl GhcPs]
@@ -55,7 +63,7 @@ genLargeRecord rec@Record {fields, options} =
 
 -- | Generate a type expression @R t1 t2 ...@ (for whatever type variables are present in the definition of the record).
 genRecordTy :: Record -> LHsType GhcPs
-genRecordTy Record {tyName, tyVars} = varT tyName `appsT` [varT (hsTyVarName f) | f <- tyVars]
+genRecordTy Record {tyName, tyVars} = VarT tyName `appsT` [VarT (tyVarBndrName f) | f <- tyVars]
 
 -- | Generate a large-records representation for record @T@.
 --
@@ -81,45 +89,36 @@ genRecordTy Record {tyName, tyVars} = varT tyName `appsT` [varT (hsTyVarName f) 
 -- >   deriving anyclass C -- where applicable
 --
 -- instead, along with a pattern synonym.
+--
+-- TODO: Do we want to support anyclass deriving...?
+-- See discussion in <https://github.com/well-typed/large-records/pull/42>.
 genDatatype :: Record -> LHsDecl GhcPs
 genDatatype Record {tyName, conName, tyVars, fields, derivings, options} =
-  noLoc
-    ( TyClD
-        noExtField
-        DataDecl
-          { tcdDExt = noExtField,
-            tcdLName = noLoc tyName,
-            tcdTyVars = mkHsQTvs (noLoc <$> tyVars),
-            tcdFixity = Prefix,
-            tcdDataDefn =
-              HsDataDefn
-                { dd_ext = noExtField,
-                  dd_ND = DataType,
-                  dd_ctxt = noLoc [],
-                  dd_cType = Nothing,
-                  dd_kindSig = Nothing,
-                  dd_cons =
-                    [ noLoc
-                        ConDeclH98
-                          { con_ext = noExtField,
-                            con_name = noLoc conName,
-                            con_forall = noLoc True,
-                            con_ex_tvs = [noLoc (UserTyVar noExtField (noLoc v)) | v <- vars],
-                            con_mb_cxt = Just (noLoc [mkEqConstr v t | v <- vars | (_, t) <- fields]),
-                            con_args = RecCon (noLoc [mkRecField f v | v <- vars | (f, _) <- fields]),
-                            con_doc = Nothing
-                          }
-                    ],
-                  dd_derivs = noLoc [anyclassDeriving c | DeriveAnyClass c <- derivings]
-                }
-          }
-    )
-  where
-    vars = [varRdrT ("lr_f" <> show i) | (i, _) <- zip [1 :: Int ..] fields]
+    DataD
+      tyName
+      tyVars
+      [ forallRecC
+          vars
+          (zipWith fieldContext vars fields)
+          conName
+          (zipWith fieldType vars fields)
 
-    mkEqConstr var ty = opT (varT var) typeEq (noLoc ty)
-    mkRecField field var = conDeclField field (optionalBang (varT var))
-    optionalBang = if shouldRecordBeStrict options then bangT else id
+      ]
+      [ DerivClause (Just (noLoc AnyclassStrategy)) [c]
+      | DeriveAnyClass c <- derivings
+      ]
+  where
+    vars :: [RdrName]
+    vars = [TyVar ("lr_f" <> show i) | (i, _) <- zip [1 :: Int ..] fields]
+
+    optionalBang :: LHsType GhcPs -> LHsType GhcPs
+    optionalBang = if shouldRecordBeStrict options then bangType else id
+
+    fieldContext :: RdrName -> (RdrName, LHsType GhcPs) -> LHsType GhcPs
+    fieldContext var (_name, typ) = equalP (VarT var) typ
+
+    fieldType :: RdrName -> (RdrName, LHsType GhcPs) -> (RdrName, LHsType GhcPs)
+    fieldType var (name, _typ) = (name, optionalBang $ VarT var)
 
 -- | Generate @vectorFromT@ for record @T@.
 --
@@ -132,8 +131,11 @@ genVectorFrom rec@Record {conName, fields} =
   let body =
         lamE
           [conP conName [varP f | (f, _) <- fields]]
-          (varE Runtime.fromList `appE` listE [varE Runtime.unsafeCoerce `appE` varE f | (f, _) <- fields])
-   in simpleFn (nameVectorFrom rec) (genRecordTy rec `arrT` (varT Runtime.type_Vector `appT` varT Runtime.type_Any)) body
+          (VarE Runtime.fromList `appE` listE [VarE Runtime.unsafeCoerce `appE` VarE f | (f, _) <- fields])
+      name = (nameVectorFrom rec)
+   in [ sigD name (genRecordTy rec `funT` (VarT Runtime.type_Vector `appT` VarT Runtime.type_Any))
+      , valD name body
+      ]
 
 -- | Generate @vectorToT@ for record @T@.
 --
@@ -148,17 +150,20 @@ genVectorTo rec@Record {conName, fields} =
   let body =
         lamE [varP nameArg] do
           caseE
-            (varE Runtime.toList `appE` varE nameArg)
-            [ (listP [varP f | (f, _) <- fields], appsE (varE conName) [varE Runtime.unsafeCoerce `appE` varE f | (f, _) <- fields]),
-              (wildP, varE Runtime.error `appE` stringE matchErr)
+            (VarE Runtime.toList `appE` VarE nameArg)
+            [ (listP [varP f | (f, _) <- fields], appsE (VarE conName) [VarE Runtime.unsafeCoerce `appE` VarE f | (f, _) <- fields]),
+              (wildP, VarE Runtime.error `appE` stringE matchErr)
             ]
-   in simpleFn (nameVectorTo rec) ((varT Runtime.type_Vector `appT` varT Runtime.type_Any) `arrT` genRecordTy rec) body
+      name = nameVectorTo rec
+   in [ sigD name ((VarT Runtime.type_Vector `appT` VarT Runtime.type_Any) `funT` genRecordTy rec)
+      , valD name body
+      ]
   where
-    nameArg = varRdr "x"
+    nameArg = ExpVar "x"
     matchErr =
       concat
         [ "Pattern match failure in ",
-          rdrNameString (nameVectorTo rec),
+          nameBase (nameVectorTo rec),
           ": vector with invalid number of elements."
         ]
 
@@ -167,17 +172,17 @@ genVectorTo rec@Record {conName, fields} =
 -- > unsafeGetIndexT :: Int -> T ... -> val
 -- > unsafeGetIndexT = \index arg -> noInlineUnsafeCo (V.unsafeIndex (Main.vectorFromB arg) index)
 genUnsafeGetIndex :: Record -> [LHsDecl GhcPs]
-genUnsafeGetIndex rec =
-  simpleFn
-    (nameUnsafeGetIndex rec)
-    (varT Runtime.type_Int `arrT` (genRecordTy rec `arrT` varT (varRdrT "lr_result_")))
-    ( lamE
-        [varP index, varP arg]
-        (varE Runtime.noInlineUnsafeCo `appE` varE Runtime.unsafeIndex `appsE` [varE (nameVectorFrom rec) `appE` varE arg, varE index])
-    )
+genUnsafeGetIndex rec = [
+      sigD name (VarT Runtime.type_Int `funT` (genRecordTy rec `funT` VarT (TyVar "lr_result_")))
+    , valD name ( lamE
+                    [varP index, varP arg]
+                    (VarE Runtime.noInlineUnsafeCo `appE` VarE Runtime.unsafeIndex `appsE` [VarE (nameVectorFrom rec) `appE` VarE arg, VarE index])
+                )
+    ]
   where
-    index = varRdr "index"
-    arg = varRdr "arg"
+    name = nameUnsafeGetIndex rec
+    index = ExpVar "index"
+    arg = ExpVar "arg"
 
 -- | Generate @unsafeSetIndexT@ for record @T@.
 --
@@ -189,24 +194,24 @@ genUnsafeGetIndex rec =
 --
 -- TODO: We should support per-field strictness.
 genUnsafeSetIndex :: Record -> [LHsDecl GhcPs]
-genUnsafeSetIndex rec =
-  simpleFn
-    (nameUnsafeSetIndex rec)
-    (varT Runtime.type_Int `arrT` (genRecordTy rec `arrT` (varT (varRdrT "lr_result_") `arrT` genRecordTy rec)))
-    ( lamE
-        [varP index, varP arg, bangP (varP val)]
-        ( varE (nameVectorTo rec)
-            `appE` ( varE Runtime.unsafeUpd
-                       `appsE` [ varE (nameVectorFrom rec) `appE` varE arg,
-                                 listE [tupleE [varE index, varE Runtime.noInlineUnsafeCo `appE` varE val]]
-                               ]
-                   )
-        )
-    )
+genUnsafeSetIndex rec = [
+      sigD name (VarT Runtime.type_Int `funT` (genRecordTy rec `funT` (VarT (TyVar "lr_result_") `funT` genRecordTy rec)))
+    , valD name ( lamE
+                    [varP index, varP arg, bangP (varP val)]
+                    ( VarE (nameVectorTo rec)
+                        `appE` ( VarE Runtime.unsafeUpd
+                                   `appsE` [ VarE (nameVectorFrom rec) `appE` VarE arg,
+                                             listE [tupE [VarE index, VarE Runtime.noInlineUnsafeCo `appE` VarE val]]
+                                           ]
+                               )
+                    )
+                )
+    ]
   where
-    index = varRdr "index"
-    arg = varRdr "arg"
-    val = varRdr "val"
+    name = nameUnsafeSetIndex rec
+    index = ExpVar "index"
+    arg = ExpVar "arg"
+    val = ExpVar "val"
 
 -- | Generate a @HasField@ instance for the @i@-th field of the record with given name and type.
 --
@@ -214,27 +219,26 @@ genUnsafeSetIndex rec =
 --
 -- > instance t ~ fieldType => HasField "fieldName" (T ...) t where
 -- >   hasField = \arg -> (unsafeSetIndexT i arg, unsafeGetIndexT i arg)
-genHasFieldInstance :: Record -> Int -> (RdrName, HsType GhcPs) -> LHsDecl GhcPs
+genHasFieldInstance :: Record -> Int -> (RdrName, LHsType GhcPs) -> LHsDecl GhcPs
 genHasFieldInstance rec index (fieldName, fieldTy) =
-  instanceD_simple
-    [opT (varT fieldTyVar) typeEq (noLoc fieldTy)]
-    (varT Runtime.type_HasField `appsT` [stringT fieldStr, genRecordTy rec, varT fieldTyVar])
-    [ simpleBind
-        (varRdr "hasField")
-        ( lamE
-            [varP arg]
-            ( tupleE
-                [ appsE (varE (nameUnsafeSetIndex rec)) [intE index, varE arg],
-                  appsE (varE (nameUnsafeGetIndex rec)) [intE index, varE arg]
-                ]
-            )
-        )
+  instanceD
+    [equalP (VarT fieldTyVar) fieldTy]
+    (VarT Runtime.type_HasField `appsT` [stringT fieldStr, genRecordTy rec, VarT fieldTyVar])
+    [ ( ExpVar "hasField"
+      , lamE
+          [varP arg]
+          ( tupE
+              [ appsE (VarE (nameUnsafeSetIndex rec)) [intE index, VarE arg],
+                appsE (VarE (nameUnsafeGetIndex rec)) [intE index, VarE arg]
+              ]
+          )
+      )
     ]
     []
   where
-    fieldStr = rdrNameString fieldName
-    arg = varRdr "arg"
-    fieldTyVar = varRdrT "lr_field_ty"
+    fieldStr = nameBase fieldName
+    arg = ExpVar "arg"
+    fieldTyVar = TyVar "lr_field_ty"
 
 -- | Generate a @Constraints_T@ class definition for record @T@.
 --
@@ -252,11 +256,16 @@ genHasFieldInstance rec index (fieldName, fieldTy) =
 -- @case f of { T x1 x2 x3 .. -> xn }@ function, but now at the dictionary level).
 genConstraintsClass :: Record -> LHsDecl GhcPs
 genConstraintsClass rec@Record {tyVars} =
-  (classD_simple [] (nameConstraints rec) (map noLoc tyVars ++ [kindedTyVarBndr c (varT Runtime.type_Type `arrT` varT Runtime.type_Constraint)]))
-    [ classOpSig (nameDictConstraints rec) ((varT Runtime.type_Proxy `appT` varT c) `arrT` (varT Runtime.type_Rep `appsT` [varT Runtime.type_Dict `appT` varT c, genRecordTy rec]))
-    ]
+    classD
+      []
+      (nameConstraints rec)
+      (tyVars ++ [kindedTV c (VarT Runtime.type_Type `funT` VarT Runtime.type_Constraint)])
+      [ ( nameDictConstraints rec
+        , (VarT Runtime.type_Proxy `appT` VarT c) `funT` (VarT Runtime.type_Rep `appsT` [VarT Runtime.type_Dict `appT` VarT c, genRecordTy rec])
+        )
+      ]
   where
-    c = mkRdrUnqual (mkTyVarOcc "lr_con_c")
+    c = TyVar "lr_con_c"
 
 -- | Generate a @Constraints_T@ instance for record @T@.
 --
@@ -269,19 +278,19 @@ genConstraintsClass rec@Record {tyVars} =
 -- In the example above, @t1 t2 ...@ refer to type variables in the record definition.
 genConstraintsInstance :: Record -> LHsDecl GhcPs
 genConstraintsInstance rec@Record {tyVars, fields} =
-  instanceD_simple
-    [varT c `appT` noLoc ty | (_, ty) <- fields]
-    (appsT (varT (nameConstraints rec)) ([varT (hsTyVarName v) | v <- tyVars] ++ [varT c]))
-    [simpleBind (nameDictConstraints rec) body]
+  instanceD
+    [VarT c `appT` ty | (_, ty) <- fields]
+    (appsT (VarT (nameConstraints rec)) ([VarT (tyVarBndrName v) | v <- tyVars] ++ [VarT c]))
+    [(nameDictConstraints rec, body)]
     []
   where
-    c = mkRdrUnqual (mkTyVarOcc "lr_con_c")
-    p = mkRdrUnqual (mkVarOcc "p")
-    body = lamE [varP p] (varE Runtime.con_Rep `appE` (varE Runtime.fromList `appE` listE dicts))
-    dicts = [mkDict (noLoc ty) | (_, ty) <- fields]
+    c = TyVar "lr_con_c"
+    p = ExpVar "p"
+    body = lamE [varP p] (VarE Runtime.con_Rep `appE` (VarE Runtime.fromList `appE` listE dicts))
+    dicts = [mkDict ty | (_, ty) <- fields]
 
     mkDict :: LHsType GhcPs -> LHsExpr GhcPs
-    mkDict ty = varE Runtime.noInlineUnsafeCo `appE` (varE Runtime.dictFor `appsE` [varE p, genProxy ty])
+    mkDict ty = VarE Runtime.noInlineUnsafeCo `appE` (VarE Runtime.dictFor `appsE` [VarE p, genProxy ty])
 
 -- | Generate an instance of large-records 'Data.Record.Generic'.
 --
@@ -303,44 +312,47 @@ genConstraintsInstance rec@Record {tyVars, fields} =
 -- TODO: unlike the Template Haskell version, this one does not omit the @rnfVectorAny@ call if all fields are already strict.
 genGenericInstance :: Record -> LHsDecl GhcPs
 genGenericInstance rec@Record {tyVars, conName, fields} =
-  instanceD_simple
+  instanceD
     []
-    (varT Runtime.type_Generic `appT` genRecordTy rec)
-    [ simpleBind
-        Runtime.from_unqual
-        (lamE [varP x] (varE Runtime.repFromVector `appE` (varE (nameVectorFrom rec) `appE` varE x))),
-      simpleBind
-        Runtime.to_unqual
-        ( lamE
+    (VarT Runtime.type_Generic `appT` genRecordTy rec)
+    [ ( Runtime.from_unqual
+      , lamE [varP x] (VarE Runtime.repFromVector `appE` (VarE (nameVectorFrom rec) `appE` VarE x))
+      )
+    , ( Runtime.to_unqual
+      , lamE
             [varP x]
             ( appE
-                (lamE [varP y] (varE Runtime.seq `appsE` [varE Runtime.rnfVectorAny `appE` varE y, varE (nameVectorTo rec) `appE` varE y]))
-                (varE Runtime.repToVector `appE` varE x)
+                (lamE [varP y] (VarE Runtime.seq `appsE` [VarE Runtime.rnfVectorAny `appE` VarE y, VarE (nameVectorTo rec) `appE` VarE y]))
+                (VarE Runtime.repToVector `appE` VarE x)
             )
-        ),
-      simpleBind Runtime.dict_unqual (varE (nameDictConstraints rec)),
-      simpleBind Runtime.metadata_unqual do
-        lamE [varP x] do
-          (recConE Runtime.con_Metadata)
-            [ Runtime.field_recordName `recFieldE` stringE (recordName rec),
-              Runtime.field_recordConstructor `recFieldE` stringE (rdrNameString conName),
-              Runtime.field_recordSize `recFieldE` intE (length fields),
-              Runtime.field_recordFieldMetadata `recFieldE` (varE Runtime.con_Rep `appE` (varE Runtime.fromList `appE` metadata))
+      )
+    , ( Runtime.dict_unqual
+      , VarE (nameDictConstraints rec)
+      )
+    , ( Runtime.metadata_unqual
+      , lamE [varP x] $
+          recConE
+            Runtime.con_Metadata
+            [ (Runtime.field_recordName, stringE (recordName rec)),
+              (Runtime.field_recordConstructor, stringE (nameBase conName)),
+              (Runtime.field_recordSize, intE (length fields)),
+              (Runtime.field_recordFieldMetadata, (VarE Runtime.con_Rep `appE` (VarE Runtime.fromList `appE` metadata)))
             ]
+      )
     ]
-    [ tfInstanceD Runtime.type_Constraints_unqual [genRecordTy rec] constraints,
-      tfInstanceD Runtime.type_MetadataOf_unqual [genRecordTy rec] metadataOf
+    [ tySynEqn Runtime.type_Constraints_unqual [genRecordTy rec] constraints,
+      tySynEqn Runtime.type_MetadataOf_unqual [genRecordTy rec] metadataOf
     ]
   where
-    (x, y) = (varRdr "x", varRdr "y")
+    (x, y) = (ExpVar "x", ExpVar "y")
 
-    constraints = appsT (varT (nameConstraints rec)) [varT (hsTyVarName v) | v <- tyVars]
-    metadataOf = listT [tupleT [stringT (rdrNameString f), noLoc t] | (f, t) <- fields]
+    constraints = appsT (VarT (nameConstraints rec)) [VarT (tyVarBndrName v) | v <- tyVars]
+    metadataOf = listT [tupT [stringT (nameBase f), t] | (f, t) <- fields]
     metadata = listE [mkFieldMD name | (name, _) <- fields]
     mkFieldMD name =
-      (appsE (varE Runtime.con_FieldMetadata))
-        [ genProxy (stringT (rdrNameString name)),
-          varE Runtime.con_FieldStrict
+      (appsE (VarE Runtime.con_FieldMetadata))
+        [ genProxy (stringT (nameBase name)),
+          VarE Runtime.con_FieldStrict
         ]
 
 -- | Generate an instance of @GHC.Generics.Generic@ that goes through large-records generics.
@@ -351,25 +363,41 @@ genGenericInstance rec@Record {tyVars, conName, fields} =
 -- >   to = unwrapThroughLRGenerics
 genGHCGeneric :: Record -> LHsDecl GhcPs
 genGHCGeneric rec =
-  (instanceD_simple [] (varT Runtime.type_GHC_Generic `appT` genRecordTy rec))
-    [ simpleBind Runtime._GHC_from_unqual (varE Runtime.con_WrapThroughLRGenerics),
-      simpleBind Runtime._GHC_to_unqual (varE Runtime.unwrapThroughLRGenerics)
+  (instanceD
+    []
+    (VarT Runtime.type_GHC_Generic `appT` genRecordTy rec))
+    [ (Runtime._GHC_from_unqual, VarE Runtime.con_WrapThroughLRGenerics),
+      (Runtime._GHC_to_unqual, VarE Runtime.unwrapThroughLRGenerics)
     ]
-    [ tfInstanceD Runtime.type_GHC_Rep_unqual [genRecordTy rec] (varT Runtime.type_ThroughLRGenerics `appT` genRecordTy rec)
+    [ tySynEqn Runtime.type_GHC_Rep_unqual [genRecordTy rec] (VarT Runtime.type_ThroughLRGenerics `appT` genRecordTy rec)
     ]
 
--- | @genRequiredContext r c@ generates a list of constraints @[c t1, c t2, ...]@ for all type variables in the definition of @r@.
---
--- TODO: 'nub' the type variables.
+-- | @genRequiredConstraints r c@ generates a list of constraints @[c t1, c t2, ...]@ for all type variables in the definition of @r@.
 --
 -- TODO: @genRequiredConstraints@ in the Template Haskell version is smarter and generates e.g. @c [b]@ instead of @c b@. This might matter for
 -- phantom type variables.
-genRequiredContext :: Record -> LHsType GhcPs -> [LHsType GhcPs]
-genRequiredContext Record {fields} c =
-  [c `appT` noLoc t | (_, t) <- fields, hasTypeVars t]
+genRequiredConstraints :: Record -> LHsType GhcPs -> [LHsType GhcPs]
+genRequiredConstraints Record {fields} c =
+    nubBy sameType $ filter hasTypeVar $ map (uncurry constrainField) fields
   where
-    hasTypeVars :: HsType GhcPs -> Bool
-    hasTypeVars = any (isTvOcc . rdrNameOcc) . Uniplate.universeBi
+    constrainField :: RdrName -> LHsType GhcPs -> LHsType GhcPs
+    constrainField _ t = c `appT` t
+
+    -- TODO. Not sure what the best way to do this is.
+    -- SYB.geq does not work! (Bogus SYB instance for 'Name'.)
+    sameType :: LHsType GhcPs -> LHsType GhcPs -> Bool
+    sameType _a _b = False
+
+    hasTypeVar :: LHsType GhcPs -> Bool
+    hasTypeVar = not . null . allTyVars
+
+    allTyVars :: LHsType GhcPs -> [String]
+    allTyVars = SYB.everything (++) (SYB.mkQ [] isTypeVar)
+
+    isTypeVar :: LHsType GhcPs -> [String]
+    isTypeVar (VarT (TyVar name)) = [name]
+    isTypeVar _otherwise          = []
+
 
 -- | Generate stock instances for the classes listes in the record's 'derivings' field.
 genStockInstances :: Record -> [LHsDecl GhcPs]
@@ -381,26 +409,26 @@ genStockInstances rec@Record {derivings} = do
 
 -- | For a record type @T@ and stock-derivable class @C@, generate
 --
--- > instance $(genRequiredContext T C) => C T where
+-- > instance $(genRequiredConstraints T C) => C T where
 -- >   $(method) = $(generic implementation)
 --
 -- Note: doesn't do anything for 'Generic' because we want to generate a custom instance instead. See 'genGHCGeneric'.
 genStockInstance :: Record -> StockDeriving -> Maybe (LHsDecl GhcPs)
 genStockInstance rec = \case
-  Show -> Just (mkInstance Runtime.type_Show Runtime.showsPrec (varE Runtime.gshowsPrec))
-  Eq -> Just (mkInstance Runtime.type_Eq Runtime.eq (varE Runtime.geq))
-  Ord -> Just (mkInstance Runtime.type_Ord Runtime.compare (varE Runtime.gcompare))
+  Show -> Just (mkInstance Runtime.type_Show Runtime.showsPrec (VarE Runtime.gshowsPrec))
+  Eq -> Just (mkInstance Runtime.type_Eq Runtime.eq (VarE Runtime.geq))
+  Ord -> Just (mkInstance Runtime.type_Ord Runtime.compare (VarE Runtime.gcompare))
   Generic -> Nothing
   where
     mkInstance cls mthd gen =
-      instanceD_simple
-        (genRequiredContext rec (varT cls))
-        (varT cls `appT` genRecordTy rec)
-        [simpleBind mthd gen]
+      instanceD
+        (genRequiredConstraints rec (VarT cls))
+        (VarT cls `appT` genRecordTy rec)
+        [(mthd, gen)]
         []
 
 -- | Generate a Proxy expression for the given type.
 --
 -- @genProxy [t|ty|]@ will result in a @Proxy :: Proxy ty@.
 genProxy :: LHsType GhcPs -> LHsExpr GhcPs
-genProxy ty = typeSigE (varE Runtime.con_Proxy) (varT Runtime.type_Proxy `appT` ty)
+genProxy ty = sigE (VarE Runtime.con_Proxy) (VarT Runtime.type_Proxy `appT` ty)

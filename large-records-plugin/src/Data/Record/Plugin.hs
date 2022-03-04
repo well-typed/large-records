@@ -33,15 +33,21 @@ import Prelude hiding (mod)
 import Control.Monad.Except
 import Control.Monad.Writer
 import Data.Foldable (fold)
+import Data.Traversable (for)
+
 import qualified Data.Map.Strict as Map
+import qualified Data.Set        as Set
+
 import Data.Record.Plugin.CodeGen (genLargeRecord)
-import Data.Record.Plugin.GHC
+import Data.Record.Plugin.GHC.Shim
+import Data.Record.Plugin.GHC.TemplateHaskellStyle
 import Data.Record.Plugin.RuntimeNames (allRuntimeModules)
 import Data.Record.Plugin.Types.Exception
 import Data.Record.Plugin.Types.Options (LargeRecordOptions (..), getLargeRecordOptions)
-import Data.Record.Plugin.Types.Record (viewDataDeclName, viewRecord)
-import qualified Data.Set as Set
-import Data.Traversable (for)
+import Data.Record.Plugin.Types.Record (viewRecord)
+
+import GhcPlugins
+import GHC (HsModule(..))
 
 plugin :: Plugin
 plugin = defaultPlugin {parsedResultAction, pluginRecompile = purePlugin}
@@ -59,8 +65,8 @@ transformDecls mod@HsModule {hsmodDecls = decls} = do
   let largeRecords = getLargeRecordOptions mod
 
   (fold -> decls', transformed) <- runWriterT $ for decls \decl ->
-    case viewDataDeclName decl of
-      Just tyName | Just opts <- tyName `Map.lookup` largeRecords -> do
+    case decl of
+      DataD tyName _ _ _ | Just opts <- tyName `Map.lookup` largeRecords -> do
         tell (Set.singleton tyName)
         rec <- lift (viewRecord opts decl)
         pure (genLargeRecord rec)

@@ -8,7 +8,8 @@ library
   exposed-modules:
       Data.Record.Plugin
       Data.Record.Plugin.CodeGen
-      Data.Record.Plugin.GHC
+      Data.Record.Plugin.GHC.Shim
+      Data.Record.Plugin.GHC.TemplateHaskellStyle
       Data.Record.Plugin.Runtime
       Data.Record.Plugin.RuntimeNames
       Data.Record.Plugin.Types.Exception
@@ -26,8 +27,10 @@ library
     , mtl
     , record-hasfield
     , sop-core
+      -- TODO: Use only SYB
     , uniplate
     , vector
+    , syb
   default-language: Haskell2010
   ghc-options:
       -Wall

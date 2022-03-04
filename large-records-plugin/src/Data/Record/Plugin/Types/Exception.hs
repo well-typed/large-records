@@ -8,13 +8,17 @@ module Data.Record.Plugin.Types.Exception
   )
 where
 
-import Data.Record.Plugin.GHC
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Data.Record.Plugin.GHC.TemplateHaskellStyle
+
+import GhcPlugins (DynFlags, showSDoc, ppr)
+import HsDecls (derivStrategyName)
+
 data Exception
   = DerivingWithoutStrategy
-  | UnsupportedStockDeriving (HsType GhcPs)
+  | UnsupportedStockDeriving (LHsType GhcPs)
   | UnsupportedStrategy (DerivStrategy GhcPs)
   | InvalidDeclaration
   | Untransformed (Set RdrName)
@@ -34,4 +38,4 @@ formatException dynFlags = \case
     unlines do
       "These large-record annotations were not applied: " : do
         name <- Set.toList names
-        pure (" - " ++ rdrNameString name)
+        pure (" - " ++ nameBase name)

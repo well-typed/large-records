@@ -16,10 +16,14 @@ where
 
 import Control.Applicative (empty)
 import Data.Data (Data)
-import qualified Data.Generics.Uniplate.Data as Uniplate
 import Data.Map (Map)
-import qualified Data.Map.Strict as Map
-import Data.Record.Plugin.GHC
+
+import GHC (HsModule)
+
+import qualified Data.Generics.Uniplate.Data as Uniplate
+import qualified Data.Map.Strict             as Map
+
+import Data.Record.Plugin.GHC.TemplateHaskellStyle
 
 -- | A type specifying how a record should be treated by large-records.
 --
@@ -49,12 +53,9 @@ getLargeRecordOptions module_ = Map.fromList do
 
 viewLargeRecordAnnotation :: AnnDecl GhcPs -> Maybe (RdrName, LargeRecordOptions)
 viewLargeRecordAnnotation = \case
-  TyAnno tyName (rdrNameString -> "LargeRecordStrict") ->
-    Just (tyName, LargeRecordStrict)
-  TyAnno tyName (rdrNameString -> "LargeRecordLazy") ->
-    Just (tyName, LargeRecordLazy)
-  _ -> Nothing
+    PragAnnD (TypeAnnotation tyName) (VarE (nameBase -> "LargeRecordStrict")) ->
+      Just (tyName, LargeRecordStrict)
+    PragAnnD (TypeAnnotation tyName) (VarE (nameBase -> "LargeRecordLazy")) ->
+      Just (tyName, LargeRecordLazy)
+    _ -> Nothing
 
-pattern TyAnno :: RdrName -> RdrName -> AnnDecl GhcPs
-pattern TyAnno tyName value <-
-  HsAnnotation _ _ (TypeAnnProvenance (L _ tyName)) (L _ (HsVar _ (L _ value)))

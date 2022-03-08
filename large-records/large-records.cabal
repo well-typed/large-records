@@ -16,99 +16,118 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.1
-                    -- TODO ^^^^^ Move to 9.0.2?
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2
 
 source-repository head
   type:     git
   location: https://github.com/well-typed/large-records
 
 library
-    exposed-modules:
+  exposed-modules:
 
---        Data.Record.TH
---        Data.Record.TH.CodeGen
---        Data.Record.TH.CodeGen.Tree
---        Data.Record.TH.Config.Options
-        Data.Record.TH.Runtime
---
---        Data.Record.Internal.CodeGen
---        Data.Record.Internal.Naming
---        Data.Record.Internal.Record
---        Data.Record.Internal.Record.Parser
---        Data.Record.Internal.TH.Compat
---        Data.Record.Internal.TH.Name
---        Data.Record.Internal.TH.Util
---        Data.Record.Internal.Util
+      Data.Record.Plugin
+      Data.Record.Plugin.Runtime
+      Data.Record.Plugin.Options
 
-    build-depends:
-        base             >= 4.13   && < 4.17
---      , containers       >= 0.6.2  && < 0.7
---      , mtl              >= 2.2.1  && < 2.3
---      , record-hasfield  >= 1.0    && < 1.1
---      , syb              >= 0.7    && < 0.8
-      , vector           >= 0.12   && < 0.13
-      , large-generics   >= 0.1    && < 0.2
---
---        -- whatever version is bundled with ghc
---      , template-haskell
-    hs-source-dirs:
-        src
-    default-language:
-        Haskell2010
-    default-extensions:
-        NoStarIsType
-    ghc-options:
-        -Wall
-        -Wcompat
-        -Wincomplete-uni-patterns
-        -Wincomplete-record-updates
-        -Wpartial-fields
-        -Widentities
-        -Wredundant-constraints
-        -Wmissing-export-lists
+      Data.Record.Internal.GHC.Fresh
+      Data.Record.Internal.GHC.Shim
+      Data.Record.Internal.GHC.TemplateHaskellStyle
+
+      Data.Record.Internal.Plugin.CodeGen
+      Data.Record.Internal.Plugin.Exception
+      Data.Record.Internal.Plugin.Names.GhcGenerics
+      Data.Record.Internal.Plugin.Names.Runtime
+      Data.Record.Internal.Plugin.Options
+      Data.Record.Internal.Plugin.Record
+
+  build-depends:
+      base             >= 4.13   && < 4.17
+    , containers       >= 0.6.2  && < 0.7
+    , mtl              >= 2.2.1  && < 2.3
+    , record-hasfield  >= 1.0    && < 1.1
+    , syb              >= 0.7    && < 0.8
+    , vector           >= 0.12   && < 0.13
+    , large-generics   >= 0.1    && < 0.2
+
+      -- transformers 0.5.6 introduces Writer.CPS
+    , transformers     >= 0.5.6  && < 0.7
+
+      -- whatever version is bundled with ghc
+    , ghc
+  hs-source-dirs:
+      src
+  default-language:
+      Haskell2010
+  default-extensions:
+      NoStarIsType
+  ghc-options:
+      -Wall
+      -Wcompat
+      -Wincomplete-uni-patterns
+      -Wincomplete-record-updates
+      -Wpartial-fields
+      -Widentities
+      -Wredundant-constraints
+      -Wmissing-export-lists
+
+  if impl(ghc >= 8.10)
+    ghc-options: -Wunused-packages
 
 test-suite test-large-records
-    type:
-        exitcode-stdio-1.0
-    main-is:
-        TestLargeRecords.hs
-    other-modules:
-        Test.Record.Sanity.CodeGen
---         Test.Record.Sanity.Derive
---         Test.Record.Sanity.EqualFieldTypes
---         Test.Record.Sanity.HigherKinded
---         Test.Record.Sanity.HKD
---         Test.Record.Sanity.OverloadingNoDRF
---         Test.Record.Sanity.PatternMatch
---         Test.Record.Sanity.QualifiedImports
---         Test.Record.Sanity.QualifiedImports.A
---         Test.Record.Sanity.QualifiedImports.B
---         Test.Record.Sanity.RDP
---         Test.Record.Sanity.RecordConstruction
---         Test.Record.Sanity.Strictness
---         Test.Record.Util
+  type:
+      exitcode-stdio-1.0
+  main-is:
+      TestLargeRecords.hs
+  other-modules:
+      Test.Record.Sanity.CodeGen
+      Test.Record.Sanity.Derive
+      Test.Record.Sanity.EqualFieldTypes
+      Test.Record.Sanity.HigherKinded
+      Test.Record.Sanity.HKD
+      Test.Record.Sanity.OverloadingNoDRF
+      Test.Record.Sanity.PatternMatch
+      Test.Record.Sanity.QualifiedImports
+      Test.Record.Sanity.QualifiedImports.A
+      Test.Record.Sanity.QualifiedImports.B
+      Test.Record.Sanity.RDP.SingleModule
+      Test.Record.Sanity.RDP.SplitModule
+      Test.Record.Sanity.RDP.SplitModule.RecordDef
+      Test.Record.Sanity.RecordConstruction
+      Test.Record.Sanity.Strictness
+      Test.Record.Sanity.GhcGenerics
+      Test.Record.Util
 
-    build-depends:
-        base
-      , large-records
+  build-depends:
+      base
+    , large-records
 
-      , large-generics
-      , mtl
-      , newtype
-      , record-hasfield
-      , tasty
-      , tasty-hunit
-      , template-haskell
-      , transformers
-    hs-source-dirs:
-        test
-    default-language:
-        Haskell2010
-    ghc-options:
-        -Wall
-        -Wcompat
-        -Wincomplete-uni-patterns
-        -Wincomplete-record-updates
-        -Wpartial-fields
-        -Widentities
+    , generic-deriving
+    , large-generics
+    , mtl
+    , newtype
+    , record-hasfield
+    , tasty
+    , tasty-hunit
+    , template-haskell
+    , transformers
+
+      -- <https://github.com/ndmitchell/record-dot-preprocessor/pull/48>
+    , record-dot-preprocessor >= 0.2.14
+  hs-source-dirs:
+      test
+  default-language:
+      Haskell2010
+  ghc-options:
+      -Wall
+      -Wcompat
+      -Wincomplete-uni-patterns
+      -Wincomplete-record-updates
+      -Wpartial-fields
+      -Widentities
+
+  if impl(ghc >= 9.0.1)
+    -- ghc 9 provides warnings about unused imports for the imports added by
+    -- the plugin. I'm not yet sure how to deal with this properly. The imports
+    -- are necessary (I think...?), both for the generated code and to typecheck
+    -- the user's own ANN pragma. For now we just disable the warning.
+    ghc-options: -Wno-unused-imports

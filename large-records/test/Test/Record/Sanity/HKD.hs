@@ -1,18 +1,16 @@
 {-# LANGUAGE ConstraintKinds           #-}
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NamedFieldPuns            #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
-{-# LANGUAGE ViewPatterns              #-}
 
--- {-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Sanity.HKD (
     tests
@@ -23,8 +21,6 @@ import Data.Functor.Const
 import Data.Kind
 import GHC.Records.Compat
 
-import Data.Record.TH
-
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -33,13 +29,12 @@ type family HKD f a where
   HKD (Const b) a = b
 
 -- | Test record with fields whose types are given by type families
-largeRecord defaultPureScript [d|
-    data T (f :: Type -> Type) = MkT {
-          field1 :: HKD f Int
-        , field2 :: HKD f Bool
-        }
-      deriving (Show, Eq)
-  |]
+{-# ANN type T largeRecordStrict #-}
+data T (f :: Type -> Type) = MkT {
+      field1 :: HKD f Int
+    , field2 :: HKD f Bool
+    }
+  deriving (Show, Eq)
 
 {-------------------------------------------------------------------------------
   Tests

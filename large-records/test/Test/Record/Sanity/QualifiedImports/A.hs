@@ -1,18 +1,16 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
+
 module Test.Record.Sanity.QualifiedImports.A (T(..)) where
 
-import Data.Record.TH
-
-largeRecord defaultPureScript [d|
-    data T a = MkT { x :: Int, y :: [a] }
-  |]
+{-# ANN type T largeRecordStrict #-}
+data T a = MkT { x :: Int, y :: [a] }

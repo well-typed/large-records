@@ -3,7 +3,6 @@ packages: large-generics
         , large-records-benchmarks
         , large-anon
         , beam-large-records
-        , large-records-plugin
 
 source-repository-package
   type: git
@@ -42,7 +41,3 @@ package beam-large-records
 package large-anon
   tests: True
   ghc-options: -dcore-lint -ddump-ds-preopt -ddump-to-file -dppr-cols=1000
-
-package large-records-plugin
-  tests: True
-  ghc-options: -Werror

@@ -2,20 +2,17 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DeriveAnyClass            #-}
 {-# LANGUAGE DerivingStrategies        #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE KindSignatures            #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
--- {-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Sanity.Derive (tests) where
 
@@ -25,8 +22,6 @@ import Data.Kind
 import GHC.Records.Compat
 import Test.Tasty
 import Test.Tasty.HUnit
-
-import Data.Record.TH
 
 {-------------------------------------------------------------------------------
   Class of kind @Type -> Constraint@.
@@ -38,20 +33,18 @@ class C1 (a :: Type) where
 
 -- Type of kind @Type@
 
-largeRecord defaultPureScript [d|
-      data LA1 = MkLA1 { la1_f1 :: Int }
-        deriving anyclass C1
-    |]
+{-# ANN type LA1 largeRecordStrict #-}
+data LA1 = MkLA1 { la1_f1 :: Int }
+  deriving anyclass C1
 
 -- Type of kind @Type -> Type@ (regular and large example)
 
 data RA2 a = MkRA1 { ra2_f1 :: a }
   deriving anyclass C1
 
-largeRecord defaultPureScript [d|
-    data LA2 a = MkLA2 { la2_f1 :: a }
-      deriving anyclass C1
-  |]
+{-# ANN type LA2 largeRecordStrict #-}
+data LA2 a = MkLA2 { la2_f1 :: a }
+  deriving anyclass C1
 
 {-------------------------------------------------------------------------------
   Class of kind @Type -> Type -> Constraint@, partially instantiated.
@@ -66,10 +59,9 @@ largeRecord defaultPureScript [d|
   really is a newtype around a record).
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-    data LB = MkLB { lb1 :: Int, lb2 :: Int }
-        deriving anyclass (Newtype LB)
-    |]
+{-# ANN type LB largeRecordStrict #-}
+data LB = MkLB { lb1 :: Int, lb2 :: Int }
+    deriving anyclass (Newtype LB)
 
 f :: LB -> LB
 f r = flip (setField @"lb1") (getField @"lb2" r)
@@ -88,10 +80,9 @@ class C3 (f :: Type -> Type) where
 data RC a = MkRC { rc1 :: a, rc2 :: Int }
   deriving anyclass C3
 
-largeRecord defaultPureScript [d|
-      data LC (a :: Type) = MkLC { lc1 :: a, lc2 :: Int }
-        deriving anyclass C3
-    |]
+{-# ANN type LC largeRecordStrict #-}
+data LC (a :: Type) = MkLC { lc1 :: a, lc2 :: Int }
+  deriving anyclass C3
 
 {-------------------------------------------------------------------------------
   Class of kind @((Type -> Type) -> Type) -> Constraint@
@@ -105,10 +96,9 @@ class C4 (f :: (Type -> Type) -> Type) where
 data RD f = MkRD { rd1 :: f Int, rd2 :: Int }
   deriving anyclass C4
 
-largeRecord defaultPureScript [d|
-      data LD (f :: Type -> Type) = MkLD { ld1 :: f Int, ld2 :: Int }
-        deriving anyclass C4
-    |]
+{-# ANN type LD largeRecordStrict #-}
+data LD (f :: Type -> Type) = MkLD { ld1 :: f Int, ld2 :: Int }
+  deriving anyclass C4
 
 {-------------------------------------------------------------------------------
   Class with a constraint
@@ -123,11 +113,10 @@ data RE = MkRE { re1 :: Int, re2 :: Bool }
   deriving stock Show
   deriving anyclass C5
 
-largeRecord defaultPureScript [d|
-      data LE = MkLE { le1 :: Int, le2 :: Bool }
-        deriving stock Show
-        deriving anyclass C5
-    |]
+{-# ANN type LE largeRecordStrict #-}
+data LE = MkLE { le1 :: Int, le2 :: Bool }
+  deriving stock Show
+  deriving anyclass C5
 
 {-------------------------------------------------------------------------------
   Tests proper

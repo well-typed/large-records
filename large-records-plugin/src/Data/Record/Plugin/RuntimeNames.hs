@@ -58,14 +58,12 @@ module Data.Record.Plugin.RuntimeNames (
 
 import Prelude hiding (error, seq, showsPrec, compare)
 
-import GHC (ModuleName, mkModuleName)
-import OccName (mkDataOcc, mkTcOcc, mkVarOcc)
-import RdrName (RdrName, mkRdrQual, mkRdrUnqual)
+import Data.Record.Plugin.GHC.Shim
 
 _name, _con, _nameT, _field :: ModuleName -> String -> RdrName
-_name moduleName var = mkRdrQual moduleName (mkVarOcc var)
-_con moduleName var = mkRdrQual moduleName (mkDataOcc var)
-_nameT moduleName var = mkRdrQual moduleName (mkTcOcc var)
+_name modl var = mkRdrQual modl (mkVarOcc var)
+_con modl var = mkRdrQual modl (mkDataOcc var)
+_nameT modl var = mkRdrQual modl (mkTcOcc var)
 _field = _name
 
 -- Modules

@@ -17,8 +17,7 @@ module Data.Record.Plugin.Types.Record (
 import Control.Monad.Except
 import Data.Traversable (for)
 
-import GhcPlugins (GenLocated(L))
-
+import Data.Record.Plugin.GHC.Shim
 import Data.Record.Plugin.GHC.TemplateHaskellStyle
 import Data.Record.Plugin.Types.Exception (Exception (..))
 import Data.Record.Plugin.Types.Options (LargeRecordOptions)

@@ -13,8 +13,7 @@ import Data.List (nubBy)
 
 import qualified Data.Generics as SYB
 
-import GhcPlugins (noLoc)
-
+import Data.Record.Plugin.GHC.Shim
 import Data.Record.Plugin.GHC.TemplateHaskellStyle
 import Data.Record.Plugin.RuntimeNames as Runtime
 import Data.Record.Plugin.Types.Options (shouldGeneratedHasField, shouldRecordBeStrict)

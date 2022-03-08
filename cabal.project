@@ -45,4 +45,4 @@ package large-anon
 
 package large-records-plugin
   tests: True
---  ghc-options: -Werror
+  ghc-options: -Werror

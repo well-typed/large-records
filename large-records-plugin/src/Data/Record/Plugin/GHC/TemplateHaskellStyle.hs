@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP             #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TupleSections   #-}
 {-# LANGUAGE ViewPatterns    #-}
@@ -7,7 +8,9 @@
 -- See "Language.Haskell.TH.Lib".
 --
 -- This module is intended to be CPP-free, with all CPP confined to
--- "Data.Record.Plugin.GHC.Shim".
+-- "Data.Record.Plugin.GHC.Shim". The only exception to this is the redundant
+-- pattern matches that we need for the poor extension design in ghc 9.0; I've
+-- not yet found a nice way to shim this.
 --
 -- TODO: Should the use of 'noLoc' be replaced with something better, so that
 -- error messages point to the right place?
@@ -97,12 +100,7 @@ module Data.Record.Plugin.GHC.TemplateHaskellStyle (
 
 import Data.List (foldl')
 
-import GHC
-import GhcPlugins hiding (mkTyVar)
-import Bag (listToBag, emptyBag)
-import TcEvidence (HsWrapper(WpHole))
-
-import Data.Record.Plugin.GHC.Shim (noExtField)
+import Data.Record.Plugin.GHC.Shim hiding (mkTyVar)
 
 {-------------------------------------------------------------------------------
   Names
@@ -164,7 +162,7 @@ pattern TyCon n <- (viewTyCon -> Just n)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varE'
 varE :: RdrName -> LHsExpr GhcPs
-varE name = noLoc (HsVar noExtField (noLoc name))
+varE name = noLoc (HsVar defExt (noLoc name))
 
 -- | Inverse to 'varE'
 viewVarE :: LHsExpr GhcPs -> Maybe RdrName
@@ -178,7 +176,7 @@ pattern VarE name <- (viewVarE -> Just name)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.litE'
 litE :: HsLit GhcPs -> LHsExpr GhcPs
-litE = noLoc . HsLit noExtField
+litE = noLoc . HsLit defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.stringE'
 stringE :: String -> LHsExpr GhcPs
@@ -190,7 +188,7 @@ recConE = \recName -> mkRec recName . map (uncurry mkFld)
   where
     mkRec :: RdrName -> [LHsRecField GhcPs (LHsExpr GhcPs)] -> LHsExpr GhcPs
     mkRec name fields = noLoc $
-        RecordCon noExtField (noLoc name) (HsRecFields fields Nothing)
+        RecordCon defExt (noLoc name) (HsRecFields fields Nothing)
 
     mkFld :: RdrName -> LHsExpr GhcPs -> LHsRecField GhcPs (LHsExpr GhcPs)
     mkFld name val = noLoc $
@@ -202,24 +200,24 @@ appE a b = mkHsApp a b
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.listE'
 listE :: [LHsExpr GhcPs] -> LHsExpr GhcPs
-listE = noLoc . ExplicitList noExtField Nothing
+listE = noLoc . ExplicitList defExt Nothing
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.lamE'
 lamE :: [LPat GhcPs] -> LHsExpr GhcPs -> LHsExpr GhcPs
 lamE pats body = noLoc $
-    HsLam noExtField $
-      MG noExtField
-         (noLoc [noLoc (Match noExtField LambdaExpr pats (simpleGHRSs body))])
+    HsLam defExt $
+      MG defExt
+         (noLoc [noLoc (Match defExt LambdaExpr pats (simpleGHRSs body))])
          Generated
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.caseE'
 caseE :: LHsExpr GhcPs -> [(LPat GhcPs, LHsExpr GhcPs)] -> LHsExpr GhcPs
 caseE x alts = noLoc $
-    HsCase noExtField x (MG noExtField (noLoc (map mkAlt alts)) Generated)
+    HsCase defExt x (MG defExt (noLoc (map mkAlt alts)) Generated)
   where
     mkAlt :: (LPat GhcPs, LHsExpr GhcPs) -> LMatch GhcPs (LHsExpr GhcPs)
     mkAlt (pat, body) = noLoc $
-        Match noExtField CaseAlt [pat] (simpleGHRSs body)
+        Match defExt CaseAlt [pat] (simpleGHRSs body)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.appsE'
 appsE :: LHsExpr GhcPs -> [LHsExpr GhcPs] -> LHsExpr GhcPs
@@ -228,12 +226,12 @@ appsE = foldl' appE
 -- | Equivalent of 'Language.Haskell.TH.Lib.tupE'
 tupE :: [LHsExpr GhcPs] -> LHsExpr GhcPs
 tupE xs = noLoc $
-    ExplicitTuple noExtField [noLoc (Present noExtField x) | x <- xs] Boxed
+    ExplicitTuple defExt [noLoc (Present defExt x) | x <- xs] Boxed
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.sigE'
 sigE :: LHsExpr GhcPs -> LHsType GhcPs -> LHsExpr GhcPs
 sigE expr ty = noLoc $
-    ExprWithTySig noExtField expr (HsWC noExtField (implicitBndrs ty))
+    ExprWithTySig defExt expr (HsWC defExt (implicitBndrs ty))
 
 {-------------------------------------------------------------------------------
   .. without direct equivalent
@@ -241,7 +239,7 @@ sigE expr ty = noLoc $
 
 -- | By analogy with 'stringE'
 intE :: Integral a => a -> LHsExpr GhcPs
-intE = litE . HsInt noExtField . mkIntegralLit
+intE = litE . HsInt defExt . mkIntegralLit
 
 {-------------------------------------------------------------------------------
   Types
@@ -249,11 +247,11 @@ intE = litE . HsInt noExtField . mkIntegralLit
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.litT'
 litT :: HsTyLit -> LHsType GhcPs
-litT = noLoc . HsTyLit noExtField
+litT = noLoc . HsTyLit defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varT'
 varT :: RdrName -> LHsType GhcPs
-varT name = noLoc (HsTyVar noExtField NotPromoted (noLoc name))
+varT name = noLoc (HsTyVar defExt NotPromoted (noLoc name))
 
 -- | Inverse to 'varT'
 viewVarT :: LHsType GhcPs -> Maybe RdrName
@@ -273,7 +271,7 @@ appT = mkHsAppTy
 --
 -- Signature by analogy with 'Language.Haskell.TH.Lib.listE'.
 listT :: [LHsType GhcPs] -> LHsType GhcPs
-listT = noLoc . HsExplicitListTy noExtField IsPromoted
+listT = noLoc . HsExplicitListTy defExt IsPromoted
 
 {-------------------------------------------------------------------------------
   .. without direct equivalent
@@ -291,14 +289,14 @@ appsT = foldl' appT
 --
 -- TH only provides 'Language.Haskell.TH.Lib.arrowT'.
 funT :: LHsType GhcPs -> LHsType GhcPs -> LHsType GhcPs
-funT a b = noLoc (HsFunTy noExtField a b)
+funT a b = noLoc (hsFunTy defExt a b)
 
 -- | Tuple type
 --
 -- TH only provides 'Language.Haskell.TH.Lib.tupleT'.
 -- Signature by analogy with 'tupE'.
 tupT :: [LHsType GhcPs] -> LHsType GhcPs
-tupT = noLoc . HsExplicitTupleTy noExtField
+tupT = noLoc . HsExplicitTupleTy defExt
 
 {-------------------------------------------------------------------------------
   Patterns
@@ -306,23 +304,23 @@ tupT = noLoc . HsExplicitTupleTy noExtField
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varP'
 varP :: RdrName -> LPat GhcPs
-varP name = noLoc (VarPat noExtField (noLoc name))
+varP name = noLoc (VarPat defExt (noLoc name))
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.conP'
 conP :: RdrName -> [LPat GhcPs] -> LPat GhcPs
-conP con args = noLoc (ConPatIn (noLoc con) (PrefixCon args))
+conP con args = noLoc (conPat (noLoc con) (PrefixCon args))
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.bangP'
 bangP :: LPat GhcPs -> LPat GhcPs
-bangP = noLoc . BangPat noExtField
+bangP = noLoc . BangPat defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.listP'
 listP :: [LPat GhcPs] -> LPat GhcPs
-listP xs = noLoc (ListPat noExtField xs)
+listP xs = noLoc (ListPat defExt xs)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.wildP'
 wildP :: LPat GhcPs
-wildP = noLoc (WildPat noExtField)
+wildP = noLoc (WildPat defExt)
 
 {-------------------------------------------------------------------------------
   Strictness
@@ -334,7 +332,7 @@ wildP = noLoc (WildPat noExtField)
 bangType :: LHsType GhcPs -> LHsType GhcPs
 bangType =
       noLoc
-    . HsBangTy noExtField (HsSrcBang NoSourceText NoSrcUnpack SrcStrict)
+    . HsBangTy defExt (HsSrcBang NoSourceText NoSrcUnpack SrcStrict)
 
 {-------------------------------------------------------------------------------
   Class contexts
@@ -360,11 +358,11 @@ viewRecC :: LConDecl GhcPs -> Maybe (RdrName, [(RdrName, LHsType GhcPs)])
 viewRecC
     (L _
        ConDeclH98 {
-           con_name = L _ conName
+           con_name   = L _ conName
          , con_forall = L _ False
          , con_ex_tvs = []
          , con_mb_cxt = Nothing
-         , con_args = RecCon (L _ fields)
+         , con_args   = RecCon (L _ fields)
          }
     ) = (conName,) <$> mapM viewRecField fields
   where
@@ -375,12 +373,14 @@ viewRecC
                cd_fld_names = [L _ fieldName]
              , cd_fld_type  = ty
              }
-        ) = (, ty) <$> viewFieldOcc fieldName
+        ) = Just $ (viewFieldOcc fieldName, ty)
     viewRecField _otherwise = Nothing
 
-    viewFieldOcc :: FieldOcc GhcPs -> Maybe RdrName
-    viewFieldOcc (FieldOcc _ (L _ name)) = Just name
-    viewFieldOcc _otherwise              = Nothing
+    viewFieldOcc :: FieldOcc GhcPs -> RdrName
+    viewFieldOcc (FieldOcc _ (L _ name)) = name
+#if __GLASGOW_HASKELL__ < 900
+    viewFieldOcc _ = panic "viewFieldOcc"
+#endif
 viewRecC _otherwise = Nothing
 
 pattern RecC :: RdrName -> [(RdrName, LHsType GhcPs)] -> LConDecl GhcPs
@@ -397,10 +397,10 @@ forallRecC ::
   -> [(RdrName, LHsType GhcPs)] -- ^ @recC@ argument: record fields
   -> LConDecl GhcPs
 forallRecC vars ctxt conName args = noLoc $ ConDeclH98 {
-      con_ext    = noExtField
+      con_ext    = defExt
     , con_name   = noLoc conName
     , con_forall = noLoc True
-    , con_ex_tvs = map (noLoc . UserTyVar noExtField . noLoc) vars
+    , con_ex_tvs = map (setDefaultSpecificity . noLoc . userTyVar defExt . noLoc) vars
     , con_mb_cxt = Just (noLoc ctxt)
     , con_args   = RecCon (noLoc $ map (uncurry mkRecField) args)
     , con_doc    = Nothing
@@ -408,7 +408,7 @@ forallRecC vars ctxt conName args = noLoc $ ConDeclH98 {
   where
     mkRecField :: RdrName -> LHsType GhcPs -> LConDeclField GhcPs
     mkRecField name ty = noLoc $ ConDeclField {
-          cd_fld_ext   = noExtField
+          cd_fld_ext   = defExt
         , cd_fld_names = [noLoc $ mkFieldOcc (noLoc name)]
         , cd_fld_type  = ty
         , cd_fld_doc   = Nothing
@@ -420,7 +420,7 @@ forallRecC vars ctxt conName args = noLoc $ ConDeclH98 {
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.kindedTV'
 kindedTV :: RdrName -> LHsType GhcPs -> LHsTyVarBndr GhcPs
-kindedTV name ty = noLoc (KindedTyVar noExtField (noLoc name) ty)
+kindedTV name ty = noLoc (kindedTyVar defExt (noLoc name) ty)
 
 {-------------------------------------------------------------------------------
   .. without direct equivalent
@@ -435,17 +435,17 @@ tyVarBndrName = hsTyVarName . unLoc
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.sigD'
 sigD :: RdrName -> LHsType GhcPs -> LHsDecl GhcPs
-sigD name ty =  noLoc (SigD noExtField sig)
+sigD name ty =  noLoc (SigD defExt sig)
   where
     sig :: Sig GhcPs
-    sig = TypeSig noExtField [noLoc name] $
-            HsWC noExtField (implicitBndrs ty)
+    sig = TypeSig defExt [noLoc name] $
+            HsWC defExt (implicitBndrs ty)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.valD'
 --
 -- Currently this offers a simplified API only.
 valD :: RdrName -> LHsExpr GhcPs -> LHsDecl GhcPs
-valD fnName body = noLoc (ValD noExtField (unLoc (simpleBinding fnName body)))
+valD fnName body = noLoc (ValD defExt (unLoc (simpleBinding fnName body)))
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.dataD'
 dataD ::
@@ -455,13 +455,13 @@ dataD ::
   -> [LHsDerivingClause GhcPs] -- ^ Deriving clauses
   -> LHsDecl GhcPs
 dataD typeName tyVars cons derivs = noLoc $
-    TyClD noExtField $ DataDecl {
-        tcdDExt     = noExtField
+    TyClD defExt $ DataDecl {
+        tcdDExt     = defExt
       , tcdLName    = noLoc typeName
       , tcdTyVars   = mkHsQTvs tyVars
       , tcdFixity   = Prefix
       , tcdDataDefn = HsDataDefn {
-            dd_ext     = noExtField
+            dd_ext     = defExt
           , dd_ND      = DataType
           , dd_ctxt    = noLoc []
           , dd_cType   = Nothing
@@ -518,22 +518,23 @@ derivClause ::
   -> [LHsType GhcPs]
   -> LHsDerivingClause GhcPs
 derivClause strat tys = noLoc $
-    HsDerivingClause noExt strat (noLoc $ map implicitBndrs tys)
+    HsDerivingClause defExt strat (noLoc $ map implicitBndrs tys)
 
 -- | Inverse of 'derivClause'
 viewDerivClause ::
      LHsDerivingClause GhcPs
-  -> Maybe (Maybe (LDerivStrategy GhcPs), [LHsType GhcPs])
+  -> (Maybe (LDerivStrategy GhcPs), [LHsType GhcPs])
 viewDerivClause (L _ (HsDerivingClause _ mStrat (L _ tys))) =
-    (mStrat,) <$> mapM viewImplicitBndrs tys
-viewDerivClause _otherwise =
-    Nothing
+    (mStrat, map viewImplicitBndrs tys)
+#if __GLASGOW_HASKELL__ < 900
+viewDerivClause _ = panic "viewDerivClause"
+#endif
 
 pattern DerivClause ::
      Maybe (LDerivStrategy GhcPs)
   -> [LHsType GhcPs]
   -> LHsDerivingClause GhcPs
-pattern DerivClause strat tys <- (viewDerivClause -> Just (strat, tys))
+pattern DerivClause strat tys <- (viewDerivClause -> (strat, tys))
   where
     DerivClause = derivClause
 
@@ -547,8 +548,8 @@ instanceD ::
   -> [LTyFamInstDecl GhcPs]     -- ^ Associated types
   -> LHsDecl GhcPs
 instanceD ctxt hd binds assocTypes = noLoc $
-    InstD noExtField $ ClsInstD noExtField $ ClsInstDecl {
-        cid_ext           = noExtField
+    InstD defExt $ ClsInstD defExt $ ClsInstDecl {
+        cid_ext           = defExt
       , cid_poly_ty       = implicitBndrs (qualT ctxt hd)
       , cid_binds         = listToBag $ map (uncurry simpleBinding) binds
       , cid_sigs          = []
@@ -559,7 +560,7 @@ instanceD ctxt hd binds assocTypes = noLoc $
   where
     qualT :: [LHsType GhcPs] -> LHsType GhcPs -> LHsType GhcPs
     qualT []  a = a
-    qualT ctx a = noLoc (HsQualTy noExtField (noLoc ctx) a)
+    qualT ctx a = noLoc (HsQualTy defExt (noLoc ctx) a)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.classD'
 classD ::
@@ -569,8 +570,8 @@ classD ::
   -> [(RdrName, LHsType GhcPs)] -- ^ Method signatures
   -> LHsDecl GhcPs
 classD = \ctx name clsVars sigs -> noLoc $
-    TyClD noExtField $ ClassDecl {
-        tcdCExt   = noExtField
+    TyClD defExt $ ClassDecl {
+        tcdCExt   = defExt
       , tcdCtxt   = noLoc ctx
       , tcdLName  = noLoc name
       , tcdTyVars = mkHsQTvs clsVars
@@ -585,7 +586,7 @@ classD = \ctx name clsVars sigs -> noLoc $
   where
     classOpSig :: RdrName -> LHsType GhcPs -> LSig GhcPs
     classOpSig name ty = noLoc $
-        ClassOpSig noExtField False [noLoc name] (implicitBndrs ty)
+        ClassOpSig defExt False [noLoc name] (implicitBndrs ty)
 
 -- | Approximate equivalent of 'Language.Haskell.TH.Lib.tySynEqn'
 tySynEqn ::
@@ -596,7 +597,7 @@ tySynEqn ::
 tySynEqn name pats val = noLoc $
     TyFamInstDecl $
       implicitBndrs $
-        FamEqn noExtField
+        FamEqn defExt
                (noLoc name)
                Nothing
                (map HsValArg pats)
@@ -625,17 +626,19 @@ pattern TypeAnnotation name <- (viewTypeAnnotation -> Just name)
 pragAnnD :: AnnProvenance RdrName -> LHsExpr GhcPs -> AnnDecl GhcPs
 pragAnnD prov value =
     HsAnnotation
-      noExt
+      defExt
       NoSourceText
       prov
       value
 
-viewPragAnnD :: AnnDecl GhcPs -> Maybe (AnnProvenance RdrName, LHsExpr GhcPs)
-viewPragAnnD (HsAnnotation _ _ prov value) = Just (prov, value)
-viewPragAnnD _otherwise                    = Nothing
+viewPragAnnD :: AnnDecl GhcPs -> (AnnProvenance RdrName, LHsExpr GhcPs)
+viewPragAnnD (HsAnnotation _ _ prov value) = (prov, value)
+#if __GLASGOW_HASKELL__ < 900
+viewPragAnnD _ = panic "viewPragAnnD"
+#endif
 
 pattern PragAnnD :: AnnProvenance RdrName -> LHsExpr GhcPs -> AnnDecl GhcPs
-pattern PragAnnD prov value <- (viewPragAnnD -> Just (prov, value))
+pattern PragAnnD prov value <- (viewPragAnnD -> (prov, value))
   where
     PragAnnD = pragAnnD
 
@@ -644,25 +647,26 @@ pattern PragAnnD prov value <- (viewPragAnnD -> Just (prov, value))
 -------------------------------------------------------------------------------}
 
 implicitBndrs :: a -> HsImplicitBndrs GhcPs a
-implicitBndrs a = HsIB noExt a
+implicitBndrs a = HsIB defExt a
 
-viewImplicitBndrs :: HsImplicitBndrs GhcPs a -> Maybe a
-viewImplicitBndrs (HsIB _ a) = Just a
-viewImplicitBndrs _otherwise = Nothing
+viewImplicitBndrs :: HsImplicitBndrs GhcPs a -> a
+viewImplicitBndrs (HsIB _ a) = a
+#if __GLASGOW_HASKELL__ < 900
+viewImplicitBndrs _ = panic "viewImplicitBndrs"
+#endif
 
 -- | Simple binding (without patterns)
 simpleBinding :: RdrName -> LHsExpr GhcPs -> LHsBind GhcPs
 simpleBinding fnName body = noLoc $
-    -- TODO: Is WpHole here right..?
-    FunBind noExtField (noLoc fnName) matchGroup WpHole []
+    funBind defExt (noLoc fnName) matchGroup []
   where
     grhs :: GRHSs GhcPs (LHsExpr GhcPs)
     grhs = simpleGHRSs body
 
     matchGroup :: MatchGroup GhcPs (LHsExpr GhcPs)
     matchGroup =
-        MG noExtField
-           ( noLoc [ noLoc $ Match noExtField
+        MG defExt
+           ( noLoc [ noLoc $ Match defExt
                                    (FunRhs (noLoc fnName) Prefix NoSrcStrict)
                                    []
                                    grhs
@@ -673,8 +677,8 @@ simpleBinding fnName body = noLoc $
 -- | Simple guarded RHS (no guards)
 simpleGHRSs :: LHsExpr GhcPs -> GRHSs GhcPs (LHsExpr GhcPs)
 simpleGHRSs body =
-    GRHSs noExtField
-          [noLoc $ GRHS noExtField [] body]
-          (noLoc $ EmptyLocalBinds noExtField)
+    GRHSs defExt
+          [noLoc $ GRHS defExt [] body]
+          (noLoc $ EmptyLocalBinds defExt)
 
 

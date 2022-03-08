@@ -1,8 +1,8 @@
-{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE BlockArguments     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NamedFieldPuns     #-}
+{-# LANGUAGE ViewPatterns       #-}
 
 -- | A GHC plugin that gives the large-records treatment to records with special annotations.
 --
@@ -46,9 +46,6 @@ import Data.Record.Plugin.Types.Exception
 import Data.Record.Plugin.Types.Options (LargeRecordOptions (..), getLargeRecordOptions)
 import Data.Record.Plugin.Types.Record (viewRecord)
 
-import GhcPlugins
-import GHC (HsModule(..))
-
 plugin :: Plugin
 plugin = defaultPlugin {parsedResultAction, pluginRecompile = purePlugin}
   where
@@ -60,7 +57,7 @@ plugin = defaultPlugin {parsedResultAction, pluginRecompile = purePlugin}
           dynFlags <- getDynFlags
           error (formatException dynFlags err)
 
-transformDecls :: HsModule GhcPs -> Except Exception (HsModule GhcPs)
+transformDecls :: HsModule -> Except Exception HsModule
 transformDecls mod@HsModule {hsmodDecls = decls} = do
   let largeRecords = getLargeRecordOptions mod
 
@@ -78,7 +75,7 @@ transformDecls mod@HsModule {hsmodDecls = decls} = do
 
   pure mod {hsmodDecls = decls'}
 
-addRequiredImports :: HsModule GhcPs -> HsModule GhcPs
+addRequiredImports :: HsModule -> HsModule
 addRequiredImports module_@HsModule {hsmodImports} =
   module_ {hsmodImports = hsmodImports ++ [qimportD m | m <- allRuntimeModules]}
 

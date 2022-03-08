@@ -19,7 +19,7 @@ library
       src
   build-depends:
       -- TODO: purge
-      base >=4.13 && <4.15
+      base >=4.13 && <4.16
     , containers
     , ghc
     , large-records
@@ -41,7 +41,7 @@ test-suite large-records-plugin-tests
   hs-source-dirs:
       test
   build-depends:
-      base >=4.13 && <4.15
+      base
     , large-records-plugin
     , record-dot-preprocessor >= 0.2.14
     , record-hasfield

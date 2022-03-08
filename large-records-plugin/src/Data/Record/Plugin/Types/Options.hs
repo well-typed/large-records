@@ -18,11 +18,10 @@ import Data.Data (Data)
 import Data.Map (Map)
 import Data.Maybe (mapMaybe)
 
-import GHC (HsModule)
-
 import qualified Data.Generics   as SYB
 import qualified Data.Map.Strict as Map
 
+import Data.Record.Plugin.GHC.Shim
 import Data.Record.Plugin.GHC.TemplateHaskellStyle
 
 -- | A type specifying how a record should be treated by large-records.
@@ -44,7 +43,7 @@ shouldGeneratedHasField :: LargeRecordOptions -> Bool
 shouldGeneratedHasField _ = True
 
 -- | Extract 'LargeRecordOptions' for all types with large-records pragmas in the module.
-getLargeRecordOptions :: HsModule GhcPs -> Map RdrName LargeRecordOptions
+getLargeRecordOptions :: HsModule -> Map RdrName LargeRecordOptions
 getLargeRecordOptions =
       Map.fromList
     . mapMaybe viewLargeRecordAnnotation

@@ -11,10 +11,8 @@ where
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Data.Record.Plugin.GHC.Shim
 import Data.Record.Plugin.GHC.TemplateHaskellStyle
-
-import GhcPlugins (DynFlags, showSDoc, ppr)
-import HsDecls (derivStrategyName)
 
 data Exception
   = DerivingWithoutStrategy

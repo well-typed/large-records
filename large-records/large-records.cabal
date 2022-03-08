@@ -17,6 +17,7 @@ maintainer:         edsko@well-typed.com
 category:           Generics
 extra-source-files: CHANGELOG.md
 tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.1
+                    -- TODO ^^^^^ Move to 9.0.2?
 
 source-repository head
   type:     git

@@ -27,8 +27,6 @@ library
     , mtl
     , record-hasfield
     , sop-core
-      -- TODO: Use only SYB
-    , uniplate
     , vector
     , syb
   default-language: Haskell2010

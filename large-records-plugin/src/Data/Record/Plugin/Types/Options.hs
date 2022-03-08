@@ -14,14 +14,14 @@ module Data.Record.Plugin.Types.Options
   )
 where
 
-import Control.Applicative (empty)
 import Data.Data (Data)
 import Data.Map (Map)
+import Data.Maybe (mapMaybe)
 
 import GHC (HsModule)
 
-import qualified Data.Generics.Uniplate.Data as Uniplate
-import qualified Data.Map.Strict             as Map
+import qualified Data.Generics   as SYB
+import qualified Data.Map.Strict as Map
 
 import Data.Record.Plugin.GHC.TemplateHaskellStyle
 
@@ -45,11 +45,10 @@ shouldGeneratedHasField _ = True
 
 -- | Extract 'LargeRecordOptions' for all types with large-records pragmas in the module.
 getLargeRecordOptions :: HsModule GhcPs -> Map RdrName LargeRecordOptions
-getLargeRecordOptions module_ = Map.fromList do
-  anno <- Uniplate.universeBi module_
-  case viewLargeRecordAnnotation anno of
-    Just (tyName, option) -> pure (tyName, option)
-    Nothing -> empty
+getLargeRecordOptions =
+      Map.fromList
+    . mapMaybe viewLargeRecordAnnotation
+    . SYB.everything (++) (SYB.mkQ [] (:[]))
 
 viewLargeRecordAnnotation :: AnnDecl GhcPs -> Maybe (RdrName, LargeRecordOptions)
 viewLargeRecordAnnotation = \case

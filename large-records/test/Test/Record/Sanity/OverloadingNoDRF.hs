@@ -2,24 +2,21 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
--- {-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Sanity.OverloadingNoDRF (
     tests
   ) where
 
 import GHC.Records.Compat
-
-import Data.Record.TH
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -30,12 +27,13 @@ import Test.Tasty.HUnit
   We don't support DRF-style overloading, but we _can_ generate records when DRF
   is in use, provided all overloading is resolved through `HasField` instead of
   through DRF.
--------------------------------------------------------------------------------}
+--------------------------------------s-----------------------------------------}
 
-largeRecord defaultPureScript [d|
-  data X = MkX { a :: Int    }
-  data Y = MkY { a :: String }
-  |]
+{-# ANN type X largeRecordStrict #-}
+data X = MkX { a :: Int }
+
+{-# ANN type Y largeRecordStrict #-}
+data Y = MkY { a :: String }
 
 testOverloading :: Assertion
 testOverloading = do

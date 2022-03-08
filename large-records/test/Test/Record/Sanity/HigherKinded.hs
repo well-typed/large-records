@@ -1,19 +1,16 @@
 {-# LANGUAGE ConstraintKinds           #-}
-{-# LANGUAGE CPP                       #-}
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE RecordWildCards           #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
--- {-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 -- | Simple example of a type with a higher kind
 module Test.Record.Sanity.HigherKinded (
@@ -25,7 +22,6 @@ import GHC.TypeLits
 
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound
-import Data.Record.TH
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -39,21 +35,20 @@ deriving instance Show (T n I)
 
 -- We need an explicit kind annotation on @f@ for @large-records@ to generate
 -- correct code (either that, or use @PolyKinds@).
-largeRecord defaultLazyOptions [d|
-  data MyRecord (f :: Type -> Type) = MyRecord {
-        field0 :: T 0 f
-      , field1 :: T 1 f
-      , field2 :: T 2 f
-      , field3 :: T 3 f
-      , field4 :: T 4 f
-      , field5 :: T 5 f
-      , field6 :: T 6 f
-      , field7 :: T 7 f
-      , field8 :: T 8 f
-      , field9 :: T 9 f
-      }
-      deriving (Show)
-  |]
+{-# ANN type MyRecord largeRecordStrict #-}
+data MyRecord (f :: Type -> Type) = MyRecord {
+      field0 :: T 0 f
+    , field1 :: T 1 f
+    , field2 :: T 2 f
+    , field3 :: T 3 f
+    , field4 :: T 4 f
+    , field5 :: T 5 f
+    , field6 :: T 6 f
+    , field7 :: T 7 f
+    , field8 :: T 8 f
+    , field9 :: T 9 f
+    }
+    deriving (Show)
 
 _suppressWarnings :: MyRecord f -> ()
 _suppressWarnings MyRecord{..} = const () (

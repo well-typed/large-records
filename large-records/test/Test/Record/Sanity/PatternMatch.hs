@@ -2,20 +2,18 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NamedFieldPuns            #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 {-# LANGUAGE ViewPatterns              #-}
 
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# OPTIONS_GHC -fdefer-type-errors -Wno-deferred-type-errors  #-}
--- {-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Sanity.PatternMatch (tests) where
 
@@ -24,18 +22,17 @@ import Data.List (isInfixOf)
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.TH
-
 import Test.Record.Util
 
 {-------------------------------------------------------------------------------
   Basic pattern matching tests
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-    data T a = MkT { x :: Int,  y :: [a], z :: Double }
-    data S a = MkS { x :: Char, y :: T a }
-  |]
+{-# ANN type T largeRecordStrict #-}
+data T a = MkT { x :: Int,  y :: [a], z :: Double }
+
+{-# ANN type S largeRecordStrict #-}
+data S a = MkS { x :: Char, y :: T a }
 
 projectOne :: T Bool -> Int
 projectOne MkT { x = a } = a
@@ -78,9 +75,8 @@ matchEmptyUndefined = matchEmpty (error "boom")
   type errors iff 'noSigEmpty' and 'noSigNonEmpty' are suffciently monomorphic.
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-    data T2 = MkT2 { x :: Int }
-  |]
+{-# ANN type T2 largeRecordStrict #-}
+data T2 = MkT2 { x :: Int }
 
 noSigEmpty MkT {} = ()
 

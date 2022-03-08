@@ -12,7 +12,7 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
--- {-# OPTIONS_GHC -ddump-splices -ddump-simpl #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Sanity.Strictness (tests) where
 
@@ -21,20 +21,17 @@ import GHC.Records.Compat
 
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound
-import Data.Record.TH
 
 import qualified Data.Record.Generic.Rep as Rep
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
-largeRecord defaultLazyOptions [d|
-    data Lazy = MkLazy { lazyField :: Word }
-  |]
+{-# ANN type Lazy largeRecordLazy #-}
+data Lazy = MkLazy { lazyField :: Word }
 
-largeRecord defaultStrictOptions [d|
-    data Strict = MkStrict { strictField :: Word }
-  |]
+{-# ANN type Strict largeRecordStrict #-}
+data Strict = MkStrict { strictField :: Word }
 
 _silenceWarnings :: Lazy -> Strict -> ()
 _silenceWarnings MkLazy{..} MkStrict{..} = const () $ (

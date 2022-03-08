@@ -1,17 +1,22 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | Thin compatibility layer around GHC
 --
 -- This should be the only module with GHC-specific CPP directives, and the
 -- rest of the plugin should not import from any GHC modules directly.
-module Data.Record.Plugin.GHC.Shim (
+module Data.Record.Internal.GHC.Shim (
     -- * Miscellaneous
-    qimportD
+    importDecl
   , conPat
   , funBind
   , HsModule
+  , LHsModule
+  , LRdrName
   , pattern GHC.HsModule
+  , putLogMsg
 
     -- * Extensions
   , HasDefaultExt(..)
@@ -24,7 +29,11 @@ module Data.Record.Plugin.GHC.Shim (
   , hsFunTy
   , userTyVar
   , kindedTyVar
+  , hsTyVarLName
   , setDefaultSpecificity
+
+    -- * New functionality
+  , compareHs
 
     -- * Re-exports
 
@@ -37,40 +46,65 @@ module Data.Record.Plugin.GHC.Shim (
   , module BasicTypes
   , module GHC
   , module GhcPlugins
+  , module HscMain
+  , module NameCache
   , module TcEvidence
 #else
   , module GHC.Data.Bag
+  , module GHC.Driver.Main
   , module GHC.Hs
   , module GHC.Plugins
   , module GHC.Tc.Types.Evidence
   , module GHC.Types.Basic
+  , module GHC.Types.Name.Cache
+  , module GHC.Utils.Error
 #endif
   ) where
 
+import Data.Generics (Data, GenericQ, cast, toConstr, gzipWithQ)
+
 #if __GLASGOW_HASKELL__ < 900
+
 import Bag (listToBag, emptyBag)
 import BasicTypes (SourceText(NoSourceText))
+import ConLike (ConLike)
 import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind)
-import GhcPlugins hiding ((<>))
+import GhcPlugins hiding ((<>), getHscEnv, putLogMsg)
+import HscMain (getHscEnv)
+import NameCache (NameCache(nsUniqs))
+import PatSyn (PatSyn)
 import TcEvidence (HsWrapper(WpHole))
+
 import qualified GHC
+import qualified GhcPlugins as GHC
+
 #else
+
+import GHC.Core.Class (Class)
+import GHC.Core.ConLike (ConLike)
+import GHC.Core.PatSyn (PatSyn)
 import GHC.Data.Bag (listToBag, emptyBag)
+import GHC.Driver.Main (getHscEnv)
 import GHC.Hs hiding (LHsTyVarBndr, HsTyVarBndr, HsModule)
-import GHC.Plugins hiding ((<>))
+import GHC.Parser.Annotation (IsUnicodeSyntax(NormalSyntax))
+import GHC.Plugins hiding ((<>), getHscEnv, putLogMsg)
 import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
 import GHC.Types.Basic (SourceText(NoSourceText))
-import GHC.Parser.Annotation (IsUnicodeSyntax(NormalSyntax))
-import qualified GHC.Hs as GHC
+import GHC.Types.Name.Cache (NameCache(nsUniqs))
+import GHC.Utils.Error (Severity(SevError, SevWarning))
+
+import qualified GHC.Hs      as GHC
+import qualified GHC.Plugins as GHC
+
 #endif
 
 {-------------------------------------------------------------------------------
   Miscellaneous
 -------------------------------------------------------------------------------}
 
--- | Construct @import qualified@ declaration
-qimportD :: ModuleName -> LImportDecl GhcPs
-qimportD name = noLoc $ ImportDecl {
+-- | Optionally @qualified@ import declaration
+importDecl :: ModuleName -> Bool -> LImportDecl GhcPs
+importDecl name qualified = noLoc $ ImportDecl {
       ideclExt       = defExt
     , ideclSourceSrc = NoSourceText
     , ideclName      = noLoc name
@@ -80,9 +114,9 @@ qimportD name = noLoc $ ImportDecl {
     , ideclAs        = Nothing
     , ideclHiding    = Nothing
 #if __GLASGOW_HASKELL__ < 810
-    , ideclQualified = True
+    , ideclQualified = qualified
 #else
-    , ideclQualified = QualifiedPre
+    , ideclQualified = if qualified then QualifiedPre else NotQualified
 #endif
 #if __GLASGOW_HASKELL__ < 900
     , ideclSource    = False
@@ -120,6 +154,17 @@ funBind = FunBind
 type HsModule = GHC.HsModule GhcPs
 #else
 type HsModule = GHC.HsModule
+#endif
+
+type LHsModule = Located HsModule
+type LRdrName  = Located RdrName
+
+putLogMsg :: DynFlags -> WarnReason -> Severity -> SrcSpan -> SDoc -> IO ()
+#if __GLASGOW_HASKELL__ < 900
+putLogMsg flags reason sev srcspan =
+    GHC.putLogMsg flags reason sev srcspan (defaultErrStyle flags)
+#else
+putLogMsg = GHC.putLogMsg
 #endif
 
 {-------------------------------------------------------------------------------
@@ -179,6 +224,17 @@ kindedTyVar = KindedTyVar
 kindedTyVar ext = KindedTyVar ext ()
 #endif
 
+-- | Like 'hsTyVarName', but don't throw away the location information
+hsTyVarLName :: HsTyVarBndr GhcPs -> LRdrName
+#if __GLASGOW_HASKELL__ < 900
+hsTyVarLName (UserTyVar   _ n  ) = n
+hsTyVarLName (KindedTyVar _ n _) = n
+hsTyVarLName _ = panic "hsTyVarLName"
+#else
+hsTyVarLName (UserTyVar   _ _ n  ) = n
+hsTyVarLName (KindedTyVar _ _ n _) = n
+#endif
+
 #if __GLASGOW_HASKELL__ < 900
 setDefaultSpecificity :: LHsTyVarBndr pass -> GHC.LHsTyVarBndr pass
 setDefaultSpecificity = id
@@ -190,7 +246,51 @@ setDefaultSpecificity (L l v) = L l $ case v of
     XTyVarBndr  ext              -> XTyVarBndr  ext
 #endif
 
+{-------------------------------------------------------------------------------
+  New functionality
+-------------------------------------------------------------------------------}
 
+-- | Generic comparison for (parts of) the AST
+--
+-- NOTE: Not all abstract types are given special treatment here; in particular,
+-- types only used in type-checked code ignored. To extend/audit this function,
+-- grep the @ghc@ source for @abstractConstr@. Without further extensions,
+-- all values of these types are considered equal.
+--
+-- NOTE: Although @ghc@ declares the constructor of @Bag@ as abstract as well,
+-- we don't actually need a special case here: the constructors will be
+-- considered equal, but 'gfoldl' will traverse the /elements/ of the @Bag@
+-- nonetheless, which is precisely what we want.
+compareHs' :: GenericQ (GenericQ Bool)
+compareHs' x y
+    | (Just x', Just y') <- (cast x, cast y) = (==) @ConLike     x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @PatSyn      x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @Class       x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @DataCon     x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @FastString  x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @Module      x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @ModuleName  x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @Name        x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @OccName     x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @TyCon       x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @UnitId      x' y'
+    | (Just x', Just y') <- (cast x, cast y) = (==) @Var         x' y'
+#if __GLASGOW_HASKELL__ >= 900
+    | (Just x', Just y') <- (cast x, cast y) = (==) @Unit        x' y'
+#endif
+    | (Just x', Just y') <- (cast x, cast y) = ignr @RealSrcSpan x' y'
+    | (Just x', Just y') <- (cast x, cast y) = ignr @SrcSpan     x' y'
+    | otherwise = (toConstr x == toConstr y)
+               && and (gzipWithQ compareHs' x y)
+  where
+    ignr :: forall a. a -> a -> Bool
+    ignr _ _ = True
+
+-- | Compare two (parts) of a Haskell source tree for equality
+--
+-- The trees are compared for literal equality, but 'SrcSpan's are ignored.
+compareHs :: Data a => a -> a -> Bool
+compareHs x y = compareHs' x y
 
 
 

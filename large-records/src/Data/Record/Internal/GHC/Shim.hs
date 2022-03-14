@@ -1,7 +1,12 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE CPP                    #-}
+{-# LANGUAGE FlexibleContexts       #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE PatternSynonyms        #-}
+{-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE TypeApplications       #-}
+{-# LANGUAGE UndecidableInstances   #-}
 
 -- | Thin compatibility layer around GHC
 --
@@ -34,6 +39,7 @@ module Data.Record.Internal.GHC.Shim (
 
     -- * New functionality
   , compareHs
+  , InheritLoc(..)
 
     -- * Re-exports
 
@@ -60,7 +66,10 @@ module Data.Record.Internal.GHC.Shim (
 #endif
   ) where
 
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Generics (Data, GenericQ, cast, toConstr, gzipWithQ)
+
+import qualified Data.List.NonEmpty as NE
 
 #if __GLASGOW_HASKELL__ < 900
 
@@ -272,7 +281,7 @@ compareHs' x y
     | otherwise = (toConstr x == toConstr y)
                && and (gzipWithQ compareHs' x y)
   where
-    ignr :: forall a. a -> a -> Bool
+    ignr :: a -> a -> Bool
     ignr _ _ = True
 
 -- | Compare two (parts) of a Haskell source tree for equality
@@ -281,6 +290,30 @@ compareHs' x y
 compareHs :: Data a => a -> a -> Bool
 compareHs x y = compareHs' x y
 
+{-------------------------------------------------------------------------------
+  Working with locations
+-------------------------------------------------------------------------------}
 
+class InheritLoc a b lb | lb -> b where
+  inheritLoc :: a -> b -> lb
 
+instance InheritLoc (Located a) b (Located b) where
+  inheritLoc (L l _) = L l
 
+instance InheritLoc a b lb => InheritLoc (NonEmpty a) b lb where
+  inheritLoc = inheritLoc . NE.head
+
+-- | The instance for @[]@ is not ideal: we use 'noLoc' if the list is empty
+--
+-- For the use cases in this library, this is acceptable: typically these are
+-- lists with elements for the record fields, and having slightly poorer error
+-- messages for highly unusual "empty large" records is fine.
+instance InheritLoc a b (Located b) => InheritLoc [a] b (Located b) where
+  inheritLoc (a:_) = inheritLoc a
+  inheritLoc []    = noLoc
+
+#if __GLASGOW_HASKELL__ < 810
+-- In 8.8, 'LPat' is a synonym for 'Pat'
+instance InheritLoc a (Pat p) (LPat p) where
+  inheritLoc _ = id
+#endif

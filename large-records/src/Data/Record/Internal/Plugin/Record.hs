@@ -14,6 +14,9 @@ module Data.Record.Internal.Plugin.Record (
 
 import Control.Monad.Except
 import Data.Traversable (for)
+import Data.List.NonEmpty (NonEmpty)
+
+import qualified Data.List.NonEmpty as NE
 
 import Data.Record.Internal.GHC.Shim
 import Data.Record.Internal.GHC.TemplateHaskellStyle
@@ -74,7 +77,7 @@ viewRecord annLoc options decl =
           , recordOptions   = options
           , recordAnnLoc    = annLoc
           }
-      _otherwise -> throwError InvalidDeclaration
+      _otherwise -> throwError $ InvalidDeclaration decl
 
 viewField ::
      MonadError Exception m
@@ -97,17 +100,16 @@ viewRecordDeriving = \case
     -- TODO: Not sure that we want anyclass deriving
     -- See discussion in <https://github.com/well-typed/large-records/pull/42>.
     DerivClause (Just (L _ AnyclassStrategy)) tys ->
-      pure $ map DeriveAnyClass tys
-    DerivClause (Just (L _ strategy)) _ ->
+      pure $ fmap DeriveAnyClass (NE.toList tys)
+    DerivClause (Just strategy) _ ->
       throwError (UnsupportedStrategy strategy)
     _ ->
       pure []
   where
-    goStock :: [LHsType GhcPs] -> m [RecordDeriving]
-    goStock tys = for tys $ \case
+    goStock :: NonEmpty (LHsType GhcPs) -> m [RecordDeriving]
+    goStock tys = for (NE.toList tys) $ \case
         ConT (nameBase -> "Show")    -> pure $ DeriveStock Show
         ConT (nameBase -> "Eq")      -> pure $ DeriveStock Eq
         ConT (nameBase -> "Ord")     -> pure $ DeriveStock Ord
         ConT (nameBase -> "Generic") -> pure $ DeriveStock Generic
         ty -> throwError (UnsupportedStockDeriving ty)
-

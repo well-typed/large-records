@@ -23,31 +23,19 @@ set output "graphs/benchmark-01-before-vs-after-timing.png"
 plot "<(cat timing.csv | grep Before)" using 2:3 with lines lt rgb "#EE2222" title "Before" \
    , "<(cat timing.csv | grep After)"  using 2:3 with lines lt rgb "#22EE22" title "After"
 
-set xrange [0:1000]
-
-set ylabel "Core size (terms + types + coercions)"
-set output "graphs/benchmark-02-after-coresize.png"
-plot "<(cat coresize.csv | grep After | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "After (ds-preopt)" \
-   , "<(cat coresize.csv | grep After | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "After (ds)" \
-   , "<(cat coresize.csv | grep After | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "After (simpl)"
-
-set ylabel "Compilation time (ms)"
-set output "graphs/benchmark-03-after-timing.png"
-plot "<(cat timing.csv | grep After)" using 2:3 with lines lt rgb "#22EE22" title "After"
-
 ## Benchmark: "HigherKinded"
 
 set xlabel "Record size"
 set xrange [0:100]
 
 set ylabel "Core size (terms + types + coercions)"
-set output "graphs/benchmark-04-higherkinded-coresize.png"
+set output "graphs/benchmark-02-higherkinded-coresize.png"
 plot "<(cat coresize.csv | grep HigherKinded | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "Higher-kinded (ds-preopt)" \
    , "<(cat coresize.csv | grep HigherKinded | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "Higher-kinded (ds)" \
    , "<(cat coresize.csv | grep HigherKinded | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "Higher-kinded (simpl)"
 
 set ylabel "Compilation time (ms)"
-set output "graphs/benchmark-05-higherkinded-timing.png"
+set output "graphs/benchmark-03-higherkinded-timing.png"
 plot "<(cat timing.csv | grep HigherKinded)" using 2:3 with lines lt rgb "#22EE22" title "Higher-kinded"
 
 ## Benchmark: "HasNormalForm"
@@ -56,14 +44,14 @@ set xlabel "Record size"
 set xrange [0:100]
 
 set ylabel "Core size (terms + types + coercions)"
-set output "graphs/benchmark-06-hasnormalform-coresize-pre-verysimpleopt.png"
+set output "graphs/benchmark-04-hasnormalform-coresize-pre-verysimpleopt.png"
 plot "<(cat coresize.csv | grep HasNormalForm | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "HasNormalForm (ds-preopt)"
-set output "graphs/benchmark-07-hasnormalform-coresize-post-verysimpleopt.png"
+set output "graphs/benchmark-05-hasnormalform-coresize-post-verysimpleopt.png"
 plot "<(cat coresize.csv | grep HasNormalForm | grep ds,)"    using 2:7 with lines lt rgb "#22EE22" title "HasNormalForm (ds)" \
    , "<(cat coresize.csv | grep HasNormalForm | grep simpl,)" using 2:7 with lines lt rgb "#22EE22" title "HasNormalForm (simpl)"
 
 set ylabel "Compilation time (ms)"
-set output "graphs/benchmark-08-hasnormalform-timing.png"
+set output "graphs/benchmark-06-hasnormalform-timing.png"
 plot "<(cat timing.csv | grep HasNormalForm)" using 2:3 with lines lt rgb "#22EE22" title "HasNormalForm"
 
 ## Experiment: Simple record

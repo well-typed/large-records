@@ -36,14 +36,14 @@ test_show = do
     assertBool "some output" (not . null $ show lr090)
     assertBool "some output" (not . null $ show lr100)
   where
-    lr010 = glowerBound :: AfterHK10.HKR Identity
-    lr020 = glowerBound :: AfterHK20.HKR Identity
-    lr030 = glowerBound :: AfterHK30.HKR Identity
-    lr040 = glowerBound :: AfterHK40.HKR Identity
-    lr050 = glowerBound :: AfterHK50.HKR Identity
-    lr060 = glowerBound :: AfterHK60.HKR Identity
-    lr070 = glowerBound :: AfterHK70.HKR Identity
-    lr080 = glowerBound :: AfterHK80.HKR Identity
-    lr090 = glowerBound :: AfterHK90.HKR Identity
-    lr100 = glowerBound :: AfterH100.HKR Identity
+    lr010 = glowerBound :: AfterHK10.R Identity
+    lr020 = glowerBound :: AfterHK20.R Identity
+    lr030 = glowerBound :: AfterHK30.R Identity
+    lr040 = glowerBound :: AfterHK40.R Identity
+    lr050 = glowerBound :: AfterHK50.R Identity
+    lr060 = glowerBound :: AfterHK60.R Identity
+    lr070 = glowerBound :: AfterHK70.R Identity
+    lr080 = glowerBound :: AfterHK80.R Identity
+    lr090 = glowerBound :: AfterHK90.R Identity
+    lr100 = glowerBound :: AfterH100.R Identity
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DuplicateRecordFields #-} -- TODO: Improve error message without this
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE KindSignatures        #-}
@@ -9,16 +9,18 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
--- TODO: This should compile without adding any manual language extensions
-
 {-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 -- | Record definitions for "Test.Record.Sanity.RDP.SplitModule"
 --
 -- See "Test.Record.Sanity.RDP.SplitModule" for details.
---
--- TODO: Export list (should the plugin help with this..?)
-module Test.Record.Sanity.RDP.SplitModule.RecordDef where
+module Test.Record.Sanity.RDP.SplitModule.RecordDef (
+    R1(..)
+  , R2(..)
+  , R3(..)
+  , R4_WithLR(..)
+  , R5_WithLR(..)
+  ) where
 
 {-# ANN type R1 largeRecordStrict #-}
 data R1 = MkR1 { r1_x :: Int, r1_y :: Bool }

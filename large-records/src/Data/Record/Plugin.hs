@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ViewPatterns   #-}
 
--- | A GHC plugin that gives the large-records treatment to records with special annotations.
+-- | Support for scalable large records
 --
 -- = Usage
 --
@@ -13,24 +13,24 @@
 --
 -- See 'LargeRecordOptions' for the list of all possible annotations.
 --
--- = Usage with record-dot-preprocessor
+-- = Usage with @record-dot-preprocessor@
 --
--- There are two important points. First, the order of plugins matters — record-dot-preprocessor has to be listed before this plugin (and
+-- There are two important points. First, the order of plugins matters —
+-- @record-dot-preprocessor@ has to be listed before this plugin (and
 -- correspondingly will be applied /after/ this plugin):
 --
 -- > {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 --
--- Second, for now the official version of record-dot-preprocessor does not work with this plugin. Use the patched version from this pull request:
--- <https://github.com/ndmitchell/record-dot-preprocessor/pull/48>.
---
--- TODO: Update the above.
+-- Second, you will want at least version 0.2.14.
 module Data.Record.Plugin (plugin) where
 
 import Control.Monad.Except
 import Control.Monad.Trans.Writer.CPS
+import Data.List (intersperse)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Data.Traversable (for)
+import Language.Haskell.TH (Extension(..))
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set        as Set
@@ -69,6 +69,8 @@ transformDecls :: LHsModule -> Hsc LHsModule
 transformDecls (L l modl@HsModule {hsmodDecls = decls, hsmodImports}) = do
     (decls', transformed) <- runWriterT $ for decls $ transformDecl largeRecords
 
+    checkEnabledExtensions l
+
     -- Check for annotations without corresponding types
     let untransformed = Map.keysSet largeRecords `Set.difference` transformed
     unless (Set.null untransformed) $ do
@@ -78,8 +80,6 @@ transformDecls (L l modl@HsModule {hsmodDecls = decls, hsmodImports}) = do
 
     -- We add imports whether or not there were some errors, to avoid spurious
     -- additional errors from ghc about things not in scope.
-    --
-    -- TODO: Also add LANGUAGE pragmas (we need a DynFlags plugin for this)
     pure $ L l $ modl {
         hsmodDecls   = concat decls'
       , hsmodImports = hsmodImports ++ map (uncurry importDecl) requiredImports
@@ -133,6 +133,51 @@ transformDecl largeRecords decl@(L l _) =
           text "large-records: splicing in the following definitions:"
         : map ppr newDecls
 
+{-------------------------------------------------------------------------------
+  Check for enabled extensions
+
+  In ghc 8.10 and up there are DynFlags plugins, which we could use to enable
+  these extensions for the user. Since this is not available in 8.8 however we
+  will not make use of this for now. (There is also reason to believe that these
+  may be removed again in later ghc releases.)
+-------------------------------------------------------------------------------}
+
+checkEnabledExtensions :: SrcSpan -> Hsc ()
+checkEnabledExtensions l = do
+    dynFlags <- getDynFlags
+    let missing :: [RequiredExtension]
+        missing = filter (not . isEnabled dynFlags) requiredExtensions
+    unless (null missing) $
+      -- We issue a warning here instead of an error, for better integration
+      -- with HLS. Frankly, I'm not entirely sure what's going on there.
+      issueWarning l $ vcat . concat $ [
+          [text "Please enable these extensions for use with large-records:"]
+        , map ppr missing
+        ]
+  where
+    requiredExtensions :: [RequiredExtension]
+    requiredExtensions = [
+          RequiredExtension [ConstraintKinds]
+        , RequiredExtension [DataKinds]
+        , RequiredExtension [ExistentialQuantification, GADTs]
+        , RequiredExtension [FlexibleInstances]
+        , RequiredExtension [MultiParamTypeClasses]
+        , RequiredExtension [ScopedTypeVariables]
+        , RequiredExtension [TypeFamilies]
+        , RequiredExtension [UndecidableInstances]
+        ]
+
+-- | Required extension
+--
+-- The list is used to represent alternative extensions that could all work
+-- (e.g., @GADTs@ and @ExistentialQuantification@).
+data RequiredExtension = RequiredExtension [Extension]
+
+instance Outputable RequiredExtension where
+  ppr (RequiredExtension exts) = hsep . intersperse (text "or") $ map ppr exts
+
+isEnabled :: DynFlags -> RequiredExtension -> Bool
+isEnabled dynflags (RequiredExtension exts) = any (`xopt` dynflags) exts
 
 {-------------------------------------------------------------------------------
   Internal auxiliary
@@ -141,20 +186,11 @@ transformDecl largeRecords decl@(L l _) =
 issueError :: SrcSpan -> SDoc -> Hsc ()
 issueError l errMsg = do
     dynFlags <- getDynFlags
-    liftIO $ putLogMsg
-               dynFlags
-               NoReason
-               SevError
-               l
-               errMsg
+    throwOneError $
+      mkErrMsg dynFlags l neverQualify errMsg
 
 issueWarning :: SrcSpan -> SDoc -> Hsc ()
 issueWarning l errMsg = do
     dynFlags <- getDynFlags
-    liftIO $ putLogMsg
-               dynFlags
-               NoReason
-               SevWarning
-               l
-               errMsg
-
+    liftIO $ printOrThrowWarnings dynFlags . listToBag . (:[]) $
+      mkWarnMsg dynFlags l neverQualify errMsg

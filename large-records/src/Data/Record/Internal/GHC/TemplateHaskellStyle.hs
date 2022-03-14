@@ -42,6 +42,7 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
     -- * Types
   , litT
   , pattern VarT
+  , pattern ConT
   , appT
   , listT
     -- ** Without direct equivalent
@@ -108,6 +109,25 @@ import Data.List (foldl')
 import Data.Record.Internal.GHC.Shim hiding (mkTyVar)
 
 {-------------------------------------------------------------------------------
+  Internal auxiliary: types of names
+
+  data NameSpace = VarName        -- Variables, including "real" data constructors
+               | DataName       -- "Source" data constructors
+               | TvName         -- Type variables
+               | TcClsName      -- Type constructors and classes; Haskell has them
+
+-------------------------------------------------------------------------------}
+
+isTermVar, isTermCon, isTypeVar, isTypeCon :: LRdrName -> Bool
+isTermVar = checkNameType isVarOcc
+isTermCon = checkNameType isDataOcc
+isTypeVar = checkNameType isTvOcc
+isTypeCon = checkNameType isTcOcc
+
+checkNameType :: (OccName -> Bool) -> LRdrName -> Bool
+checkNameType f (L _ n) = f (rdrNameOcc n)
+
+{-------------------------------------------------------------------------------
   Names
 -------------------------------------------------------------------------------}
 
@@ -131,19 +151,19 @@ mkTyCon l = L l . mkRdrUnqual . mkTcOcc
 --
 -- NOTE: Defined in terms of 'nameBase', so discards qualifiers.
 viewExpVar :: LRdrName -> Maybe String
-viewExpVar n | isVarOcc (rdrNameOcc (unLoc n)) = Just (nameBase n)
+viewExpVar n | isTermVar n = Just (nameBase n)
 viewExpVar _otherwise = Nothing
 
 -- | Inverse to 'mkTyVar'
 --
 -- NOTE: Defined in terms of 'nameBase', so discards qualifiers.
 viewTyVar :: LRdrName -> Maybe String
-viewTyVar n | isTvOcc (rdrNameOcc (unLoc n)) = Just (nameBase n)
+viewTyVar n | isTypeVar n = Just (nameBase n)
 viewTyVar _otherwise = Nothing
 
 -- | Inverse to 'mkTyCon'
 viewTyCon :: LRdrName -> Maybe String
-viewTyCon n | isTcOcc (rdrNameOcc (unLoc n)) = Just (nameBase n)
+viewTyCon n | isTypeCon n = Just (nameBase n)
 viewTyCon _otherwise = Nothing
 
 -- This patterns are not bidirectional: to construct a LRdrName, we need a
@@ -163,33 +183,33 @@ pattern TyCon n <- (viewTyCon -> Just n)
 -------------------------------------------------------------------------------}
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varE'
---
--- TODO: We should assert that it's the right kind of name
-varE :: LRdrName -> LHsExpr GhcPs
-varE name = noLoc (HsVar defExt name)
+varE :: HasCallStack => LRdrName -> LHsExpr GhcPs
+varE name
+  | isTermVar name = noLoc (HsVar defExt name)
+  | otherwise      = error "varE: incorrect name type"
 
 -- | Inverse to 'varE'
 viewVarE :: LHsExpr GhcPs -> Maybe LRdrName
-viewVarE (L _ (HsVar _ name)) = Just name
-viewVarE _                    = Nothing
+viewVarE (L _ (HsVar _ name)) | isTermVar name = Just name
+viewVarE _                                     = Nothing
 
-pattern VarE :: LRdrName -> LHsExpr GhcPs
+pattern VarE :: HasCallStack => () => LRdrName -> LHsExpr GhcPs
 pattern VarE name <- (viewVarE -> Just name)
   where
     VarE = varE
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.conE'
---
--- TODO: We should assert that it's the right kind of name
-conE :: LRdrName -> LHsExpr GhcPs
-conE name = noLoc (HsVar defExt name)
+conE :: HasCallStack => LRdrName -> LHsExpr GhcPs
+conE name
+  | isTermCon name = noLoc (HsVar defExt name)
+  | otherwise      = error "conE: incorrect name type"
 
 -- | Inverse to 'conE'
 viewConE :: LHsExpr GhcPs -> Maybe LRdrName
-viewConE (L _ (HsVar _ name)) | isDataOcc (rdrNameOcc (unLoc name)) = Just name
+viewConE (L _ (HsVar _ name)) | isTermCon name = Just name
 viewConE _ = Nothing
 
-pattern ConE :: LRdrName -> LHsExpr GhcPs
+pattern ConE :: HasCallStack => () => LRdrName -> LHsExpr GhcPs
 pattern ConE name <- (viewConE -> Just name)
   where
     ConE = conE
@@ -300,18 +320,36 @@ litT :: HsTyLit -> LHsType GhcPs
 litT = noLoc . HsTyLit defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varT'
-varT :: LRdrName -> LHsType GhcPs
-varT name = noLoc (HsTyVar defExt NotPromoted name)
+varT :: HasCallStack => LRdrName -> LHsType GhcPs
+varT name
+  | isTypeVar name = noLoc (HsTyVar defExt NotPromoted name)
+  | otherwise      = error "varT: incorrect name type"
 
 -- | Inverse to 'varT'
 viewVarT :: LHsType GhcPs -> Maybe LRdrName
-viewVarT (L _ (HsTyVar _ _ name)) = Just name
-viewVarT _otherwise               = Nothing
+viewVarT (L _ (HsTyVar _ _ name)) | isTypeVar name = Just name
+viewVarT _otherwise                                = Nothing
 
-pattern VarT :: LRdrName -> LHsType GhcPs
+pattern VarT :: HasCallStack => () => LRdrName -> LHsType GhcPs
 pattern VarT name <- (viewVarT -> Just name)
   where
     VarT = varT
+
+-- | Equivalent of 'Language.Haskell.TH.Lib.conT'
+conT :: HasCallStack => LRdrName -> LHsType GhcPs
+conT name
+  | isTypeCon name = noLoc (HsTyVar defExt NotPromoted name)
+  | otherwise      = error "varT: incorrect name type"
+
+-- | Inverse to 'conT'
+viewConT :: LHsType GhcPs -> Maybe LRdrName
+viewConT (L _ (HsTyVar _ _ name)) | isTypeCon name = Just name
+viewConT _otherwise                                = Nothing
+
+pattern ConT :: HasCallStack => () => LRdrName -> LHsType GhcPs
+pattern ConT name <- (viewConT -> Just name)
+  where
+    ConT = conT
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.appT'
 appT :: LHsType GhcPs -> LHsType GhcPs -> LHsType GhcPs
@@ -710,21 +748,16 @@ viewImplicitBndrs _ = panic "viewImplicitBndrs"
 -- | Simple binding (without patterns)
 simpleBinding :: LRdrName -> LHsExpr GhcPs -> LHsBind GhcPs
 simpleBinding fnName body = noLoc $
-    funBind defExt fnName matchGroup []
+    mkFunBind fnName [match]
   where
     grhs :: GRHSs GhcPs (LHsExpr GhcPs)
     grhs = simpleGHRSs body
 
-    matchGroup :: MatchGroup GhcPs (LHsExpr GhcPs)
-    matchGroup =
-        MG defExt
-           ( noLoc [ noLoc $ Match defExt
-                                   (FunRhs fnName Prefix NoSrcStrict)
-                                   []
-                                   grhs
-                   ]
-           )
-           Generated
+    match :: LMatch GhcPs (LHsExpr GhcPs)
+    match = noLoc $ Match defExt
+                      (FunRhs fnName Prefix NoSrcStrict)
+                      []
+                      grhs
 
 -- | Simple guarded RHS (no guards)
 simpleGHRSs :: LHsExpr GhcPs -> GRHSs GhcPs (LHsExpr GhcPs)

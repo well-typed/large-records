@@ -30,9 +30,7 @@ genLargeRecord r@Record{..} = concatM [
     , genIndexedAccessor    r
     , genUnsafeSetIndex     r
     , genStockInstances     r
-    , if hasFieldInstances recordOptions
-        then mapM (genHasFieldInstance r) recordFields
-        else pure []
+    , mapM (genHasFieldInstance r) recordFields
     , sequence [
           genConstraintsClass    r
         , genConstraintsInstance r
@@ -164,7 +162,7 @@ genVectorConversions r@Record{..} = concatM [
             sigD name $
               funT
                 (recordTypeT r)
-                (VarT RT.type_Vector `appT` VarT RT.type_Any)
+                (ConT RT.type_Vector `appT` ConT RT.type_Any)
           , valD name $
               lamE [conP recordConName (map varP args)] $
                 appE
@@ -185,7 +183,7 @@ genVectorConversions r@Record{..} = concatM [
         return $ [
             sigD name $
               funT
-                (VarT RT.type_Vector `appT` VarT RT.type_Any)
+                (ConT RT.type_Vector `appT` ConT RT.type_Any)
                 (recordTypeT r)
           , valD name $
               lamE [varP x] $
@@ -193,7 +191,7 @@ genVectorConversions r@Record{..} = concatM [
                   (VarE RT.toList `appE` VarE x)
                   [ ( listP (map varP args)
                     , appsE
-                        (VarE recordConName)
+                        (ConE recordConName)
                         [ VarE RT.unsafeCoerce `appE` VarE arg
                         | arg <- args
                         ]
@@ -238,7 +236,7 @@ genIndexedAccessor r@Record{..} = do
     return [
         sigD name $
           funT
-            (VarT RT.type_Int)
+            (ConT RT.type_Int)
             (recordTypeT r `funT` VarT x)
       , valD name $
           lamE [varP n, varP t] $
@@ -275,7 +273,7 @@ genUnsafeSetIndex r@Record{..} = do
     val <- freshName $ mkExpVar recordAnnLoc "val"
     return [
       sigD name $
-               VarT RT.type_Int
+               ConT RT.type_Int
         `funT` (recordTypeT r `funT` (VarT x `funT` recordTypeT r))
       , valD name $
           lamE [varP n, varP t, (varP val)] $
@@ -311,7 +309,7 @@ genHasFieldInstance r@Record{..} Field{..} = do
       instanceD
         [equalP (VarT x) fieldType]
         (appsT
-           (VarT RT.type_HasField)
+           (ConT RT.type_HasField)
            [ stringT (nameBase fieldName)
            , recordTypeT r
            , VarT x
@@ -357,10 +355,10 @@ genConstraintsClass r@Record{..} = do
       (recordTyVars ++ [kindedTV c cKind])
       [ ( nameDictConstraints r
         , funT
-            (VarT RT.type_Proxy `appT` VarT c)
+            (ConT RT.type_Proxy `appT` VarT c)
             (appsT
-               (VarT RT.type_Rep)
-               [ VarT RT.type_Dict `appT` VarT c
+               (ConT RT.type_Rep)
+               [ ConT RT.type_Dict `appT` VarT c
                , recordTypeT r
                ]
             )
@@ -368,7 +366,7 @@ genConstraintsClass r@Record{..} = do
       ]
   where
     cKind :: LHsType GhcPs
-    cKind = VarT RT.type_Type `funT` VarT RT.type_Constraint
+    cKind = ConT RT.type_Type `funT` ConT RT.type_Constraint
 
 -- | Superclass constraints required by the constraints class instance
 --
@@ -421,7 +419,7 @@ genDict Record{..} = do
     return $
       lamE [varP p] $
         appE
-          (VarE RT.con_Rep)
+          (ConE RT.con_Rep)
           (VarE RT.fromList `appE` listE (map (dictForField p) recordFields))
   where
     dictForField :: LRdrName -> Field -> LHsExpr GhcPs
@@ -446,7 +444,7 @@ genConstraintsInstance r@Record{..} = do
       instanceD
         (genRequiredConstraints r (VarT c))
         (appsT
-           (VarT (nameConstraints r))
+           (ConT (nameConstraints r))
            ([VarT (tyVarBndrName v) | v <- recordTyVars] ++ [VarT c]))
         [(nameDictConstraints r, body)]
         []
@@ -485,7 +483,7 @@ genMetadata r@Record{..} = do
               )
             , ( RT.recordFieldMetadata
               , appE
-                  (VarE RT.con_Rep)
+                  (ConE RT.con_Rep)
                   (VarE RT.fromList `appE` listE (map auxField recordFields))
               )
             ]
@@ -493,9 +491,9 @@ genMetadata r@Record{..} = do
     auxField :: Field -> LHsExpr GhcPs
     auxField Field{..} =
         appsE
-          (VarE RT.con_FieldMetadata)
+          (ConE RT.con_FieldMetadata)
           [ proxyE (stringT (nameBase fieldName))
-          , VarE $ if allFieldsStrict recordOptions
+          , ConE $ if allFieldsStrict recordOptions
                      then RT.con_FieldStrict
                      else RT.con_FieldLazy
           ]
@@ -550,7 +548,7 @@ genGenericInstance r@Record{..} = do
     return $
       instanceD
         []
-        (VarT RT.type_Generic `appT` recordTypeT r)
+        (ConT RT.type_Generic `appT` recordTypeT r)
         [ ( RT.unq_from     , from                         )
         , ( RT.unq_to       , to                           )
         , ( RT.unq_dict     , VarE (nameDictConstraints r) )
@@ -558,7 +556,7 @@ genGenericInstance r@Record{..} = do
         ]
         [ tySynEqn RT.unq_type_Constraints [recordTypeT r] $
             appsT
-              (VarT (nameConstraints r))
+              (ConT (nameConstraints r))
               [VarT (tyVarBndrName v) | v <- recordTyVars]
         , tySynEqn RT.unq_type_MetadataOf [recordTypeT r] $
             listT [
@@ -600,8 +598,8 @@ genStockInstance r = pure . \case
     mkInstance :: LRdrName -> LRdrName -> LRdrName -> LHsDecl GhcPs
     mkInstance cls mthd gen =
         instanceD
-          (genRequiredConstraints r (VarT cls))
-          (VarT cls `appT` recordTypeT r)
+          (genRequiredConstraints r (ConT cls))
+          (ConT cls `appT` recordTypeT r)
           [(mthd, VarE gen)]
           []
 
@@ -624,12 +622,12 @@ genGHCGeneric :: MonadFresh m => Record -> m (LHsDecl GhcPs)
 genGHCGeneric r = pure $
     instanceD
       []
-      (VarT GHC.type_Generic `appT` recordTypeT r)
-      [ ( GHC.unq_from , VarE RT.con_WrapThroughLRGenerics )
+      (ConT GHC.type_Generic `appT` recordTypeT r)
+      [ ( GHC.unq_from , ConE RT.con_WrapThroughLRGenerics )
       , ( GHC.unq_to   , VarE RT.unwrapThroughLRGenerics   )
       ]
       [ tySynEqn GHC.unq_type_Rep [recordTypeT r] $
-          VarT RT.type_ThroughLRGenerics `appT` recordTypeT r
+          ConT RT.type_ThroughLRGenerics `appT` recordTypeT r
       ]
 
 {-------------------------------------------------------------------------------
@@ -639,7 +637,7 @@ genGHCGeneric r = pure $
 -- | The saturated type of the record (that is, with all type vars applied)
 recordTypeT :: Record -> LHsType GhcPs
 recordTypeT Record{..} =
-    VarT recordTyName `appsT` [VarT (tyVarBndrName f) | f <- recordTyVars]
+    ConT recordTyName `appsT` [VarT (tyVarBndrName f) | f <- recordTyVars]
 
 {-------------------------------------------------------------------------------
   Pick names for generated code
@@ -674,7 +672,7 @@ nameDictConstraints = mkDerived mkExpVar "dictConstraints_"
 --
 -- @proxyE [t|ty|]@ will result in a @Proxy :: Proxy ty@.
 proxyE :: LHsType GhcPs -> LHsExpr GhcPs
-proxyE ty = sigE (VarE RT.con_Proxy) (VarT RT.type_Proxy `appT` ty)
+proxyE ty = sigE (ConE RT.con_Proxy) (ConT RT.type_Proxy `appT` ty)
 
 concatM :: Applicative m => [m [a]] -> m [a]
 concatM = fmap concat . sequenceA

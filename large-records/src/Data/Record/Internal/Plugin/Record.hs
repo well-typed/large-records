@@ -25,9 +25,6 @@ import Data.Record.Internal.Plugin.Options (LargeRecordOptions)
 -------------------------------------------------------------------------------}
 
 -- | A representation for records that can be processed by large-records.
---
--- TODO: We should change this representation to keep as much location info
--- as we can, for better error messages. (Nearly?) all use of 'noLoc' should go.
 data Record = Record {
       recordTyName    :: LRdrName
     , recordTyVars    :: [LHsTyVarBndr GhcPs]
@@ -108,9 +105,9 @@ viewRecordDeriving = \case
   where
     goStock :: [LHsType GhcPs] -> m [RecordDeriving]
     goStock tys = for tys $ \case
-        VarT (nameBase -> "Show")    -> pure $ DeriveStock Show
-        VarT (nameBase -> "Eq")      -> pure $ DeriveStock Eq
-        VarT (nameBase -> "Ord")     -> pure $ DeriveStock Ord
-        VarT (nameBase -> "Generic") -> pure $ DeriveStock Generic
+        ConT (nameBase -> "Show")    -> pure $ DeriveStock Show
+        ConT (nameBase -> "Eq")      -> pure $ DeriveStock Eq
+        ConT (nameBase -> "Ord")     -> pure $ DeriveStock Ord
+        ConT (nameBase -> "Generic") -> pure $ DeriveStock Generic
         ty -> throwError (UnsupportedStockDeriving ty)
 

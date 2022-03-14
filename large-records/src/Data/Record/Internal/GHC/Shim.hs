@@ -11,7 +11,7 @@ module Data.Record.Internal.GHC.Shim (
     -- * Miscellaneous
     importDecl
   , conPat
-  , funBind
+  , mkFunBind
   , HsModule
   , LHsModule
   , LRdrName
@@ -39,11 +39,10 @@ module Data.Record.Internal.GHC.Shim (
 
     -- The whole-sale module exports are not ideal for preserving compatibility
     -- across ghc versions, but we'll deal with this on a case by case basis.
-    --
-    -- TODO: Do we still need all of these, now that some stuff has moved here?
 #if __GLASGOW_HASKELL__ < 900
   , module Bag
   , module BasicTypes
+  , module ErrUtils
   , module GHC
   , module GhcPlugins
   , module HscMain
@@ -68,7 +67,8 @@ import Data.Generics (Data, GenericQ, cast, toConstr, gzipWithQ)
 import Bag (listToBag, emptyBag)
 import BasicTypes (SourceText(NoSourceText))
 import ConLike (ConLike)
-import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind)
+import ErrUtils (mkErrMsg, mkWarnMsg)
+import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind, mkFunBind)
 import GhcPlugins hiding ((<>), getHscEnv, putLogMsg)
 import HscMain (getHscEnv)
 import NameCache (NameCache(nsUniqs))
@@ -85,13 +85,13 @@ import GHC.Core.ConLike (ConLike)
 import GHC.Core.PatSyn (PatSyn)
 import GHC.Data.Bag (listToBag, emptyBag)
 import GHC.Driver.Main (getHscEnv)
-import GHC.Hs hiding (LHsTyVarBndr, HsTyVarBndr, HsModule)
+import GHC.Hs hiding (LHsTyVarBndr, HsTyVarBndr, HsModule, mkFunBind)
 import GHC.Parser.Annotation (IsUnicodeSyntax(NormalSyntax))
 import GHC.Plugins hiding ((<>), getHscEnv, putLogMsg)
 import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
 import GHC.Types.Basic (SourceText(NoSourceText))
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
-import GHC.Utils.Error (Severity(SevError, SevWarning))
+import GHC.Utils.Error (Severity(SevError, SevWarning), mkErrMsg, mkWarnMsg)
 
 import qualified GHC.Hs      as GHC
 import qualified GHC.Plugins as GHC
@@ -132,22 +132,11 @@ conPat x y = ConPatIn x y
 conPat x y = ConPat noExtField x y
 #endif
 
-funBind ::
-     XFunBind idL idR
-  -> Located (IdP idL)
-  -> MatchGroup idR (LHsExpr idR)
-  -> [Tickish Id]
-  -> HsBindLR idL idR
-#if __GLASGOW_HASKELL__ < 900
-funBind ext id_ matches tick = FunBind {
-      fun_ext     = ext
-    , fun_id      = id_
-    , fun_matches = matches
-    , fun_tick    = tick
-    , fun_co_fn   = WpHole -- TODO: Is WpHole here right..?
-    }
+mkFunBind :: Located RdrName -> [LMatch GhcPs (LHsExpr GhcPs)] -> HsBind GhcPs
+#if __GLASGOW_HASKELL__ < 810
+mkFunBind = GHC.mkFunBind
 #else
-funBind = FunBind
+mkFunBind = GHC.mkFunBind Generated
 #endif
 
 #if __GLASGOW_HASKELL__ < 900

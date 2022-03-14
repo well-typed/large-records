@@ -1,10 +1,11 @@
 {-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-} -- TODO: When an extension is forgtten, get error in bad location
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}

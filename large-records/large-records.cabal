@@ -29,6 +29,8 @@ library
       Data.Record.Plugin.Runtime
       Data.Record.Plugin.Options
 
+  other-modules:
+
       Data.Record.Internal.GHC.Fresh
       Data.Record.Internal.GHC.Shim
       Data.Record.Internal.GHC.TemplateHaskellStyle
@@ -54,6 +56,7 @@ library
 
       -- whatever version is bundled with ghc
     , ghc
+    , template-haskell
   hs-source-dirs:
       src
   default-language:

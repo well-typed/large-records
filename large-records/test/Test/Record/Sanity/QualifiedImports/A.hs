@@ -2,7 +2,6 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeFamilies              #-}

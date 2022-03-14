@@ -1,4 +1,3 @@
--- TODO: It would be nicer if the plugin could add these..
 {-# LANGUAGE ConstraintKinds           #-}
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE ExistentialQuantification #-}

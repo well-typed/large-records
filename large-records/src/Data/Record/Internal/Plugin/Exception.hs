@@ -14,7 +14,6 @@ data Exception =
   | UnsupportedStrategy (DerivStrategy GhcPs)
   | InvalidDeclaration
 
--- TODO: better exception messages
 formatException :: Exception -> SDoc
 formatException = hsep . \case
     UnsupportedStockDeriving ty -> [

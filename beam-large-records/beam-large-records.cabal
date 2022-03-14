@@ -77,14 +77,13 @@ test-suite test-beam-large-records
     , large-generics
     , large-records
     , microlens
+    , record-dot-preprocessor
     , record-hasfield
     , sqlite-simple
     , tasty
     , tasty-hunit
     , text
     , time
-  build-tool-depends:
-      record-dot-preprocessor:record-dot-preprocessor
   ghc-options:
       -Wall
       -Wredundant-constraints

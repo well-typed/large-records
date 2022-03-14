@@ -4,18 +4,16 @@
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 
 -- | Simple but complete example that does an SQL INSERT and SELECT
 module Test.Record.Beam.SimpleSQL (
@@ -27,7 +25,6 @@ module Test.Record.Beam.SimpleSQL (
 
 import Data.Int
 import Data.Kind
-import Data.Record.TH
 import Data.Text (Text)
 import Database.Beam
 
@@ -45,14 +42,13 @@ import Test.Record.Beam.Util.SQLite
   Large record example
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript $ [d|
-      data LargeTable (f :: Type -> Type) = MkLargeTable {
-            largeTableId    :: Columnar f Int32
-          , largeTableField :: Columnar f Text
-          }
-        deriving stock (Show, Eq)
-        deriving anyclass (Beamable)
-    |]
+{-# ANN type LargeTable largeRecordStrict #-}
+data LargeTable (f :: Type -> Type) = MkLargeTable {
+      largeTableId    :: Columnar f Int32
+    , largeTableField :: Columnar f Text
+    }
+  deriving stock (Show, Eq)
+  deriving anyclass (Beamable)
 
 large1, large2 :: LargeTable Identity
 large1 = MkLargeTable 1 "hi"
@@ -69,12 +65,11 @@ instance Table LargeTable where
   The full database
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-    data ExampleDb (f :: Type -> Type) = MkExampleDb {
-          exampleDbLargeTable  :: f (TableEntity LargeTable)
-        }
-      deriving (Show)
-  |]
+{-# ANN type ExampleDb largeRecordStrict #-}
+data ExampleDb (f :: Type -> Type) = MkExampleDb {
+      exampleDbLargeTable  :: f (TableEntity LargeTable)
+    }
+  deriving (Show)
 
 instance Database be ExampleDb
 

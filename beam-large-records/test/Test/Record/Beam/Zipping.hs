@@ -4,24 +4,21 @@
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Beam.Zipping (tests) where
 
 import Data.Functor.Identity
 import Data.Kind
-import Data.Record.TH
 import Database.Beam
 import Database.Beam.Schema.Tables
 import Test.Tasty
@@ -31,21 +28,21 @@ import qualified GHC.Generics as GHC
 
 import Data.Record.Beam ()
 
-largeRecord defaultPureScript [d|
-    data TableA (f :: Type -> Type) = TableA {
-          taPrim  :: PrimaryKey TableA f
-        , taField :: Columnar f Bool
-        , taMixin :: TableB f
-        }
-      deriving (Show, Eq)
-      deriving anyclass (Beamable)
+{-# ANN type TableA largeRecordStrict #-}
+data TableA (f :: Type -> Type) = TableA {
+      taPrim  :: PrimaryKey TableA f
+    , taField :: Columnar f Bool
+    , taMixin :: TableB f
+    }
+  deriving (Show, Eq)
+  deriving anyclass (Beamable)
 
-    data TableB (f :: Type -> Type) = TableB {
-          tbField :: Columnar f Char
-        }
-      deriving (Show, Eq)
-      deriving anyclass (Beamable)
-  |]
+{-# ANN type TableB largeRecordStrict #-}
+data TableB (f :: Type -> Type) = TableB {
+      tbField :: Columnar f Char
+    }
+  deriving (Show, Eq)
+  deriving anyclass (Beamable)
 
 instance Table TableA where
   data PrimaryKey TableA f = PrimA (Columnar f Int)

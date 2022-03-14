@@ -52,6 +52,22 @@ data Field = Field {
 data StockDeriving = Eq | Show | Ord | Generic
 
 -- | A representation for @deriving@ clauses.
+--
+-- NOTE: We support @DeriveAnyClass@ style derivation, because this does not
+-- depend on the internal representation we choose, but only on the default
+-- implementation in the class, which typically depends on generics. For
+-- example, it makes it possible to define things like
+--
+-- > data UserT (f :: Type -> Type) = User {
+-- >       userEmail :: Columnar f Text
+-- >       -- .. other fields ..
+-- >     }
+-- >   deriving stock (Show, Eq)
+-- >   deriving anyclass (Beamable)
+--
+-- For now we do /not/ support newtype deriving or deriving-via, since this
+-- /does/ depend on the internal record representation. See discussion at
+-- <https://github.com/well-typed/large-records/pull/42>.
 data RecordDeriving =
     DeriveStock StockDeriving
   | DeriveAnyClass (LHsType GhcPs)
@@ -97,8 +113,6 @@ viewRecordDeriving = \case
       goStock tys
     DerivClause (Just (L _ StockStrategy)) tys ->
       goStock tys
-    -- TODO: Not sure that we want anyclass deriving
-    -- See discussion in <https://github.com/well-typed/large-records/pull/42>.
     DerivClause (Just (L _ AnyclassStrategy)) tys ->
       pure $ fmap DeriveAnyClass (NE.toList tys)
     DerivClause (Just strategy) _ ->

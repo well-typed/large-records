@@ -4,18 +4,17 @@
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
+
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 -- Lots of fields defined here are never used directly
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
@@ -27,7 +26,6 @@ import Control.Applicative
 import Data.Functor.Identity
 import Data.Kind
 import Data.Proxy
-import Data.Record.TH
 import Database.Beam
 import Database.Beam.Schema.Tables
 import GHC.Records.Compat
@@ -46,14 +44,13 @@ import Test.Record.Beam.Util.Orphans ()
   Table A
 -------------------------------------------------------------------------------}
 
-largeRecord defaultLazyOptions [d|
-     data LRTableA (f :: Type -> Type) = MkLRTableA {
-           fldA1 :: Columnar f Int
-         , fldA2 :: Columnar f Int
-         }
-       deriving stock (Eq, Show)
-       deriving anyclass (Beamable)
-  |]
+{-# ANN type LRTableA largeRecordLazy #-}
+data LRTableA (f :: Type -> Type) = MkLRTableA {
+     fldA1 :: Columnar f Int
+   , fldA2 :: Columnar f Int
+   }
+ deriving stock (Eq, Show)
+ deriving anyclass (Beamable)
 
 instance Table LRTableA where
   newtype PrimaryKey LRTableA f = LRTableAKey (Columnar f Int)
@@ -69,21 +66,20 @@ deriving instance Eq   (Columnar f Int) => Eq   (PrimaryKey LRTableA f)
   Table B: has mixin (reference to table A), as well as nullable fields
 -------------------------------------------------------------------------------}
 
-largeRecord defaultLazyOptions [d|
-     data LRTableB (f :: Type -> Type) = MkLRTableB {
-           fldB1 :: Columnar f Int
-         , fldB2 :: Columnar f Int
-         , fldB3 :: Columnar f Bool
-         , fldB4 :: Columnar (Nullable f) Char
-         , fldB5 :: Columnar f Int
-         , fldB6 :: Columnar f String
-         , fldB7 :: LRTableA f
-         , fldB8 :: PrimaryKey LRTableA f
-         , fldB9 :: PrimaryKey LRTableA (Nullable f)
-         }
-       deriving stock (Eq, Show)
-       deriving anyclass (Beamable)
-  |]
+{-# ANN type LRTableB largeRecordLazy #-}
+data LRTableB (f :: Type -> Type) = MkLRTableB {
+     fldB1 :: Columnar f Int
+   , fldB2 :: Columnar f Int
+   , fldB3 :: Columnar f Bool
+   , fldB4 :: Columnar (Nullable f) Char
+   , fldB5 :: Columnar f Int
+   , fldB6 :: Columnar f String
+   , fldB7 :: LRTableA f
+   , fldB8 :: PrimaryKey LRTableA f
+   , fldB9 :: PrimaryKey LRTableA (Nullable f)
+   }
+ deriving stock (Eq, Show)
+ deriving anyclass (Beamable)
 
 instance Table LRTableB where
   data PrimaryKey LRTableB f = LRTableBKey (Columnar f Int)
@@ -101,15 +97,14 @@ instance Table LRTableB where
 -- <https://haskell-beam.github.io/beam/user-guide/databases/#domain-types>
 newtype EvenInt = EvenInt Int
 
-largeRecord defaultLazyOptions [d|
-     data LRDB (f :: Type -> Type) = MkLRDB {
-           tblA   :: f (TableEntity LRTableA)
-         , tblB   :: f (TableEntity LRTableB)
-         , viewA  :: f (ViewEntity LRTableA)
-         , domTyp :: f (DomainTypeEntity EvenInt)
-         }
-       deriving (Show, Eq)
-  |]
+{-# ANN type LRDB largeRecordLazy #-}
+data LRDB (f :: Type -> Type) = MkLRDB {
+     tblA   :: f (TableEntity LRTableA)
+   , tblB   :: f (TableEntity LRTableB)
+   , viewA  :: f (ViewEntity LRTableA)
+   , domTyp :: f (DomainTypeEntity EvenInt)
+   }
+ deriving (Show, Eq)
 
 instance Database be LRDB
 

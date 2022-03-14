@@ -5,4 +5,4 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-module After.Sized.R0000 where
+module After.Sized.R000 where

@@ -57,23 +57,14 @@ ingredients, but with
 ![](graphs/benchmark-00-before-vs-after-coresize.png)
 ![](graphs/benchmark-01-before-vs-after-timing.png)
 
-#### Size and time for the "After" benchmarks for larger records
-
-Most of these benchmarks only measure the cost of records up to 100 fields,
-but for the "After" benchmark we also measure up to 1000 fields, to ensure that
-there aren't some subtle non-linear effects present.
-
-![](graphs/benchmark-02-after-coresize.png)
-![](graphs/benchmark-03-after-timing.png)
-
 ### Benchmark: "HigherKinded"
 
 This benchmark is mostly a sanity check: it repeats the "After" benchmark,
 but using a higher kinded record (that is, a record with a functor parameter,
 like is common for example in `beam` applications).
 
-![](graphs/benchmark-04-higherkinded-coresize.png)
-![](graphs/benchmark-05-higherkinded-timing.png)
+![](graphs/benchmark-02-higherkinded-coresize.png)
+![](graphs/benchmark-03-higherkinded-timing.png)
 
 ### Benchmark: "HasNormalForm"
 
@@ -88,17 +79,17 @@ about the `large-records` library
 Although the size of the core before the [very simple
 optimiser][very-simple-optimiser] runs is still quadratic (and huge!):
 
-![](graphs/benchmark-06-hasnormalform-coresize-pre-verysimpleopt.png)
+![](graphs/benchmark-04-hasnormalform-coresize-pre-verysimpleopt.png)
 
 the very simple optimiser cleans this up to exactly nothing (this is what I
 describe in the talk):
 
-![](graphs/benchmark-07-hasnormalform-coresize-post-verysimpleopt.png)
+![](graphs/benchmark-05-hasnormalform-coresize-post-verysimpleopt.png)
 
 Provided that the full tree before the very simple optimiser is never fully
 forced (and normally it isn't), compilation time is still fine:
 
-![](graphs/benchmark-08-hasnormalform-timing.png)
+![](graphs/benchmark-06-hasnormalform-timing.png)
 
 ## Experiments
 
@@ -187,7 +178,7 @@ The problem with constraint families was described in the second blog post,
 section [Constraint Families][blogpost2-CF].
 
 The difference here comes from introducing an intermediate type class to ensure
-shallow evaluation. As mentioned in hte blog post, this is only visible
+shallow evaluation. As mentioned in the blog post, this is only visible
 before the very simple optimiser runs:
 
 ![](graphs/experiment-constraintfamily-coresize-pre-verysimpleopt.png)
@@ -196,12 +187,16 @@ After the optimiser the difference between the two approaches disappears:
 
 ![](graphs/experiment-constraintfamily-coresize-post-verysimpleopt.png)
 
-However, the difference is nonetheless important, as the compilation time shows:
+(This experiment assumes an phantom role assigned to `EmptyClass`, as discussed
+in the "Induction" experiment.)
+
+As long as we can depend on the very simple optimiser, the difference is not
+terribly important:
 
 ![](graphs/experiment-constraintfamily-timing.png)
 
-(This experiment assumes an phantom role assigned to `EmptyClass`, as discussed
-in the "Induction" experiment.)
+We nonetheless prefer the shallow approach, in order to limit dependency on the
+VSO as much as possible.
 
 ### Pre-evaluation
 

@@ -10,7 +10,7 @@ module HasNormalForm.Sized.R060 where
 import Data.Record.Generic
 import Data.Record.Generic.Transform
 
-import After.Sized.R0060
+import After.Sized.R060
 
 testInterpretTo :: ()
 testInterpretTo = aux

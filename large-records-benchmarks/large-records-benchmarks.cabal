@@ -21,8 +21,6 @@ source-repository head
 -- intended for use outside of this package.
 library
   exposed-modules:
-      Bench.TH
-      Bench.TH.Compat
       Bench.Types
   default-language:
       Haskell2010
@@ -33,7 +31,6 @@ library
 
     , aeson
     , large-generics
-    , template-haskell
   ghc-options:
       -Wall
 
@@ -139,26 +136,17 @@ executable after
       -- Needed for the HasNormalForm benchmark
       -freduction-depth=2000
   other-modules:
-      After.Sized.R0000
-      After.Sized.R0010
-      After.Sized.R0020
-      After.Sized.R0030
-      After.Sized.R0040
-      After.Sized.R0050
-      After.Sized.R0060
-      After.Sized.R0070
-      After.Sized.R0080
-      After.Sized.R0090
-      After.Sized.R0100
-      After.Sized.R0200
-      After.Sized.R0300
-      After.Sized.R0400
-      After.Sized.R0500
-      After.Sized.R0600
-      After.Sized.R0700
-      After.Sized.R0800
-      After.Sized.R0900
-      After.Sized.R1000
+      After.Sized.R000
+      After.Sized.R010
+      After.Sized.R020
+      After.Sized.R030
+      After.Sized.R040
+      After.Sized.R050
+      After.Sized.R060
+      After.Sized.R070
+      After.Sized.R080
+      After.Sized.R090
+      After.Sized.R100
 
       HigherKinded.Sized.R000
       HigherKinded.Sized.R010
@@ -452,25 +440,16 @@ test-suite test-large-records-benchmarks
       Before.Sized.R090
       Before.Sized.R100
 
-      After.Sized.R0010
-      After.Sized.R0020
-      After.Sized.R0030
-      After.Sized.R0040
-      After.Sized.R0050
-      After.Sized.R0060
-      After.Sized.R0070
-      After.Sized.R0080
-      After.Sized.R0090
-      After.Sized.R0100
-      After.Sized.R0200
-      After.Sized.R0300
-      After.Sized.R0400
-      After.Sized.R0500
-      After.Sized.R0600
-      After.Sized.R0700
-      After.Sized.R0800
-      After.Sized.R0900
-      After.Sized.R1000
+      After.Sized.R010
+      After.Sized.R020
+      After.Sized.R030
+      After.Sized.R040
+      After.Sized.R050
+      After.Sized.R060
+      After.Sized.R070
+      After.Sized.R080
+      After.Sized.R090
+      After.Sized.R100
 
       HigherKinded.Sized.R010
       HigherKinded.Sized.R020

@@ -22,7 +22,6 @@ import Generics.SOP.TH
 
 import Bench.Types
 
--- @RecordDotPreprocessor@ runs before TH, so cannot use 'recordOfSize'.
 data R = MkR {
       -- 1 .. 10
       field1  :: T 1

@@ -18,16 +18,32 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-module After.Sized.R0050 where
+module After.Sized.R010 where
 
 import Data.Aeson (ToJSON(..))
 
 import Data.Record.Generic.JSON
 import Data.Record.TH
 
-import Bench.TH
+import Bench.Types
 
-largeRecord defaultLazyOptions (recordOfSize 50)
+largeRecord defaultLazyOptions [d|
+    data R = MkR {
+          -- 1 .. 10
+          field1  :: T 1
+        , field2  :: T 2
+        , field3  :: T 3
+        , field4  :: T 4
+        , field5  :: T 5
+        , field6  :: T 6
+        , field7  :: T 7
+        , field8  :: T 8
+        , field9  :: T 9
+        , field10 :: T 10
+        }
+      deriving (Eq, Show)
+  |]
 
 instance ToJSON R where
   toJSON = gtoJSON
+

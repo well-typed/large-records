@@ -6,8 +6,6 @@
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
@@ -18,28 +16,27 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-module HigherKinded.Sized.R010 where
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
-import Data.Record.TH
+module HigherKinded.Sized.R010 where
 
 import Bench.Types
 
-largeRecord defaultLazyOptions [d|
-    data R f = MkR {
-          -- 1 .. 10
-          field1  :: HK 1  f
-        , field2  :: HK 2  f
-        , field3  :: HK 3  f
-        , field4  :: HK 4  f
-        , field5  :: HK 5  f
-        , field6  :: HK 6  f
-        , field7  :: HK 7  f
-        , field8  :: HK 8  f
-        , field9  :: HK 9  f
-        , field10 :: HK 10 f
-        }
-      deriving (Eq, Show)
-  |]
+{-# ANN type R largeRecordStrict #-}
+data R f = MkR {
+      -- 1 .. 10
+      field1  :: HK 1  f
+    , field2  :: HK 2  f
+    , field3  :: HK 3  f
+    , field4  :: HK 4  f
+    , field5  :: HK 5  f
+    , field6  :: HK 6  f
+    , field7  :: HK 7  f
+    , field8  :: HK 8  f
+    , field9  :: HK 9  f
+    , field10 :: HK 10 f
+    }
+  deriving (Eq, Show)
 
 -- Complains about
 --

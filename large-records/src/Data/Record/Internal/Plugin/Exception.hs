@@ -4,27 +4,34 @@
 -- | Exceptions that may be thrown by the large-records plugin.
 module Data.Record.Internal.Plugin.Exception (
     Exception(..)
-  , formatException
+  , exceptionLoc
+  , exceptionToSDoc
   ) where
 
 import Data.Record.Internal.GHC.Shim
 
 data Exception =
     UnsupportedStockDeriving (LHsType GhcPs)
-  | UnsupportedStrategy (DerivStrategy GhcPs)
-  | InvalidDeclaration
+  | UnsupportedStrategy (LDerivStrategy GhcPs)
+  | InvalidDeclaration (LHsDecl GhcPs)
 
-formatException :: Exception -> SDoc
-formatException = hsep . \case
+exceptionLoc :: Exception -> SrcSpan
+exceptionLoc = \case
+    UnsupportedStockDeriving (L l _) -> l
+    UnsupportedStrategy      (L l _) -> l
+    InvalidDeclaration       (L l _) -> l
+
+exceptionToSDoc :: Exception -> SDoc
+exceptionToSDoc = hsep . \case
     UnsupportedStockDeriving ty -> [
         "Unsupported stock class: "
       , ppr ty
       ]
-    UnsupportedStrategy strategy -> [
+    UnsupportedStrategy (L _ strategy) -> [
         "Strategy "
       , derivStrategyName strategy
       , " is not supported"
       ]
-    InvalidDeclaration -> [
+    InvalidDeclaration _decl -> [
         "Unsupported declaration for large-records"
       ]

@@ -6,6 +6,7 @@
 module Data.Record.Internal.Plugin.CodeGen (genLargeRecord) where
 
 import Data.List (nubBy)
+import Data.List.NonEmpty (NonEmpty(..))
 
 import qualified Data.Generics as SYB
 
@@ -100,11 +101,11 @@ genDatatype Record{..} = pure $
           (zipWith fieldExistentialType vars recordFields)
 
       ]
-      [ DerivClause (Just (noLoc AnyclassStrategy)) [c]
+      [ DerivClause (Just (noLoc AnyclassStrategy)) (c :| [])
       | DeriveAnyClass c <- recordDerivings
       ]
   where
-    -- There is no need to generate fresh variables here, as these type vars
+    -- There is no need to generate fresh va  riables here, as these type vars
     -- cannot clash with anything else (no other type vars can be in scope).
     vars :: [LRdrName]
     vars = [
@@ -164,7 +165,7 @@ genVectorConversions r@Record{..} = concatM [
                 (recordTypeT r)
                 (ConT RT.type_Vector `appT` ConT RT.type_Any)
           , valD name $
-              lamE [conP recordConName (map varP args)] $
+              lamE1 (conP recordConName (map varP args)) $
                 appE
                   (VarE RT.fromList)
                   (listE [ VarE RT.unsafeCoerce `appE` VarE arg
@@ -186,7 +187,7 @@ genVectorConversions r@Record{..} = concatM [
                 (ConT RT.type_Vector `appT` ConT RT.type_Any)
                 (recordTypeT r)
           , valD name $
-              lamE [varP x] $
+              lamE1 (varP x) $
                 caseE
                   (VarE RT.toList `appE` VarE x)
                   [ ( listP (map varP args)
@@ -239,7 +240,7 @@ genIndexedAccessor r@Record{..} = do
             (ConT RT.type_Int)
             (recordTypeT r `funT` VarT x)
       , valD name $
-          lamE [varP n, varP t] $
+          lamE (varP n :| [varP t]) $
             appE
               (VarE RT.noInlineUnsafeCo)
               (appsE
@@ -276,17 +277,16 @@ genUnsafeSetIndex r@Record{..} = do
                ConT RT.type_Int
         `funT` (recordTypeT r `funT` (VarT x `funT` recordTypeT r))
       , valD name $
-          lamE [varP n, varP t, (varP val)] $
+          lamE (varP n :| [varP t, (varP val)]) $
             appE
               (VarE (nameVectorTo r))
               (appsE
                  (VarE RT.unsafeUpd)
                  [ VarE (nameVectorFrom r) `appE` VarE t
                  , listE [
-                       tupE [
-                           VarE n
-                         , VarE RT.noInlineUnsafeCo `appE` VarE val
-                         ]
+                       tupE $
+                             VarE n
+                         :| [VarE RT.noInlineUnsafeCo `appE` VarE val]
                      ]
                  ]
               )
@@ -316,11 +316,10 @@ genHasFieldInstance r@Record{..} Field{..} = do
            ]
         )
         [ ( RT.unq_hasField
-          , lamE [varP t] $
-              tupE [
-                  appsE (VarE (nameUnsafeSetIndex r)) [intE fieldIndex, VarE t]
-                , appsE (VarE (nameUnsafeGetIndex r)) [intE fieldIndex, VarE t]
-                ]
+          , lamE1 (varP t) $
+              tupE $
+                    appsE (VarE (nameUnsafeSetIndex r)) [intE fieldIndex, VarE t]
+                :| [appsE (VarE (nameUnsafeGetIndex r)) [intE fieldIndex, VarE t]]
           )
         ]
         []
@@ -417,7 +416,7 @@ genDict :: MonadFresh m => Record -> m (LHsExpr GhcPs)
 genDict Record{..} = do
     p <- freshName $ mkExpVar recordAnnLoc "p"
     return $
-      lamE [varP p] $
+      lamE1 (varP p) $
         appE
           (ConE RT.con_Rep)
           (VarE RT.fromList `appE` listE (map (dictForField p) recordFields))
@@ -469,7 +468,7 @@ genMetadata :: MonadFresh m => Record -> m (LHsExpr GhcPs)
 genMetadata r@Record{..} = do
     p <- freshName $ mkExpVar recordAnnLoc "p"
     return $
-      lamE [varP p] $
+      lamE1 (varP p) $
         recConE
           RT.con_Metadata [
               ( RT.recordName
@@ -507,7 +506,7 @@ genFrom :: MonadFresh m => Record -> m (LHsExpr GhcPs)
 genFrom r@Record{..} = do
     x <- freshName $ mkExpVar recordAnnLoc "x"
     return $
-      lamE [varP x] $
+      lamE1 (varP x) $
         VarE RT.repFromVector `appE` (VarE (nameVectorFrom r) `appE` VarE x)
 
 -- | Generate definition for `to` in the `Generic` instance
@@ -524,7 +523,7 @@ genTo :: MonadFresh m => Record -> m (LHsExpr GhcPs)
 genTo r@Record{..} = do
     x <- freshName $ mkExpVar recordAnnLoc "x"
     return $
-      lamE [varP x] $
+      lamE1 (varP x) $
         VarE (nameVectorTo r) `appE` (VarE RT.repToVector `appE` VarE x)
 
 -- | Generate an instance of large-records 'Data.Record.Generic'.
@@ -560,7 +559,7 @@ genGenericInstance r@Record{..} = do
               [VarT (tyVarBndrName v) | v <- recordTyVars]
         , tySynEqn RT.unq_type_MetadataOf [recordTypeT r] $
             listT [
-                tupT [stringT (nameBase fieldName), fieldType]
+                tupT $ stringT (nameBase fieldName) :| [fieldType]
               | Field{..} <- recordFields
               ]
         ]

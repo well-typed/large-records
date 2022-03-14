@@ -117,8 +117,8 @@ transformDecl largeRecords decl@(L l _) =
             tell (Set.singleton name)
             case runExcept (viewRecord annLoc opts decl) of
               Left e -> do
-                lift $ issueError l (formatException e)
-                -- Return the declaration unchanged if we cannot parse the record
+                lift $ issueError (exceptionLoc e) (exceptionToSDoc e)
+                -- Return the declaration unchanged if we cannot parse it
                 return [decl]
               Right r -> do
                 newDecls <- lift $ runFreshHsc $ genLargeRecord r

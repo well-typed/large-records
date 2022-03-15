@@ -18,7 +18,7 @@ data ResolvedNames = ResolvedNames {
     , clsKnownFields         :: Class
     , clsKnownSymbol         :: Class
     , dataConDict            :: DataCon
-    , dataConFieldLazy       :: DataCon
+    , dataConFieldStrict     :: DataCon
     , dataConFieldMetadata   :: DataCon
     , dataConProxy           :: DataCon
     , idEvidenceAllFields    :: Id
@@ -52,7 +52,7 @@ nameResolution = do
     clsKnownSymbol  <- tcLookupClass knownSymbolClassName
 
     dataConDict          <- getDataCon dDict     "Dict"
-    dataConFieldLazy     <- getDataCon drGeneric "FieldLazy"
+    dataConFieldStrict   <- getDataCon drGeneric "FieldStrict"
     dataConFieldMetadata <- getDataCon drGeneric "FieldMetadata"
     dataConProxy         <- getDataCon dProxy    "Proxy"
 

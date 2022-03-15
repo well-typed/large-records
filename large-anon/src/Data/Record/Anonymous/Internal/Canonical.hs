@@ -49,13 +49,13 @@ import Data.Coerce (coerce)
 import Data.HashMap.Strict (HashMap)
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->)(apFn))
-import Data.Vector (Vector, (//))
 import GHC.Exts (Any)
 
 import qualified Data.HashMap.Strict as HashMap
-import qualified Data.Vector         as Vector
+import qualified Data.Vector.Generic as Vector
 
 import Data.Record.Anonymous.Internal.Row (Permutation(..))
+import Data.Record.Anonymous.Internal.StrictVector (Vector)
 
 {-------------------------------------------------------------------------------
   Definition
@@ -71,14 +71,15 @@ import Data.Record.Anonymous.Internal.Row (Permutation(..))
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
---
--- TODO: Deal with field strictness/laziness.
 data Canonical f = Canonical {
       -- | All values in the record, in row order.
       --
       -- It is important that the vector is in row order: this is what makes
       -- it possible to define functions such as @mapM@ (for which ordering
       -- must be well-defined).
+      --
+      -- NOTE: Since @large-anon@ currently only supports records with strict
+      -- fields, we use a strict vector here.
       canonValues :: !(Vector (f Any))
 
       -- | Field names in row order
@@ -123,7 +124,9 @@ getAtIndex Canonical{canonValues} ix = canonValues Vector.! ix
 -- @O(1)@ if the list of updates is empty.
 setAtIndex :: [(Int, f Any)] -> Canonical f -> Canonical f
 setAtIndex [] c = c
-setAtIndex fs c@Canonical{canonValues} = c { canonValues = canonValues // fs }
+setAtIndex fs c@Canonical{canonValues} = c {
+      canonValues = canonValues Vector.// fs
+    }
 
 {-------------------------------------------------------------------------------
   Basic API

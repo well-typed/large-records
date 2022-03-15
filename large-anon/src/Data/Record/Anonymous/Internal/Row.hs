@@ -33,9 +33,10 @@ import Data.Kind
 import Data.Proxy (Proxy)
 import Data.Record.Generic (FieldMetadata(..))
 import Data.SOP.Dict
-import Data.Vector (Vector)
 import GHC.Exts (Any)
 import GHC.TypeLits
+
+import qualified Data.Vector as Lazy
 
 {-------------------------------------------------------------------------------
   Isomorphic records
@@ -103,10 +104,12 @@ class AllFields (r :: [(Symbol, Type)]) (c :: Type -> Constraint) where
   --
   -- This is a low-level function that should not be used in user code.
   -- Use 'constrain' or one of the constrained combinators such as 'cmap'.
+  --
+  -- This returns a /lazy/ vector because it is used to build a 'Rep'.
   fieldDicts :: AllFieldsDict r c
 
 type AllFieldsDict (r :: [(Symbol, Type)]) (c :: Type -> Constraint) =
-       Proxy r -> Proxy c -> Vector (Dict c Any)
+       Proxy r -> Proxy c -> Lazy.Vector (Dict c Any)
 
 {-------------------------------------------------------------------------------
   Metadata

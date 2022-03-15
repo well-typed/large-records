@@ -14,7 +14,9 @@
 -- Intended for unqualified import.
 module Data.Record.Anonymous.Internal.Row (
     -- * Isomorphic records
-    Isomorphic
+    Isomorphic(..)
+  , IsomorphicDict
+  , Permutation(..)
     -- * Merging records
   , Merge
     -- * Constraints
@@ -44,7 +46,18 @@ import GHC.TypeLits
 -- Instances of this class are provided by the plugin.
 --
 -- See 'castRecord' for details.
-class Isomorphic (xs :: [(Symbol, Type)]) (ys :: [(Symbol, Type)]) where
+class Isomorphic (r :: [(Symbol, Type)]) (r' :: [(Symbol, Type)]) where
+  isomorphic :: IsomorphicDict r r'
+
+type IsomorphicDict (r :: [(Symbol, Type)]) (r' :: [(Symbol, Type)]) =
+       Proxy r -> Proxy r' -> Permutation
+
+-- | Evidence that two records as isomorphic
+--
+-- This is an internal type that is not exposed to the user.
+newtype Permutation =
+   -- | In order of the fields in the /target/ record, the index in the /source/
+   Permutation [(String, Int)]
 
 {-------------------------------------------------------------------------------
   Merging records

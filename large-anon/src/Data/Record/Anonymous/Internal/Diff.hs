@@ -90,15 +90,13 @@ empty = Diff {
 -- > Diff.get f d c == Canon.get f (Diff.apply d c)
 --
 -- @O(1)@.
-get :: String -> Diff f -> Canonical f -> f Any
-get f Diff{..} c =
+get :: (Int, String) -> Diff f -> Canonical f -> f Any
+get (i, f) Diff{..} c =
     case HashMap.lookup f diffNew of
       Just x  -> x                                   -- inserted  in the diff
-      Nothing -> case HashMap.lookup ix diffUpd of
+      Nothing -> case HashMap.lookup i diffUpd of
                    Just x  -> x                      -- updated   in the diff
-                   Nothing -> Canon.getAtIndex c ix  -- unchanged in the diff
-        where
-          ix = Canon.indexOf c f
+                   Nothing -> Canon.getAtIndex c i   -- unchanged in the diff
 
 -- | Update existing field
 --
@@ -121,13 +119,11 @@ get f Diff{..} c =
 --   but only the first value will matter as it will shadow all the others.
 --
 -- @O(1)@.
-set :: String -> f Any -> Canonical f -> Diff f -> Diff f
-set f x c d@Diff{..} =
+set :: (Int, String) -> f Any -> Diff f -> Diff f
+set (i, f) x d@Diff{..} =
     case tryUpdateHashMap f (const x) diffNew of
       Just diffNew' -> d { diffNew = diffNew' }
-      Nothing       -> d { diffUpd = HashMap.insert ix x diffUpd }
-        where
-          ix = Canon.indexOf c f
+      Nothing       -> d { diffUpd = HashMap.insert i x diffUpd }
 
 -- | Insert new field
 --
@@ -180,7 +176,7 @@ fromCanonical :: Canonical f -> Diff f
 fromCanonical c = Diff {
       diffUpd = HashMap.empty
     , diffNew = HashMap.fromList (Canon.toList c)
-    , diffIns = map fst (canonFields c)
+    , diffIns = canonFields c
     }
 
 {-------------------------------------------------------------------------------

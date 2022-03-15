@@ -98,7 +98,7 @@ insert nm x = fromAdvanced . Adv.insert nm (I x) . toAdvanced
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge r r' = fromAdvanced $ Adv.merge (toAdvanced r) (toAdvanced r')
 
-castRecord :: (Isomorphic r r', KnownFields r') => Record r -> Record r'
+castRecord :: Isomorphic r r' => Record r -> Record r'
 castRecord = fromAdvanced . Adv.castRecord . toAdvanced
 
 {-------------------------------------------------------------------------------

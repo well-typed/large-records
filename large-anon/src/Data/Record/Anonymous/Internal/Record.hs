@@ -246,12 +246,7 @@ merge (canonicalize -> r) (canonicalize -> r') =
 -- ...
 -- ...No instance for (Isomorphic...
 -- ...
-castRecord :: forall f r r'.
-     (Isomorphic r r', KnownFields r')
-  => Record f r -> Record f r'
+castRecord :: forall f r r'. Isomorphic r r' => Record f r -> Record f r'
 castRecord (canonicalize -> r) =
-    unsafeFromCanonical $ Canon.reshuffle newOrder r
-  where
-    newOrder :: [String]
-    newOrder = fieldNames (Proxy @r')
-
+    unsafeFromCanonical $
+      Canon.reshuffle (isomorphic (Proxy @r) (Proxy @r')) r

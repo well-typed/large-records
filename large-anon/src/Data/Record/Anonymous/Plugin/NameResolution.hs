@@ -21,8 +21,9 @@ data ResolvedNames = ResolvedNames {
     , dataConFieldLazy       :: DataCon
     , dataConFieldMetadata   :: DataCon
     , dataConProxy           :: DataCon
-    , idEvidenceHasField     :: Id
     , idEvidenceAllFields    :: Id
+    , idEvidenceHasField     :: Id
+    , idEvidenceIsomorphic   :: Id
     , idEvidenceKnownFields  :: Id
     , idUnsafeCoerce         :: Id
     , tyConDict              :: TyCon
@@ -55,8 +56,9 @@ nameResolution = do
     dataConFieldMetadata <- getDataCon drGeneric "FieldMetadata"
     dataConProxy         <- getDataCon dProxy    "Proxy"
 
-    idEvidenceHasField    <- getVar draiEvidence "evidenceHasField"
     idEvidenceAllFields   <- getVar draiEvidence "evidenceAllFields"
+    idEvidenceHasField    <- getVar draiEvidence "evidenceHasField"
+    idEvidenceIsomorphic  <- getVar draiEvidence "evidenceIsomorphic"
     idEvidenceKnownFields <- getVar draiEvidence "evidenceKnownFields"
     idUnsafeCoerce        <- getVar uCoerce      "unsafeCoerce"
 

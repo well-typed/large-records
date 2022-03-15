@@ -75,29 +75,31 @@ data FieldLabel =
 -- Put another way: unlike in 'checkAllFieldsKnown', we do not insist that /all/
 -- fields are known here, but only the fields up to (including) the one we're
 -- looking for.
-findField :: FastString -> Fields -> Maybe Type
-findField nm = go . (:[])
+--
+-- Returns the index and the type of the field, if found.
+findField :: FastString -> Fields -> Maybe (Int, Type)
+findField nm = go 0 . (:[])
   where
-    go :: [Fields] -> Maybe Type
-    go []       = Nothing
-    go (fs:fss) =
+    go :: Int -> [Fields] -> Maybe (Int, Type)
+    go _ []       = Nothing
+    go i (fs:fss) =
         case fs of
           FieldsNil ->
-            go fss
+            go i fss
           FieldsVar _ ->
             -- The moment we encounter a variable (unknown part of the record),
             -- we must say that the field is unknown (see discussion above)
             Nothing
           FieldsCons (Field (FieldKnown nm') typ) fs' ->
             if nm == nm' then
-              Just typ
+              Just (i, typ)
             else
-              go (fs':fss)
+              go (succ i) (fs':fss)
           FieldsCons (Field (FieldVar _) _) _ ->
             -- We must also stop when we see a field with an unknown name
             Nothing
           FieldsMerge l r ->
-            go (l:r:fss)
+            go i (l:r:fss)
 
 {-------------------------------------------------------------------------------
   Records of statically known shape

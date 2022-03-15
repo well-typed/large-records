@@ -10,12 +10,13 @@ module Data.Record.Anonymous.Plugin.Constraints.Isomorphic (
 import Control.Monad (forM)
 import Data.Void
 
+import qualified Data.Map as Map
+
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
-import qualified Data.Map as Map
 
 {-------------------------------------------------------------------------------
   Definition
@@ -73,13 +74,28 @@ parseIsomorphic tcs rn@ResolvedNames{..} =
   Evidence
 -------------------------------------------------------------------------------}
 
-evidenceIsomorphic :: ResolvedNames -> CIsomorphic -> TcPluginM 'Solve EvTerm
-evidenceIsomorphic ResolvedNames{..} CIsomorphic{..} = do
+evidenceIsomorphic ::
+     ResolvedNames
+  -> CIsomorphic
+  -> [(FastString, Int)] -- ^ Matches 'Permutation'
+  -> TcPluginM 'Solve EvTerm
+evidenceIsomorphic ResolvedNames{..} CIsomorphic{..} perm = do
+     fields <- mapM onField perm
      return $
        evDataConApp
          (classDataCon clsIsomorphic)
          [isomorphicTypeLHS, isomorphicTypeRHS]
-         []
+         [ mkCoreApps (Var idEvidenceIsomorphic) [
+               Type isomorphicTypeLHS
+             , Type isomorphicTypeRHS
+             , mkListExpr (mkTupleTy Boxed [stringTy, intTy]) fields
+             ]
+         ]
+  where
+    onField :: (FastString, Int) -> TcPluginM 'Solve CoreExpr
+    onField (name, i) = do
+        name' <- mkStringExprFS name
+        return $ mkCoreTup [name', mkUncheckedIntExpr (fromIntegral i)]
 
 {-------------------------------------------------------------------------------
   Solver
@@ -99,11 +115,24 @@ solveIsomorphic rn orig (L loc iso@CIsomorphic{..}) =
           (inBoth, [], []) -> do
             eqs <- forM (Map.elems inBoth) $ \((l, r), _info) ->
                      newWanted loc $ mkPrimEqPredRole Nominal l r
-            ev  <- evidenceIsomorphic rn iso
+            ev  <- evidenceIsomorphic rn iso (mkPerm lhs rhs)
             return (Just (ev, orig), map mkNonCanonical eqs)
           _otherwise ->
             -- TODO: Return a custom error message
             return (Nothing, [])
       _otherwise ->
         return (Nothing, [])
+
+-- | Construct permutation
+--
+-- Precondition: the two records are in fact isomorphic.
+mkPerm :: KnownRecord a -> KnownRecord b -> [(FastString, Int)]
+mkPerm old new =
+    map inOld (knownRecordFields new)
+  where
+    inOld :: KnownField b -> (FastString, Int)
+    inOld KnownField{..} = (
+          knownFieldName
+        , knownRecordIndices old Map.! knownFieldName
+        )
 

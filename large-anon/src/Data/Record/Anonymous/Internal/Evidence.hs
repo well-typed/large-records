@@ -9,6 +9,7 @@ module Data.Record.Anonymous.Internal.Evidence (
     evidenceHasField
   , evidenceAllFields
   , evidenceKnownFields
+  , evidenceIsomorphic
   ) where
 
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
@@ -28,19 +29,14 @@ import Data.Record.Generic (FieldMetadata)
 -- Precondition: the record must have the specified field with type @a@, (where
 -- @a@ will be of the form @f a'@ for some @a'). This precondition is verified
 -- by the plugin before generating "evidence" that uses this function.
---
--- TODO: Since we only resolve HasField if we know the (prefix) of a row, we
--- could easily produce a vector offset here (along with the name, for 'Diff')?
--- If we do, do we still need the names at all in Canonical? If not, we might
--- be able to drop the 'RowMetadata' constraint from the 'Rep' conversions and
--- therefore also as a superclass constraint on the 'Generic' instance.
 evidenceHasField :: forall f r a.
-     String
+     Int    -- ^ Field index
+  -> String -- ^ Field name
   -> Record f r
   -> (a -> Record f r, a)
-evidenceHasField label r@Record{..} = (
-      \x -> r { recordDiff = Diff.set label (co' x) recordCanon recordDiff }
-    , co $ Diff.get label recordDiff recordCanon
+evidenceHasField i f r@Record{..} = (
+      \x -> r { recordDiff = Diff.set (i, f) (co' x) recordDiff }
+    , co $ Diff.get (i, f) recordDiff recordCanon
     )
   where
     co  :: f Any -> a
@@ -56,3 +52,7 @@ evidenceAllFields dicts _ _ = Vector.fromList dicts
 -- | Evidence for 'KnownFields'
 evidenceKnownFields :: [FieldMetadata Any] -> KnownFieldsDict r
 evidenceKnownFields metadata _ = metadata
+
+-- | Evidence for 'Isomorphic'
+evidenceIsomorphic :: [(String, Int)] -> IsomorphicDict r r'
+evidenceIsomorphic perm _ _ = Permutation perm

@@ -1,8 +1,9 @@
-{-# LANGUAGE BangPatterns    #-}
-{-# LANGUAGE NamedFieldPuns  #-}
-{-# LANGUAGE RankNTypes      #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 -- | Canonical gecord (i.e., no diff)
 --
@@ -15,12 +16,9 @@ module Data.Record.Anonymous.Internal.Canonical (
   , withShapeOf
     -- * Basic API
   , empty
-  , get
-  , set
   , insert
   , reshuffle
     -- * Indexed access
-  , indexOf
   , getAtIndex
   , setAtIndex
     -- * Conversion
@@ -57,6 +55,8 @@ import GHC.Exts (Any)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector         as Vector
 
+import Data.Record.Anonymous.Internal.Row (Permutation(..))
+
 {-------------------------------------------------------------------------------
   Definition
 -------------------------------------------------------------------------------}
@@ -81,30 +81,24 @@ data Canonical f = Canonical {
       -- must be well-defined).
       canonValues :: !(Vector (f Any))
 
-      -- | Map from field names to indices of the vector
+      -- | Field names in row order
       --
-      -- Invariants:
+      -- Inserting a field into a record currently has type
       --
-      -- * Every field is mapped to a different index
+      -- > insert :: Field nm -> f a -> Record f r -> Record f ('(nm, a) ': r)
       --
-      --   >     Map.lookup f canonIndices == Map.lookup f' canonIndices
-      --   > ==> f == f'
+      -- Specifically, it does /not/ have a 'Lacks' constraint (indeed, we do
+      -- not have such a constraint in the library at present). This means that
+      -- we do not know at compile time whether a particular call to 'insert' is
+      -- a true insert or whether it shadows an existing field. We can recover
+      -- this information from looking at 'canonFields'.
       --
-      -- * The codomain of 'canonIndices' is isomorphic to the domain of
-      --   'canonValues'
-      --
-      --   >    sort (Map.elems canonIndices)
-      --   > == [0 .. Vector.length canonValues - 1]
-    , canonIndices :: !(HashMap String Int)
-
-      -- | Field names and indices, in row order
-      --
-      -- We can compute this from 'canonIndices', but at @O(n log n)@ cost:
-      --
-      -- > canonFields == sortOn snd (Map.toList canonIndices)
-      --
-      -- TODO: Do we really need that Int?
-    , canonFields :: [(String, Int)]
+      -- TODO: It might perhaps be possible to omit this field if we allowed
+      -- shadowing also at the value level. If 'Canonical' is just a vector,
+      -- translating back and forth to the generic representation might be
+      -- easier (no need for 'KnownFields'). Not sure what the repercussions
+      -- of value-level shadowing would be though.
+    , canonFields :: [String]
     }
 
 -- | Construct a new 'Canonical' with the same shape but new values.
@@ -116,14 +110,6 @@ withShapeOf c values = c { canonValues = values }
 {-------------------------------------------------------------------------------
   Indexed access
 -------------------------------------------------------------------------------}
-
--- | Index of the given field
---
--- Precondition: the field must exist.
---
--- @O(1)@.
-indexOf :: Canonical f -> String -> Int
-indexOf Canonical{canonIndices} f = canonIndices HashMap.! f
 
 -- | Get field at the specified index
 --
@@ -146,26 +132,9 @@ setAtIndex fs c@Canonical{canonValues} = c { canonValues = canonValues // fs }
 -- | Empty record
 empty :: Canonical f
 empty = Canonical {
-      canonValues  = Vector.empty
-    , canonIndices = HashMap.empty
-    , canonFields  = []
+      canonValues = Vector.empty
+    , canonFields = []
     }
-
--- | Get field from the record
---
--- Precondition: the field must be present.
---
--- @O(1)@.
-get :: String -> Canonical f -> f Any
-get f c = getAtIndex c (indexOf c f)
-
--- | Update fields from the record
---
--- Precondition: the fields must be present.
---
--- @O(n)@ in the size of the record, independent of the number of updates.
-set :: [(String, f Any)] -> Canonical f -> Canonical f
-set fs c = setAtIndex (Prelude.map (first (indexOf c)) fs) c
 
 -- | Insert fields into the record
 --
@@ -187,9 +156,12 @@ insert new = fromList . (new ++) . toList
 --
 -- Implementation note: reshuffling /must/ create a new array, because the
 -- array must be in row order (so that we can traverse it in order).
-reshuffle :: [String] -> Canonical f -> Canonical f
-reshuffle newOrder c =
-    fromList $ Prelude.map (\nm -> (nm, get nm c)) newOrder
+reshuffle :: forall f. Permutation -> Canonical f -> Canonical f
+reshuffle (Permutation perm) c =
+    fromList $ Prelude.map aux perm
+  where
+    aux :: (String, Int) -> (String, f Any)
+    aux (nm, i) = (nm, getAtIndex c i)
 
 {-------------------------------------------------------------------------------
   Conversion
@@ -200,7 +172,7 @@ reshuffle newOrder c =
 -- @O(n)@
 toList :: Canonical f -> [(String, f Any)]
 toList c@Canonical{canonFields} =
-    Prelude.map (second (getAtIndex c)) canonFields
+    Prelude.map (second (getAtIndex c)) (Prelude.zip canonFields [0..])
 
 -- | Construct record from list of named fields in row order
 --
@@ -213,21 +185,20 @@ fromList = go [] HashMap.empty [] 0
     where
       go :: [f Any]             -- Accumulated values, in reverse row order
          -> HashMap String Int  -- Accumulated indices
-         -> [(String, Int)]     -- Accumulated fields, in reverse row order
+         -> [String]            -- Accumulated fields, in reverse row order
          -> Int                 -- Next available index
          -> [(String, f Any)]
          -> Canonical f
-      go accValues accIndices accFields !nextIx [] = Canonical {
-            canonValues  = Vector.fromListN nextIx (reverse accValues)
-          , canonIndices = accIndices
-          , canonFields  = reverse accFields
+      go accValues _accIndices accFields !nextIx [] = Canonical {
+            canonValues = Vector.fromListN nextIx (reverse accValues)
+          , canonFields = reverse accFields
           }
       go accValues accIndices accFields !nextIx ((f, x):fs) =
           case HashMap.lookup f accIndices of
             Just _  -> go accValues accIndices accFields nextIx fs -- shadowed
             Nothing -> go (x : accValues)
                           (HashMap.insert f nextIx accIndices)
-                          ((f, nextIx) : accFields)
+                          (f : accFields)
                           (succ nextIx)
                           fs
 
@@ -237,13 +208,9 @@ fromList = go [] HashMap.empty [] 0
 -- shape. Unlike 'fromList', this does /not/ take care of shadowing.
 fromVector :: [String] -> Vector (f Any) -> Canonical f
 fromVector names values = Canonical {
-      canonValues  = values
-    , canonIndices = HashMap.fromList fields
-    , canonFields  = fields
+      canonValues = values
+    , canonFields = names
     }
-  where
-    fields :: [(String, Int)]
-    fields = Prelude.zip names [0..]
 
 {-------------------------------------------------------------------------------
   Simple (non-constrained) combinators

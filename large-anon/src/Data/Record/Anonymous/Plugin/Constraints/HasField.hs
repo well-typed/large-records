@@ -111,9 +111,10 @@ parseHasField tcs rn@ResolvedNames{..} =
 evidenceHasField ::
      ResolvedNames
   -> CHasField
-  -> FastString -- ^ Field name (we cannot produce evidence for unknown fields)
+  -> Int        -- ^ Field index
+  -> FastString -- ^ Field name
   -> TcPluginM 'Solve EvTerm
-evidenceHasField ResolvedNames{..} CHasField{..} name = do
+evidenceHasField ResolvedNames{..} CHasField{..} i name = do
     str <- mkStringExprFS name
     return $
       evDataConApp
@@ -123,6 +124,7 @@ evidenceHasField ResolvedNames{..} CHasField{..} name = do
               Type hasFieldTypeFunctor
             , Type hasFieldTypeRecord
             , Type hasFieldTypeField
+            , mkUncheckedIntExpr (fromIntegral i)
             , str
             ]
         ]
@@ -144,10 +146,10 @@ solveHasField rn orig (L loc hf@CHasField{hasFieldLabel = FieldKnown name, ..}) 
         -- TODO: If the record is fully known, we should issue a custom type
         -- error here rather than leaving the constraint unsolved
         return (Nothing, [])
-      Just typ -> do
+      Just (i, typ) -> do
         eq <- newWanted loc $
                 mkPrimEqPredRole Nominal
                   hasFieldTypeField
                   (hasFieldTypeFunctor `mkAppTy` typ)
-        ev <- evidenceHasField rn hf name
+        ev <- evidenceHasField rn hf i name
         return (Just (ev, orig), [mkNonCanonical eq])

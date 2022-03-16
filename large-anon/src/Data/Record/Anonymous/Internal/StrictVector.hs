@@ -11,6 +11,7 @@ module Data.Record.Anonymous.Internal.StrictVector (
     -- * Conversion
   , toLazy
   , fromLazy
+  , fromList
     -- * Hybrid functions
   , zipWithLazy
   ) where
@@ -29,7 +30,7 @@ import Control.Monad
 
 -- | Strict vector
 newtype Vector a = WrapLazy { unwrapLazy :: V.Vector a }
-  deriving newtype (Foldable)
+  deriving newtype (Show, Eq, Foldable, Semigroup, Monoid)
 
 -- | Mutable strict vector
 newtype MVector s a = WrapLazyM { unwrapLazyM :: V.MVector s a }
@@ -95,14 +96,8 @@ instance Traversable Vector where
   -- apart from the call to 'forceElems'. Since 'forceElems' is lazy, this does
   -- not result in any additional traversals.
   traverse f v =
-      G.fromListN (G.length v) . forceElems <$>
+      G.fromListN (G.length v) . forceListElems <$>
         traverse f (G.toList (unwrapLazy v))
-    where
-      -- 'forceElems' ensures that as the list is being traversed (to create the
-      -- new vector), the elements of the list are forced to WHNF one by one.
-      forceElems :: [a] -> [a]
-      forceElems []      = []
-      forceElems (!a:as) = a:forceElems as
 
 {-------------------------------------------------------------------------------
   Conversion
@@ -116,6 +111,9 @@ fromLazy v = WrapLazy $ G.create $ do
     v' <- GM.new (G.length v)
     G.iforM_ v $ \i !a -> GM.unsafeWrite v' i a
     return v'
+
+fromList :: [a] -> Vector a
+fromList = WrapLazy . V.fromList . forceListElems
 
 {-------------------------------------------------------------------------------
   Hybrid functions
@@ -135,3 +133,14 @@ zipWithLazy f va vb = WrapLazy $ G.create $ do
       GM.unsafeWrite vc i c
     return vc
 
+{-------------------------------------------------------------------------------
+  Internal auxiliary
+-------------------------------------------------------------------------------}
+
+-- | Tie evaluation of the spine of the list to evaluation of its elements
+--
+-- 'forceElems' ensures that as the list is being traversed (to create the
+-- new vector), the elements of the list are forced to WHNF one by one.
+forceListElems :: [a] -> [a]
+forceListElems []      = []
+forceListElems (!a:as) = a:forceListElems as

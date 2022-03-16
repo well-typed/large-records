@@ -58,7 +58,7 @@ map :: (forall x. f x -> g x) -> Record f r -> Record g r
 map f (c -> r) = fromC $ Canon.map f r
 
 mapM ::
-     Applicative m
+     Monad m
   => (forall x. f x -> m (g x))
   -> Record f r -> m (Record g r)
 mapM f (c -> r) = fromC <$> Canon.mapM f r
@@ -72,15 +72,15 @@ zipWith ::
 zipWith f (c -> r) (c -> r') = fromC $ Canon.zipWith f r r'
 
 zipWithM ::
-     Applicative m
+     Monad m
   => (forall x. f x -> g x -> m (h x))
   -> Record f r -> Record g r -> m (Record h r)
-zipWithM f (c -> r) (c -> r') = fromC <$> Canon.zipWithA f r r'
+zipWithM f (c -> r) (c -> r') = fromC <$> Canon.zipWithM f r r'
 
 collapse :: Record (K a) r -> [a]
 collapse (c -> r) = Canon.collapse r
 
-sequenceA :: Applicative m => Record (m :.: f) r -> m (Record f r)
+sequenceA :: Monad m => Record (m :.: f) r -> m (Record f r)
 sequenceA (c -> r) = fromC <$> Canon.sequenceA r
 
 pure :: forall f r. KnownFields r => (forall x. f x) -> Record f r

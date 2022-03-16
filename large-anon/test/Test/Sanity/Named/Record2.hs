@@ -1,7 +1,7 @@
 {-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Test.Record.Anonymous.Sanity.Named.Record2 (
+module Test.Sanity.Named.Record2 (
     Record(..)
   ) where
 

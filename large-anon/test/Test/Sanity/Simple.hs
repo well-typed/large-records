@@ -7,7 +7,7 @@
 --
 -- The @Simple@ is a thin wrapper around the @Advanced@ interface, so a few
 -- select sanity tests suffice.
-module Test.Record.Anonymous.Sanity.Simple (tests) where
+module Test.Sanity.Simple (tests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -16,7 +16,7 @@ import Data.Record.Anonymous.Simple (Record)
 import qualified Data.Record.Anonymous.Simple as Anon
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.Simple" [
+tests = testGroup "Test.Sanity.Simple" [
       testCase "hasField" test_hasField
     , testCase "merge"    test_merge
     ]

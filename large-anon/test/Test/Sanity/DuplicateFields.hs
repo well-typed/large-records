@@ -3,7 +3,7 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Test.Record.Anonymous.Sanity.DuplicateFields (tests) where
+module Test.Sanity.DuplicateFields (tests) where
 
 import Data.SOP.BasicFunctors
 
@@ -14,7 +14,7 @@ import Data.Record.Anonymous.Advanced (Record)
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.DuplicateFields" [
+tests = testGroup "Test.Sanity.DuplicateFields" [
       testCase "insertSameType"      test_insertSameType
     , testCase "insertDifferentType" test_insertDifferentType
     , testCase "mergeSameType"       test_mergeSameType

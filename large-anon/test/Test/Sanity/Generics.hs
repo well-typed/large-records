@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 {-# OPTIONS_GHC -Wno-orphans #-} -- for the ToJSON/FromJSON instances
 
-module Test.Record.Anonymous.Sanity.Generics (tests) where
+module Test.Sanity.Generics (tests) where
 
 import Data.Aeson
 import Data.Proxy
@@ -17,13 +17,13 @@ import qualified Data.Record.Anonymous.Advanced as Anon
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import qualified Test.Record.Anonymous.Sanity.Named.Record1 as R1
-import qualified Test.Record.Anonymous.Sanity.Named.Record2 as R2
+import qualified Test.Sanity.Named.Record1 as R1
+import qualified Test.Sanity.Named.Record2 as R2
 
 -- add test with non-I functor
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.Generics" [
+tests = testGroup "Test.Sanity.Generics" [
       testCase "Show"           test_Show
     , testCase "Eq"             test_Eq
     , testCase "Ord"            test_Ord

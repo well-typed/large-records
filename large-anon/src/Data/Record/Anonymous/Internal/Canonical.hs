@@ -31,7 +31,6 @@ module Data.Record.Anonymous.Internal.Canonical (
   , mapM
     -- ** Zipping
   , zipWith
-  , zipWithA
   , zipWithM
     -- ** "Foldable"
   , collapse
@@ -57,11 +56,13 @@ import qualified Data.Vector.Generic as Vector
 import Data.Record.Anonymous.Internal.Row (Permutation(..))
 import Data.Record.Anonymous.Internal.StrictVector (Vector)
 
+import qualified Data.Record.Anonymous.Internal.StrictVector as Strict
+
 {-------------------------------------------------------------------------------
   Definition
 -------------------------------------------------------------------------------}
 
--- | Canonical gecord representation
+-- | Canonical record representation
 --
 -- Canonicity here refers to the fact that we have no @Diff@ to apply
 -- (see "Data.Record.Anonymous.Internal.Diff").
@@ -217,16 +218,23 @@ fromVector names values = Canonical {
 
 {-------------------------------------------------------------------------------
   Simple (non-constrained) combinators
+
+  NOTE: Some of these have a 'Monad' constraint where one might expect an
+  'Applicative' only . The reason is that this allows for better implementations
+  in terms of the underlying vector (for example, 'zipWithM' in @base@ merely
+  requires an 'Applicative constraint, but on vectors has a 'Monad' constraint).
+  Should this turn out to be problematic, we could offer an alternative more
+  general but slower set of operators.
 -------------------------------------------------------------------------------}
 
 map :: (forall x. f x -> g x) -> Canonical f -> Canonical g
 map f c = withShapeOf c $ fmap f (canonValues c)
 
 mapM ::
-     Applicative m
+     Monad m
   => (forall x. f x -> m (g x))
   -> Canonical f -> m (Canonical g)
-mapM f c = fmap (withShapeOf c) $ traverse f (canonValues c)
+mapM f c = fmap (withShapeOf c) $ Strict.mapM f (canonValues c)
 
 -- | Zip two records
 --
@@ -236,15 +244,6 @@ zipWith ::
   -> Canonical f -> Canonical g -> Canonical h
 zipWith f c c' = withShapeOf c $
     Vector.zipWith f (canonValues c) (canonValues c')
-
--- | Applicative zip of two records
---
--- See also 'zipWithM', which avoids one vector copy.
-zipWithA ::
-     Applicative m
-  => (forall x. f x -> g x -> m (h x))
-  -> Canonical f -> Canonical g -> m (Canonical h)
-zipWithA f c c' = sequenceA $ zipWith (\x y -> Comp $ f x y) c c'
 
 -- | Monadic zip of two records
 --
@@ -262,8 +261,8 @@ collapse c = co $ Vector.toList (canonValues c)
     co :: [K a Any] -> [a]
     co = coerce
 
-sequenceA :: Applicative m => Canonical (m :.: f) -> m (Canonical f)
-sequenceA c = fmap (withShapeOf c) $ traverse unComp $ canonValues c
+sequenceA :: Monad m => Canonical (m :.: f) -> m (Canonical f)
+sequenceA c = fmap (withShapeOf c) $ Strict.mapM unComp $ canonValues c
 
 ap :: Canonical (f -.-> g) -> Canonical f -> Canonical g
 ap = zipWith apFn

@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
 
 module Data.Record.Anonymous.Internal.StrictVector (
@@ -11,17 +12,25 @@ module Data.Record.Anonymous.Internal.StrictVector (
     -- * Conversion
   , toLazy
   , fromLazy
+  , fromList
+    -- * Combinators
+  , mapM
     -- * Hybrid functions
   , zipWithLazy
   ) where
 
+import Prelude hiding (mapM)
+
+import Control.Monad (unless)
 import Data.Function (on)
 
-import qualified Data.Vector                      as V
-import qualified Data.Vector.Generic              as G
-import qualified Data.Vector.Generic.Mutable      as GM
-import qualified Data.Vector.Generic.Mutable.Base as GMB
-import Control.Monad
+import qualified Data.Vector                       as V
+import qualified Data.Vector.Generic               as G
+import qualified Data.Vector.Generic.Mutable       as GM
+import qualified Data.Vector.Generic.Mutable.Base  as GMB
+import qualified Data.Vector.Fusion.Bundle.Monadic as FBM
+import qualified Data.Vector.Fusion.Bundle.Size    as FBS
+import qualified Data.Vector.Fusion.Stream.Monadic as FSM
 
 {-------------------------------------------------------------------------------
   Definition
@@ -29,7 +38,7 @@ import Control.Monad
 
 -- | Strict vector
 newtype Vector a = WrapLazy { unwrapLazy :: V.Vector a }
-  deriving newtype (Foldable)
+  deriving newtype (Show, Eq, Foldable, Semigroup, Monoid)
 
 -- | Mutable strict vector
 newtype MVector s a = WrapLazyM { unwrapLazyM :: V.MVector s a }
@@ -90,19 +99,17 @@ instance Functor Vector where
         GM.unsafeWrite v' i b
       return v'
 
+{-
+-- We /can/ provide a 'Traversable' instance, but it incurs two traversals.
+-- Use 'mapM' instead.
 instance Traversable Vector where
   -- This is identical to the 'Traversable' instance for regular 'Vector',
   -- apart from the call to 'forceElems'. Since 'forceElems' is lazy, this does
   -- not result in any additional traversals.
   traverse f v =
-      G.fromListN (G.length v) . forceElems <$>
+      G.fromListN (G.length v) . forceListElems <$>
         traverse f (G.toList (unwrapLazy v))
-    where
-      -- 'forceElems' ensures that as the list is being traversed (to create the
-      -- new vector), the elements of the list are forced to WHNF one by one.
-      forceElems :: [a] -> [a]
-      forceElems []      = []
-      forceElems (!a:as) = a:forceElems as
+-}
 
 {-------------------------------------------------------------------------------
   Conversion
@@ -116,6 +123,25 @@ fromLazy v = WrapLazy $ G.create $ do
     v' <- GM.new (G.length v)
     G.iforM_ v $ \i !a -> GM.unsafeWrite v' i a
     return v'
+
+fromList :: [a] -> Vector a
+fromList = WrapLazy . V.fromList . forceListElems
+
+{-------------------------------------------------------------------------------
+  Combinators
+-------------------------------------------------------------------------------}
+
+mapM :: forall m a b. Monad m => (a -> m b) -> Vector a -> m (Vector b)
+mapM f (WrapLazy v) = WrapLazy <$>
+    G.unstreamM (FBM.fromStream stream (FBS.Exact (G.length v)))
+  where
+    stream :: FSM.Stream m b
+    stream = FSM.Stream go 0
+      where
+        go :: Int -> m (FSM.Step Int b)
+        go i | i >= G.length v = return FSM.Done
+             | otherwise       = do !b <- f (G.unsafeIndex v i)
+                                    return $ FSM.Yield b (succ i)
 
 {-------------------------------------------------------------------------------
   Hybrid functions
@@ -135,3 +161,14 @@ zipWithLazy f va vb = WrapLazy $ G.create $ do
       GM.unsafeWrite vc i c
     return vc
 
+{-------------------------------------------------------------------------------
+  Internal auxiliary
+-------------------------------------------------------------------------------}
+
+-- | Tie evaluation of the spine of the list to evaluation of its elements
+--
+-- 'forceElems' ensures that as the list is being traversed (to create the
+-- new vector), the elements of the list are forced to WHNF one by one.
+forceListElems :: [a] -> [a]
+forceListElems []      = []
+forceListElems (!a:as) = a:forceListElems as

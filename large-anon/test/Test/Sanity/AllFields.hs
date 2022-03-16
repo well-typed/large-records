@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Test.Record.Anonymous.Sanity.AllFields (tests) where
+module Test.Sanity.AllFields (tests) where
 
 import Data.Proxy
 import Data.SOP.BasicFunctors
@@ -18,7 +18,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.AllFields" [
+tests = testGroup "Test.Sanity.AllFields" [
       testCase "manual"  test_manual
     , testCase "derived" test_derived
     ]

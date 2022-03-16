@@ -15,7 +15,7 @@
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 {-# OPTIONS -Wno-orphans #-}
 
-module Test.Record.Anonymous.Prop.Model.Generator (
+module Test.Prop.Record.Model.Generator (
     -- * Existential wrapper around 'ModelRecord' that hides the record shape
     SomeFields(..)
   , SomeRecord(..)
@@ -43,14 +43,14 @@ import qualified Data.Record.Anonymous.Advanced as Anon
 
 import Test.QuickCheck
 
-import Test.Record.Anonymous.Prop.Model (
+import Test.Prop.Record.Model (
     ModelRecord(..)
   , ModelFields(..)
   , ModelSatisfies
   , Types
   )
 
-import qualified Test.Record.Anonymous.Prop.Model as Model
+import qualified Test.Prop.Record.Model as Model
 
 {-------------------------------------------------------------------------------
   Existential wrapper around 'ModelRecord' that hides the record shape

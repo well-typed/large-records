@@ -11,7 +11,7 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Test.Record.Anonymous.Sanity.TypeLevelMetadata (tests) where
+module Test.Sanity.TypeLevelMetadata (tests) where
 
 import Data.Record.Generic
 import Data.Record.Generic.SOP
@@ -26,7 +26,7 @@ import Data.Record.Anonymous.Advanced (Record)
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.TypeLevelMetadata" [
+tests = testGroup "Test.Sanity.TypeLevelMetadata" [
       testCase "metadata"  test_metadata
     , testCase "toFromSOP" test_toFromSOP
     ]

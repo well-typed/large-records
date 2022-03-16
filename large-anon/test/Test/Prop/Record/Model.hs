@@ -23,9 +23,9 @@
 --
 -- Intended for qualified import.
 --
--- > import Test.Record.Anonymous.Prop.Model (ModelRecord(..), ModelFields(..))
--- > import qualified Test.Record.Anonymous.Prop.Model as Model
-module Test.Record.Anonymous.Prop.Model (
+-- > import Test.Prop.Model (ModelRecord(..), ModelFields(..))
+-- > import qualified Test.Prop.Model as Model
+module Test.Prop.Record.Model (
     -- * Model proper
     ModelFields(..)
   , Types

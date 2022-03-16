@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeOperators    #-}
 {-# LANGUAGE ViewPatterns     #-}
 
-module Test.Record.Anonymous.Prop.Combinators.Simple (tests) where
+module Test.Prop.Record.Combinators.Simple (tests) where
 
 import Control.Monad.State
 import Data.Bifunctor
@@ -14,13 +14,13 @@ import qualified Data.Record.Anonymous.Advanced as Anon
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
-import Test.Record.Anonymous.Prop.Model.Orphans ()
-import Test.Record.Anonymous.Prop.Model.Generator
+import Test.Prop.Record.Model.Orphans ()
+import Test.Prop.Record.Model.Generator
 
-import qualified Test.Record.Anonymous.Prop.Model as Modl
+import qualified Test.Prop.Record.Model as Modl
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Prop.Combinators.Simple" [
+tests = testGroup "Test.Prop.Record.Combinators.Simple" [
       testProperty "map"       test_map
     , testProperty "mapM"      test_mapM
     , testProperty "zip"       test_zip

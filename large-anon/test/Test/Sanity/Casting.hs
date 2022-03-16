@@ -3,7 +3,7 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Test.Record.Anonymous.Sanity.Casting (tests) where
+module Test.Sanity.Casting (tests) where
 
 import Data.SOP.BasicFunctors
 
@@ -14,7 +14,7 @@ import Data.Record.Anonymous.Advanced (Record)
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.Casting" [
+tests = testGroup "Test.Sanity.Casting" [
       testCase "id"      test_id
     , testCase "reorder" test_reorder
     , testCase "merge"   test_merge

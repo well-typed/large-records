@@ -4,7 +4,7 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Test.Record.Anonymous.Sanity.HasField (tests) where
+module Test.Sanity.HasField (tests) where
 
 import Data.SOP.BasicFunctors -- TODO: Should this be exported from large-anon?
 
@@ -15,7 +15,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.HasField" [
+tests = testGroup "Test.Sanity.HasField" [
       testCase "HasField" test_HasField
     ]
 

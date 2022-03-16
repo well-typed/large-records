@@ -2,31 +2,31 @@ module Main (main) where
 
 import Test.Tasty
 
-import qualified Test.Record.Anonymous.Sanity.HasField
-import qualified Test.Record.Anonymous.Sanity.Generics
-import qualified Test.Record.Anonymous.Sanity.Merging
-import qualified Test.Record.Anonymous.Sanity.Casting
-import qualified Test.Record.Anonymous.Sanity.DuplicateFields
-import qualified Test.Record.Anonymous.Sanity.TypeLevelMetadata
-import qualified Test.Record.Anonymous.Sanity.AllFields
-import qualified Test.Record.Anonymous.Sanity.Simple
-import qualified Test.Record.Anonymous.Prop.Combinators.Simple
-import qualified Test.Record.Anonymous.Prop.Combinators.Constrained
+import qualified Test.Sanity.HasField
+import qualified Test.Sanity.Generics
+import qualified Test.Sanity.Merging
+import qualified Test.Sanity.Casting
+import qualified Test.Sanity.DuplicateFields
+import qualified Test.Sanity.TypeLevelMetadata
+import qualified Test.Sanity.AllFields
+import qualified Test.Sanity.Simple
+import qualified Test.Prop.Record.Combinators.Simple
+import qualified Test.Prop.Record.Combinators.Constrained
 
 main :: IO ()
 main = defaultMain $ testGroup "large-anon" [
       testGroup "Sanity" [
-          Test.Record.Anonymous.Sanity.HasField.tests
-        , Test.Record.Anonymous.Sanity.Generics.tests
-        , Test.Record.Anonymous.Sanity.Merging.tests
-        , Test.Record.Anonymous.Sanity.Casting.tests
-        , Test.Record.Anonymous.Sanity.DuplicateFields.tests
-        , Test.Record.Anonymous.Sanity.TypeLevelMetadata.tests
-        , Test.Record.Anonymous.Sanity.AllFields.tests
-        , Test.Record.Anonymous.Sanity.Simple.tests
+          Test.Sanity.HasField.tests
+        , Test.Sanity.Generics.tests
+        , Test.Sanity.Merging.tests
+        , Test.Sanity.Casting.tests
+        , Test.Sanity.DuplicateFields.tests
+        , Test.Sanity.TypeLevelMetadata.tests
+        , Test.Sanity.AllFields.tests
+        , Test.Sanity.Simple.tests
         ]
     , testGroup "Prop" [
-          Test.Record.Anonymous.Prop.Combinators.Simple.tests
-        , Test.Record.Anonymous.Prop.Combinators.Constrained.tests
+          Test.Prop.Record.Combinators.Simple.tests
+        , Test.Prop.Record.Combinators.Constrained.tests
         ]
     ]

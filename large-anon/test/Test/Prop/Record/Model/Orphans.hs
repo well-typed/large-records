@@ -1,6 +1,6 @@
 {-# OPTIONS -Wno-orphans #-}
 
-module Test.Record.Anonymous.Prop.Model.Orphans () where
+module Test.Prop.Record.Model.Orphans () where
 
 import Data.SOP.BasicFunctors
 

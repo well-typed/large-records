@@ -4,7 +4,7 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Test.Record.Anonymous.Sanity.Merging (tests) where
+module Test.Sanity.Merging (tests) where
 
 import Data.SOP.BasicFunctors
 
@@ -15,7 +15,7 @@ import Data.Record.Anonymous.Advanced (Record)
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 tests :: TestTree
-tests = testGroup "Test.Record.Anonymous.Sanity.Merging" [
+tests = testGroup "Test.Sanity.Merging" [
       testCase "concrete"     test_concrete
     , testCase "polymorphic"  test_polymorphic
     , testCase "eqConstraint" test_eqConstraint

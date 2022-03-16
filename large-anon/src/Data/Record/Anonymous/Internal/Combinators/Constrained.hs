@@ -101,7 +101,7 @@ cmap p f = Simple.map aux . constrain p
     aux (Constrained x) = f x
 
 cmapM ::
-     (Applicative m, AllFields r c)
+     (Monad m, AllFields r c)
   => Proxy c
   -> (forall x. c x => f x -> m (g x))
   -> Record f r -> m (Record g r)
@@ -112,7 +112,7 @@ cmapM p f = Simple.sequenceA . cmap p (Comp . f)
 -------------------------------------------------------------------------------}
 
 czipWithM :: forall m r c f g h.
-     (Applicative m, AllFields r c)
+     (Monad m, AllFields r c)
   => Proxy c
   -> (forall x. c x => f x -> g x -> m (h x))
   -> Record f r -> Record g r -> m (Record h r)

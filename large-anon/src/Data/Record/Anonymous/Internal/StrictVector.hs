@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
 
 module Data.Record.Anonymous.Internal.StrictVector (
@@ -12,17 +13,24 @@ module Data.Record.Anonymous.Internal.StrictVector (
   , toLazy
   , fromLazy
   , fromList
+    -- * Combinators
+  , mapM
     -- * Hybrid functions
   , zipWithLazy
   ) where
 
+import Prelude hiding (mapM)
+
+import Control.Monad (unless)
 import Data.Function (on)
 
-import qualified Data.Vector                      as V
-import qualified Data.Vector.Generic              as G
-import qualified Data.Vector.Generic.Mutable      as GM
-import qualified Data.Vector.Generic.Mutable.Base as GMB
-import Control.Monad
+import qualified Data.Vector                       as V
+import qualified Data.Vector.Generic               as G
+import qualified Data.Vector.Generic.Mutable       as GM
+import qualified Data.Vector.Generic.Mutable.Base  as GMB
+import qualified Data.Vector.Fusion.Bundle.Monadic as FBM
+import qualified Data.Vector.Fusion.Bundle.Size    as FBS
+import qualified Data.Vector.Fusion.Stream.Monadic as FSM
 
 {-------------------------------------------------------------------------------
   Definition
@@ -91,6 +99,9 @@ instance Functor Vector where
         GM.unsafeWrite v' i b
       return v'
 
+{-
+-- We /can/ provide a 'Traversable' instance, but it incurs two traversals.
+-- Use 'mapM' instead.
 instance Traversable Vector where
   -- This is identical to the 'Traversable' instance for regular 'Vector',
   -- apart from the call to 'forceElems'. Since 'forceElems' is lazy, this does
@@ -98,6 +109,7 @@ instance Traversable Vector where
   traverse f v =
       G.fromListN (G.length v) . forceListElems <$>
         traverse f (G.toList (unwrapLazy v))
+-}
 
 {-------------------------------------------------------------------------------
   Conversion
@@ -114,6 +126,22 @@ fromLazy v = WrapLazy $ G.create $ do
 
 fromList :: [a] -> Vector a
 fromList = WrapLazy . V.fromList . forceListElems
+
+{-------------------------------------------------------------------------------
+  Combinators
+-------------------------------------------------------------------------------}
+
+mapM :: forall m a b. Monad m => (a -> m b) -> Vector a -> m (Vector b)
+mapM f (WrapLazy v) = WrapLazy <$>
+    G.unstreamM (FBM.fromStream stream (FBS.Exact (G.length v)))
+  where
+    stream :: FSM.Stream m b
+    stream = FSM.Stream go 0
+      where
+        go :: Int -> m (FSM.Step Int b)
+        go i | i >= G.length v = return FSM.Done
+             | otherwise       = do !b <- f (G.unsafeIndex v i)
+                                    return $ FSM.Yield b (succ i)
 
 {-------------------------------------------------------------------------------
   Hybrid functions

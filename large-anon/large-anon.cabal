@@ -26,6 +26,7 @@ library
       Data.Record.Anonymous.Internal.Combinators.Constrained
       Data.Record.Anonymous.Internal.Combinators.Simple
       Data.Record.Anonymous.Internal.Constraints
+      Data.Record.Anonymous.Internal.Debugging
       Data.Record.Anonymous.Internal.Diff
       Data.Record.Anonymous.Internal.Evidence
       Data.Record.Anonymous.Internal.Generics
@@ -61,6 +62,7 @@ library
     , large-generics
     , mtl
     , record-hasfield
+    , recover-rtti
     , sop-core
     , text
     , unordered-containers

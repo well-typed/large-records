@@ -1,5 +1,9 @@
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving  #-}
+{-# LANGUAGE TupleSections       #-}
 
 -- | Record diff
 --
@@ -16,16 +20,24 @@ module Data.Record.Anonymous.Internal.Diff (
   , insert
     -- * Batch operations
   , apply
-  , fromCanonical
+    -- * Debugging support
+  , toString
   ) where
 
+import Control.Monad.State (State, runState, state)
+import Data.Bifunctor (first)
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
+import Data.List.NonEmpty (NonEmpty(..), (<|))
+import Data.SOP.BasicFunctors (K(K))
+import Data.Tuple (swap)
 import GHC.Exts (Any)
 
+import qualified Data.List.NonEmpty  as NE
 import qualified Data.HashMap.Strict as HashMap
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical(..))
+import Data.Record.Anonymous.Internal.Debugging
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 
@@ -54,18 +66,20 @@ data Diff f = Diff {
       -- Indices refer to the original record.
       diffUpd :: HashMap Int (f Any)
 
-      -- | Values of newly inserted fields
-    , diffNew :: HashMap String (f Any)
-
       -- | List of new fields, most recently inserted first
       --
       -- May contain duplicates: fields inserted later shadow earlier fields.
-      --
-      -- We do not remove duplicates during 'Diff' construction, as this would
-      -- result in @O(n²)@ complexity of insert. Instead we deal with this in
-      -- a single sweep in 'apply'.
     , diffIns :: [String]
+
+      -- | Values for the newly inserted fields
+      --
+      -- If the field is shadowed, the list will have multiple entries. Entries
+      -- in the lists are from new to old, so the head of the list is the
+      -- "currently visible" entry.
+    , diffNew :: HashMap String (NonEmpty (f Any))
     }
+
+deriving instance Show a => Show (Diff (K a))
 
 {-------------------------------------------------------------------------------
   Incremental construction
@@ -81,8 +95,8 @@ data Diff f = Diff {
 empty :: Diff f
 empty = Diff {
       diffUpd = HashMap.empty
-    , diffNew = HashMap.empty
     , diffIns = []
+    , diffNew = HashMap.empty
     }
 
 -- | Get field
@@ -96,7 +110,7 @@ empty = Diff {
 get :: (Int, String) -> Diff f -> Canonical f -> f Any
 get (i, f) Diff{..} c =
     case HashMap.lookup f diffNew of
-      Just x  -> x                                   -- inserted  in the diff
+      Just xs -> NE.head xs                          -- inserted  in the diff
       Nothing -> case HashMap.lookup i diffUpd of
                    Just x  -> x                      -- updated   in the diff
                    Nothing -> Canon.getAtIndex c i   -- unchanged in the diff
@@ -122,11 +136,14 @@ get (i, f) Diff{..} c =
 --   but only the first value will matter as it will shadow all the others.
 --
 -- @O(1)@.
-set :: (Int, String) -> f Any -> Diff f -> Diff f
+set :: forall f. (Int, String) -> f Any -> Diff f -> Diff f
 set (i, f) x d@Diff{..} =
-    case tryUpdateHashMap f (const x) diffNew of
-      Just diffNew' -> d { diffNew = diffNew' }
-      Nothing       -> d { diffUpd = HashMap.insert i x diffUpd }
+    case tryUpdateHashMap f updateInserted diffNew of
+      Just ((), diffNew') -> d { diffNew = diffNew' }
+      Nothing             -> d { diffUpd = HashMap.insert i x diffUpd }
+  where
+    updateInserted :: NonEmpty (f Any) -> ((), Maybe (NonEmpty (f Any)))
+    updateInserted (_ :| prev) = ((), Just (x :| prev))
 
 -- | Insert new field
 --
@@ -136,71 +153,75 @@ set (i, f) x d@Diff{..} =
 -- > Diff.apply (Diff.insert f x d) c = Canon.insert [(f, x)] (apply d c)
 --
 -- @(1)@.
-insert :: String -> f Any -> Diff f -> Diff f
+insert :: forall f. String -> f Any -> Diff f -> Diff f
 insert f x d@Diff{..} = d {
-      diffNew = HashMap.insert f x diffNew
-    , diffIns = f : diffIns
+      diffIns = f : diffIns
+    , diffNew = HashMap.alter (Just . insertField) f diffNew
     }
+  where
+    insertField :: Maybe (NonEmpty (f Any)) -> NonEmpty (f Any)
+    insertField Nothing     = x :| []
+    insertField (Just prev) = x <| prev
 
 {-------------------------------------------------------------------------------
   Batch operations
 -------------------------------------------------------------------------------}
 
+-- | All new fields (including shadowed fields), from new to old
+--
+-- @O(n)@.
+allNewFields :: Diff f -> [(String, f Any)]
+allNewFields = \Diff{..} -> go diffNew diffIns
+  where
+    go :: HashMap String (NonEmpty (f Any)) -> [String] -> [(String, f Any)]
+    go _  []     = []
+    go vs (x:xs) = case tryUpdateHashMap x NE.uncons vs of
+                     Nothing       -> error "allNewFields: invariant violation"
+                     Just (v, vs') -> (x, v) : go vs' xs
+
 -- | Apply diff
 --
--- @O(n)@ in general, but @O(1)@ if the `Diff` is empty.
+-- @O(n)@ in the size of the 'Canonical' and the 'Diff' in general.
+-- @O(1)@ if the `Diff` is empty.
 apply :: forall f. Diff f -> Canonical f -> Canonical f
-apply d =
-      Canon.insert     (diffIns' d)
-    . Canon.setAtIndex (diffUpd' d)
-  where
-    diffUpd' :: Diff f -> [(Int, f Any)]
-    diffUpd' = HashMap.toList . diffUpd
-
-    -- We only store a /single/ value for each inserted field. If therefore
-    -- there are fields being shadowed (i.e., the same value inserted more than
-    -- once), each of those fields will be associated with the /same/ value
-    -- here. This doesn't matter: only the first occurrence of each field is
-    -- used by 'Canon.insert'.
-    diffIns' :: Diff f -> [(String, f Any)]
-    diffIns' = map (\f -> (f, diffNew d HashMap.! f)) . diffIns
-
--- | Construct a 'Diff' from a 'Canonical' record
---
--- Primary use case for this is merging two records together: the first record
--- becomes a 'Diff' to the second.
---
--- Post condition:
---
--- > apply (fromCanonical c) empty == c
---
--- @O(n)@
-fromCanonical :: Canonical f -> Diff f
-fromCanonical c = Diff {
-      diffUpd = HashMap.empty
-    , diffNew = HashMap.fromList (Canon.toList c)
-    , diffIns = canonFields c
-    }
+apply d@Diff{..} =
+      Canon.insert     (map snd $ allNewFields d)
+    . Canon.setAtIndex (HashMap.toList diffUpd)
 
 {-------------------------------------------------------------------------------
-  Internal auxiliary
+  Debugging support
 -------------------------------------------------------------------------------}
 
--- | Attempt to update the map at the specified key
+toString :: Diff f -> String
+toString = show . mapDiff (K . ShowViaRecoverRTTI)
+  where
+    mapDiff :: (forall x. f x -> g x) -> Diff f -> Diff g
+    mapDiff f Diff{..} = Diff{
+          diffUpd = fmap f diffUpd
+        , diffIns = diffIns
+        , diffNew = fmap (fmap f) diffNew
+        }
+
+{-------------------------------------------------------------------------------
+  HashMap auxiliary
+-------------------------------------------------------------------------------}
+
+-- | Try to update the 'HashMap'
 --
--- If the key does not exist, returns 'Nothing'
+-- Returns 'Nothing' if the key does not exist, or the updated 'HashMap'
+-- along with evidence that it was updated otherwise.
 --
 -- @O(1)@.
-tryUpdateHashMap :: forall k a.
+tryUpdateHashMap :: forall k a b.
      (Hashable k, Eq k)
-  => k -> (a -> a) -> HashMap k a -> Maybe (HashMap k a)
-tryUpdateHashMap k f = HashMap.alterF f' k
+  => k -> (a -> (b, Maybe a)) -> HashMap k a -> Maybe (b, HashMap k a)
+tryUpdateHashMap k f =
+    fmap swap . distrib . flip runState Nothing . HashMap.alterF f' k
   where
-    -- The /outer/ 'Maybe' here is the functor @f@ argument to 'alterF', so if
-    -- we return 'Nothing', the whole thing fails. We want to do this when the
-    -- key is not present. We never want to return 'Nothing' for the /inner/
-    -- 'Maybe', because if the key /is/ present, it should not be deleted.
-    f' :: Maybe a -> Maybe (Maybe a)
-    f' Nothing  = Nothing
-    f' (Just x) = Just (Just (f x))
+    f' :: Maybe a -> State (Maybe b) (Maybe a)
+    f' Nothing  = state $ \_ -> (Nothing, Nothing)
+    f' (Just a) = state $ \_ -> swap $ first Just (f a)
+
+    distrib :: (x, Maybe y) -> Maybe (x, y)
+    distrib (x, my) = (x,) <$> my
 

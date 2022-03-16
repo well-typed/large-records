@@ -35,8 +35,6 @@ module Data.Record.Anonymous.Internal.Record (
   , castRecord
   ) where
 
-import Prelude hiding (map)
-
 import Data.Kind
 import Data.Proxy
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
@@ -144,7 +142,7 @@ instance (nm ~ nm', KnownSymbol nm) => IsLabel nm' (Field nm) where
 
 -- | Empty record
 empty :: Record f '[]
-empty = Record Diff.empty Canon.empty
+empty = Record Diff.empty mempty
 
 -- | Insert new field
 insert :: Field nm -> f a -> Record f r -> Record f ('(nm, a) ': r)
@@ -207,7 +205,9 @@ set _ = flip (setField @nm @(Record f r))
 -- ...
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (canonicalize -> r) (canonicalize -> r') =
-    unsafeFromCanonical $ Diff.apply (Diff.fromCanonical r) r'
+    unsafeFromCanonical $ r <> r'
+
+    --Diff.apply (Diff.fromCanonical r) r'
 
 -- | Cast record
 --
@@ -249,4 +249,9 @@ merge (canonicalize -> r) (canonicalize -> r') =
 castRecord :: forall f r r'. Isomorphic r r' => Record f r -> Record f r'
 castRecord (canonicalize -> r) =
     unsafeFromCanonical $
-      Canon.reshuffle (isomorphic (Proxy @r) (Proxy @r')) r
+      Canon.project (indices (isomorphic (Proxy @r) (Proxy @r'))) r
+  where
+    -- TODO: If this works out, we should simply Permutation.
+    -- (And maybe generalize 'castRecord' to be 'projectRecord')
+    indices :: Permutation -> [Int]
+    indices (Permutation p) = map snd p

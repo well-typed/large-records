@@ -84,6 +84,8 @@ import qualified Data.Record.Anonymous.Advanced as Anon
 -- * Records of different size (0, 1, or 2 fields)
 -- * Fields ordered alphabetically or not
 --   (for tests where order of processing matters)
+--
+-- TODO: We should add cases with duplicate fields.
 data ModelFields :: [(Symbol, Type)] -> Type where
   MF0  :: ModelFields '[                            ]
   MF1  :: ModelFields '[               '("b", Bool) ]

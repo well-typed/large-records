@@ -84,7 +84,7 @@ sequenceA :: Monad m => Record (m :.: f) r -> m (Record f r)
 sequenceA (c -> r) = fromC <$> Canon.sequenceA r
 
 pure :: forall f r. KnownFields r => (forall x. f x) -> Record f r
-pure f = fromC $ Canon.fromList $ Prelude.map (,f) (fieldNames (Proxy @r))
+pure f = fromC $ Canon.fromList $ Prelude.map (const f) (fieldNames (Proxy @r))
 
 ap :: Record (f -.-> g) r -> Record f r -> Record g r
 ap (c -> r) (c -> r') = fromC $ Canon.ap r r'

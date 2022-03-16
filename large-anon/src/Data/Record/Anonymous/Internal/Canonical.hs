@@ -61,7 +61,7 @@ import Data.Record.Anonymous.Internal.StrictVector (Vector)
   Definition
 -------------------------------------------------------------------------------}
 
--- | Canonical gecord representation
+-- | Canonical record representation
 --
 -- Canonicity here refers to the fact that we have no @Diff@ to apply
 -- (see "Data.Record.Anonymous.Internal.Diff").

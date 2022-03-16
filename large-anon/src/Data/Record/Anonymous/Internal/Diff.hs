@@ -45,6 +45,9 @@ import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 -- NOTE: As for 'Canonical', when citing algorithmic complexity of operations on
 -- 'Diff', we assume that 'HashMap' inserts and lookups are @O(1)@. See
 -- 'Canonical' for more detailed justification.
+--
+-- NOTE: Since @large-anon@ currently only supports records with strict fields,
+-- we use strict 'HashMap' here.
 data Diff f = Diff {
       -- | New values of existing fields
       --

@@ -27,14 +27,13 @@ import Data.SOP.Constraint
 import Data.SOP.Dict
 import GHC.Exts (Any)
 
-import qualified Data.Vector as Vector
-
 import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical          as Canon
-import qualified Data.Record.Anonymous.Internal.Record             as Record
 import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
+import qualified Data.Record.Anonymous.Internal.Record             as Record
+import qualified Data.Record.Anonymous.Internal.StrictVector       as Strict
 
 {-------------------------------------------------------------------------------
   Reifiying dictionaries
@@ -48,7 +47,7 @@ constrain :: forall c f r.
    => Proxy c -> Record f r -> Record (Constrained c f) r
 constrain p (Record.canonicalize -> r) = Record.unsafeFromCanonical $
     Canon.withShapeOf r $
-      Vector.zipWith aux (Canon.canonValues r) (fieldDicts (Proxy @r) p)
+      Strict.zipWithLazy aux (Canon.canonValues r) (fieldDicts (Proxy @r) p)
   where
     aux :: f Any -> Dict c Any -> Constrained c f Any
     aux x Dict = Constrained x

@@ -68,7 +68,7 @@ import GHC.Exts
 import GHC.Records.Compat
 import GHC.TypeLits
 
-import qualified Data.Vector as Vector
+import qualified Data.Vector.Generic as Vector
 
 import Data.Record.Anonymous.Internal.Record (Field)
 import Data.Record.Anonymous.Internal.Row

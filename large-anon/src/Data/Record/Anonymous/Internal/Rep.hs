@@ -26,16 +26,18 @@ module Data.Record.Anonymous.Internal.Rep (
 import Data.Proxy
 import Data.Record.Generic.Rep.Internal (Rep(..), noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
-import Data.Vector (Vector)
 import GHC.Exts (Any)
+
+import qualified Data.Vector as Lazy
 
 import Data.Record.Anonymous.Internal.AfterUnI
 import Data.Record.Anonymous.Internal.Canonical (Canonical(..))
 import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Row
 
-import qualified Data.Record.Anonymous.Internal.Canonical as Canon
-import qualified Data.Record.Anonymous.Internal.Record    as Record
+import qualified Data.Record.Anonymous.Internal.Canonical    as Canon
+import qualified Data.Record.Anonymous.Internal.Record       as Record
+import qualified Data.Record.Anonymous.Internal.StrictVector as Strict
 
 {-------------------------------------------------------------------------------
   Lens-like API
@@ -52,14 +54,14 @@ with' (Record.canonicalize -> r) k =
     k rep fromRep
   where
     rep :: Rep f (Record g r)
-    rep = Rep $ co (canonValues r)
+    rep = Rep $ co (Strict.toLazy (canonValues r))
 
     fromRep :: forall f' g'. Rep f' (Record g' r) -> Record (f' :.: g') r
     fromRep (Rep values) = Record.unsafeFromCanonical $
-         r { canonValues = co' values }
+         r { canonValues = Strict.fromLazy (co' values) }
 
-    co  :: forall f' g'. Vector ((f' :.: g') Any) -> Vector (f' Any)
-    co' :: forall f' g'. Vector (f' Any) -> Vector ((f' :.: g') Any)
+    co  :: forall f' g'. Lazy.Vector ((f' :.: g') Any) -> Lazy.Vector (f' Any)
+    co' :: forall f' g'. Lazy.Vector (f' Any) -> Lazy.Vector ((f' :.: g') Any)
 
     co  = noInlineUnsafeCo
     co' = noInlineUnsafeCo
@@ -118,9 +120,9 @@ toRecord' :: forall r f g.
      KnownFields r
   => Rep f (Record g r) -> Record (f :.: g) r
 toRecord' (Rep values) = Record.unsafeFromCanonical $
-    Canon.fromVector (fieldNames (Proxy @r)) (co values)
+    Canon.fromVector (fieldNames (Proxy @r)) (Strict.fromLazy (co values))
   where
-    co :: Vector (f Any) -> Vector ((f :.: g) Any)
+    co :: Lazy.Vector (f Any) -> Lazy.Vector ((f :.: g) Any)
     co = noInlineUnsafeCo
 
 toRecord :: KnownFields r => Rep I (Record f r) -> Record f r

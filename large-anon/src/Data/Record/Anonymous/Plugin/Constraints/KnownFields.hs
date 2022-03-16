@@ -108,8 +108,8 @@ evidenceKnownFields ResolvedNames{..}
                 Type $ mkTyConTy typeSymbolKindCon
               , Type $ mkStrLitTy name
               ]
-            -- TODO: Think about strict/lazy fields
-          , mkCoreConApps dataConFieldLazy []
+            -- @large-anon@ currently only supports records with strict fields
+          , mkCoreConApps dataConFieldStrict []
           ]
 
     -- Any at kind Type

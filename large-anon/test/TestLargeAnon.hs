@@ -10,6 +10,7 @@ import qualified Test.Sanity.DuplicateFields
 import qualified Test.Sanity.TypeLevelMetadata
 import qualified Test.Sanity.AllFields
 import qualified Test.Sanity.Simple
+import qualified Test.Sanity.Existential
 import qualified Test.Prop.Record.Combinators.Simple
 import qualified Test.Prop.Record.Combinators.Constrained
 
@@ -24,6 +25,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.TypeLevelMetadata.tests
         , Test.Sanity.AllFields.tests
         , Test.Sanity.Simple.tests
+        , Test.Sanity.Existential.tests
         ]
     , testGroup "Prop" [
           Test.Prop.Record.Combinators.Simple.tests

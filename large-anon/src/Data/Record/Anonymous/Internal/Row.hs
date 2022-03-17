@@ -1,5 +1,10 @@
+{-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 -- | Type-level rows
@@ -26,6 +31,10 @@ module Data.Record.Anonymous.Internal.Row (
   , DictKnownFields
   , FieldTypes
   , fieldNames
+    -- * Reflection
+  , Reflected(..)
+  , reflectKnownFields
+  , reflectAllFields
   ) where
 
 import Data.Kind
@@ -34,6 +43,7 @@ import Data.Record.Generic (FieldMetadata(..))
 import Data.SOP.Dict
 import GHC.Exts (Any)
 import GHC.TypeLits
+import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector as Lazy
 
@@ -126,3 +136,20 @@ fieldNames = map aux . fieldMetadata
 
 type family FieldTypes (f :: Type -> Type) (r :: [(Symbol, Type)]) :: [(Symbol, Type)]
   -- Rewritten by the plugin
+
+{-------------------------------------------------------------------------------
+  Reflection
+-------------------------------------------------------------------------------}
+
+data Reflected c where
+  Reflected :: c => Reflected c
+
+newtype WithKnownFields r = WKF (KnownFields r => Reflected (KnownFields r))
+
+reflectKnownFields :: DictKnownFields r -> Reflected (KnownFields r)
+reflectKnownFields = unsafeCoerce (WKF Reflected)
+
+newtype WithAllFields r c = WAF (AllFields r c => Reflected (AllFields r c))
+
+reflectAllFields :: DictAllFields r c -> Reflected (AllFields r c)
+reflectAllFields = unsafeCoerce (WAF Reflected)

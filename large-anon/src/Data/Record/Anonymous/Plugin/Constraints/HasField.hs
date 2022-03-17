@@ -127,7 +127,7 @@ evidenceHasField rn@ResolvedNames{..} CHasField{..} i name = do
               Type hasFieldTypeFunctor
             , Type hasFieldTypeRecord
             , Type hasFieldTypeField
-            , mkUncheckedIntExpr (fromIntegral $ i)
+            , mkUncheckedIntExpr (fromIntegral i)
             , name'
             ]
         ]

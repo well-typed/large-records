@@ -18,6 +18,7 @@ library
       Data.Record.Anonymous.Simple
       Data.Record.Anonymous.Advanced
       Data.Record.Anonymous.Plugin
+      Data.Record.Anonymous.Existential
 
       -- Exposed for the benefit of the plugin/docspec
       -- TODO: Reconsider if we need to export all of this.
@@ -59,6 +60,7 @@ library
       -- TODO: Bounds
       -- TODO: Cull
     , aeson
+    , bifunctors
     , containers
     , ghc-tcplugin-api >= 0.7.1
     , hashable
@@ -99,6 +101,7 @@ test-suite test-large-anon
       Test.Sanity.AllFields
       Test.Sanity.Casting
       Test.Sanity.DuplicateFields
+      Test.Sanity.Existential
       Test.Sanity.Generics
       Test.Sanity.HasField
       Test.Sanity.Merging
@@ -109,6 +112,7 @@ test-suite test-large-anon
   build-depends:
       base
     , aeson
+    , bifunctors
     , large-anon
     , mtl
     , QuickCheck

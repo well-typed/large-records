@@ -12,11 +12,14 @@ import Control.Monad
 import Data.Void
 import GHC.Stack
 
+import Data.Record.Anonymous.Internal.FieldName (FieldName)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
+
+import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
 
 {-------------------------------------------------------------------------------
   Definition
@@ -112,10 +115,10 @@ evidenceHasField ::
      ResolvedNames
   -> CHasField
   -> Int        -- ^ Field index
-  -> FastString -- ^ Field name
+  -> FieldName  -- ^ Field name
   -> TcPluginM 'Solve EvTerm
-evidenceHasField ResolvedNames{..} CHasField{..} i name = do
-    str <- mkStringExprFS name
+evidenceHasField rn@ResolvedNames{..} CHasField{..} i name = do
+    name' <- FieldName.mkExpr rn name
     return $
       evDataConApp
         (classDataCon clsHasField)
@@ -124,8 +127,8 @@ evidenceHasField ResolvedNames{..} CHasField{..} i name = do
               Type hasFieldTypeFunctor
             , Type hasFieldTypeRecord
             , Type hasFieldTypeField
-            , mkUncheckedIntExpr (fromIntegral i)
-            , str
+            , mkUncheckedIntExpr (fromIntegral $ i)
+            , name'
             ]
         ]
 

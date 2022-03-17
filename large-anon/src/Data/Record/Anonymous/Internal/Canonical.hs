@@ -153,7 +153,6 @@ insert new = prepend
      prepend :: Canonical f -> Canonical f
      prepend (Canonical v) = Canonical (Strict.fromList new <> v)
 
-
 -- | Project out some fields in the selected order
 --
 -- It is the responsibility of the caller that the list of indices is in row

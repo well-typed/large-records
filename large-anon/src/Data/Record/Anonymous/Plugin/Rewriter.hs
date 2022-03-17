@@ -7,6 +7,8 @@ import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
 
+import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+
 rewrite :: ResolvedNames -> UniqFM TyCon TcPluginRewriter
 rewrite rn@ResolvedNames{..} = listToUFM [
       (tyConFieldTypes, rewriteRecordMetadataOf rn)
@@ -82,6 +84,6 @@ computeMetadataOf functor fields =
           (promotedTupleDataCon Boxed 2)
           [ mkTyConTy typeSymbolKindCon -- kind of first arg
           , liftedTypeKind              -- kind of second arg
-          , mkStrLitTy knownFieldName
+          , FieldName.mkType knownFieldName
           , functor `mkAppTy` knownFieldType
           ]

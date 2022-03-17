@@ -12,54 +12,63 @@ import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 --
 -- Listed alphabetically.
 data ResolvedNames = ResolvedNames {
-      clsHasField            :: Class
-    , clsAllFields           :: Class
-    , clsIsomorphic          :: Class
-    , clsKnownFields         :: Class
-    , clsKnownSymbol         :: Class
-    , dataConDict            :: DataCon
-    , dataConFieldStrict     :: DataCon
-    , dataConFieldMetadata   :: DataCon
-    , dataConProxy           :: DataCon
-    , idEvidenceAllFields    :: Id
-    , idEvidenceHasField     :: Id
-    , idEvidenceIsomorphic   :: Id
-    , idEvidenceKnownFields  :: Id
-    , idUnsafeCoerce         :: Id
-    , tyConDict              :: TyCon
-    , tyConFieldMetadata     :: TyCon
-    , tyConMerge             :: TyCon
-    , tyConRecord            :: TyCon
-    , tyConFieldTypes        :: TyCon
+      clsHasField           :: Class
+    , clsAllFields          :: Class
+    , clsIsomorphic         :: Class
+    , clsKnownFields        :: Class
+    , clsKnownHash          :: Class
+    , clsKnownSymbol        :: Class
+    , dataConDict           :: DataCon
+    , dataConFieldStrict    :: DataCon
+    , dataConFieldName      :: DataCon
+    , dataConFieldMetadata  :: DataCon
+    , dataConProxy          :: DataCon
+    , idEvidenceAllFields   :: Id
+    , idEvidenceHasField    :: Id
+    , idEvidenceIsomorphic  :: Id
+    , idEvidenceKnownFields :: Id
+    , idEvidenceKnownHash   :: Id
+    , idUnsafeCoerce        :: Id
+    , tyConDict             :: TyCon
+    , tyConFieldMetadata    :: TyCon
+    , tyConMerge            :: TyCon
+    , tyConRecord           :: TyCon
+    , tyConFieldTypes       :: TyCon
     }
 
 nameResolution :: TcPluginM 'Init ResolvedNames
 nameResolution = do
+
+    -- TODO: Introduce a single module for the plugin to import from
 
     dDict        <- getModule "sop-core"        "Data.SOP.Dict"
     dProxy       <- getModule "base"            "Data.Proxy"
     draiEvidence <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Evidence"
     draiRecord   <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Record"
     draiRow      <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Row"
+    draiField    <- getModule "large-anon"      "Data.Record.Anonymous.Internal.FieldName"
     drGeneric    <- getModule "large-generics"  "Data.Record.Generic"
     grCompat     <- getModule "record-hasfield" "GHC.Records.Compat"
     uCoerce      <- getModule "base"            "Unsafe.Coerce"
 
-    clsAllFields    <- getClass draiRow  "AllFields"
-    clsHasField     <- getClass grCompat "HasField"
-    clsIsomorphic   <- getClass draiRow  "Isomorphic"
-    clsKnownFields  <- getClass draiRow  "KnownFields"
-    clsKnownSymbol  <- tcLookupClass knownSymbolClassName
+    clsAllFields   <- getClass draiRow  "AllFields"
+    clsHasField    <- getClass grCompat "HasField"
+    clsIsomorphic  <- getClass draiRow  "Isomorphic"
+    clsKnownFields <- getClass draiRow  "KnownFields"
+    clsKnownHash   <- getClass draiField "KnownHash"
+    clsKnownSymbol <- tcLookupClass knownSymbolClassName
 
     dataConDict          <- getDataCon dDict     "Dict"
-    dataConFieldStrict   <- getDataCon drGeneric "FieldStrict"
     dataConFieldMetadata <- getDataCon drGeneric "FieldMetadata"
+    dataConFieldName     <- getDataCon draiField "FieldName"
+    dataConFieldStrict   <- getDataCon drGeneric "FieldStrict"
     dataConProxy         <- getDataCon dProxy    "Proxy"
 
     idEvidenceAllFields   <- getVar draiEvidence "evidenceAllFields"
     idEvidenceHasField    <- getVar draiEvidence "evidenceHasField"
     idEvidenceIsomorphic  <- getVar draiEvidence "evidenceIsomorphic"
     idEvidenceKnownFields <- getVar draiEvidence "evidenceKnownFields"
+    idEvidenceKnownHash   <- getVar draiEvidence "evidenceKnownHash"
     idUnsafeCoerce        <- getVar uCoerce      "unsafeCoerce"
 
     tyConDict          <- getTyCon dDict      "Dict"

@@ -15,16 +15,15 @@
 module Data.Record.Anonymous.Internal.Row (
     -- * Isomorphic records
     Isomorphic(..)
-  , IsomorphicDict
-  , Permutation(..)
+  , DictIsomorphic
     -- * Merging records
   , Merge
     -- * Constraints
   , AllFields(..)
-  , AllFieldsDict
+  , DictAllFields
     -- * Metadata
   , KnownFields(..)
-  , KnownFieldsDict
+  , DictKnownFields
   , FieldTypes
   , fieldNames
   ) where
@@ -48,17 +47,11 @@ import qualified Data.Vector as Lazy
 --
 -- See 'castRecord' for details.
 class Isomorphic (r :: [(Symbol, Type)]) (r' :: [(Symbol, Type)]) where
-  isomorphic :: IsomorphicDict r r'
+  isomorphic :: DictIsomorphic r r'
 
-type IsomorphicDict (r :: [(Symbol, Type)]) (r' :: [(Symbol, Type)]) =
-       Proxy r -> Proxy r' -> Permutation
-
--- | Evidence that two records as isomorphic
---
--- This is an internal type that is not exposed to the user.
-newtype Permutation =
-   -- | In order of the fields in the /target/ record, the index in the /source/
-   Permutation [(String, Int)]
+-- | In order of the fields in the /target/ record, the index in the /source/
+type DictIsomorphic (r :: [(Symbol, Type)]) (r' :: [(Symbol, Type)]) =
+       Proxy r -> Proxy r' -> [Int]
 
 {-------------------------------------------------------------------------------
   Merging records
@@ -106,9 +99,9 @@ class AllFields (r :: [(Symbol, Type)]) (c :: Type -> Constraint) where
   -- Use 'constrain' or one of the constrained combinators such as 'cmap'.
   --
   -- This returns a /lazy/ vector because it is used to build a 'Rep'.
-  fieldDicts :: AllFieldsDict r c
+  fieldDicts :: DictAllFields r c
 
-type AllFieldsDict (r :: [(Symbol, Type)]) (c :: Type -> Constraint) =
+type DictAllFields (r :: [(Symbol, Type)]) (c :: Type -> Constraint) =
        Proxy r -> Proxy c -> Lazy.Vector (Dict c Any)
 
 {-------------------------------------------------------------------------------
@@ -119,9 +112,9 @@ class KnownFields (r :: [(Symbol, Type)]) where
   -- | Metadata for each field, in row order
   --
   -- This is a low-level function that should not be used in user code.
-  fieldMetadata :: KnownFieldsDict r
+  fieldMetadata :: DictKnownFields r
 
-type KnownFieldsDict (r :: [(Symbol, Type)]) =
+type DictKnownFields (r :: [(Symbol, Type)]) =
        Proxy r -> [FieldMetadata Any]
 
 -- | Names of all fields, in row order

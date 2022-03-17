@@ -1,9 +1,7 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DeriveFoldable      #-}
 {-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
@@ -32,20 +30,22 @@ module Data.Record.Anonymous.Plugin.Record (
   ) where
 
 import Control.Monad
-import Control.Monad.State
+import Data.Either (partitionEithers)
 import Data.Foldable (asum)
-import Data.List (sortOn)
-import Data.Map (Map)
+import Data.HashMap.Strict (HashMap)
 import Data.Vector (Vector)
 
-import qualified Data.Map            as Map
-import qualified Data.Map.Merge.Lazy as Map
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector         as V
 
+import Data.Record.Anonymous.Internal.FieldName (FieldName)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.TyConSubst
+
+import qualified Data.Record.Anonymous.Internal.FieldName    as FieldName
+import qualified Data.Record.Anonymous.Internal.Util.HashMap as HashMap
 
 {-------------------------------------------------------------------------------
   General case
@@ -60,7 +60,7 @@ data Fields =
 data Field = Field FieldLabel Type
 
 data FieldLabel =
-    FieldKnown FastString
+    FieldKnown FieldName
   | FieldVar   TyVar
   deriving (Eq)
 
@@ -77,7 +77,7 @@ data FieldLabel =
 -- looking for.
 --
 -- Returns the index and the type of the field, if found.
-findField :: FastString -> Fields -> Maybe (Int, Type)
+findField :: FieldName -> Fields -> Maybe (Int, Type)
 findField nm = go 0 . (:[])
   where
     go :: Int -> [Fields] -> Maybe (Int, Type)
@@ -110,7 +110,7 @@ findField nm = go 0 . (:[])
 -- In other words, we do /not/ know the /index/ of the field here, as that
 -- depends the context (the particular record it is part of).
 data KnownField a = KnownField {
-      knownFieldName :: FastString
+      knownFieldName :: FieldName
     , knownFieldType :: Type
     , knownFieldInfo :: a
     }
@@ -130,7 +130,7 @@ data KnownRecord a = KnownRecord {
       --
       -- >     Map.lookup n knownRecordNames == Just i
       -- > ==> knownFieldName (knownRecordFields V.! i) == n
-    , knownRecordIndices :: Map FastString Int
+    , knownRecordIndices :: HashMap FieldName Int
     }
   deriving (Functor, Foldable)
 
@@ -154,11 +154,11 @@ knownRecordTraverse KnownRecord{..} f =
     f' :: KnownField a -> m (KnownField b)
     f' fld@(KnownField nm typ _info) = KnownField nm typ <$> f fld
 
-knownRecordMap :: forall a. KnownRecord a -> Map FastString (Int, KnownField a)
-knownRecordMap KnownRecord{..} = Map.map aux knownRecordIndices
+knownRecordMap :: forall a. KnownRecord a -> HashMap FieldName (KnownField a)
+knownRecordMap KnownRecord{..} = fmap aux knownRecordIndices
   where
-    aux :: Int -> (Int, KnownField a)
-    aux ix = (ix, knownRecordVector V.! ix)
+    aux :: Int -> KnownField a
+    aux ix = knownRecordVector V.! ix
 
 knownRecordFromFields :: forall a.
      [KnownField a]
@@ -166,12 +166,12 @@ knownRecordFromFields :: forall a.
      --
      -- In other words, fields earlier in the list shadow later fields.
   -> KnownRecord a
-knownRecordFromFields = go [] Map.empty 0
+knownRecordFromFields = go [] HashMap.empty 0
   where
-    go :: [KnownField a]      -- Accumulated fields, reverse order
-       -> Map FastString Int  -- Accumulated indices
-       -> Int                 -- Next available index
-       -> [KnownField a]      -- To process
+    go :: [KnownField a]         -- Accumulated fields, reverse order
+       -> HashMap FieldName Int  -- Accumulated indices
+       -> Int                    -- Next available index
+       -> [KnownField a]         -- To process
        -> KnownRecord a
     go accFields !accIndices !nextIndex = \case
         [] -> KnownRecord {
@@ -179,12 +179,12 @@ knownRecordFromFields = go [] Map.empty 0
           , knownRecordIndices = accIndices
           }
         f:fs
-          | name `Map.member` accIndices ->
+          | name `HashMap.member` accIndices ->
               -- Field shadowed
               go accFields accIndices nextIndex fs
           | otherwise ->
               go (f:accFields)
-                 (Map.insert name nextIndex accIndices)
+                 (HashMap.insert name nextIndex accIndices)
                  (succ nextIndex)
                  fs
           where
@@ -192,54 +192,27 @@ knownRecordFromFields = go [] Map.empty 0
 
 -- | Check if two known records are isomorphic
 --
--- We do not check type equalities here, and instead just return which pairs
--- of types should be equal. These should be returned as new wanted constraints.
+-- Returns the set of fields that are missing in either of the two records,
+-- and the fields that match. If the first list is empty, the records are
+-- isomorphic.
 knownRecordIsomorphic :: forall a b.
      KnownRecord a
   -> KnownRecord b
-  -> ( Map FastString ((Type, Type), (a, b))  -- Matched fields
-     , [KnownField a]  -- Fields only in the left  (in original order)
-     , [KnownField b]  -- Fields only in the right (in original order)
-     )
+  -> ([FieldName], [(FieldName, (KnownField a, KnownField b))])
 knownRecordIsomorphic = \ra rb ->
-    let (inBoth, (onlyInLeft, onlyInRight)) = flip runState ([], []) $
-            Map.mergeA
-              (Map.traverseMaybeMissing inLeft)
-              (Map.traverseMaybeMissing inRight)
-              (Map.zipWithAMatched presentInBoth)
-              (knownRecordMap ra)
-              (knownRecordMap rb)
-     in ( inBoth
-        , map snd $ sortOn fst onlyInLeft
-        , map snd $ sortOn fst onlyInRight
-        )
+      partitionEithers
+    . map (uncurry aux)
+    . HashMap.toList
+    $ HashMap.merge (knownRecordMap ra) (knownRecordMap rb)
   where
-    -- We ignore the indices here; we could potentially use them to order the
-    -- matching fields according to one of the two records
-    presentInBoth ::
-         FastString
-      -> (Int, KnownField a)
-      -> (Int, KnownField b)
-      -> State ([(Int, KnownField a)], [(Int, KnownField b)])
-               ((Type, Type), (a, b))
-    presentInBoth _nm (_ia, fa) (_ib, fb) = return (
-          (knownFieldType fa, knownFieldType fb)
-        , (knownFieldInfo fa, knownFieldInfo fb)
-        )
-
-    inLeft ::
-         FastString
-      -> (Int, KnownField a)
-      -> State ([(Int, KnownField a)], [(Int, KnownField b)])
-               (Maybe x)
-    inLeft _nm (ia, fa) = state $ \(l, r) -> (Nothing, ((ia, fa) : l, r))
-
-    inRight ::
-         FastString
-      -> (Int, KnownField b)
-      -> State ([(Int, KnownField a)], [(Int, KnownField b)])
-               (Maybe x)
-    inRight _nm (ib, fb) = state $ \(l, r) -> (Nothing, (l, (ib, fb) : r))
+    aux ::
+         FieldName
+      -> HashMap.Merged (KnownField a) (KnownField b)
+      -> Either FieldName (FieldName, (KnownField a, KnownField b))
+    aux k =
+        HashMap.merged
+          (Left . either knownFieldName knownFieldName)
+          (Right . (k,))
 
 -- | Return map from field name to type, /if/ all fields are statically known
 checkAllFieldsKnown :: Fields -> Maybe (KnownRecord ())
@@ -262,7 +235,7 @@ checkAllFieldsKnown = go [] . (:[])
           FieldsMerge l r ->
             go acc (l:r:fss)
 
-    knownField :: FastString -> Type -> KnownField ()
+    knownField :: FieldName -> Type -> KnownField ()
     knownField nm typ = KnownField {
           knownFieldName = nm
         , knownFieldType = typ
@@ -342,6 +315,9 @@ parseField tcs field = do
 
 parseFieldLabel :: Type -> Maybe FieldLabel
 parseFieldLabel label = asum [
-      FieldKnown <$> isStrLitTy     label
+      fieldKnown <$> isStrLitTy     label
     , FieldVar   <$> getTyVar_maybe label
     ]
+  where
+    fieldKnown :: FastString -> FieldLabel
+    fieldKnown = FieldKnown . FieldName.fromFastString

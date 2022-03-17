@@ -43,12 +43,14 @@ import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 
-import Data.Record.Anonymous.Internal.Diff      (Diff)
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
+import Data.Record.Anonymous.Internal.Diff (Diff)
+import Data.Record.Anonymous.Internal.FieldName (KnownHash)
 import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 import qualified Data.Record.Anonymous.Internal.Diff      as Diff
+import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
 
 {-------------------------------------------------------------------------------
   Representation
@@ -56,7 +58,7 @@ import qualified Data.Record.Anonymous.Internal.Diff      as Diff
 
 -- | Anonymous record
 --
--- A @Record f xs@ has a field @nm@ of type @f x@ for every @(nm, x)@ in @xs@.
+-- A @Record f xs@ has a field @n@ of type @f x@ for every @(n, x)@ in @xs@.
 --
 -- To access fields of the record, either use the 'HasField' instances
 -- (possibly using the record-dot-preprocessor to get record-dot syntax),
@@ -134,20 +136,20 @@ unsafeFromCanonical canon = Record {
 -- to mean
 --
 -- > Field (Proxy @"foo")
-data Field nm where
-  Field :: KnownSymbol nm => Proxy nm -> Field nm
+data Field n where
+  Field :: (KnownSymbol n, KnownHash n) => Proxy n -> Field n
 
-instance (nm ~ nm', KnownSymbol nm) => IsLabel nm' (Field nm) where
-  fromLabel = Field (Proxy @nm)
+instance (n ~ n', KnownSymbol n, KnownHash n) => IsLabel n' (Field n) where
+  fromLabel = Field (Proxy @n)
 
 -- | Empty record
 empty :: Record f '[]
 empty = Record Diff.empty mempty
 
 -- | Insert new field
-insert :: Field nm -> f a -> Record f r -> Record f ('(nm, a) ': r)
-insert (Field nm) x r@Record{recordDiff} = r {
-      recordDiff = Diff.insert (symbolVal nm) (co x) recordDiff
+insert :: Field n -> f a -> Record f r -> Record f ('(n, a) ': r)
+insert (Field n) x r@Record{recordDiff} = r {
+      recordDiff = Diff.insert (FieldName.symbolVal n) (co x) recordDiff
     }
   where
     co :: f a -> f Any
@@ -156,18 +158,18 @@ insert (Field nm) x r@Record{recordDiff} = r {
 -- | Get field from the record
 --
 -- This is just a wrapper around 'getField'
-get :: forall nm f r a.
-     HasField nm (Record f r) a
-  => Field nm -> Record f r -> a
-get _ = getField @nm @(Record f r)
+get :: forall n f r a.
+     HasField n (Record f r) a
+  => Field n -> Record f r -> a
+get _ = getField @n @(Record f r)
 
 -- | Update field in the record
 --
 -- This is just a wrapper around 'setField'.
-set :: forall nm f r a.
-     HasField nm (Record f r) a
-  => Field nm -> a -> Record f r -> Record f r
-set _ = flip (setField @nm @(Record f r))
+set :: forall n f r a.
+     HasField n (Record f r) a
+  => Field n -> a -> Record f r -> Record f r
+set _ = flip (setField @n @(Record f r))
 
 -- | Merge two records
 --
@@ -246,12 +248,8 @@ merge (canonicalize -> r) (canonicalize -> r') =
 -- ...
 -- ...No instance for (Isomorphic...
 -- ...
+--
+-- TODO: We should generalize this to an arbitrary projection.
 castRecord :: forall f r r'. Isomorphic r r' => Record f r -> Record f r'
-castRecord (canonicalize -> r) =
-    unsafeFromCanonical $
-      Canon.project (indices (isomorphic (Proxy @r) (Proxy @r'))) r
-  where
-    -- TODO: If this works out, we should simply Permutation.
-    -- (And maybe generalize 'castRecord' to be 'projectRecord')
-    indices :: Permutation -> [Int]
-    indices (Permutation p) = map snd p
+castRecord (canonicalize -> r) = unsafeFromCanonical $
+    Canon.project (isomorphic (Proxy @r) (Proxy @r')) r

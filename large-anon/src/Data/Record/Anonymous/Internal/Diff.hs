@@ -3,7 +3,6 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE TupleSections       #-}
 
 -- | Record diff
 --
@@ -24,13 +23,9 @@ module Data.Record.Anonymous.Internal.Diff (
   , toString
   ) where
 
-import Control.Monad.State (State, runState, state)
-import Data.Bifunctor (first)
-import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.List.NonEmpty (NonEmpty(..), (<|))
 import Data.SOP.BasicFunctors (K(K))
-import Data.Tuple (swap)
 import GHC.Exts (Any)
 
 import qualified Data.List.NonEmpty  as NE
@@ -38,8 +33,10 @@ import qualified Data.HashMap.Strict as HashMap
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical(..))
 import Data.Record.Anonymous.Internal.Debugging
+import Data.Record.Anonymous.Internal.FieldName (FieldName)
 
-import qualified Data.Record.Anonymous.Internal.Canonical as Canon
+import qualified Data.Record.Anonymous.Internal.Canonical    as Canon
+import qualified Data.Record.Anonymous.Internal.Util.HashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition
@@ -53,6 +50,10 @@ import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 -- of inserts or updates will build a 'Diff' which will take @O(n)@ to apply,
 -- but that 'apply' should be /executed/ only when we do an operation which is
 -- @O(n)@ anyway, thereby absorbing the cost.
+--
+-- This is also the reason that 'Diff' is name based, not index based: inserting
+-- a new field would increase all indices of existing fields by 1, an inherently
+-- @O(n)@ operation.
 --
 -- NOTE: As for 'Canonical', when citing algorithmic complexity of operations on
 -- 'Diff', we assume that 'HashMap' inserts and lookups are @O(1)@. See
@@ -69,14 +70,14 @@ data Diff f = Diff {
       -- | List of new fields, most recently inserted first
       --
       -- May contain duplicates: fields inserted later shadow earlier fields.
-    , diffIns :: [String]
+    , diffIns :: [FieldName]
 
       -- | Values for the newly inserted fields
       --
       -- If the field is shadowed, the list will have multiple entries. Entries
       -- in the lists are from new to old, so the head of the list is the
       -- "currently visible" entry.
-    , diffNew :: HashMap String (NonEmpty (f Any))
+    , diffNew :: HashMap FieldName (NonEmpty (f Any))
     }
 
 deriving instance Show a => Show (Diff (K a))
@@ -107,7 +108,7 @@ empty = Diff {
 -- > Diff.get f d c == Canon.get f (Diff.apply d c)
 --
 -- @O(1)@.
-get :: (Int, String) -> Diff f -> Canonical f -> f Any
+get :: (Int, FieldName) -> Diff f -> Canonical f -> f Any
 get (i, f) Diff{..} c =
     case HashMap.lookup f diffNew of
       Just xs -> NE.head xs                          -- inserted  in the diff
@@ -136,9 +137,9 @@ get (i, f) Diff{..} c =
 --   but only the first value will matter as it will shadow all the others.
 --
 -- @O(1)@.
-set :: forall f. (Int, String) -> f Any -> Diff f -> Diff f
+set :: forall f. (Int, FieldName) -> f Any -> Diff f -> Diff f
 set (i, f) x d@Diff{..} =
-    case tryUpdateHashMap f updateInserted diffNew of
+    case HashMap.alterExisting f updateInserted diffNew of
       Just ((), diffNew') -> d { diffNew = diffNew' }
       Nothing             -> d { diffUpd = HashMap.insert i x diffUpd }
   where
@@ -153,7 +154,7 @@ set (i, f) x d@Diff{..} =
 -- > Diff.apply (Diff.insert f x d) c = Canon.insert [(f, x)] (apply d c)
 --
 -- @(1)@.
-insert :: forall f. String -> f Any -> Diff f -> Diff f
+insert :: forall f. FieldName -> f Any -> Diff f -> Diff f
 insert f x d@Diff{..} = d {
       diffIns = f : diffIns
     , diffNew = HashMap.alter (Just . insertField) f diffNew
@@ -170,23 +171,23 @@ insert f x d@Diff{..} = d {
 -- | All new fields (including shadowed fields), from new to old
 --
 -- @O(n)@.
-allNewFields :: Diff f -> [(String, f Any)]
+allNewFields :: Diff f -> [f Any]
 allNewFields = \Diff{..} -> go diffNew diffIns
   where
-    go :: HashMap String (NonEmpty (f Any)) -> [String] -> [(String, f Any)]
+    go :: HashMap FieldName (NonEmpty (f Any)) -> [FieldName] -> [f Any]
     go _  []     = []
-    go vs (x:xs) = case tryUpdateHashMap x NE.uncons vs of
+    go vs (x:xs) = case HashMap.alterExisting x NE.uncons vs of
                      Nothing       -> error "allNewFields: invariant violation"
-                     Just (v, vs') -> (x, v) : go vs' xs
+                     Just (v, vs') -> v : go vs' xs
 
 -- | Apply diff
 --
 -- @O(n)@ in the size of the 'Canonical' and the 'Diff' in general.
 -- @O(1)@ if the `Diff` is empty.
 apply :: forall f. Diff f -> Canonical f -> Canonical f
-apply d@Diff{..} =
-      Canon.insert     (map snd $ allNewFields d)
-    . Canon.setAtIndex (HashMap.toList diffUpd)
+apply d =
+      Canon.insert     (allNewFields d)
+    . Canon.setAtIndex (HashMap.toList (diffUpd d))
 
 {-------------------------------------------------------------------------------
   Debugging support
@@ -201,27 +202,3 @@ toString = show . mapDiff (K . ShowViaRecoverRTTI)
         , diffIns = diffIns
         , diffNew = fmap (fmap f) diffNew
         }
-
-{-------------------------------------------------------------------------------
-  HashMap auxiliary
--------------------------------------------------------------------------------}
-
--- | Try to update the 'HashMap'
---
--- Returns 'Nothing' if the key does not exist, or the updated 'HashMap'
--- along with evidence that it was updated otherwise.
---
--- @O(1)@.
-tryUpdateHashMap :: forall k a b.
-     (Hashable k, Eq k)
-  => k -> (a -> (b, Maybe a)) -> HashMap k a -> Maybe (b, HashMap k a)
-tryUpdateHashMap k f =
-    fmap swap . distrib . flip runState Nothing . HashMap.alterF f' k
-  where
-    f' :: Maybe a -> State (Maybe b) (Maybe a)
-    f' Nothing  = state $ \_ -> (Nothing, Nothing)
-    f' (Just a) = state $ \_ -> swap $ first Just (f a)
-
-    distrib :: (x, Maybe y) -> Maybe (x, y)
-    distrib (x, my) = (x,) <$> my
-

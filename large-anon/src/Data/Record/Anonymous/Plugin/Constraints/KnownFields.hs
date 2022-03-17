@@ -18,6 +18,8 @@ import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
 
+import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+
 {-------------------------------------------------------------------------------
   Definition
 -------------------------------------------------------------------------------}
@@ -102,11 +104,11 @@ evidenceKnownFields ResolvedNames{..}
     mkFieldInfoAny KnownField{knownFieldName = name, knownFieldInfo = dict} =
         mkCoreConApps dataConFieldMetadata [
             Type anyType
-          , Type (mkStrLitTy name)
+          , Type (FieldName.mkType name)
           , Var dict
           , mkCoreConApps dataConProxy [
                 Type $ mkTyConTy typeSymbolKindCon
-              , Type $ mkStrLitTy name
+              , Type $ FieldName.mkType name
               ]
             -- @large-anon@ currently only supports records with strict fields
           , mkCoreConApps dataConFieldStrict []
@@ -137,7 +139,7 @@ solveKnownFields rn@ResolvedNames{..}
         fields' <- knownRecordTraverse fields $ \fld -> do
                      newWanted loc $
                        mkClassPred clsKnownSymbol [
-                           mkStrLitTy (knownFieldName fld)
+                           FieldName.mkType (knownFieldName fld)
                          ]
         ev <- evidenceKnownFields rn cm $ getEvVar <$> fields'
         return (

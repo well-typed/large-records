@@ -6,37 +6,43 @@
 -- This module is exclusively used by the plugin; it is not used anywhere
 -- inside the rest of the library: there are no imports of this module.
 module Data.Record.Anonymous.Internal.Evidence (
-    evidenceHasField
-  , evidenceAllFields
-  , evidenceKnownFields
+    evidenceAllFields
+  , evidenceHasField
   , evidenceIsomorphic
+  , evidenceKnownFields
+  , evidenceKnownHash
   ) where
 
+import Data.Record.Generic (FieldMetadata)
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.Dict
 import GHC.Exts (Any)
 
 import qualified Data.Vector as Vector
 
+import Data.Record.Anonymous.Internal.FieldName (FieldName(..), DictKnownHash)
 import Data.Record.Anonymous.Internal.Record
 import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Diff as Diff
-import Data.Record.Generic (FieldMetadata)
+
+{-------------------------------------------------------------------------------
+  'HasField'
+-------------------------------------------------------------------------------}
 
 -- | Evidence for 'HasField'
 --
--- Precondition: the record must have the specified field with type @a@, (where
+-- Precondition: the record must have the specified field with type @a@ (where
 -- @a@ will be of the form @f a'@ for some @a'). This precondition is verified
 -- by the plugin before generating "evidence" that uses this function.
 evidenceHasField :: forall f r a.
-     Int    -- ^ Field index
-  -> String -- ^ Field name
+     Int       -- ^ Field index
+  -> FieldName -- ^ Field name
   -> Record f r
   -> (a -> Record f r, a)
-evidenceHasField i f r@Record{..} = (
-      \x -> r { recordDiff = Diff.set (i, f) (co' x) recordDiff }
-    , co $ Diff.get (i, f) recordDiff recordCanon
+evidenceHasField i n r@Record{..} = (
+      \x -> r { recordDiff = Diff.set (i, n) (co' x) recordDiff }
+    , co $ Diff.get (i, n) recordDiff recordCanon
     )
   where
     co  :: f Any -> a
@@ -45,14 +51,16 @@ evidenceHasField i f r@Record{..} = (
     co =  noInlineUnsafeCo
     co' = noInlineUnsafeCo
 
--- | Evidence for 'ConstrainRow'
-evidenceAllFields :: [Dict c Any] -> AllFieldsDict r c
-evidenceAllFields dicts _ _ = Vector.fromList dicts
+{-------------------------------------------------------------------------------
+  Simple evidence
+-------------------------------------------------------------------------------}
 
--- | Evidence for 'KnownFields'
-evidenceKnownFields :: [FieldMetadata Any] -> KnownFieldsDict r
-evidenceKnownFields metadata _ = metadata
+evidenceAllFields   :: [Dict c Any]        -> DictAllFields r c
+evidenceKnownFields :: [FieldMetadata Any] -> DictKnownFields r
+evidenceIsomorphic  :: [Int]               -> DictIsomorphic r r'
+evidenceKnownHash   :: Int                 -> DictKnownHash s
 
--- | Evidence for 'Isomorphic'
-evidenceIsomorphic :: [(String, Int)] -> IsomorphicDict r r'
-evidenceIsomorphic perm _ _ = Permutation perm
+evidenceAllFields   x _ _ = Vector.fromList x
+evidenceKnownFields x _   = x
+evidenceIsomorphic  x _ _ = x
+evidenceKnownHash   x _   = x

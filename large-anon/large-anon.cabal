@@ -29,11 +29,13 @@ library
       Data.Record.Anonymous.Internal.Debugging
       Data.Record.Anonymous.Internal.Diff
       Data.Record.Anonymous.Internal.Evidence
+      Data.Record.Anonymous.Internal.FieldName
       Data.Record.Anonymous.Internal.Generics
       Data.Record.Anonymous.Internal.Record
       Data.Record.Anonymous.Internal.Rep
       Data.Record.Anonymous.Internal.Row
       Data.Record.Anonymous.Internal.StrictVector
+      Data.Record.Anonymous.Internal.Util.HashMap
 
       -- Exposed for the benefit of cabal-docspec
       Data.Record.Anonymous.Plugin.EquivClasses
@@ -42,6 +44,7 @@ library
       Data.Record.Anonymous.Plugin.Constraints.HasField
       Data.Record.Anonymous.Plugin.Constraints.Isomorphic
       Data.Record.Anonymous.Plugin.Constraints.KnownFields
+      Data.Record.Anonymous.Plugin.Constraints.KnownHash
       Data.Record.Anonymous.Plugin.GhcTcPluginAPI
       Data.Record.Anonymous.Plugin.NameResolution
       Data.Record.Anonymous.Plugin.Parsing

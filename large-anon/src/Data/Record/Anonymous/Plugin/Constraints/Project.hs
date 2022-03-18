@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anonymous.Plugin.Constraints.Isomorphic (
-    CIsomorphic(..)
-  , parseIsomorphic
-  , solveIsomorphic
+module Data.Record.Anonymous.Plugin.Constraints.Project (
+    CProject(..)
+  , parseProject
+  , solveProject
   ) where
 
 import Control.Monad (forM)
@@ -22,71 +22,71 @@ import Data.Record.Anonymous.Plugin.TyConSubst
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of an @Isomorphic r r'@ constraint
-data CIsomorphic = CIsomorphic {
+-- | Parsed form of an @Project r r'@ constraint
+data CProject = CProject {
       -- | Fields on the LHS
-      isomorphicParsedLHS :: Fields
+      projectParsedLHS :: Fields
 
       -- | Fields on the RHS
-    , isomorphicParsedRHS :: Fields
+    , projectParsedRHS :: Fields
 
-      -- | Left-hand side of the isomorphism (@r@)
-    , isomorphicTypeLHS :: Type
+      -- | Left-hand side of the projection (@r@)
+    , projectTypeLHS :: Type
 
-      -- | Right-hand side of the isomorphism (@r'@)
-    , isomorphicTypeRHS :: Type
+      -- | Right-hand side of the projection (@r'@)
+    , projectTypeRHS :: Type
     }
 
 {-------------------------------------------------------------------------------
   Outputable
 -------------------------------------------------------------------------------}
 
-instance Outputable CIsomorphic where
-  ppr (CIsomorphic parsedLHS parsedRHS typeLHS typeRHS) = parens $
-      text "CIsomorphic" <+> braces (vcat [
-          text "isomorphicParsedLHS" <+> text "=" <+> ppr parsedLHS
-        , text "isomorphicParsedRHS" <+> text "=" <+> ppr parsedRHS
-        , text "isomorphicTypeLHS"   <+> text "=" <+> ppr typeLHS
-        , text "isomorphicTypeRHS"   <+> text "=" <+> ppr typeRHS
+instance Outputable CProject where
+  ppr (CProject parsedLHS parsedRHS typeLHS typeRHS) = parens $
+      text "CProject" <+> braces (vcat [
+          text "projectParsedLHS" <+> text "=" <+> ppr parsedLHS
+        , text "projectParsedRHS" <+> text "=" <+> ppr parsedRHS
+        , text "projectTypeLHS"   <+> text "=" <+> ppr typeLHS
+        , text "projectTypeRHS"   <+> text "=" <+> ppr typeRHS
         ])
 
 {-------------------------------------------------------------------------------
   Parser
 -------------------------------------------------------------------------------}
 
-parseIsomorphic ::
+parseProject ::
      TyConSubst
   -> ResolvedNames
   -> Ct
-  -> ParseResult Void (GenLocated CtLoc CIsomorphic)
-parseIsomorphic tcs rn@ResolvedNames{..} =
-    parseConstraint' clsIsomorphic $ \[typeLHS, typeRHS] -> do
+  -> ParseResult Void (GenLocated CtLoc CProject)
+parseProject tcs rn@ResolvedNames{..} =
+    parseConstraint' clsProject $ \[typeLHS, typeRHS] -> do
       fieldsLHS <- parseFields tcs rn typeLHS
       fieldsRHS <- parseFields tcs rn typeRHS
-      return $ CIsomorphic {
-            isomorphicParsedLHS = fieldsLHS
-          , isomorphicParsedRHS = fieldsRHS
-          , isomorphicTypeLHS   = typeLHS
-          , isomorphicTypeRHS   = typeRHS
+      return $ CProject {
+            projectParsedLHS = fieldsLHS
+          , projectParsedRHS = fieldsRHS
+          , projectTypeLHS   = typeLHS
+          , projectTypeRHS   = typeRHS
           }
 
 {-------------------------------------------------------------------------------
   Evidence
 -------------------------------------------------------------------------------}
 
-evidenceIsomorphic ::
+evidenceProject ::
      ResolvedNames
-  -> CIsomorphic
+  -> CProject
   -> [Int]
   -> TcPluginM 'Solve EvTerm
-evidenceIsomorphic ResolvedNames{..} CIsomorphic{..} fields = do
+evidenceProject ResolvedNames{..} CProject{..} fields = do
     return $
       evDataConApp
-        (classDataCon clsIsomorphic)
-        [isomorphicTypeLHS, isomorphicTypeRHS]
-        [ mkCoreApps (Var idEvidenceIsomorphic) [
-              Type isomorphicTypeLHS
-            , Type isomorphicTypeRHS
+        (classDataCon clsProject)
+        [projectTypeLHS, projectTypeRHS]
+        [ mkCoreApps (Var idEvidenceProject) [
+              Type projectTypeLHS
+            , Type projectTypeRHS
             , mkListExpr intTy $ map (mkUncheckedIntExpr . fromIntegral) fields
             ]
         ]
@@ -95,27 +95,27 @@ evidenceIsomorphic ResolvedNames{..} CIsomorphic{..} fields = do
   Solver
 -------------------------------------------------------------------------------}
 
-solveIsomorphic ::
+solveProject ::
      ResolvedNames
   -> Ct
-  -> GenLocated CtLoc CIsomorphic
+  -> GenLocated CtLoc CProject
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
-solveIsomorphic rn orig (L loc iso@CIsomorphic{..}) =
-    case ( checkAllFieldsKnown isomorphicParsedLHS
-         , checkAllFieldsKnown isomorphicParsedRHS
+solveProject rn orig (L loc proj@CProject{..}) =
+    case ( checkAllFieldsKnown projectParsedLHS
+         , checkAllFieldsKnown projectParsedRHS
          ) of
       (Just lhs, Just rhs) ->
-        case knownRecordIsomorphic lhs rhs of
-          ([], inBoth) -> do
-            eqs <- forM inBoth $ \(_n, (l, r)) ->
+        case checkCanProject lhs rhs of
+          Right inBoth -> do
+            eqs <- forM inBoth $ \(l, r) ->
                      newWanted loc $
                        mkPrimEqPredRole
                          Nominal
                          (knownFieldType l)
                          (knownFieldType r)
-            ev  <- evidenceIsomorphic rn iso (mkPerm lhs rhs)
+            ev  <- evidenceProject rn proj (mkPerm lhs rhs)
             return (Just (ev, orig), map mkNonCanonical eqs)
-          _otherwise ->
+          Left _err ->
             -- TODO: Return a custom error message
             return (Nothing, [])
       _otherwise ->

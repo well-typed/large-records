@@ -45,11 +45,12 @@ module Data.Record.Anonymous.Simple (
   , get
   , set
   , merge
-  , castRecord
+  , lens
+  , project
     -- * Constraints
   , RecordConstraints
     -- * Working with rows
-  , Isomorphic
+  , Project
   , Merge
   , AllFields
   , KnownFields
@@ -74,6 +75,7 @@ import Data.Record.Anonymous.Internal.Record (Field)
 import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Advanced as Adv
+import Data.Bifunctor
 
 {-------------------------------------------------------------------------------
   Definition
@@ -98,8 +100,14 @@ insert nm x = fromAdvanced . Adv.insert nm (I x) . toAdvanced
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge r r' = fromAdvanced $ Adv.merge (toAdvanced r) (toAdvanced r')
 
-castRecord :: Isomorphic r r' => Record r -> Record r'
-castRecord = fromAdvanced . Adv.castRecord . toAdvanced
+lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
+lens =
+      bimap fromAdvanced (\f -> fromAdvanced . f . toAdvanced)
+    . Adv.lens
+    . toAdvanced
+
+project :: Project r r' => Record r -> Record r'
+project = fst . lens
 
 {-------------------------------------------------------------------------------
   HasField

@@ -12,12 +12,12 @@ import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 --
 -- Listed alphabetically.
 data ResolvedNames = ResolvedNames {
-      clsHasField           :: Class
-    , clsAllFields          :: Class
-    , clsIsomorphic         :: Class
+      clsAllFields          :: Class
+    , clsHasField           :: Class
     , clsKnownFields        :: Class
     , clsKnownHash          :: Class
     , clsKnownSymbol        :: Class
+    , clsProject            :: Class
     , dataConDict           :: DataCon
     , dataConFieldStrict    :: DataCon
     , dataConFieldName      :: DataCon
@@ -25,9 +25,9 @@ data ResolvedNames = ResolvedNames {
     , dataConProxy          :: DataCon
     , idEvidenceAllFields   :: Id
     , idEvidenceHasField    :: Id
-    , idEvidenceIsomorphic  :: Id
     , idEvidenceKnownFields :: Id
     , idEvidenceKnownHash   :: Id
+    , idEvidenceProject     :: Id
     , idUnsafeCoerce        :: Id
     , tyConDict             :: TyCon
     , tyConFieldMetadata    :: TyCon
@@ -53,10 +53,10 @@ nameResolution = do
 
     clsAllFields   <- getClass draiRow  "AllFields"
     clsHasField    <- getClass grCompat "HasField"
-    clsIsomorphic  <- getClass draiRow  "Isomorphic"
     clsKnownFields <- getClass draiRow  "KnownFields"
     clsKnownHash   <- getClass draiField "KnownHash"
     clsKnownSymbol <- tcLookupClass knownSymbolClassName
+    clsProject     <- getClass draiRow  "Project"
 
     dataConDict          <- getDataCon dDict     "Dict"
     dataConFieldMetadata <- getDataCon drGeneric "FieldMetadata"
@@ -66,9 +66,9 @@ nameResolution = do
 
     idEvidenceAllFields   <- getVar draiEvidence "evidenceAllFields"
     idEvidenceHasField    <- getVar draiEvidence "evidenceHasField"
-    idEvidenceIsomorphic  <- getVar draiEvidence "evidenceIsomorphic"
     idEvidenceKnownFields <- getVar draiEvidence "evidenceKnownFields"
     idEvidenceKnownHash   <- getVar draiEvidence "evidenceKnownHash"
+    idEvidenceProject     <- getVar draiEvidence "evidenceProject"
     idUnsafeCoerce        <- getVar uCoerce      "unsafeCoerce"
 
     tyConDict          <- getTyCon dDict      "Dict"

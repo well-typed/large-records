@@ -27,7 +27,7 @@ module Data.Record.Anonymous.Internal.Canonical (
   , fromLazyVector
     -- * Basic API
   , insert
-  , project
+  , lens
     -- * Simple (non-constrained) combinators
   , map
   , mapM
@@ -41,6 +41,7 @@ module Data.Record.Anonymous.Internal.Canonical (
   ) where
 
 import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
+import qualified Prelude
 
 import Data.Coerce (coerce)
 import Data.SOP.BasicFunctors
@@ -158,9 +159,12 @@ insert new = prepend
 -- It is the responsibility of the caller that the list of indices is in row
 -- order of the new record.
 --
--- @O(n)@.
-project :: [Int] -> Canonical f -> Canonical f
-project is (Canonical v) = Canonical $ V.backpermute v (Strict.fromList is)
+-- @O(n)@ (in both directions)
+lens :: [Int] -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
+lens is (Canonical v) = (
+      Canonical $ V.backpermute v (Strict.fromList is)
+    , \(Canonical v') -> Canonical $ v V.// (Prelude.zip is (V.toList v'))
+    )
 
 {-------------------------------------------------------------------------------
   Simple (non-constrained) combinators

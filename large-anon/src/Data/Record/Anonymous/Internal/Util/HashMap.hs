@@ -1,6 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE LambdaCase #-}
 
 -- | Utilities for working with hashmaps
 --
@@ -11,9 +10,8 @@ module Data.Record.Anonymous.Internal.Util.HashMap (
     -- * Miscellaneous
     alterExisting
     -- * Merging
-  , Merged
+  , Merged(..)
   , merge
-  , merged
   ) where
 
 import Prelude hiding (abs)
@@ -56,13 +54,6 @@ data Merged a b =
     InLeft a
   | InRight b
   | InBoth a b
-
--- | Eliminator for 'Merged'
-merged :: (Either a b -> c) -> ((a, b) -> c) -> Merged a b -> c
-merged inOne inBoth = \case
-    InLeft  a   -> inOne  (Left a)
-    InRight   b -> inOne  (Right b)
-    InBoth  a b -> inBoth (a, b)
 
 -- | Merge two 'HashMap's
 merge ::

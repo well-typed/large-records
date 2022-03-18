@@ -43,9 +43,9 @@ library
   other-modules:
       Data.Record.Anonymous.Plugin.Constraints.AllFields
       Data.Record.Anonymous.Plugin.Constraints.HasField
-      Data.Record.Anonymous.Plugin.Constraints.Isomorphic
       Data.Record.Anonymous.Plugin.Constraints.KnownFields
       Data.Record.Anonymous.Plugin.Constraints.KnownHash
+      Data.Record.Anonymous.Plugin.Constraints.Project
       Data.Record.Anonymous.Plugin.GhcTcPluginAPI
       Data.Record.Anonymous.Plugin.NameResolution
       Data.Record.Anonymous.Plugin.Parsing
@@ -99,11 +99,11 @@ test-suite test-large-anon
       Test.Prop.Record.Model.Generator
       Test.Prop.Record.Model.Orphans
       Test.Sanity.AllFields
-      Test.Sanity.Casting
       Test.Sanity.DuplicateFields
       Test.Sanity.Existential
       Test.Sanity.Generics
       Test.Sanity.HasField
+      Test.Sanity.Lens
       Test.Sanity.Merging
       Test.Sanity.Named.Record1
       Test.Sanity.Named.Record2

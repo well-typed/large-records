@@ -32,9 +32,11 @@ module Data.Record.Anonymous.Internal.Record (
   , get
   , set
   , merge
-  , castRecord
+  , lens
+  , project
   ) where
 
+import Data.Bifunctor
 import Data.Kind
 import Data.Proxy
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
@@ -209,9 +211,10 @@ merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (canonicalize -> r) (canonicalize -> r') =
     unsafeFromCanonical $ r <> r'
 
-    --Diff.apply (Diff.fromCanonical r) r'
-
--- | Cast record
+-- | Lens from one record to another
+--
+-- TODO: Update docs (these are still from the old castRecord).
+-- TODO: Make all doctests work agian.
 --
 -- Some examples of valid casts. We can cast a record to itself:
 --
@@ -248,8 +251,20 @@ merge (canonicalize -> r) (canonicalize -> r') =
 -- ...
 -- ...No instance for (Isomorphic...
 -- ...
+lens :: forall f r r'.
+     Project r r'
+  => Record f r -> (Record f r', Record f r' -> Record f r)
+lens = \(canonicalize -> r) ->
+    bimap getter setter (Canon.lens (projectIndices (Proxy @r) (Proxy @r')) r)
+  where
+    getter :: Canonical f -> Record f r'
+    getter = unsafeFromCanonical
+
+    setter :: (Canonical f -> Canonical f) -> Record f r' -> Record f r
+    setter f (canonicalize -> r) = unsafeFromCanonical (f r)
+
+-- | Project out subrecord
 --
--- TODO: We should generalize this to an arbitrary projection.
-castRecord :: forall f r r'. Isomorphic r r' => Record f r -> Record f r'
-castRecord (canonicalize -> r) = unsafeFromCanonical $
-    Canon.project (isomorphic (Proxy @r) (Proxy @r')) r
+-- This is just @fst . lens@.
+project :: Project r r' => Record f r -> Record f r'
+project = fst . lens

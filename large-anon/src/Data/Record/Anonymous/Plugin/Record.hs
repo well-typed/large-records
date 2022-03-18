@@ -19,10 +19,11 @@ module Data.Record.Anonymous.Plugin.Record (
   , KnownField(..)
   , knownRecordFields
   , knownRecordFromFields
-  , knownRecordIsomorphic
   , knownRecordTraverse
-    -- ** Construction
+    -- ** Checks
   , checkAllFieldsKnown
+  , CannotProject(..)
+  , checkCanProject
     -- * Parsing
   , parseRecord
   , parseFields
@@ -33,12 +34,14 @@ import Control.Monad
 import Data.Either (partitionEithers)
 import Data.Foldable (asum)
 import Data.HashMap.Strict (HashMap)
+import Data.Maybe (mapMaybe)
 import Data.Vector (Vector)
 
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector         as V
 
 import Data.Record.Anonymous.Internal.FieldName (FieldName)
+import Data.Record.Anonymous.Internal.Util.HashMap (Merged(..))
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
@@ -135,6 +138,11 @@ data KnownRecord a = KnownRecord {
       -- >     Map.lookup n knownRecordNames == Just i
       -- > ==> knownFieldName (knownRecordFields V.! i) == n
     , knownRecordVisible :: HashMap FieldName Int
+
+      -- | Are all fields in this record visible?
+      --
+      -- 'False' if some fields are shadowed.
+    , knownRecordAllVisible :: Bool
     }
   deriving (Functor, Foldable)
 
@@ -151,8 +159,9 @@ knownRecordTraverse KnownRecord{..} f =
   where
     mkRecord :: Vector (KnownField b) -> KnownRecord b
     mkRecord updated = KnownRecord {
-          knownRecordVector  = updated
-        , knownRecordVisible = knownRecordVisible
+          knownRecordVector     = updated
+        , knownRecordVisible    = knownRecordVisible
+        , knownRecordAllVisible = knownRecordAllVisible
         }
 
     f' :: KnownField a -> m (KnownField b)
@@ -168,55 +177,40 @@ knownRecordFromFields :: forall a.
      --
      -- In other words, fields earlier in the list shadow later fields.
   -> KnownRecord a
-knownRecordFromFields = go [] 0 HashMap.empty
+knownRecordFromFields = go [] 0 HashMap.empty True
   where
     go :: [KnownField a]        -- Acc fields, reverse order (includes shadowed)
        -> Int                   -- Next index
        -> HashMap FieldName Int -- Acc indices of visible fields
+       -> Bool                  -- Are all already processed fields visible?
        -> [KnownField a]        -- To process
        -> KnownRecord a
-    go accFields !nextIndex !accVisible = \case
+    go accFields !nextIndex !accVisible !accAllVisible = \case
         [] -> KnownRecord {
-            knownRecordVector  = V.fromList $ reverse accFields
-          , knownRecordVisible = accVisible
+            knownRecordVector     = V.fromList $ reverse accFields
+          , knownRecordVisible    = accVisible
+          , knownRecordAllVisible = accAllVisible
           }
         f:fs
           | name `HashMap.member` accVisible ->
+              -- Field shadowed
               go (f : accFields)
                  (succ nextIndex)
-                 accVisible        -- Field shadowed
+                 accVisible
+                 False
                  fs
           | otherwise ->
               go (f : accFields)
                  (succ nextIndex)
                  (HashMap.insert name nextIndex accVisible)
+                 accAllVisible
                  fs
           where
             name = knownFieldName f
 
--- | Check if two known records are isomorphic
---
--- Returns the set of fields that are missing in either of the two records,
--- and the fields that match. If the first list is empty, the records are
--- isomorphic.
-knownRecordIsomorphic :: forall a b.
-     KnownRecord a
-  -> KnownRecord b
-  -> ([FieldName], [(FieldName, (KnownField a, KnownField b))])
-knownRecordIsomorphic = \ra rb ->
-      partitionEithers
-    . map (uncurry aux)
-    . HashMap.toList
-    $ HashMap.merge (knownRecordVisibleMap ra) (knownRecordVisibleMap rb)
-  where
-    aux ::
-         FieldName
-      -> HashMap.Merged (KnownField a) (KnownField b)
-      -> Either FieldName (FieldName, (KnownField a, KnownField b))
-    aux k =
-        HashMap.merged
-          (Left . either knownFieldName knownFieldName)
-          (Right . (k,))
+{-------------------------------------------------------------------------------
+  Checks
+-------------------------------------------------------------------------------}
 
 -- | Return map from field name to type, /if/ all fields are statically known
 checkAllFieldsKnown :: Fields -> Maybe (KnownRecord ())
@@ -245,6 +239,63 @@ checkAllFieldsKnown = go [] . (:[])
         , knownFieldType = typ
         , knownFieldInfo = ()
         }
+
+-- | Reason why we cannot project
+data CannotProject =
+    -- | We do not supporting to records with shadowed fields
+    --
+    -- Since these fields can only come from the source record, and shadowed
+    -- fields in the source record are invisible, shadowed fields in the target
+    -- could only be duplicates of the same field in the source. This is not
+    -- particularly useful, so we don't support it. Moreover, since we actually
+    -- create /lenses/ from these projections, it is important that every field
+    -- in the source record corresponds to at most /one/ field in the target.
+    TargetContainsShadowedFields
+
+    -- | Some fields in the target are missing in the source
+  | SourceMissesFields [FieldName]
+
+-- | Check if we can project from one record to another
+--
+-- See docstring of the  'Project' class for some discussion of shadowing.
+checkCanProject :: forall a b.
+     KnownRecord a
+  -> KnownRecord b
+  -> Either CannotProject [(KnownField a, KnownField b)]
+checkCanProject recordA recordB =
+    if not (knownRecordAllVisible recordB) then
+      Left TargetContainsShadowedFields
+    else
+        uncurry checkMissing
+      . partitionEithers
+      . mapMaybe (uncurry checkField)
+      . HashMap.toList
+      $ HashMap.merge visibleA visibleB
+  where
+    visibleA :: HashMap FieldName (KnownField a)
+    visibleA = knownRecordVisibleMap recordA
+
+    visibleB :: HashMap FieldName (KnownField b)
+    visibleB = knownRecordVisibleMap recordB
+
+    checkField ::
+         FieldName
+      -> Merged (KnownField a) (KnownField b)
+      -> Maybe (Either FieldName (KnownField a, KnownField b))
+    checkField n = \case
+        -- A field that only appears on the LHS is irrelevant
+        InLeft _ -> Nothing
+        -- A field that only appears on the RHS is problematic
+        InRight _ -> Just (Left n)
+        -- A field that appears in both is part of the projection
+        InBoth x y -> Just (Right (x, y))
+
+    checkMissing ::
+         [FieldName]
+      -> [(KnownField a, KnownField b)]
+      -> Either CannotProject [(KnownField a, KnownField b)]
+    checkMissing []      matched = Right matched
+    checkMissing missing _       = Left $ SourceMissesFields missing
 
 {-------------------------------------------------------------------------------
   Outputable

@@ -220,7 +220,7 @@ test_insertSameType = do
     assertEqual "" expected actual
   where
     actual :: Record I '[ '("a", Bool) ]
-    actual = Anon.castRecord $
+    actual = Anon.project $
                  Anon.insert #a (I True)
                $ Anon.insert #a (I False)
                $ Anon.empty
@@ -233,7 +233,7 @@ test_insertDifferentType = do
     assertEqual "" expected actual
   where
     actual :: Record I '[ '("a", Bool) ]
-    actual = Anon.castRecord $
+    actual = Anon.project $
                  Anon.insert #a (I True)
                $ Anon.insert #a (I 'a')
                $ Anon.empty
@@ -246,7 +246,7 @@ test_mergeSameType = do
     assertEqual "" expected actual
   where
     actual :: Record I '[ '("a", Bool) ]
-    actual = Anon.castRecord $
+    actual = Anon.project $
                Anon.merge
                  (Anon.insert #a (I True)  Anon.empty)
                  (Anon.insert #a (I False) Anon.empty)
@@ -259,7 +259,7 @@ test_mergeDifferentType = do
     assertEqual "" expected actual
   where
     actual :: Record I '[ '("a", Bool) ]
-    actual = Anon.castRecord $
+    actual = Anon.project $
                Anon.merge (Anon.insert #a (I True) Anon.empty)
                           (Anon.insert #a (I 'a')  Anon.empty)
 

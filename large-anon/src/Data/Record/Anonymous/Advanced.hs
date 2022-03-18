@@ -23,7 +23,8 @@ module Data.Record.Anonymous.Advanced (
   , Record.get
   , Record.set
   , Record.merge
-  , Record.castRecord
+  , Record.lens
+  , Record.project
     -- * Constraints
   , RecordConstraints
   , recordOfDicts
@@ -49,7 +50,7 @@ module Data.Record.Anonymous.Advanced (
   , Combinators.cpure
   , Combinators.ap
     -- * Working with rows
-  , Isomorphic
+  , Project
   , Merge
   , FieldTypes
   , AllFields

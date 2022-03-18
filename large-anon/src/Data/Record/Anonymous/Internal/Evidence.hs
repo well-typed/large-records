@@ -8,9 +8,9 @@
 module Data.Record.Anonymous.Internal.Evidence (
     evidenceAllFields
   , evidenceHasField
-  , evidenceIsomorphic
   , evidenceKnownFields
   , evidenceKnownHash
+  , evidenceProject
   ) where
 
 import Data.Record.Generic (FieldMetadata)
@@ -57,10 +57,10 @@ evidenceHasField i n r@Record{..} = (
 
 evidenceAllFields   :: [Dict c Any]        -> DictAllFields r c
 evidenceKnownFields :: [FieldMetadata Any] -> DictKnownFields r
-evidenceIsomorphic  :: [Int]               -> DictIsomorphic r r'
 evidenceKnownHash   :: Int                 -> DictKnownHash s
+evidenceProject     :: [Int]               -> DictProject r r'
 
 evidenceAllFields   x _ _ = Vector.fromList x
 evidenceKnownFields x _   = x
-evidenceIsomorphic  x _ _ = x
 evidenceKnownHash   x _   = x
+evidenceProject     x _ _ = x

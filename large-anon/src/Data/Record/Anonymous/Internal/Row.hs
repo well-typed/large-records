@@ -31,7 +31,7 @@ module Data.Record.Anonymous.Internal.Row (
   , DictKnownFields
   , FieldTypes
   , fieldNames
-    -- * Reflection
+    -- * Reflection (internal usage only)
   , Reflected(..)
   , reflectKnownFields
   , reflectAllFields
@@ -139,6 +139,8 @@ type family FieldTypes (f :: Type -> Type) (r :: [(Symbol, Type)]) :: [(Symbol, 
 
 {-------------------------------------------------------------------------------
   Reflection
+
+  Internal usage only.
 -------------------------------------------------------------------------------}
 
 data Reflected c where

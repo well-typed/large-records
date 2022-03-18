@@ -129,5 +129,5 @@ mkPerm old new =
     map inOld (knownRecordFields new)
   where
     inOld :: KnownField b -> Int
-    inOld KnownField{..} = knownRecordIndices old HashMap.! knownFieldName
+    inOld KnownField{..} = knownRecordVisible old HashMap.! knownFieldName
 

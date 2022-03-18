@@ -122,15 +122,19 @@ data KnownRecord a = KnownRecord {
       --
       -- Order matters, because records with the same fields in a different
       -- order are not considered equal by the library (merely isomorphic).
+      --
+      -- May contain duplicates (if fields are shadowed).
       knownRecordVector :: Vector (KnownField a)
 
-      -- | Position of each field in the record
+      -- | "Most recent" position of each field in the record
+      --
+      -- Shadowed fields are not included in this map.
       --
       -- Invariant:
       --
       -- >     Map.lookup n knownRecordNames == Just i
       -- > ==> knownFieldName (knownRecordFields V.! i) == n
-    , knownRecordIndices :: HashMap FieldName Int
+    , knownRecordVisible :: HashMap FieldName Int
     }
   deriving (Functor, Foldable)
 
@@ -148,17 +152,15 @@ knownRecordTraverse KnownRecord{..} f =
     mkRecord :: Vector (KnownField b) -> KnownRecord b
     mkRecord updated = KnownRecord {
           knownRecordVector  = updated
-        , knownRecordIndices = knownRecordIndices
+        , knownRecordVisible = knownRecordVisible
         }
 
     f' :: KnownField a -> m (KnownField b)
     f' fld@(KnownField nm typ _info) = KnownField nm typ <$> f fld
 
-knownRecordMap :: forall a. KnownRecord a -> HashMap FieldName (KnownField a)
-knownRecordMap KnownRecord{..} = fmap aux knownRecordIndices
-  where
-    aux :: Int -> KnownField a
-    aux ix = knownRecordVector V.! ix
+knownRecordVisibleMap :: KnownRecord a -> HashMap FieldName (KnownField a)
+knownRecordVisibleMap KnownRecord{..} =
+    (knownRecordVector V.!) <$> knownRecordVisible
 
 knownRecordFromFields :: forall a.
      [KnownField a]
@@ -166,26 +168,28 @@ knownRecordFromFields :: forall a.
      --
      -- In other words, fields earlier in the list shadow later fields.
   -> KnownRecord a
-knownRecordFromFields = go [] HashMap.empty 0
+knownRecordFromFields = go [] 0 HashMap.empty
   where
-    go :: [KnownField a]         -- Accumulated fields, reverse order
-       -> HashMap FieldName Int  -- Accumulated indices
-       -> Int                    -- Next available index
-       -> [KnownField a]         -- To process
+    go :: [KnownField a]        -- Acc fields, reverse order (includes shadowed)
+       -> Int                   -- Next index
+       -> HashMap FieldName Int -- Acc indices of visible fields
+       -> [KnownField a]        -- To process
        -> KnownRecord a
-    go accFields !accIndices !nextIndex = \case
+    go accFields !nextIndex !accVisible = \case
         [] -> KnownRecord {
             knownRecordVector  = V.fromList $ reverse accFields
-          , knownRecordIndices = accIndices
+          , knownRecordVisible = accVisible
           }
         f:fs
-          | name `HashMap.member` accIndices ->
-              -- Field shadowed
-              go accFields accIndices nextIndex fs
-          | otherwise ->
-              go (f:accFields)
-                 (HashMap.insert name nextIndex accIndices)
+          | name `HashMap.member` accVisible ->
+              go (f : accFields)
                  (succ nextIndex)
+                 accVisible        -- Field shadowed
+                 fs
+          | otherwise ->
+              go (f : accFields)
+                 (succ nextIndex)
+                 (HashMap.insert name nextIndex accVisible)
                  fs
           where
             name = knownFieldName f
@@ -203,7 +207,7 @@ knownRecordIsomorphic = \ra rb ->
       partitionEithers
     . map (uncurry aux)
     . HashMap.toList
-    $ HashMap.merge (knownRecordMap ra) (knownRecordMap rb)
+    $ HashMap.merge (knownRecordVisibleMap ra) (knownRecordVisibleMap rb)
   where
     aux ::
          FieldName

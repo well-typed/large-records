@@ -7,6 +7,9 @@
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
 
+-- TODO: Docs
+-- TODO: Generalize castRecord to recordLens
+-- TODO: Support for discovery of whether we can apply a recordLens
 module Data.Record.Anonymous.Existential (
     -- * Recover record type information
     SomeField(..)

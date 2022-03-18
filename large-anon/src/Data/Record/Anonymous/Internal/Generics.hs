@@ -14,6 +14,8 @@
 module Data.Record.Anonymous.Internal.Generics (
     -- * Additional generic functions
     describeRecord
+    -- * Debugging
+  , debugFieldTypes
   ) where
 
 import Data.Aeson (ToJSON(..), FromJSON(..))
@@ -23,10 +25,11 @@ import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.Record.Generic.Show
-import Data.SOP.Constraint
+import Data.SOP
 import Data.Typeable
 import Data.Vector (Vector)
 import GHC.Exts (Any)
+import GHC.TypeLits
 
 import qualified Data.Vector as Vector
 
@@ -122,3 +125,26 @@ describeRecord p =
         , intercalate ", " fs
         , "}"
         ]
+
+{-------------------------------------------------------------------------------
+  Debugging
+-------------------------------------------------------------------------------}
+
+-- | Like 'describeRecord', but exclusively using type-level information.
+--
+-- WARNING: The @All@ constraint will lead to quadratic code. This is for
+-- debugging only.
+debugFieldTypes :: forall f r.
+     All IsField (FieldTypes f r)
+  => Proxy (Record f r) -> String
+debugFieldTypes _ =
+    (\str -> "[" ++ str ++ "]") . intercalate "," . hcollapse $
+      aux (shape :: Shape (FieldTypes f r))
+  where
+    aux :: forall fs. All IsField fs => Shape fs -> NP (K String) fs
+    aux ShapeNil      = Nil
+    aux (ShapeCons s) = name :* aux s
+
+    name :: forall n a. KnownSymbol n => K String '(n, a)
+    name = K (symbolVal (Proxy @n))
+

@@ -35,6 +35,10 @@ test_showParsed = do
 
 {-------------------------------------------------------------------------------
   Example dynamically typed record
+
+  TODO: include projection discovery, and then model Sam's example: parse
+  some stuff into a record, project out known stuff, leaving the rest
+  (forwards compatibility), and then update the full thing again.
 -------------------------------------------------------------------------------}
 
 data DynRecord = DynRecord [(String, Value)]

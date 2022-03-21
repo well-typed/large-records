@@ -22,7 +22,6 @@ library
 
       -- Exposed for the benefit of the plugin/docspec
       -- TODO: Reconsider if we need to export all of this.
-      Data.Record.Anonymous.Internal.AfterUnI
       Data.Record.Anonymous.Internal.Canonical
       Data.Record.Anonymous.Internal.Combinators.Constrained
       Data.Record.Anonymous.Internal.Combinators.Simple

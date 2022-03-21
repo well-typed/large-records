@@ -26,7 +26,6 @@ library
       Data.Record.Anonymous.Internal.Combinators.Constrained
       Data.Record.Anonymous.Internal.Combinators.Simple
       Data.Record.Anonymous.Internal.Constraints
-      Data.Record.Anonymous.Internal.Debugging
       Data.Record.Anonymous.Internal.Diff
       Data.Record.Anonymous.Internal.Evidence
       Data.Record.Anonymous.Internal.FieldName
@@ -66,11 +65,13 @@ library
     , large-generics
     , mtl
     , record-hasfield
-    , recover-rtti
     , sop-core
     , text
     , unordered-containers
     , vector
+
+      -- TODO: Make this dependency optional (DEBUG flag)
+    , recover-rtti >= 0.4.1
 
       -- Whatever version is bundled with ghc
     , ghc
@@ -100,12 +101,14 @@ test-suite test-large-anon
       Test.Sanity.AllFields
       Test.Sanity.DuplicateFields
       Test.Sanity.Existential
+      Test.Sanity.Existential.DynRecord
       Test.Sanity.Generics
       Test.Sanity.HasField
       Test.Sanity.Lens
       Test.Sanity.Merging
       Test.Sanity.Named.Record1
       Test.Sanity.Named.Record2
+      Test.Sanity.PolyKinds
       Test.Sanity.Simple
       Test.Sanity.TypeLevelMetadata
   build-depends:

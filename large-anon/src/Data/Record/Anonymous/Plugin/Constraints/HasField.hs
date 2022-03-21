@@ -41,6 +41,9 @@ data CHasField = CHasField {
       -- | Record functor argument (@f@)
     , hasFieldTypeFunctor :: Type
 
+      -- | Functor argument kind (the @k@ in @f :: k -> Type@)
+    , hasFieldTypeKind :: Type
+
       -- | Type of the record (@r@)
     , hasFieldTypeRecord :: Type
 
@@ -57,12 +60,13 @@ data CHasField = CHasField {
 -------------------------------------------------------------------------------}
 
 instance Outputable CHasField where
-  ppr (CHasField label record typeRaw typeRecord typeFunctor typeField) = parens $
+  ppr (CHasField label record typeRaw typeRecord typeFunctor typeKind typeField) = parens $
       text "CHasField" <+> braces (vcat [
           text "hasFieldLabel"       <+> text "=" <+> ppr label
         , text "hasFieldRecord"      <+> text "=" <+> ppr record
         , text "hasFieldTypeRaw"     <+> text "=" <+> ppr typeRaw
         , text "hasFieldTypeFunctor" <+> text "=" <+> ppr typeFunctor
+        , text "hasFieldTypeKind"    <+> text "=" <+> ppr typeKind
         , text "hasFieldTypeRecord"  <+> text "=" <+> ppr typeRecord
         , text "hasFieldTypeField"   <+> text "=" <+> ppr typeField
         ])
@@ -78,7 +82,8 @@ parseHasField ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CHasField)
 parseHasField tcs rn@ResolvedNames{..} =
-    parseConstraint isRelevant $ \(args, x, (f, tyFields), a) -> do
+    -- TODO: We should check what happens when there is a kind mismatch
+    parseConstraint isRelevant $ \(args, x, (k, f, tyFields), a) -> do
       label  <- parseFieldLabel x
       fields <- parseFields tcs rn tyFields
 
@@ -87,6 +92,7 @@ parseHasField tcs rn@ResolvedNames{..} =
         , hasFieldRecord      = fields
         , hasFieldTypeRaw     = args
         , hasFieldTypeFunctor = f
+        , hasFieldTypeKind    = k
         , hasFieldTypeRecord  = tyFields
         , hasFieldTypeField   = a
         }
@@ -98,7 +104,7 @@ parseHasField tcs rn@ResolvedNames{..} =
     -- o @r == Record f r'@
     --
     -- If relevant, returns the raw arguments @[k, x, r, a]@ and @(x, (f, r'), a)@
-    isRelevant :: Class -> [Type] -> Maybe ([Type], Type, (Type, Type), Type)
+    isRelevant :: Class -> [Type] -> Maybe ([Type], Type, (Type, Type, Type), Type)
     isRelevant cls args@[k, x, r, a] = do
         guard $ cls == clsHasField
         tcSymbol <- tyConAppTyCon_maybe k -- TODO: equal up to equalities..?
@@ -123,13 +129,20 @@ evidenceHasField rn@ResolvedNames{..} CHasField{..} i name = do
       evDataConApp
         (classDataCon clsHasField)
         hasFieldTypeRaw
-        [ mkCoreApps (Var idEvidenceHasField) [
-              Type hasFieldTypeFunctor
-            , Type hasFieldTypeRecord
-            , Type hasFieldTypeField
-            , mkUncheckedIntExpr (fromIntegral i)
-            , name'
+        [ mkCoreApps (Var idEvidenceHasField) $ concat [
+              map Type typeArgsEvidence
+            , [ mkUncheckedIntExpr (fromIntegral i)
+              , name'
+              ]
             ]
+        ]
+  where
+    typeArgsEvidence :: [Type]
+    typeArgsEvidence = [
+          hasFieldTypeKind
+        , hasFieldTypeFunctor
+        , hasFieldTypeRecord
+        , hasFieldTypeField
         ]
 
 {-------------------------------------------------------------------------------

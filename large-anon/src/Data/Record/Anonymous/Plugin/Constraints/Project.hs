@@ -22,7 +22,7 @@ import Data.Record.Anonymous.Plugin.TyConSubst
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of an @Project r r'@ constraint
+-- | Parsed form of an @Project (r :: [(Symbol, k)]) (r' :: [(Symbol, k)])@ constraint
 data CProject = CProject {
       -- | Fields on the LHS
       projectParsedLHS :: Fields
@@ -35,6 +35,9 @@ data CProject = CProject {
 
       -- | Right-hand side of the projection (@r'@)
     , projectTypeRHS :: Type
+
+      -- | Functor argument kind (@k@)
+    , projectTypeKind :: Type
     }
 
 {-------------------------------------------------------------------------------
@@ -42,12 +45,13 @@ data CProject = CProject {
 -------------------------------------------------------------------------------}
 
 instance Outputable CProject where
-  ppr (CProject parsedLHS parsedRHS typeLHS typeRHS) = parens $
+  ppr (CProject parsedLHS parsedRHS typeLHS typeRHS typeKind) = parens $
       text "CProject" <+> braces (vcat [
           text "projectParsedLHS" <+> text "=" <+> ppr parsedLHS
         , text "projectParsedRHS" <+> text "=" <+> ppr parsedRHS
         , text "projectTypeLHS"   <+> text "=" <+> ppr typeLHS
         , text "projectTypeRHS"   <+> text "=" <+> ppr typeRHS
+        , text "projectTypeKind"  <+> text "=" <+> ppr typeKind
         ])
 
 {-------------------------------------------------------------------------------
@@ -60,7 +64,7 @@ parseProject ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CProject)
 parseProject tcs rn@ResolvedNames{..} =
-    parseConstraint' clsProject $ \[typeLHS, typeRHS] -> do
+    parseConstraint' clsProject $ \[typeKind, typeLHS, typeRHS] -> do
       fieldsLHS <- parseFields tcs rn typeLHS
       fieldsRHS <- parseFields tcs rn typeRHS
       return $ CProject {
@@ -68,6 +72,7 @@ parseProject tcs rn@ResolvedNames{..} =
           , projectParsedRHS = fieldsRHS
           , projectTypeLHS   = typeLHS
           , projectTypeRHS   = typeRHS
+          , projectTypeKind  = typeKind
           }
 
 {-------------------------------------------------------------------------------
@@ -83,12 +88,19 @@ evidenceProject ResolvedNames{..} CProject{..} fields = do
     return $
       evDataConApp
         (classDataCon clsProject)
-        [projectTypeLHS, projectTypeRHS]
-        [ mkCoreApps (Var idEvidenceProject) [
-              Type projectTypeLHS
-            , Type projectTypeRHS
-            , mkListExpr intTy $ map (mkUncheckedIntExpr . fromIntegral) fields
+        typeArgsEvidence
+        [ mkCoreApps (Var idEvidenceProject) $ concat [
+              map Type typeArgsEvidence
+            , [ mkListExpr intTy $
+                  map (mkUncheckedIntExpr . fromIntegral) fields ]
             ]
+        ]
+  where
+    typeArgsEvidence :: [Type]
+    typeArgsEvidence = [
+          projectTypeKind
+        , projectTypeLHS
+        , projectTypeRHS
         ]
 
 {-------------------------------------------------------------------------------

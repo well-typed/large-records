@@ -105,7 +105,7 @@ parseConstraint p f ct = fmap (L $ ctLoc ct) $
       _otherwise ->
         ParseNoMatch
 
--- | Specialization of 'parseConstriant', just checking the class name
+-- | Specialization of 'parseConstraint', just checking the class name
 parseConstraint' ::
      HasCallStack
   => Class                        -- ^ Predicate we want to match against

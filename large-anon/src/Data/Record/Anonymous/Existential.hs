@@ -8,7 +8,6 @@
 {-# LANGUAGE TypeOperators       #-}
 
 -- TODO: Docs
--- TODO: Generalize castRecord to recordLens
 -- TODO: Support for discovery of whether we can apply a recordLens
 module Data.Record.Anonymous.Existential (
     -- * Recover record type information
@@ -47,43 +46,49 @@ reflectMap (Comp Reflected :* rs) =
   Recover record type information
 -------------------------------------------------------------------------------}
 
-data SomeField (cs :: [Type -> Constraint]) where
-  SomeField :: String -> NP (Flip Dict a) cs -> SomeField cs
+-- | Some existentially qualified type (discovered at runtime) along with
+-- evidence that it satisfies all required constraints
+data SomeField (cs :: [k -> Constraint]) where
+  SomeField :: NP (Flip Dict a) cs -> SomeField cs
 
-reflectFieldDicts :: forall cs r.
+reflectFieldDicts :: forall k (cs :: [k -> Constraint]) (r :: [(Symbol, k)]).
      SListI cs
   => Proxy r
-  -> [SomeField cs]
+  -> [(String, SomeField cs)]
   -> Reflected (Map (AllFields r) cs)
 reflectFieldDicts _ fields = reflectMap $ hmap (Comp . aux) (indices @cs)
   where
     aux :: Index cs c -> Reflected (AllFields r c)
-    aux i = reflectAllFields $ \_ _ -> Vector.fromList $ map (getDict i) fields
+    aux i = reflectAllFields $ \_proxyR _proxyC ->
+              Vector.fromList $ map (getDict i . snd) fields
 
     getDict :: Index cs c -> SomeField cs -> Dict c Any
-    getDict i (SomeField _ dicts) = co $ runFlip (project i dicts)
+    getDict i (SomeField dicts) = co $ runFlip (project i dicts)
 
     co :: Dict c a -> Dict c Any
     co = unsafeCoerce
 
-someFieldMetadata :: SomeField cs -> FieldMetadata Any
-someFieldMetadata (SomeField name _) = md
-  where
-    md :: FieldMetadata Any
-    md = case (someSymbolVal name) of
-           SomeSymbol p -> FieldMetadata p FieldStrict
+someFieldMetadata :: String -> FieldMetadata Any
+someFieldMetadata name =
+    case (someSymbolVal name) of
+      SomeSymbol p -> FieldMetadata p FieldStrict
 
-data SomeFields (cs :: [Type -> Constraint]) where
+data SomeFields (cs :: [k -> Constraint]) where
   SomeFields ::
        (KnownFields r, Map (AllFields r) cs)
     => Proxy r -> SomeFields cs
 
-someFields :: forall cs. SListI cs => [SomeField cs] -> SomeFields cs
+someFields :: forall k (cs :: [k -> Constraint]).
+     SListI cs
+  => [(String, SomeField cs)] -> SomeFields cs
 someFields fields =
-    withReflected (reflectKnownFields $ \_ -> map someFieldMetadata fields)
+    withReflected $ reflectKnownFields $ \_proxyR ->
+      map (someFieldMetadata . fst) fields
   where
     -- The reflected 'KnownFields' determines the shape of the record
-    withReflected :: forall r. Reflected (KnownFields r) -> SomeFields cs
+    withReflected :: forall (r :: [(Symbol, k)]).
+         Reflected (KnownFields r)
+      -> SomeFields cs
     withReflected Reflected =
         case reflectFieldDicts p fields of
           Reflected -> SomeFields p
@@ -107,4 +112,3 @@ indices =
 project :: Index xs x -> NP f xs -> f x
 project IZ     (x :* _)  = x
 project (IS i) (_ :* xs) = project i xs
-

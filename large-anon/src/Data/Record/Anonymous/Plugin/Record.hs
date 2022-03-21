@@ -334,14 +334,14 @@ instance Outputable a => Outputable (KnownField a) where
   Parser
 -------------------------------------------------------------------------------}
 
--- | Parse @Record f r@
+-- | Parse @Record @k f r@
 --
--- Returns the argument @f, r@
-parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type)
+-- Returns the argument @k, f, r@
+parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type, Type)
 parseRecord tcs ResolvedNames{..} t = do
     args <- parseInjTyConApp tcs tyConRecord t
     case args of
-      [f, r]     -> Just (f, r)
+      [k, f, r]  -> Just (k, f, r)
       _otherwise -> Nothing
 
 parseFields :: TyConSubst -> ResolvedNames -> Type -> Maybe Fields

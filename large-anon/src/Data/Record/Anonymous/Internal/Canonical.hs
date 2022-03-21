@@ -2,12 +2,15 @@
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures             #-}
 {-# LANGUAGE NamedFieldPuns             #-}
+{-# LANGUAGE PolyKinds                  #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE RoleAnnotations            #-}
 
 -- | Canonical gecord (i.e., no diff)
 --
@@ -44,14 +47,15 @@ import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 import qualified Prelude
 
 import Data.Coerce (coerce)
+import Data.Kind
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->)(apFn))
+import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
 
 import qualified Data.Vector         as Lazy
 import qualified Data.Vector.Generic as V
 
-import Data.Record.Anonymous.Internal.Debugging
 import Data.Record.Anonymous.Internal.StrictVector (Vector)
 
 import qualified Data.Record.Anonymous.Internal.StrictVector as Strict
@@ -78,7 +82,7 @@ import qualified Data.Record.Anonymous.Internal.StrictVector as Strict
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
-newtype Canonical f = Canonical {
+newtype Canonical (f :: k -> Type) = Canonical {
       -- | All values in the record, in row order.
       --
       -- It is important that the vector is in row order: this is what makes
@@ -90,6 +94,8 @@ newtype Canonical f = Canonical {
       canonValues :: Vector (f Any)
     }
   deriving newtype (Semigroup, Monoid)
+
+type role Canonical representational
 
 deriving instance Show a => Show (Canonical (K a))
 
@@ -219,5 +225,8 @@ ap = zipWith apFn
   Debugging support
 -------------------------------------------------------------------------------}
 
-toString :: Canonical f -> String
-toString = show . map (K . ShowViaRecoverRTTI)
+toString :: forall k (f :: k -> Type). Canonical f -> String
+toString = show . aux
+  where
+    aux :: Canonical f -> Canonical (K (AnythingToString (f Any)))
+    aux = coerce

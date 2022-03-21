@@ -5,6 +5,7 @@
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -101,7 +102,7 @@ import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
 -- @a == b@. We /could/ introduce a new constraint to say precisely that, but
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
-data Record f (r :: [(Symbol, Type)]) = Record {
+data Record (f :: k -> Type) (r :: [(Symbol, k)]) = Record {
       recordDiff  :: Diff f
     , recordCanon :: Canonical f
     }

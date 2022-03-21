@@ -1,8 +1,11 @@
 {-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -26,6 +29,7 @@ import Data.SOP.BasicFunctors
 import Data.SOP.Constraint
 import Data.SOP.Dict
 import GHC.Exts (Any)
+import GHC.TypeLits (Symbol)
 
 import Data.Vector.Generic as V
 
@@ -35,15 +39,18 @@ import Data.Record.Anonymous.Internal.Row
 import qualified Data.Record.Anonymous.Internal.Canonical          as Canon
 import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 import qualified Data.Record.Anonymous.Internal.Record             as Record
+import Data.Kind
 
 {-------------------------------------------------------------------------------
   Reifiying dictionaries
 -------------------------------------------------------------------------------}
 
-data Constrained c f x where
+data Constrained (c :: k -> Constraint) (f :: k -> Type) (x :: k) where
   Constrained :: c x => f x -> Constrained c f x
 
-constrain :: forall c f r.
+constrain :: forall k (c :: k -> Constraint)
+                      (f :: k -> Type)
+                      (r :: [(Symbol, k)]).
       AllFields r c
    => Proxy c -> Record f r -> Record (Constrained c f) r
 constrain p (Record.canonicalize -> r) = Record.unsafeFromCanonical $
@@ -57,14 +64,17 @@ constrain p (Record.canonicalize -> r) = Record.unsafeFromCanonical $
   Taking the functor into account
 -------------------------------------------------------------------------------}
 
-class    (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
+class    (AllFields r (Compose c f), KnownFields r) => RecordConstraints (f :: k -> l) (r :: [(Symbol, k)]) (c :: l -> Constraint)
 instance (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
 
-recordOfDicts :: forall f r c.
+recordOfDicts :: forall k l
+                        (f :: k -> l)
+                        (r :: [(Symbol, k)])
+                        (c :: l -> Constraint).
      RecordConstraints f r c
   => Proxy c -> Record (Dict c :.: f) r
 recordOfDicts _ =
     Simple.map aux $ constrain (Proxy @(Compose c f)) (Simple.pure (K ()))
   where
-    aux :: Constrained (Compose c f) (K ()) x -> (:.:) (Dict c) f x
+    aux :: forall (x :: k). Constrained (Compose c f) (K ()) x -> (:.:) (Dict c) f x
     aux (Constrained _) = Comp Dict

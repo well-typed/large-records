@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
@@ -39,15 +41,17 @@ import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 import qualified Data.Record.Anonymous.Internal.Record    as Record
+import Data.Kind
+import GHC.TypeLits (Symbol)
 
 {-------------------------------------------------------------------------------
   Internal auxiliary (convenient shorthand)
 -------------------------------------------------------------------------------}
 
-c :: Record f r -> Canonical f
+c :: forall k (f :: k -> Type) (r :: [(Symbol, k)]). Record f r -> Canonical f
 c = Record.canonicalize
 
-fromC :: Canonical f -> Record f r
+fromC :: forall k (f :: k -> Type) (r :: [(Symbol, k)]). Canonical f -> Record f r
 fromC = Record.unsafeFromCanonical
 
 {-------------------------------------------------------------------------------

@@ -15,7 +15,7 @@ rewrite rn@ResolvedNames{..} = listToUFM [
     ]
 
 rewriteRecordMetadataOf :: ResolvedNames -> TcPluginRewriter
-rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[functor, fields] =
+rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[_k, f, r] =
 --  trace _debugInput  $
 --  trace _debugParsed $
     case mKnownFields of
@@ -30,14 +30,14 @@ rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[functor, fields] =
                  Nominal
                  tyConFieldTypes
                  args
-                 (computeMetadataOf functor knownFields)
+                 (computeMetadataOf f knownFields)
           }
   where
     tcs :: TyConSubst
     tcs = mkTyConSubst given
 
     parsedFields :: Maybe Fields
-    parsedFields = parseFields tcs rn fields
+    parsedFields = parseFields tcs rn r
 
     mKnownFields :: Maybe (KnownRecord ())
     mKnownFields = checkAllFieldsKnown =<< parsedFields
@@ -72,10 +72,10 @@ rewriteRecordMetadataOf _rn _given _args =
     panic $ "rewriteRecordMetadataOf: unexpected arguments"
 
 computeMetadataOf :: Type -> KnownRecord () -> TcType
-computeMetadataOf functor fields =
+computeMetadataOf f r =
     mkPromotedListTy
       (mkTupleTy Boxed [mkTyConTy typeSymbolKindCon, liftedTypeKind])
-      (map aux $ knownRecordFields fields)
+      (map aux $ knownRecordFields r)
   where
     aux :: KnownField () -> Type
     aux KnownField{..} =
@@ -85,5 +85,5 @@ computeMetadataOf functor fields =
           [ mkTyConTy typeSymbolKindCon -- kind of first arg
           , liftedTypeKind              -- kind of second arg
           , FieldName.mkType knownFieldName
-          , functor `mkAppTy` knownFieldType
+          , f `mkAppTy` knownFieldType
           ]

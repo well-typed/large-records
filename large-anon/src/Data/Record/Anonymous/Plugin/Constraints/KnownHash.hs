@@ -64,11 +64,18 @@ evidenceKnownFieldLabel ResolvedNames{..} CKnownHash{..} =
     return $
       evDataConApp
         (classDataCon clsKnownHash)
-        [knownHashType]
-        [ mkCoreApps (Var idEvidenceKnownHash) [
-              Type knownHashType
-            , mkUncheckedIntExpr (fromIntegral $ hash (unpackFS knownHashLabel))
+        typeArgsEvidence
+        [ mkCoreApps (Var idEvidenceKnownHash) $ concat [
+              map Type typeArgsEvidence
+            , [ mkUncheckedIntExpr . fromIntegral $
+                  hash (unpackFS knownHashLabel)
+              ]
             ]
+        ]
+  where
+    typeArgsEvidence :: [Type]
+    typeArgsEvidence = [
+          knownHashType
         ]
 
 {-------------------------------------------------------------------------------

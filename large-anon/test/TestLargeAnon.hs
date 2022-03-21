@@ -11,6 +11,7 @@ import qualified Test.Sanity.Generics
 import qualified Test.Sanity.HasField
 import qualified Test.Sanity.Lens
 import qualified Test.Sanity.Merging
+import qualified Test.Sanity.PolyKinds
 import qualified Test.Sanity.Simple
 import qualified Test.Sanity.TypeLevelMetadata
 
@@ -25,6 +26,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.TypeLevelMetadata.tests
         , Test.Sanity.AllFields.tests
         , Test.Sanity.Simple.tests
+        , Test.Sanity.PolyKinds.tests
         , Test.Sanity.Existential.tests
         ]
     , testGroup "Prop" [

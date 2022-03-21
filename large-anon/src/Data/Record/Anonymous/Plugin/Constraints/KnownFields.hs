@@ -24,16 +24,16 @@ import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of a @KnownFields r@ constraint
+-- | Parsed form of a @KnownFields (r :: [(Symbol, Kind)]) @ constraint
 data CKnownFields = CKnownFields {
       -- | Fields of the record
       knownFieldsParsedFields :: Fields
 
-      -- | Raw arguments to @KnownFields@ (for evidence construction)
-    , knownFieldsTypeRaw :: [Type]
-
       -- | Type of the record fields (@r@)
     , knownFieldsTypeRecord :: Type
+
+      -- | Kind of the type information (@k@)
+    , knownFieldsTypeKind :: Type
     }
 
 {-------------------------------------------------------------------------------
@@ -41,11 +41,11 @@ data CKnownFields = CKnownFields {
 -------------------------------------------------------------------------------}
 
 instance Outputable CKnownFields where
-  ppr (CKnownFields parsedFields typeRaw typeRecord) = parens $
+  ppr (CKnownFields parsedFields typeRecord typeKind) = parens $
       text "CKnownFields" <+> braces (vcat [
-          text "knownFieldsParsedFields" <+> text "+" <+> ppr parsedFields
-        , text "knownFieldsTypeRaw"      <+> text "+" <+> ppr typeRaw
-        , text "knownFieldsTypeRecord"   <+> text "+" <+> ppr typeRecord
+          text "knownFieldsParsedFields" <+> text "=" <+> ppr parsedFields
+        , text "knownFieldsTypeRecord"   <+> text "=" <+> ppr typeRecord
+        , text "knownFieldsTypeKind"     <+> text "=" <+> ppr typeKind
         ])
 
 {-------------------------------------------------------------------------------
@@ -59,12 +59,12 @@ parseKnownFields ::
   -> ParseResult Void (GenLocated CtLoc CKnownFields)
 parseKnownFields tcs rn@ResolvedNames{..} =
     parseConstraint' clsKnownFields $ \case
-      args@[r] -> do
+      [k, r] -> do
         fields <- parseFields tcs rn r
         return CKnownFields {
             knownFieldsParsedFields = fields
-          , knownFieldsTypeRaw      = args
           , knownFieldsTypeRecord   = r
+          , knownFieldsTypeKind     = k
           }
       _invalidNumArgs ->
         Nothing
@@ -89,14 +89,21 @@ evidenceKnownFields ResolvedNames{..}
     return $
       evDataConApp
         (classDataCon clsKnownFields)
-        [knownFieldsTypeRecord]
-        [ mkCoreApps (Var idEvidenceKnownFields) [
-              Type knownFieldsTypeRecord
-            , mkListExpr fieldMetadataType $
-                map mkFieldInfoAny (knownRecordFields r)
+        typeArgsEvidence
+        [ mkCoreApps (Var idEvidenceKnownFields) $ concat [
+              map Type typeArgsEvidence
+            , [ mkListExpr fieldMetadataType $
+                 map mkFieldInfoAny (knownRecordFields r)
+              ]
             ]
         ]
   where
+    typeArgsEvidence :: [Type]
+    typeArgsEvidence = [
+          knownFieldsTypeKind
+        , knownFieldsTypeRecord
+        ]
+
     fieldMetadataType :: Type
     fieldMetadataType = mkTyConApp tyConFieldMetadata [anyType]
 

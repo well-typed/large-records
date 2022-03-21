@@ -1,8 +1,13 @@
 {-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE RoleAnnotations     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
+
+-- {-# OPTIONS_GHC -fprint-explicit-kinds #-}
 
 -- | Record diff
 --
@@ -23,16 +28,19 @@ module Data.Record.Anonymous.Internal.Diff (
   , toString
   ) where
 
+-- import Data.Coerce (coerce)
 import Data.HashMap.Strict (HashMap)
+import Data.Kind
 import Data.List.NonEmpty (NonEmpty(..), (<|))
-import Data.SOP.BasicFunctors (K(K))
+import Data.SOP.BasicFunctors
+import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
+import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.List.NonEmpty  as NE
 import qualified Data.HashMap.Strict as HashMap
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical(..))
-import Data.Record.Anonymous.Internal.Debugging
 import Data.Record.Anonymous.Internal.FieldName (FieldName)
 
 import qualified Data.Record.Anonymous.Internal.Canonical    as Canon
@@ -61,7 +69,7 @@ import qualified Data.Record.Anonymous.Internal.Util.HashMap as HashMap
 --
 -- NOTE: Since @large-anon@ currently only supports records with strict fields,
 -- we use strict 'HashMap' here.
-data Diff f = Diff {
+data Diff (f :: k -> Type) = Diff {
       -- | New values of existing fields
       --
       -- Indices refer to the original record.
@@ -79,6 +87,8 @@ data Diff f = Diff {
       -- "currently visible" entry.
     , diffNew :: HashMap FieldName (NonEmpty (f Any))
     }
+
+type role Diff representational
 
 deriving instance Show a => Show (Diff (K a))
 
@@ -193,8 +203,10 @@ apply d =
   Debugging support
 -------------------------------------------------------------------------------}
 
-toString :: Diff f -> String
-toString = show . mapDiff (K . ShowViaRecoverRTTI)
+
+
+toString :: forall k (f :: k -> Type). Diff f -> String
+toString = show . mapDiff (K . AnythingToString . co)
   where
     mapDiff :: (forall x. f x -> g x) -> Diff f -> Diff g
     mapDiff f Diff{..} = Diff{
@@ -202,3 +214,12 @@ toString = show . mapDiff (K . ShowViaRecoverRTTI)
         , diffIns = diffIns
         , diffNew = fmap (fmap f) diffNew
         }
+
+    co :: f x -> f Any
+    co = unsafeCoerce
+
+{-
+    -- This definition should work, but doesn't. Not sure why:
+    aux :: forall. Diff f -> Diff ((K (AnythingToString (f Any))) :: k -> Type)
+    aux = coerce
+-}

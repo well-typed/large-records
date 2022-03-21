@@ -57,6 +57,8 @@ module Data.Record.Anonymous.Advanced (
   , KnownFields
     -- * Additional generic functions
   , describeRecord
+  , recordWithMetadata
+  , recordWithNames
   ) where
 
 import Data.Record.Anonymous.Internal.Record (Record)

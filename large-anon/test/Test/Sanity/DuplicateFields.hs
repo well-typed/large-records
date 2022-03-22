@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators    #-}
@@ -10,6 +11,7 @@ module Test.Sanity.DuplicateFields (tests) where
 import Data.Proxy
 import Data.Record.Generic.LowerBound
 import Data.SOP.BasicFunctors
+import GHC.Records.Compat (HasField)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -17,12 +19,6 @@ import Test.Tasty.HUnit
 import Data.Record.Anonymous.Advanced (Record)
 import qualified Data.Record.Anonymous.Advanced as Anon
 import Data.Record.Anonymous.Internal.Generics (debugFieldTypes)
-
--- TODO: More tests, cleanup. Then remove comments about testing duplicate
--- fields elsewhere in the test suite.
---
--- TODO: Add support for /removing/ fields, add tests for that. Then we'll
--- truly have scoping. I think it'll be easy now.
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.DuplicateFields" [
@@ -36,10 +32,12 @@ tests = testGroup "Test.Sanity.DuplicateFields" [
           testCase "get" test_get
         , testCase "set" test_set
         ]
-    , testGroup "OLD -- TODO: Tidy up" [
-          testCase "insertSameType"      test_insertSameType
-        , testCase "insertDifferentType" test_insertDifferentType
-        , testCase "mergeSameType"       test_mergeSameType
+    , testGroup "Lenses" [
+          testCase "project" test_project
+        , testCase "update"  test_update
+        ]
+    , testGroup "Merging" [
+          testCase "mergeSameType"       test_mergeSameType
         , testCase "mergeDifferentType"  test_mergeDifferentType
         ]
     ]
@@ -208,38 +206,48 @@ test_set = do
         $ Anon.empty
 
 {-------------------------------------------------------------------------------
-  Casting
-
-  TODO: We should have examples where duplicate fields are mixed in with others.
-  TODO: We should have examples of casting /to/ records wit duplicate fields
-  (or make it explicitly part of the contract that this is not possible)
+  Lenses
 -------------------------------------------------------------------------------}
 
-test_insertSameType :: Assertion
-test_insertSameType = do
-    assertEqual "" expected actual
+test_project :: Assertion
+test_project = do
+    assertEqual "same" expected $
+      Anon.project interspersedSameType
+    assertEqual "diff" expected $
+      Anon.project interspersedDiffType
   where
-    actual :: Record I '[ '("a", Bool) ]
-    actual = Anon.project $
-                 Anon.insert #a (I True)
-               $ Anon.insert #a (I False)
-               $ Anon.empty
+    expected :: Record I '[ '("a", Char)
+                          , '("b", Word)
+                          , '("c", ())
+                          , '("d", [Double])
+                          ]
+    expected =
+          Anon.insert #a (I 'a')
+        $ Anon.insert #b (I 1)
+        $ Anon.insert #c (I ())
+        $ Anon.insert #d (I [3.14])
+        $ Anon.empty
 
-    expected :: Record I '[ '("a", Bool) ]
-    expected = Anon.insert #a (I True) Anon.empty
-
-test_insertDifferentType :: Assertion
-test_insertDifferentType = do
-    assertEqual "" expected actual
+-- TODO: Could we use the simple interface here?
+test_update :: Assertion
+test_update = do
+    assertEqual "same" (upd interspersedSameType) $
+      setSame new
+    assertEqual "diff" (upd interspersedDiffType) $
+      setDiff new
   where
-    actual :: Record I '[ '("a", Bool) ]
-    actual = Anon.project $
-                 Anon.insert #a (I True)
-               $ Anon.insert #a (I 'a')
-               $ Anon.empty
+    (_, setSame) = Anon.lens interspersedSameType
+    (_, setDiff) = Anon.lens interspersedDiffType
 
-    expected :: Record I '[ '("a", Bool) ]
-    expected = Anon.insert #a (I True) Anon.empty
+    upd :: HasField "d" (Record I r) (I [Double]) => Record I r -> Record I r
+    upd r = Anon.set #d (I [1.618]) r
+
+    new :: Record I '[ '("d", [Double])]
+    new = Anon.insert #d (I [1.618]) $ Anon.empty
+
+{-------------------------------------------------------------------------------
+  Merging
+-------------------------------------------------------------------------------}
 
 test_mergeSameType :: Assertion
 test_mergeSameType = do

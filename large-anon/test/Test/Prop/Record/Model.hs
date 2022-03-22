@@ -85,7 +85,9 @@ import qualified Data.Record.Anonymous.Advanced as Anon
 -- * Fields ordered alphabetically or not
 --   (for tests where order of processing matters)
 --
--- TODO: We should add cases with duplicate fields.
+-- TODO: Once we have support for /dropping/ fields, we should also add some
+-- cases with duplicate fields here. We currently cannot, since we cannot define
+-- 'fromRecord' for such records.
 data ModelFields :: [(Symbol, Type)] -> Type where
   MF0  :: ModelFields '[                            ]
   MF1  :: ModelFields '[               '("b", Bool) ]

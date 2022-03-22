@@ -39,8 +39,6 @@ record1' =
 
 {-------------------------------------------------------------------------------
   Tests proper
-
-  TODO: think about and test what happens with duplicate labels
 -------------------------------------------------------------------------------}
 
 test_HasField :: Assertion
@@ -53,10 +51,10 @@ test_HasField = do
 
     -- set then get
 
---    assertEqual "set field 1, then get field 1" (I False) $
---      Anon.get #x (Anon.set #x (I False) record1)
---    assertEqual "set field 1, then get field 2" (I 'a') $
---      Anon.get #y (Anon.set #x (I False) record1)
+    assertEqual "set field 1, then get field 1" (I False) $
+      Anon.get #x (Anon.set #x (I False) record1)
+    assertEqual "set field 1, then get field 2" (I 'a') $
+      Anon.get #y (Anon.set #x (I False) record1)
 
     -- set
 

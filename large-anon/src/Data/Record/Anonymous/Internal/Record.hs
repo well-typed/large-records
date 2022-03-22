@@ -5,6 +5,7 @@
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -32,11 +33,11 @@ module Data.Record.Anonymous.Internal.Record (
   , get
   , set
   , merge
-  , castRecord
+  , lens
+  , project
   ) where
 
-import Prelude hiding (map)
-
+import Data.Bifunctor
 import Data.Kind
 import Data.Proxy
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
@@ -45,12 +46,14 @@ import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 
-import Data.Record.Anonymous.Internal.Diff      (Diff)
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
+import Data.Record.Anonymous.Internal.Diff (Diff)
+import Data.Record.Anonymous.Internal.FieldName (KnownHash)
 import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 import qualified Data.Record.Anonymous.Internal.Diff      as Diff
+import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
 
 {-------------------------------------------------------------------------------
   Representation
@@ -58,7 +61,7 @@ import qualified Data.Record.Anonymous.Internal.Diff      as Diff
 
 -- | Anonymous record
 --
--- A @Record f xs@ has a field @nm@ of type @f x@ for every @(nm, x)@ in @xs@.
+-- A @Record f xs@ has a field @n@ of type @f x@ for every @(n, x)@ in @xs@.
 --
 -- To access fields of the record, either use the 'HasField' instances
 -- (possibly using the record-dot-preprocessor to get record-dot syntax),
@@ -99,7 +102,7 @@ import qualified Data.Record.Anonymous.Internal.Diff      as Diff
 -- @a == b@. We /could/ introduce a new constraint to say precisely that, but
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
-data Record f (r :: [(Symbol, Type)]) = Record {
+data Record (f :: k -> Type) (r :: [(Symbol, k)]) = Record {
       recordDiff  :: Diff f
     , recordCanon :: Canonical f
     }
@@ -136,20 +139,20 @@ unsafeFromCanonical canon = Record {
 -- to mean
 --
 -- > Field (Proxy @"foo")
-data Field nm where
-  Field :: KnownSymbol nm => Proxy nm -> Field nm
+data Field n where
+  Field :: (KnownSymbol n, KnownHash n) => Proxy n -> Field n
 
-instance (nm ~ nm', KnownSymbol nm) => IsLabel nm' (Field nm) where
-  fromLabel = Field (Proxy @nm)
+instance (n ~ n', KnownSymbol n, KnownHash n) => IsLabel n' (Field n) where
+  fromLabel = Field (Proxy @n)
 
 -- | Empty record
 empty :: Record f '[]
-empty = Record Diff.empty Canon.empty
+empty = Record Diff.empty mempty
 
 -- | Insert new field
-insert :: Field nm -> f a -> Record f r -> Record f ('(nm, a) ': r)
-insert (Field nm) x r@Record{recordDiff} = r {
-      recordDiff = Diff.insert (symbolVal nm) (co x) recordDiff
+insert :: Field n -> f a -> Record f r -> Record f ('(n, a) ': r)
+insert (Field n) x r@Record{recordDiff} = r {
+      recordDiff = Diff.insert (FieldName.symbolVal n) (co x) recordDiff
     }
   where
     co :: f a -> f Any
@@ -158,18 +161,18 @@ insert (Field nm) x r@Record{recordDiff} = r {
 -- | Get field from the record
 --
 -- This is just a wrapper around 'getField'
-get :: forall nm f r a.
-     HasField nm (Record f r) a
-  => Field nm -> Record f r -> a
-get _ = getField @nm @(Record f r)
+get :: forall n f r a.
+     HasField n (Record f r) a
+  => Field n -> Record f r -> a
+get _ = getField @n @(Record f r)
 
 -- | Update field in the record
 --
 -- This is just a wrapper around 'setField'.
-set :: forall nm f r a.
-     HasField nm (Record f r) a
-  => Field nm -> a -> Record f r -> Record f r
-set _ = flip (setField @nm @(Record f r))
+set :: forall n f r a.
+     HasField n (Record f r) a
+  => Field n -> a -> Record f r -> Record f r
+set _ = flip (setField @n @(Record f r))
 
 -- | Merge two records
 --
@@ -207,9 +210,12 @@ set _ = flip (setField @nm @(Record f r))
 -- ...
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (canonicalize -> r) (canonicalize -> r') =
-    unsafeFromCanonical $ Diff.apply (Diff.fromCanonical r) r'
+    unsafeFromCanonical $ r <> r'
 
--- | Cast record
+-- | Lens from one record to another
+--
+-- TODO: Update docs (these are still from the old castRecord).
+-- TODO: Make all doctests work agian.
 --
 -- Some examples of valid casts. We can cast a record to itself:
 --
@@ -246,7 +252,20 @@ merge (canonicalize -> r) (canonicalize -> r') =
 -- ...
 -- ...No instance for (Isomorphic...
 -- ...
-castRecord :: forall f r r'. Isomorphic r r' => Record f r -> Record f r'
-castRecord (canonicalize -> r) =
-    unsafeFromCanonical $
-      Canon.reshuffle (isomorphic (Proxy @r) (Proxy @r')) r
+lens :: forall f r r'.
+     Project r r'
+  => Record f r -> (Record f r', Record f r' -> Record f r)
+lens = \(canonicalize -> r) ->
+    bimap getter setter (Canon.lens (projectIndices (Proxy @r) (Proxy @r')) r)
+  where
+    getter :: Canonical f -> Record f r'
+    getter = unsafeFromCanonical
+
+    setter :: (Canonical f -> Canonical f) -> Record f r' -> Record f r
+    setter f (canonicalize -> r) = unsafeFromCanonical (f r)
+
+-- | Project out subrecord
+--
+-- This is just @fst . lens@.
+project :: Project r r' => Record f r -> Record f r'
+project = fst . lens

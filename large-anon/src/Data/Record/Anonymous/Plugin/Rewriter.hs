@@ -7,13 +7,15 @@ import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
 
+import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+
 rewrite :: ResolvedNames -> UniqFM TyCon TcPluginRewriter
 rewrite rn@ResolvedNames{..} = listToUFM [
       (tyConFieldTypes, rewriteRecordMetadataOf rn)
     ]
 
 rewriteRecordMetadataOf :: ResolvedNames -> TcPluginRewriter
-rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[functor, fields] =
+rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[_k, f, r] =
 --  trace _debugInput  $
 --  trace _debugParsed $
     case mKnownFields of
@@ -28,14 +30,14 @@ rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[functor, fields] =
                  Nominal
                  tyConFieldTypes
                  args
-                 (computeMetadataOf functor knownFields)
+                 (computeMetadataOf f knownFields)
           }
   where
     tcs :: TyConSubst
     tcs = mkTyConSubst given
 
     parsedFields :: Maybe Fields
-    parsedFields = parseFields tcs rn fields
+    parsedFields = parseFields tcs rn r
 
     mKnownFields :: Maybe (KnownRecord ())
     mKnownFields = checkAllFieldsKnown =<< parsedFields
@@ -70,10 +72,10 @@ rewriteRecordMetadataOf _rn _given _args =
     panic $ "rewriteRecordMetadataOf: unexpected arguments"
 
 computeMetadataOf :: Type -> KnownRecord () -> TcType
-computeMetadataOf functor fields =
+computeMetadataOf f r =
     mkPromotedListTy
       (mkTupleTy Boxed [mkTyConTy typeSymbolKindCon, liftedTypeKind])
-      (map aux $ knownRecordFields fields)
+      (map aux $ knownRecordFields r)
   where
     aux :: KnownField () -> Type
     aux KnownField{..} =
@@ -82,6 +84,6 @@ computeMetadataOf functor fields =
           (promotedTupleDataCon Boxed 2)
           [ mkTyConTy typeSymbolKindCon -- kind of first arg
           , liftedTypeKind              -- kind of second arg
-          , mkStrLitTy knownFieldName
-          , functor `mkAppTy` knownFieldType
+          , FieldName.mkType knownFieldName
+          , f `mkAppTy` knownFieldType
           ]

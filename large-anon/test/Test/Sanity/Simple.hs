@@ -48,5 +48,5 @@ test_hasField = do
 
 test_merge :: Assertion
 test_merge = do
-    assertEqual "left"  recordA $ Anon.castRecord $ Anon.merge Anon.empty recordA
-    assertEqual "right" recordA $ Anon.castRecord $ Anon.merge recordA Anon.empty
+    assertEqual "left"  recordA $ Anon.project $ Anon.merge Anon.empty recordA
+    assertEqual "right" recordA $ Anon.project $ Anon.merge recordA Anon.empty

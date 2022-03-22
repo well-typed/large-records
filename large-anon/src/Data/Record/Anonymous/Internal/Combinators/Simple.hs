@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
@@ -39,15 +41,17 @@ import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 import qualified Data.Record.Anonymous.Internal.Record    as Record
+import Data.Kind
+import GHC.TypeLits (Symbol)
 
 {-------------------------------------------------------------------------------
   Internal auxiliary (convenient shorthand)
 -------------------------------------------------------------------------------}
 
-c :: Record f r -> Canonical f
+c :: forall k (f :: k -> Type) (r :: [(Symbol, k)]). Record f r -> Canonical f
 c = Record.canonicalize
 
-fromC :: Canonical f -> Record f r
+fromC :: forall k (f :: k -> Type) (r :: [(Symbol, k)]). Canonical f -> Record f r
 fromC = Record.unsafeFromCanonical
 
 {-------------------------------------------------------------------------------
@@ -84,7 +88,7 @@ sequenceA :: Monad m => Record (m :.: f) r -> m (Record f r)
 sequenceA (c -> r) = fromC <$> Canon.sequenceA r
 
 pure :: forall f r. KnownFields r => (forall x. f x) -> Record f r
-pure f = fromC $ Canon.fromList $ Prelude.map (,f) (fieldNames (Proxy @r))
+pure f = fromC $ Canon.fromList $ Prelude.map (const f) (fieldNames (Proxy @r))
 
 ap :: Record (f -.-> g) r -> Record f r -> Record g r
 ap (c -> r) (c -> r') = fromC $ Canon.ap r r'

@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -14,19 +15,25 @@
 module Data.Record.Anonymous.Internal.Generics (
     -- * Additional generic functions
     describeRecord
+  , recordWithMetadata
+  , recordWithNames
+    -- * Debugging
+  , debugFieldTypes
   ) where
 
 import Data.Aeson (ToJSON(..), FromJSON(..))
+import Data.Kind
 import Data.List (intercalate)
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.Record.Generic.Show
-import Data.SOP.Constraint
+import Data.SOP
 import Data.Typeable
 import Data.Vector (Vector)
 import GHC.Exts (Any)
+import GHC.TypeLits
 
 import qualified Data.Vector as Vector
 
@@ -36,6 +43,7 @@ import Data.Record.Anonymous.Internal.Constraints
 
 import qualified Data.Record.Generic.Rep            as Rep
 import qualified Data.Record.Anonymous.Internal.Rep as Rep
+import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 
 {-------------------------------------------------------------------------------
   Integrate with large-generics
@@ -49,7 +57,9 @@ recordConstraints _ = aux $ fieldDicts (Proxy @r) (Proxy @(Compose c f))
     aux :: Vector (Dict (Compose c f) Any) -> Rep (Dict c) (Record f r)
     aux = noInlineUnsafeCo
 
-recordMetadata :: forall f r. KnownFields r => Metadata (Record f r)
+recordMetadata :: forall k (f :: k -> Type) (r :: [(Symbol, k)]).
+     KnownFields r
+  => Metadata (Record f r)
 recordMetadata = Metadata {
       recordName          = "Record"
     , recordConstructor   = "Record"
@@ -97,7 +107,7 @@ instance RecordConstraints f r FromJSON => FromJSON (Record f r) where
 -------------------------------------------------------------------------------}
 
 -- | Show type of every field in the record
-describeRecord :: forall a.
+describeRecord :: forall (a :: Type).
      (Generic a, Constraints a Typeable)
   => Proxy a
   -> String
@@ -122,3 +132,53 @@ describeRecord p =
         , intercalate ", " fs
         , "}"
         ]
+
+-- | Construct record with field metadata for every field
+recordWithMetadata :: forall k
+                             (f :: k -> Type)
+                             (r :: [(Symbol, k)]).
+     KnownFields r
+  => Proxy (Record f r) -> Record (FieldMetadata :.: f) r
+recordWithMetadata _ =
+    Rep.toRecord' md
+  where
+    md :: Rep FieldMetadata (Record f r)
+    md = recordFieldMetadata (metadata (Proxy @(Record f r)))
+
+-- | Like 'recordWithMetadata', but includes field names only
+recordWithNames :: forall k
+                          (f :: k -> Type)
+                          (r :: [(Symbol, k)]).
+     KnownFields r
+  => Proxy (Record f r) -> Record (K String) r
+recordWithNames _ =
+    Simple.map aux $ Rep.toRecord' md
+  where
+    md :: Rep (K String) (Record f r)
+    md = recordFieldNames (metadata (Proxy @(Record f r)))
+
+    aux :: (K String :.: f) x -> K String x
+    aux (Comp (K name)) = K name
+
+{-------------------------------------------------------------------------------
+  Debugging
+-------------------------------------------------------------------------------}
+
+-- | Like 'describeRecord', but exclusively using type-level information.
+--
+-- WARNING: The @All@ constraint will lead to quadratic code. This is for
+-- debugging only.
+debugFieldTypes :: forall f r.
+     All IsField (FieldTypes f r)
+  => Proxy (Record f r) -> String
+debugFieldTypes _ =
+    (\str -> "[" ++ str ++ "]") . intercalate "," . hcollapse $
+      aux (shape :: Shape (FieldTypes f r))
+  where
+    aux :: forall fs. All IsField fs => Shape fs -> NP (K String) fs
+    aux ShapeNil      = Nil
+    aux (ShapeCons s) = name :* aux s
+
+    name :: forall n a. KnownSymbol n => K String '(n, a)
+    name = K (symbolVal (Proxy @n))
+

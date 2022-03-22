@@ -1,9 +1,16 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE NamedFieldPuns      #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures             #-}
+{-# LANGUAGE NamedFieldPuns             #-}
+{-# LANGUAGE PolyKinds                  #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE RoleAnnotations            #-}
 
 -- | Canonical gecord (i.e., no diff)
 --
@@ -13,47 +20,42 @@
 -- > import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 module Data.Record.Anonymous.Internal.Canonical (
     Canonical(..)
-  , withShapeOf
-    -- * Basic API
-  , empty
-  , insert
-  , reshuffle
     -- * Indexed access
   , getAtIndex
   , setAtIndex
     -- * Conversion
   , toList
   , fromList
-  , fromVector
+  , toLazyVector
+  , fromLazyVector
+    -- * Basic API
+  , insert
+  , lens
     -- * Simple (non-constrained) combinators
-    -- ** "Functor"
   , map
   , mapM
-    -- ** Zipping
   , zipWith
   , zipWithM
-    -- ** "Foldable"
   , collapse
-    -- ** "Traversable"
   , sequenceA
-    -- ** "Applicable"
   , ap
+    -- * Debugging support
+  , toString
   ) where
 
 import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 import qualified Prelude
 
-import Data.Bifunctor
 import Data.Coerce (coerce)
-import Data.HashMap.Strict (HashMap)
+import Data.Kind
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->)(apFn))
+import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
 
-import qualified Data.HashMap.Strict as HashMap
-import qualified Data.Vector.Generic as Vector
+import qualified Data.Vector         as Lazy
+import qualified Data.Vector.Generic as V
 
-import Data.Record.Anonymous.Internal.Row (Permutation(..))
 import Data.Record.Anonymous.Internal.StrictVector (Vector)
 
 import qualified Data.Record.Anonymous.Internal.StrictVector as Strict
@@ -67,12 +69,20 @@ import qualified Data.Record.Anonymous.Internal.StrictVector as Strict
 -- Canonicity here refers to the fact that we have no @Diff@ to apply
 -- (see "Data.Record.Anonymous.Internal.Diff").
 --
+-- Type level shadowing is reflected at the term level: if a record has
+-- duplicate fields in its type, it will have multiple entries for that field
+-- in the vector.
+--
+-- TODO: Currently we have no way of recovering the value of shadowed fields,
+-- adding an API for that is future work. The work by Daan Leijen on scoped
+-- labels might offer some inspiration there.
+--
 -- NOTE: When we cite the algorithmic complexity of operations on 'Canonical',
 -- we assume that 'HashMap' inserts and lookups are @O(1)@, which they are in
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
-data Canonical f = Canonical {
+newtype Canonical (f :: k -> Type) = Canonical {
       -- | All values in the record, in row order.
       --
       -- It is important that the vector is in row order: this is what makes
@@ -81,33 +91,13 @@ data Canonical f = Canonical {
       --
       -- NOTE: Since @large-anon@ currently only supports records with strict
       -- fields, we use a strict vector here.
-      canonValues :: !(Vector (f Any))
-
-      -- | Field names in row order
-      --
-      -- Inserting a field into a record currently has type
-      --
-      -- > insert :: Field nm -> f a -> Record f r -> Record f ('(nm, a) ': r)
-      --
-      -- Specifically, it does /not/ have a 'Lacks' constraint (indeed, we do
-      -- not have such a constraint in the library at present). This means that
-      -- we do not know at compile time whether a particular call to 'insert' is
-      -- a true insert or whether it shadows an existing field. We can recover
-      -- this information from looking at 'canonFields'.
-      --
-      -- TODO: It might perhaps be possible to omit this field if we allowed
-      -- shadowing also at the value level. If 'Canonical' is just a vector,
-      -- translating back and forth to the generic representation might be
-      -- easier (no need for 'KnownFields'). Not sure what the repercussions
-      -- of value-level shadowing would be though.
-    , canonFields :: [String]
+      canonValues :: Vector (f Any)
     }
+  deriving newtype (Semigroup, Monoid)
 
--- | Construct a new 'Canonical' with the same shape but new values.
---
--- Precondition: the vector must be of the right shape.
-withShapeOf :: Canonical f -> Vector (g Any) -> Canonical g
-withShapeOf c values = c { canonValues = values }
+type role Canonical representational
+
+deriving instance Show a => Show (Canonical (K a))
 
 {-------------------------------------------------------------------------------
   Indexed access
@@ -117,55 +107,15 @@ withShapeOf c values = c { canonValues = values }
 --
 -- @O(1)@.
 getAtIndex :: Canonical f -> Int -> f Any
-getAtIndex Canonical{canonValues} ix = canonValues Vector.! ix
+getAtIndex Canonical{canonValues} ix = canonValues V.! ix
 
 -- | Set fields at the specified indices
 --
 -- @O(n)@ in the size of the record (independent of the number of field updates)
 -- @O(1)@ if the list of updates is empty.
 setAtIndex :: [(Int, f Any)] -> Canonical f -> Canonical f
-setAtIndex [] c = c
-setAtIndex fs c@Canonical{canonValues} = c {
-      canonValues = canonValues Vector.// fs
-    }
-
-{-------------------------------------------------------------------------------
-  Basic API
--------------------------------------------------------------------------------}
-
--- | Empty record
-empty :: Canonical f
-empty = Canonical {
-      canonValues = Vector.empty
-    , canonFields = []
-    }
-
--- | Insert fields into the record
---
--- The list may contain duplicate fields, in which case fields earlier in the
--- list will shadow values later fields. Similarly, fields in the list will
--- shadow any duplicate fields already present in the record.
---
--- @O(n)@ in the number of inserts and the size of the record.
--- @O(1)@ if the list of inserts is empty.
-insert :: [(String, f Any)] -> Canonical f -> Canonical f
-insert []  = id
-insert new = fromList . (new ++) . toList
-
--- | Reshuffle the fields in the record
---
--- Precondition: the new fields must be a permutation of the old.
---
--- @(n)@.
---
--- Implementation note: reshuffling /must/ create a new array, because the
--- array must be in row order (so that we can traverse it in order).
-reshuffle :: forall f. Permutation -> Canonical f -> Canonical f
-reshuffle (Permutation perm) c =
-    fromList $ Prelude.map aux perm
-  where
-    aux :: (String, Int) -> (String, f Any)
-    aux (nm, i) = (nm, getAtIndex c i)
+setAtIndex [] c             = c
+setAtIndex fs (Canonical v) = Canonical (v V.// fs)
 
 {-------------------------------------------------------------------------------
   Conversion
@@ -174,47 +124,53 @@ reshuffle (Permutation perm) c =
 -- | All fields in row order
 --
 -- @O(n)@
-toList :: Canonical f -> [(String, f Any)]
-toList c@Canonical{canonFields} =
-    Prelude.map (second (getAtIndex c)) (Prelude.zip canonFields [0..])
+toList :: Canonical f -> [f Any]
+toList (Canonical v) = V.toList v
 
--- | Construct record from list of named fields in row order
---
--- The list may contain duplicates, in which case fields later in the list are
--- shadowed by fields earlier in the list.
+-- | From list of fields in row order
 --
 -- @O(n)@.
-fromList :: [(String, f Any)] -> Canonical f
-fromList = go [] HashMap.empty [] 0
-    where
-      go :: [f Any]             -- Accumulated values, in reverse row order
-         -> HashMap String Int  -- Accumulated indices
-         -> [String]            -- Accumulated fields, in reverse row order
-         -> Int                 -- Next available index
-         -> [(String, f Any)]
-         -> Canonical f
-      go accValues _accIndices accFields !nextIx [] = Canonical {
-            canonValues = Vector.fromListN nextIx (reverse accValues)
-          , canonFields = reverse accFields
-          }
-      go accValues accIndices accFields !nextIx ((f, x):fs) =
-          case HashMap.lookup f accIndices of
-            Just _  -> go accValues accIndices accFields nextIx fs -- shadowed
-            Nothing -> go (x : accValues)
-                          (HashMap.insert f nextIx accIndices)
-                          (f : accFields)
-                          (succ nextIx)
-                          fs
+fromList :: [f Any] -> Canonical f
+fromList = Canonical . Strict.fromList
+
+-- | To lazy vector
+toLazyVector :: Canonical f -> Lazy.Vector (f Any)
+toLazyVector = Strict.toLazy . canonValues
 
 -- | From already constructed vector
+fromLazyVector :: Lazy.Vector (f Any) -> Canonical f
+fromLazyVector = Canonical . Strict.fromLazy
+
+{-------------------------------------------------------------------------------
+  Basic API
+-------------------------------------------------------------------------------}
+
+-- | Insert fields into the record
 --
--- Precondition: both the list of names and the vector must have the right
--- shape. Unlike 'fromList', this does /not/ take care of shadowing.
-fromVector :: [String] -> Vector (f Any) -> Canonical f
-fromVector names values = Canonical {
-      canonValues = values
-    , canonFields = names
-    }
+-- It is the responsibility of the caller to make sure that the linear
+-- concatenation of the new fields to the existing record matches the row order
+-- of the new record.
+--
+-- @O(n)@ in the number of inserts and the size of the record.
+-- @O(1)@ if the list of inserts is empty.
+insert :: forall f. [f Any] -> Canonical f -> Canonical f
+insert []  = id
+insert new = prepend
+  where
+     prepend :: Canonical f -> Canonical f
+     prepend (Canonical v) = Canonical (Strict.fromList new <> v)
+
+-- | Project out some fields in the selected order
+--
+-- It is the responsibility of the caller that the list of indices is in row
+-- order of the new record.
+--
+-- @O(n)@ (in both directions)
+lens :: [Int] -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
+lens is (Canonical v) = (
+      Canonical $ V.backpermute v (Strict.fromList is)
+    , \(Canonical v') -> Canonical $ v V.// (Prelude.zip is (V.toList v'))
+    )
 
 {-------------------------------------------------------------------------------
   Simple (non-constrained) combinators
@@ -228,13 +184,13 @@ fromVector names values = Canonical {
 -------------------------------------------------------------------------------}
 
 map :: (forall x. f x -> g x) -> Canonical f -> Canonical g
-map f c = withShapeOf c $ fmap f (canonValues c)
+map f (Canonical v) = Canonical $ fmap f v
 
 mapM ::
      Monad m
   => (forall x. f x -> m (g x))
   -> Canonical f -> m (Canonical g)
-mapM f c = fmap (withShapeOf c) $ Strict.mapM f (canonValues c)
+mapM f (Canonical v) = Canonical <$> Strict.mapM f v
 
 -- | Zip two records
 --
@@ -242,8 +198,7 @@ mapM f c = fmap (withShapeOf c) $ Strict.mapM f (canonValues c)
 zipWith ::
      (forall x. f x -> g x -> h x)
   -> Canonical f -> Canonical g -> Canonical h
-zipWith f c c' = withShapeOf c $
-    Vector.zipWith f (canonValues c) (canonValues c')
+zipWith f (Canonical v) (Canonical v') = Canonical $ V.zipWith f v v'
 
 -- | Monadic zip of two records
 --
@@ -252,17 +207,26 @@ zipWithM ::
      Monad m
   => (forall x. f x -> g x -> m (h x))
   -> Canonical f -> Canonical g -> m (Canonical h)
-zipWithM f c c' = fmap (withShapeOf c) $
-    Vector.zipWithM f (canonValues c) (canonValues c')
+zipWithM f (Canonical v) (Canonical v') = Canonical <$> V.zipWithM f v v'
 
 collapse :: Canonical (K a) -> [a]
-collapse c = co $ Vector.toList (canonValues c)
+collapse (Canonical v) = co $ V.toList v
   where
     co :: [K a Any] -> [a]
     co = coerce
 
 sequenceA :: Monad m => Canonical (m :.: f) -> m (Canonical f)
-sequenceA c = fmap (withShapeOf c) $ Strict.mapM unComp $ canonValues c
+sequenceA (Canonical v) = Canonical <$> Strict.mapM unComp v
 
 ap :: Canonical (f -.-> g) -> Canonical f -> Canonical g
 ap = zipWith apFn
+
+{-------------------------------------------------------------------------------
+  Debugging support
+-------------------------------------------------------------------------------}
+
+toString :: forall k (f :: k -> Type). Canonical f -> String
+toString = show . aux
+  where
+    aux :: Canonical f -> Canonical (K (AnythingToString (f Any)))
+    aux = coerce

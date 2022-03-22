@@ -15,13 +15,10 @@ module Data.Record.Anonymous.Internal.StrictVector (
   , fromList
     -- * Combinators
   , mapM
-    -- * Hybrid functions
-  , zipWithLazy
   ) where
 
 import Prelude hiding (mapM)
 
-import Control.Monad (unless)
 import Data.Function (on)
 
 import qualified Data.Vector                       as V
@@ -142,24 +139,6 @@ mapM f (WrapLazy v) = WrapLazy <$>
         go i | i >= G.length v = return FSM.Done
              | otherwise       = do !b <- f (G.unsafeIndex v i)
                                     return $ FSM.Yield b (succ i)
-
-{-------------------------------------------------------------------------------
-  Hybrid functions
--------------------------------------------------------------------------------}
-
--- | Zip strict and lazy vector
---
--- Precondition: both vectors must have the same length
-zipWithLazy :: (a -> b -> c) -> Vector a -> V.Vector b -> Vector c
-zipWithLazy f va vb = WrapLazy $ G.create $ do
-    unless (G.length va == G.length vb) $
-      error "zipWithLazy: precondition violation"
-    vc <- GM.new (G.length va)
-    G.iforM_ va $ \i a -> do
-      let b  = G.unsafeIndex vb i
-          !c = f a b
-      GM.unsafeWrite vc i c
-    return vc
 
 {-------------------------------------------------------------------------------
   Internal auxiliary

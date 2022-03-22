@@ -1,9 +1,7 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DeriveFoldable      #-}
 {-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
@@ -21,10 +19,11 @@ module Data.Record.Anonymous.Plugin.Record (
   , KnownField(..)
   , knownRecordFields
   , knownRecordFromFields
-  , knownRecordIsomorphic
   , knownRecordTraverse
-    -- ** Construction
+    -- ** Checks
   , checkAllFieldsKnown
+  , CannotProject(..)
+  , checkCanProject
     -- * Parsing
   , parseRecord
   , parseFields
@@ -32,20 +31,24 @@ module Data.Record.Anonymous.Plugin.Record (
   ) where
 
 import Control.Monad
-import Control.Monad.State
+import Data.Either (partitionEithers)
 import Data.Foldable (asum)
-import Data.List (sortOn)
-import Data.Map (Map)
+import Data.HashMap.Strict (HashMap)
+import Data.Maybe (mapMaybe)
 import Data.Vector (Vector)
 
-import qualified Data.Map            as Map
-import qualified Data.Map.Merge.Lazy as Map
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector         as V
 
+import Data.Record.Anonymous.Internal.FieldName (FieldName)
+import Data.Record.Anonymous.Internal.Util.HashMap (Merged(..))
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
 import Data.Record.Anonymous.Plugin.TyConSubst
+
+import qualified Data.Record.Anonymous.Internal.FieldName    as FieldName
+import qualified Data.Record.Anonymous.Internal.Util.HashMap as HashMap
 
 {-------------------------------------------------------------------------------
   General case
@@ -60,7 +63,7 @@ data Fields =
 data Field = Field FieldLabel Type
 
 data FieldLabel =
-    FieldKnown FastString
+    FieldKnown FieldName
   | FieldVar   TyVar
   deriving (Eq)
 
@@ -77,7 +80,7 @@ data FieldLabel =
 -- looking for.
 --
 -- Returns the index and the type of the field, if found.
-findField :: FastString -> Fields -> Maybe (Int, Type)
+findField :: FieldName -> Fields -> Maybe (Int, Type)
 findField nm = go 0 . (:[])
   where
     go :: Int -> [Fields] -> Maybe (Int, Type)
@@ -110,7 +113,7 @@ findField nm = go 0 . (:[])
 -- In other words, we do /not/ know the /index/ of the field here, as that
 -- depends the context (the particular record it is part of).
 data KnownField a = KnownField {
-      knownFieldName :: FastString
+      knownFieldName :: FieldName
     , knownFieldType :: Type
     , knownFieldInfo :: a
     }
@@ -122,15 +125,24 @@ data KnownRecord a = KnownRecord {
       --
       -- Order matters, because records with the same fields in a different
       -- order are not considered equal by the library (merely isomorphic).
+      --
+      -- May contain duplicates (if fields are shadowed).
       knownRecordVector :: Vector (KnownField a)
 
-      -- | Position of each field in the record
+      -- | "Most recent" position of each field in the record
+      --
+      -- Shadowed fields are not included in this map.
       --
       -- Invariant:
       --
       -- >     Map.lookup n knownRecordNames == Just i
       -- > ==> knownFieldName (knownRecordFields V.! i) == n
-    , knownRecordIndices :: Map FastString Int
+    , knownRecordVisible :: HashMap FieldName Int
+
+      -- | Are all fields in this record visible?
+      --
+      -- 'False' if some fields are shadowed.
+    , knownRecordAllVisible :: Bool
     }
   deriving (Functor, Foldable)
 
@@ -147,18 +159,17 @@ knownRecordTraverse KnownRecord{..} f =
   where
     mkRecord :: Vector (KnownField b) -> KnownRecord b
     mkRecord updated = KnownRecord {
-          knownRecordVector  = updated
-        , knownRecordIndices = knownRecordIndices
+          knownRecordVector     = updated
+        , knownRecordVisible    = knownRecordVisible
+        , knownRecordAllVisible = knownRecordAllVisible
         }
 
     f' :: KnownField a -> m (KnownField b)
     f' fld@(KnownField nm typ _info) = KnownField nm typ <$> f fld
 
-knownRecordMap :: forall a. KnownRecord a -> Map FastString (Int, KnownField a)
-knownRecordMap KnownRecord{..} = Map.map aux knownRecordIndices
-  where
-    aux :: Int -> (Int, KnownField a)
-    aux ix = (ix, knownRecordVector V.! ix)
+knownRecordVisibleMap :: KnownRecord a -> HashMap FieldName (KnownField a)
+knownRecordVisibleMap KnownRecord{..} =
+    (knownRecordVector V.!) <$> knownRecordVisible
 
 knownRecordFromFields :: forall a.
      [KnownField a]
@@ -166,80 +177,40 @@ knownRecordFromFields :: forall a.
      --
      -- In other words, fields earlier in the list shadow later fields.
   -> KnownRecord a
-knownRecordFromFields = go [] Map.empty 0
+knownRecordFromFields = go [] 0 HashMap.empty True
   where
-    go :: [KnownField a]      -- Accumulated fields, reverse order
-       -> Map FastString Int  -- Accumulated indices
-       -> Int                 -- Next available index
-       -> [KnownField a]      -- To process
+    go :: [KnownField a]        -- Acc fields, reverse order (includes shadowed)
+       -> Int                   -- Next index
+       -> HashMap FieldName Int -- Acc indices of visible fields
+       -> Bool                  -- Are all already processed fields visible?
+       -> [KnownField a]        -- To process
        -> KnownRecord a
-    go accFields !accIndices !nextIndex = \case
+    go accFields !nextIndex !accVisible !accAllVisible = \case
         [] -> KnownRecord {
-            knownRecordVector  = V.fromList $ reverse accFields
-          , knownRecordIndices = accIndices
+            knownRecordVector     = V.fromList $ reverse accFields
+          , knownRecordVisible    = accVisible
+          , knownRecordAllVisible = accAllVisible
           }
         f:fs
-          | name `Map.member` accIndices ->
+          | name `HashMap.member` accVisible ->
               -- Field shadowed
-              go accFields accIndices nextIndex fs
-          | otherwise ->
-              go (f:accFields)
-                 (Map.insert name nextIndex accIndices)
+              go (f : accFields)
                  (succ nextIndex)
+                 accVisible
+                 False
+                 fs
+          | otherwise ->
+              go (f : accFields)
+                 (succ nextIndex)
+                 (HashMap.insert name nextIndex accVisible)
+                 accAllVisible
                  fs
           where
             name = knownFieldName f
 
--- | Check if two known records are isomorphic
---
--- We do not check type equalities here, and instead just return which pairs
--- of types should be equal. These should be returned as new wanted constraints.
-knownRecordIsomorphic :: forall a b.
-     KnownRecord a
-  -> KnownRecord b
-  -> ( Map FastString ((Type, Type), (a, b))  -- Matched fields
-     , [KnownField a]  -- Fields only in the left  (in original order)
-     , [KnownField b]  -- Fields only in the right (in original order)
-     )
-knownRecordIsomorphic = \ra rb ->
-    let (inBoth, (onlyInLeft, onlyInRight)) = flip runState ([], []) $
-            Map.mergeA
-              (Map.traverseMaybeMissing inLeft)
-              (Map.traverseMaybeMissing inRight)
-              (Map.zipWithAMatched presentInBoth)
-              (knownRecordMap ra)
-              (knownRecordMap rb)
-     in ( inBoth
-        , map snd $ sortOn fst onlyInLeft
-        , map snd $ sortOn fst onlyInRight
-        )
-  where
-    -- We ignore the indices here; we could potentially use them to order the
-    -- matching fields according to one of the two records
-    presentInBoth ::
-         FastString
-      -> (Int, KnownField a)
-      -> (Int, KnownField b)
-      -> State ([(Int, KnownField a)], [(Int, KnownField b)])
-               ((Type, Type), (a, b))
-    presentInBoth _nm (_ia, fa) (_ib, fb) = return (
-          (knownFieldType fa, knownFieldType fb)
-        , (knownFieldInfo fa, knownFieldInfo fb)
-        )
-
-    inLeft ::
-         FastString
-      -> (Int, KnownField a)
-      -> State ([(Int, KnownField a)], [(Int, KnownField b)])
-               (Maybe x)
-    inLeft _nm (ia, fa) = state $ \(l, r) -> (Nothing, ((ia, fa) : l, r))
-
-    inRight ::
-         FastString
-      -> (Int, KnownField b)
-      -> State ([(Int, KnownField a)], [(Int, KnownField b)])
-               (Maybe x)
-    inRight _nm (ib, fb) = state $ \(l, r) -> (Nothing, (l, (ib, fb) : r))
+{-------------------------------------------------------------------------------
+  Checks
+-------------------------------------------------------------------------------}
 
 -- | Return map from field name to type, /if/ all fields are statically known
 checkAllFieldsKnown :: Fields -> Maybe (KnownRecord ())
@@ -262,12 +233,69 @@ checkAllFieldsKnown = go [] . (:[])
           FieldsMerge l r ->
             go acc (l:r:fss)
 
-    knownField :: FastString -> Type -> KnownField ()
+    knownField :: FieldName -> Type -> KnownField ()
     knownField nm typ = KnownField {
           knownFieldName = nm
         , knownFieldType = typ
         , knownFieldInfo = ()
         }
+
+-- | Reason why we cannot project
+data CannotProject =
+    -- | We do not supporting to records with shadowed fields
+    --
+    -- Since these fields can only come from the source record, and shadowed
+    -- fields in the source record are invisible, shadowed fields in the target
+    -- could only be duplicates of the same field in the source. This is not
+    -- particularly useful, so we don't support it. Moreover, since we actually
+    -- create /lenses/ from these projections, it is important that every field
+    -- in the source record corresponds to at most /one/ field in the target.
+    TargetContainsShadowedFields
+
+    -- | Some fields in the target are missing in the source
+  | SourceMissesFields [FieldName]
+
+-- | Check if we can project from one record to another
+--
+-- See docstring of the  'Project' class for some discussion of shadowing.
+checkCanProject :: forall a b.
+     KnownRecord a
+  -> KnownRecord b
+  -> Either CannotProject [(KnownField a, KnownField b)]
+checkCanProject recordA recordB =
+    if not (knownRecordAllVisible recordB) then
+      Left TargetContainsShadowedFields
+    else
+        uncurry checkMissing
+      . partitionEithers
+      . mapMaybe (uncurry checkField)
+      . HashMap.toList
+      $ HashMap.merge visibleA visibleB
+  where
+    visibleA :: HashMap FieldName (KnownField a)
+    visibleA = knownRecordVisibleMap recordA
+
+    visibleB :: HashMap FieldName (KnownField b)
+    visibleB = knownRecordVisibleMap recordB
+
+    checkField ::
+         FieldName
+      -> Merged (KnownField a) (KnownField b)
+      -> Maybe (Either FieldName (KnownField a, KnownField b))
+    checkField n = \case
+        -- A field that only appears on the LHS is irrelevant
+        InLeft _ -> Nothing
+        -- A field that only appears on the RHS is problematic
+        InRight _ -> Just (Left n)
+        -- A field that appears in both is part of the projection
+        InBoth x y -> Just (Right (x, y))
+
+    checkMissing ::
+         [FieldName]
+      -> [(KnownField a, KnownField b)]
+      -> Either CannotProject [(KnownField a, KnownField b)]
+    checkMissing []      matched = Right matched
+    checkMissing missing _       = Left $ SourceMissesFields missing
 
 {-------------------------------------------------------------------------------
   Outputable
@@ -306,14 +334,14 @@ instance Outputable a => Outputable (KnownField a) where
   Parser
 -------------------------------------------------------------------------------}
 
--- | Parse @Record f r@
+-- | Parse @Record @k f r@
 --
--- Returns the argument @f, r@
-parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type)
+-- Returns the argument @k, f, r@
+parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type, Type)
 parseRecord tcs ResolvedNames{..} t = do
     args <- parseInjTyConApp tcs tyConRecord t
     case args of
-      [f, r]     -> Just (f, r)
+      [k, f, r]  -> Just (k, f, r)
       _otherwise -> Nothing
 
 parseFields :: TyConSubst -> ResolvedNames -> Type -> Maybe Fields
@@ -342,6 +370,9 @@ parseField tcs field = do
 
 parseFieldLabel :: Type -> Maybe FieldLabel
 parseFieldLabel label = asum [
-      FieldKnown <$> isStrLitTy     label
+      fieldKnown <$> isStrLitTy     label
     , FieldVar   <$> getTyVar_maybe label
     ]
+  where
+    fieldKnown :: FastString -> FieldLabel
+    fieldKnown = FieldKnown . FieldName.fromFastString

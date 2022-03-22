@@ -1,9 +1,11 @@
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE ExplicitNamespaces #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
-{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE ExplicitNamespaces   #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Data.Record.Generic (
     -- * Types with a generic view
@@ -88,6 +90,8 @@ recordFieldNames = Rep.map' aux . recordFieldMetadata
 
 {-------------------------------------------------------------------------------
   Working with the type-level metadata
+
+  This is primarily designed for interop with SOP.
 -------------------------------------------------------------------------------}
 
 type family FieldName (field :: (Symbol, Type)) :: Symbol where
@@ -96,5 +100,9 @@ type family FieldName (field :: (Symbol, Type)) :: Symbol where
 type family FieldType (field :: (Symbol, Type)) :: Type where
   FieldType '(_name, typ) = typ
 
-class (field ~ '(FieldName field, FieldType field)) => IsField field
-instance (field ~ '(FieldName field, FieldType field)) => IsField field
+class    ( field ~ '(FieldName field, FieldType field)
+         , KnownSymbol (FieldName field)
+         ) => IsField field
+instance ( field ~ '(FieldName field, FieldType field)
+         , KnownSymbol (FieldName field)
+         ) => IsField field

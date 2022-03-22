@@ -27,14 +27,14 @@ data CAllFields = CAllFields {
       -- | Fields of the record (parsed form of @r@)
       allFieldsParsedFields :: Fields
 
-      -- | Raw arguments to @AllFields@ (for evidence construction)
-    , allFieldsTypeRaw :: [Type]
-
       -- | Type of the fields (@r@)
     , allFieldsTypeFields :: Type
 
       -- | Constraint required for each field (@c@)
     , allFieldsTypeConstraint :: Type
+
+      -- | Constraint argument kind (the @k@ in @c :: k -> Constraint@)
+    , allFieldsTypeKind :: Type
     }
 
 {-------------------------------------------------------------------------------
@@ -42,12 +42,12 @@ data CAllFields = CAllFields {
 -------------------------------------------------------------------------------}
 
 instance Outputable CAllFields where
-  ppr (CAllFields parsedFields typeRaw typeConstraint typeFields) = parens $
+  ppr (CAllFields parsedFields typeConstraint typeKind typeFields) = parens $
       text "CAllFields" <+> braces (vcat [
           text "allFieldsParsedFields"   <+> text "=" <+> ppr parsedFields
-        , text "allFieldsTypeRaw"        <+> text "=" <+> ppr typeRaw
         , text "allFieldsTypeFields    " <+> text "=" <+> ppr typeFields
         , text "allFieldsTypeConstraint" <+> text "=" <+> ppr typeConstraint
+        , text "allFieldsTypeKind"       <+> text "=" <+> ppr typeKind
         ])
 
 {-------------------------------------------------------------------------------
@@ -61,13 +61,13 @@ parseAllFields ::
   -> ParseResult Void (GenLocated CtLoc CAllFields)
 parseAllFields tcs rn@ResolvedNames{..} =
     parseConstraint' clsAllFields $ \case
-      args@[r, c] -> do
+      [k, r, c] -> do
         fields <- parseFields tcs rn r
         return CAllFields {
             allFieldsParsedFields   = fields
-          , allFieldsTypeRaw        = args
           , allFieldsTypeFields     = r
           , allFieldsTypeConstraint = c
+          , allFieldsTypeKind       = k
           }
       _invalidNumArgs ->
         Nothing
@@ -90,39 +90,43 @@ evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
     return $
       evDataConApp
         (classDataCon clsAllFields)
-        allFieldsTypeRaw
-        [ mkCoreApps (Var idEvidenceAllFields) [
-              Type allFieldsTypeConstraint
-            , Type allFieldsTypeFields
-            , mkListExpr dictType fields'
+        typeArgsEvidence
+        [ mkCoreApps (Var idEvidenceAllFields) $ concat [
+              map Type typeArgsEvidence
+            , [mkListExpr (mkTyConApp tyConDict typeArgsDict) fields']
             ]
         ]
   where
-    dictType :: Type
-    dictType = mkTyConApp tyConDict [
-          liftedTypeKind
+    -- Type arguments to @Dict@ and to @AllFields@
+    typeArgsDict, typeArgsEvidence :: [Type]
+    typeArgsDict = [
+          allFieldsTypeKind
         , allFieldsTypeConstraint
-        , anyType
+        , anyAtKind
+        ]
+    typeArgsEvidence = [
+          allFieldsTypeKind
+        , allFieldsTypeFields
+        , allFieldsTypeConstraint
         ]
 
     dictForField :: KnownField EvVar -> TcPluginM 'Solve EvExpr
     dictForField KnownField{ knownFieldType = fieldType
                            , knownFieldInfo = dict
                            } = do
-        return $ mkCoreConApps dataConDict [
-            Type liftedTypeKind
-          , Type allFieldsTypeConstraint
-          , Type anyType
-          , mkCoreApps (Var idUnsafeCoerce) [
+        return $ mkCoreConApps dataConDict $ concat [
+            map Type typeArgsDict
+          , [ mkCoreApps (Var idUnsafeCoerce) [
                 Type $ mkAppTy allFieldsTypeConstraint fieldType
-              , Type $ mkAppTy allFieldsTypeConstraint anyType
+              , Type $ mkAppTy allFieldsTypeConstraint anyAtKind
               , Var dict
               ]
+            ]
           ]
 
-    -- Any at kind Type
-    anyType :: Type
-    anyType = mkTyConApp anyTyCon [liftedTypeKind]
+    -- Any at kind @k@
+    anyAtKind :: Type
+    anyAtKind = mkTyConApp anyTyCon [allFieldsTypeKind]
 
 {-------------------------------------------------------------------------------
   Solver

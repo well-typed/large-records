@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds     #-}
+{-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 

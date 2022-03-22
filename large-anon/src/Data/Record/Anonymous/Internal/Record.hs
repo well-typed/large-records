@@ -102,7 +102,7 @@ import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
 -- @a == b@. We /could/ introduce a new constraint to say precisely that, but
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
-data Record (f :: k -> Type) (r :: [(Symbol, k)]) = Record {
+data Record (f :: k -> Type) (r :: Row k) = Record {
       recordDiff  :: Diff f
     , recordCanon :: Canonical f
     }
@@ -150,7 +150,7 @@ empty :: Record f '[]
 empty = Record Diff.empty mempty
 
 -- | Insert new field
-insert :: Field n -> f a -> Record f r -> Record f ('(n, a) ': r)
+insert :: Field n -> f a -> Record f r -> Record f (n := a : r)
 insert (Field n) x r@Record{recordDiff} = r {
       recordDiff = Diff.insert (FieldName.symbolVal n) (co x) recordDiff
     }

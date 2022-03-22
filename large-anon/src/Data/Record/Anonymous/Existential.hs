@@ -51,7 +51,7 @@ reflectMap (Comp Reflected :* rs) =
 data SomeField (cs :: [k -> Constraint]) where
   SomeField :: NP (Flip Dict a) cs -> SomeField cs
 
-reflectFieldDicts :: forall k (cs :: [k -> Constraint]) (r :: [(Symbol, k)]).
+reflectFieldDicts :: forall k (cs :: [k -> Constraint]) (r :: Row k).
      SListI cs
   => Proxy r
   -> [(String, SomeField cs)]
@@ -86,7 +86,7 @@ someFields fields =
       map (someFieldMetadata . fst) fields
   where
     -- The reflected 'KnownFields' determines the shape of the record
-    withReflected :: forall (r :: [(Symbol, k)]).
+    withReflected :: forall (r :: Row k).
          Reflected (KnownFields r)
       -> SomeFields cs
     withReflected Reflected =

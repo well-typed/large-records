@@ -26,9 +26,8 @@ import Data.Bifunctor
 import Data.Kind
 import Data.Record.Generic
 import Data.SOP
-import GHC.TypeLits (Symbol)
 
-import Data.Record.Anonymous.Advanced (Record, KnownFields, AllFields)
+import Data.Record.Anonymous.Advanced (Record, KnownFields, AllFields, Row)
 import Data.Record.Anonymous.Existential
 
 import qualified Data.Record.Anonymous.Advanced as Anon
@@ -73,7 +72,7 @@ inferType fInt fBool (DynRecord xs) =
     aux (VI _) = fInt
     aux (VB _) = fBool
 
-parse :: forall k (f :: k -> Type) (r :: [(Symbol, k)]).
+parse :: forall k (f :: k -> Type) (r :: Row k).
      (KnownFields r, AllFields r (Parse f))
   => DynRecord -> Maybe (Record f r)
 parse (DynRecord xs) =

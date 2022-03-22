@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
@@ -12,7 +13,7 @@ module Test.Sanity.Simple (tests) where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous.Simple (Record)
+import Data.Record.Anonymous.Simple (Record, Pair((:=)))
 import qualified Data.Record.Anonymous.Simple as Anon
 
 tests :: TestTree
@@ -25,13 +26,13 @@ tests = testGroup "Test.Sanity.Simple" [
   Example values
 -------------------------------------------------------------------------------}
 
-recordA :: Record '[ '("a", Bool), '("b", Char) ]
+recordA :: Record [ "a" := Bool, "b" := Char ]
 recordA =
       Anon.insert #a True
     $ Anon.insert #b 'a'
     $ Anon.empty
 
-recordA' :: Record '[ '("a", Bool), '("b", Char) ]
+recordA' :: Record [ "a" := Bool, "b" := Char ]
 recordA' =
       Anon.insert #a False
     $ Anon.insert #b 'a'

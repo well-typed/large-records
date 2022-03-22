@@ -17,7 +17,6 @@ module Data.Record.Anonymous.Plugin.Parsing (
   , parseConstraint'
   , parseCons
   , parseNil
-  , parsePair
   , parseInjTyConApp
   ) where
 
@@ -132,14 +131,6 @@ parseNil tcs t = do
     case args of
       [_k]       -> Just ()
       _otherwise -> Nothing
-
--- | Parse @'(x, y) == '(,) x y == ('(,) x) y@
-parsePair :: TyConSubst -> Type -> Maybe (Type, Type)
-parsePair tcs t = do
-    args <- parseInjTyConApp tcs (promotedTupleDataCon Boxed 2) t
-    case args of
-      [_kx, _ky, x, y] -> Just (x, y)
-      _otherwise       -> Nothing
 
 -- | Parse application of an injective type constructor
 parseInjTyConApp :: TyConSubst -> TyCon -> Type -> Maybe [Type]

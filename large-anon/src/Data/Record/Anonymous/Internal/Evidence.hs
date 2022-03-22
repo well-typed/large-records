@@ -40,7 +40,7 @@ import GHC.TypeLits (Symbol)
 -- Precondition: the record must have the specified field with type @a@ (where
 -- @a@ will be of the form @f a'@ for some @a'). This precondition is verified
 -- by the plugin before generating "evidence" that uses this function.
-evidenceHasField :: forall k (f :: k -> Type) (r :: [(Symbol, k)]) a.
+evidenceHasField :: forall k (f :: k -> Type) (r :: Row k) a.
      Int       -- ^ Field index
   -> FieldName -- ^ Field name
   -> Record f r
@@ -62,11 +62,11 @@ evidenceHasField i n r@Record{..} = (
   We are explicit about kind arguments to make code generation a bit easier.
 -------------------------------------------------------------------------------}
 
-evidenceAllFields :: forall k (r :: [(Symbol, k)]) (c :: k -> Constraint).
+evidenceAllFields :: forall k (r :: Row k) (c :: k -> Constraint).
   [Dict c Any] -> DictAllFields k r c
 evidenceAllFields x _ _ = Vector.fromList x
 
-evidenceKnownFields :: forall k (r :: [(Symbol, k)]).
+evidenceKnownFields :: forall k (r :: Row k).
   [FieldMetadata Any] -> DictKnownFields k r
 evidenceKnownFields x _ = x
 
@@ -74,7 +74,7 @@ evidenceKnownHash :: forall (s :: Symbol).
   Int -> DictKnownHash s
 evidenceKnownHash x _   = x
 
-evidenceProject :: forall k (r :: [(Symbol, k)]) (r' :: [(Symbol, k)]).
+evidenceProject :: forall k (r :: Row k) (r' :: Row k).
   [Int] -> DictProject k r r'
 evidenceProject x _ _ = x
 

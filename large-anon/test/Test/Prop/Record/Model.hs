@@ -6,6 +6,7 @@
 {-# LANGUAGE GADTs                   #-}
 {-# LANGUAGE KindSignatures          #-}
 {-# LANGUAGE OverloadedLabels        #-}
+{-# LANGUAGE PolyKinds               #-}
 {-# LANGUAGE RankNTypes              #-}
 {-# LANGUAGE ScopedTypeVariables     #-}
 {-# LANGUAGE StandaloneDeriving      #-}
@@ -66,11 +67,10 @@ import Data.Kind
 import Data.Proxy
 import Data.SOP (NP(..), type (-.->)(..), SListI, All)
 import Data.SOP.BasicFunctors
-import GHC.TypeLits
 
 import qualified Data.SOP as SOP
 
-import Data.Record.Anonymous.Advanced (Record)
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)), Row)
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 {-------------------------------------------------------------------------------
@@ -88,18 +88,18 @@ import qualified Data.Record.Anonymous.Advanced as Anon
 -- TODO: Once we have support for /dropping/ fields, we should also add some
 -- cases with duplicate fields here. We currently cannot, since we cannot define
 -- 'fromRecord' for such records.
-data ModelFields :: [(Symbol, Type)] -> Type where
-  MF0  :: ModelFields '[                            ]
-  MF1  :: ModelFields '[               '("b", Bool) ]
-  MF2  :: ModelFields '[ '("a", Word), '("b", Bool) ]
-  MF2' :: ModelFields '[ '("b", Word), '("a", Bool) ]
+data ModelFields :: Row Type -> Type where
+  MF0  :: ModelFields '[                          ]
+  MF1  :: ModelFields '[              "b" := Bool ]
+  MF2  :: ModelFields '[ "a" := Word, "b" := Bool ]
+  MF2' :: ModelFields '[ "b" := Word, "a" := Bool ]
 
 deriving instance Show (ModelFields xs)
 deriving instance Eq   (ModelFields xs)
 
-type family Types (fields :: [(Symbol, Type)]) :: [Type] where
-  Types '[]             = '[]
-  Types ('(_, t) ': ts) = t ': Types ts
+type family Types (fields :: Row k) :: [k] where
+  Types '[]           = '[]
+  Types (_ := t : ts) = t ': Types ts
 
 data ModelRecord f r = MR (NP f (Types r))
 

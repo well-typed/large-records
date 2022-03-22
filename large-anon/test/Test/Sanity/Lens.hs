@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
@@ -10,7 +11,8 @@ import Data.SOP.BasicFunctors
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous.Advanced (Record)
+-- TODO: We should have a Data.Record.Anonymous module for unqualified imports
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 tests :: TestTree
@@ -29,21 +31,21 @@ tests = testGroup "Test.Sanity.Lens" [
   Example values
 -------------------------------------------------------------------------------}
 
-recordA :: Record I '[ '("a", Bool), '("b", Char), '("c", Int) ]
+recordA :: Record I [ "a" := Bool, "b" := Char, "c" := Int ]
 recordA =
       Anon.insert #a (I True)
     $ Anon.insert #b (I 'a')
     $ Anon.insert #c (I 1)
     $ Anon.empty
 
-recordA' :: Record I '[ '("b", Char), '("a", Bool), '("c", Int) ]
+recordA' :: Record I [ "b" := Char, "a" := Bool, "c" := Int ]
 recordA' =
       Anon.insert #b (I 'a')
     $ Anon.insert #a (I True)
     $ Anon.insert #c (I 1)
     $ Anon.empty
 
-recordWithMerge :: Record I (Anon.Merge '[ '("a", Bool) ] '[ '("b", Char), '("c", Int) ])
+recordWithMerge :: Record I (Anon.Merge '[ "a" := Bool ] [ "b" := Char, "c" := Int ])
 recordWithMerge =
     Anon.merge
       ( Anon.insert #a (I True)
@@ -54,7 +56,7 @@ recordWithMerge =
       $ Anon.empty
       )
 
-recordB :: Record I '[ '("c", Int), '("b", Char) ]
+recordB :: Record I [ "c" := Int, "b" := Char ]
 recordB =
       Anon.insert #c (I 1)
     $ Anon.insert #b (I 'a')

@@ -2,6 +2,7 @@
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 
 -- | Constrained combinators
 --
@@ -59,13 +60,17 @@ module Data.Record.Anonymous.Internal.Combinators.Constrained (
     -- * Functor
   , cmap
   , cmapM
+    -- * Folding
+  , toList
     -- * Zipping
   , czipWith
   , czipWithM
   ) where
 
 import Data.Proxy
+import Data.Record.Generic (FieldMetadata(..))
 import Data.SOP.BasicFunctors
+import GHC.TypeLits (symbolVal)
 
 import Data.Record.Anonymous.Internal.Constraints
 import Data.Record.Anonymous.Internal.Record (Record)
@@ -107,6 +112,16 @@ cmapM ::
   -> (forall x. c x => f x -> m (g x))
   -> Record f r -> m (Record g r)
 cmapM p f = Simple.sequenceA . cmap p (Comp . f)
+
+{-------------------------------------------------------------------------------
+  Folding
+-------------------------------------------------------------------------------}
+
+toList :: forall r a. KnownFields r => Record (K a) r -> [(String, a)]
+toList = zipWith aux (fieldMetadata (Proxy @r)) . Simple.collapse
+  where
+    aux :: FieldMetadata b -> a -> (String, a)
+    aux (FieldMetadata p _) a = (symbolVal p, a)
 
 {-------------------------------------------------------------------------------
   Zipping

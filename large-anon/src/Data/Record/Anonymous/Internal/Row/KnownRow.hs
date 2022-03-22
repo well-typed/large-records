@@ -171,6 +171,7 @@ data CannotProject =
 
     -- | Some fields in the target are missing in the source
   | SourceMissesFields [FieldName]
+  deriving (Show, Eq)
 
 -- | Check if we can project from one record to another
 --

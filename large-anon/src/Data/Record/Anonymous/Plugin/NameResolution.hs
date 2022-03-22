@@ -71,7 +71,7 @@ nameResolution = do
     idEvidenceKnownFields <- getVar draiEvidence "evidenceKnownFields"
     idEvidenceKnownHash   <- getVar draiEvidence "evidenceKnownHash"
     idEvidenceProject     <- getVar draiEvidence "evidenceProject"
-    idUnsafeCoerce        <- getVar uCoerce      "unsafeCoerce"
+    idUnsafeCoerce        <- getVar uCoerce      "unsafeCoerce" -- TODO: use noInlineUnsafeCo instead
 
     tyConDict             <- getTyCon       dDict      "Dict"
     tyConFieldMetadata    <- getTyCon       drGeneric  "FieldMetadata"

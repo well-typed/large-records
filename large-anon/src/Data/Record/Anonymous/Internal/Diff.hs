@@ -35,11 +35,11 @@ import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty(..), (<|))
+import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
 import Data.Tuple (swap)
 import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
-import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.List.NonEmpty  as NE
 import qualified Data.HashMap.Strict as HashMap
@@ -217,7 +217,7 @@ toString = show . mapDiff (K . AnythingToString . co)
         }
 
     co :: f x -> f Any
-    co = unsafeCoerce
+    co = noInlineUnsafeCo
 
 {-
     -- This definition should work, but doesn't. Not sure why:

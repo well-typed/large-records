@@ -134,9 +134,9 @@ describeRecord p =
         ]
 
 -- | Construct record with field metadata for every field
-recordWithMetadata :: forall k (f :: k -> Type) (r :: Row k).
+recordWithMetadata :: forall k (f :: k -> Type) (r :: Row k) proxy.
      KnownFields r
-  => Proxy (Record f r) -> Record (FieldMetadata :.: f) r
+  => proxy r -> Record (FieldMetadata :.: f) r
 recordWithMetadata _ =
     Rep.toRecord' md
   where
@@ -144,14 +144,14 @@ recordWithMetadata _ =
     md = recordFieldMetadata (metadata (Proxy @(Record f r)))
 
 -- | Like 'recordWithMetadata', but includes field names only
-recordWithNames :: forall k (f :: k -> Type) (r :: Row k).
+recordWithNames :: forall k (r :: Row k) proxy.
      KnownFields r
-  => Proxy (Record f r) -> Record (K String) r
+  => proxy r -> Record (K String) r
 recordWithNames _ =
     Simple.map aux $ Rep.toRecord' md
   where
-    md :: Rep (K String) (Record f r)
-    md = recordFieldNames (metadata (Proxy @(Record f r)))
+    md :: Rep (K String) (Record (K ()) r)
+    md = recordFieldNames (metadata (Proxy @(Record (K ()) r)))
 
     aux :: (K String :.: f) x -> K String x
     aux (Comp (K name)) = K name

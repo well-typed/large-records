@@ -77,7 +77,7 @@ fromFastString = fromString . unpackFS
 
 instance Show FieldName where
   showsPrec p n = showParen (p >= 11) $
-    showString "fromString " . showString (fieldNameLabel n)
+    showString "fromString " . showsPrec 11 (fieldNameLabel n)
 
 instance Outputable FieldName where
   ppr = ppr . fieldNameLabel

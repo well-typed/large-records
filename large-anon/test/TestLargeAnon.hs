@@ -5,8 +5,8 @@ import Test.Tasty
 import qualified Test.Prop.Record.Combinators.Constrained
 import qualified Test.Prop.Record.Combinators.Simple
 import qualified Test.Sanity.AllFields
+import qualified Test.Sanity.Discovery
 import qualified Test.Sanity.DuplicateFields
-import qualified Test.Sanity.Existential
 import qualified Test.Sanity.Generics
 import qualified Test.Sanity.HasField
 import qualified Test.Sanity.Lens
@@ -27,7 +27,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.AllFields.tests
         , Test.Sanity.Simple.tests
         , Test.Sanity.PolyKinds.tests
-        , Test.Sanity.Existential.tests
+        , Test.Sanity.Discovery.tests
         ]
     , testGroup "Prop" [
           Test.Prop.Record.Combinators.Simple.tests

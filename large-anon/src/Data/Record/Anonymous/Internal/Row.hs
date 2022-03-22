@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds             #-}
@@ -7,7 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators         #-}
 
 -- | Type-level rows
 --
@@ -47,10 +48,12 @@ module Data.Record.Anonymous.Internal.Row (
 import Data.Kind
 import Data.Proxy (Proxy)
 import Data.Record.Generic (FieldMetadata(..))
+import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
+import Data.SOP.BasicFunctors
+import Data.SOP.Constraint
 import Data.SOP.Dict
 import GHC.Exts (Any)
 import GHC.TypeLits
-import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector as Lazy
 
@@ -128,6 +131,21 @@ class AllFields (r :: Row k) (c :: k -> Constraint) where
 type DictAllFields k (r :: Row k) (c :: k -> Constraint) =
        Proxy r -> Proxy c -> Lazy.Vector (Dict c Any)
 
+instance {-# OVERLAPPING #-}
+         (KnownFields r, Show a)
+      => AllFields r (Compose Show (K a)) where
+  fieldDicts pr _ = Lazy.fromList $ map (const Dict) (fieldMetadata pr)
+
+instance {-# OVERLAPPING #-}
+         (KnownFields r, Eq a)
+      => AllFields r (Compose Eq (K a)) where
+  fieldDicts pr _ = Lazy.fromList $ map (const Dict) (fieldMetadata pr)
+
+instance {-# OVERLAPPING #-}
+         (KnownFields r, Ord a)
+      => AllFields r (Compose Ord (K a)) where
+  fieldDicts pr _ = Lazy.fromList $ map (const Dict) (fieldMetadata pr)
+
 {-------------------------------------------------------------------------------
   Metadata
 -------------------------------------------------------------------------------}
@@ -171,14 +189,14 @@ data Reflected c where
 newtype WithKnownFields r = WKF (KnownFields r => Reflected (KnownFields r))
 
 reflectKnownFields :: DictKnownFields k r -> Reflected (KnownFields r)
-reflectKnownFields = unsafeCoerce (WKF Reflected)
+reflectKnownFields = noInlineUnsafeCo (WKF Reflected)
 
 newtype WithAllFields r c = WAF (AllFields r c => Reflected (AllFields r c))
 
 reflectAllFields :: DictAllFields k r c -> Reflected (AllFields r c)
-reflectAllFields = unsafeCoerce (WAF Reflected)
+reflectAllFields = noInlineUnsafeCo (WAF Reflected)
 
 newtype WithProject f r r' = WR (Project f r r' => Reflected (Project f r r'))
 
 reflectProject :: DictProject k f r r' -> Reflected (Project f r r')
-reflectProject = unsafeCoerce (WR Reflected)
+reflectProject = noInlineUnsafeCo (WR Reflected)

@@ -74,7 +74,7 @@ evidenceKnownHash :: forall (s :: Symbol).
   Int -> DictKnownHash s
 evidenceKnownHash x _   = x
 
-evidenceProject :: forall k (r :: Row k) (r' :: Row k).
-  [Int] -> DictProject k r r'
-evidenceProject x _ _ = x
+evidenceProject :: forall k (f :: k -> Type) (r :: Row k) (r' :: Row k).
+  [Int] -> DictProject k f r r'
+evidenceProject x _ _ _ = x
 

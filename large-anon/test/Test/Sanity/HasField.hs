@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
@@ -8,7 +9,7 @@ module Test.Sanity.HasField (tests) where
 
 import Data.SOP.BasicFunctors -- TODO: Should this be exported from large-anon?
 
-import Data.Record.Anonymous.Advanced (Record)
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 import Test.Tasty
@@ -23,14 +24,14 @@ tests = testGroup "Test.Sanity.HasField" [
   Example values
 -------------------------------------------------------------------------------}
 
-record1 :: Record I '[ '("x", Bool), '("y", Char), '("z", ()) ]
+record1 :: Record I [ "x" := Bool, "y" := Char, "z" := () ]
 record1 =
       Anon.insert #x (I True)
     $ Anon.insert #y (I 'a')
     $ Anon.insert #z (I ())
     $ Anon.empty
 
-record1' :: Record I '[ '("x", Bool), '("y", Char), '("z", ()) ]
+record1' :: Record I [ "x" := Bool, "y" := Char, "z" := () ]
 record1' =
       Anon.insert #x (I False)
     $ Anon.insert #y (I 'a')

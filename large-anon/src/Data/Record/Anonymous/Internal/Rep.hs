@@ -21,11 +21,11 @@ import Data.Kind
 import Data.Record.Generic.Rep.Internal (Rep(..), noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
 import GHC.Exts (Any)
-import GHC.TypeLits (Symbol)
 
 import qualified Data.Vector as Lazy
 
 import Data.Record.Anonymous.Internal.Record (Record)
+import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 import qualified Data.Record.Anonymous.Internal.Record    as Record
@@ -40,10 +40,7 @@ import qualified Data.Record.Anonymous.Internal.Record    as Record
   what the right generalization is. For now these suffice.
 -------------------------------------------------------------------------------}
 
-denormalize :: forall k
-                      (f :: Type -> Type)
-                      (g :: k -> Type)
-                      (r :: [(Symbol, k)]).
+denormalize :: forall k (f :: Type -> Type) (g :: k -> Type) (r :: Row k).
   Rep I (Record (f :.: g) r) -> Rep f (Record g r)
 denormalize (Rep r) = Rep (co r)
   where

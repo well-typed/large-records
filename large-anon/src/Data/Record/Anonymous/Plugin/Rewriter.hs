@@ -1,4 +1,6 @@
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 module Data.Record.Anonymous.Plugin.Rewriter (rewrite) where
 
@@ -11,14 +13,45 @@ import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
 
 rewrite :: ResolvedNames -> UniqFM TyCon TcPluginRewriter
 rewrite rn@ResolvedNames{..} = listToUFM [
-      (tyConFieldTypes, rewriteRecordMetadataOf rn)
+      (tyConFieldTypes       , rewriteRecordMetadataOf rn)
+    , (tyConSimpleFieldTypes , rewriteRecordMetadataOf rn)
     ]
 
+data Args = Args {
+      -- | Functor argument, if any
+      argsFunctor :: Maybe Type
+
+      -- | Parsed fields
+    , argsParsedFields :: Maybe Fields
+
+      -- | Known record, if all fields are known
+    , argsParsedKnown :: Maybe (KnownRecord ())
+    }
+
+mkArgs :: TyConSubst -> ResolvedNames -> Maybe Type -> Type -> Args
+mkArgs tcs rn argsFunctor r = Args{..}
+  where
+    argsParsedFields = parseFields tcs rn r
+    argsParsedKnown  = checkAllFieldsKnown =<< argsParsedFields
+
+parseArgs :: [Ct] -> ResolvedNames -> [Type] -> Args
+parseArgs given rn = \case
+    [_k, f, r] -> mkArgs tcs rn (Just f) r
+    [       r] -> mkArgs tcs rn Nothing  r
+    args       -> panic $ concat [
+        "Data.Record.Anonymous.Plugin.Rewriter.parseArgs: "
+      , "unexpected arguments: "
+      , showSDocUnsafe (ppr args)
+      ]
+  where
+    tcs :: TyConSubst
+    tcs = mkTyConSubst given
+
 rewriteRecordMetadataOf :: ResolvedNames -> TcPluginRewriter
-rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[_k, f, r] =
+rewriteRecordMetadataOf rn@ResolvedNames{..} given args@(parseArgs given rn -> Args{..}) =
 --  trace _debugInput  $
 --  trace _debugParsed $
-    case mKnownFields of
+    case argsParsedKnown of
       Nothing ->
         return TcPluginNoRewrite
       Just knownFields ->
@@ -30,18 +63,9 @@ rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[_k, f, r] =
                  Nominal
                  tyConFieldTypes
                  args
-                 (computeMetadataOf f knownFields)
+                 (computeMetadataOf argsFunctor knownFields)
           }
   where
-    tcs :: TyConSubst
-    tcs = mkTyConSubst given
-
-    parsedFields :: Maybe Fields
-    parsedFields = parseFields tcs rn r
-
-    mKnownFields :: Maybe (KnownRecord ())
-    mKnownFields = checkAllFieldsKnown =<< parsedFields
-
     _debugInput :: String
     _debugInput = unlines [
           "*** input"
@@ -60,19 +84,16 @@ rewriteRecordMetadataOf rn@ResolvedNames{..} given args@[_k, f, r] =
           "*** parsed"
         , concat [
               "parsedFields: "
-            , showSDocUnsafe (ppr parsedFields)
+            , showSDocUnsafe (ppr argsParsedFields)
             ]
         , concat [
               "mKnownFields: "
-            , showSDocUnsafe (ppr mKnownFields)
+            , showSDocUnsafe (ppr argsParsedKnown)
             ]
         ]
 
-rewriteRecordMetadataOf _rn _given _args =
-    panic $ "rewriteRecordMetadataOf: unexpected arguments"
-
-computeMetadataOf :: Type -> KnownRecord () -> TcType
-computeMetadataOf f r =
+computeMetadataOf :: Maybe Type -> KnownRecord () -> TcType
+computeMetadataOf mf r =
     mkPromotedListTy
       (mkTupleTy Boxed [mkTyConTy typeSymbolKindCon, liftedTypeKind])
       (map aux $ knownRecordFields r)
@@ -85,5 +106,7 @@ computeMetadataOf f r =
           [ mkTyConTy typeSymbolKindCon -- kind of first arg
           , liftedTypeKind              -- kind of second arg
           , FieldName.mkType knownFieldName
-          , f `mkAppTy` knownFieldType
+          , case mf of
+              Just f  -> f `mkAppTy` knownFieldType
+              Nothing -> knownFieldType
           ]

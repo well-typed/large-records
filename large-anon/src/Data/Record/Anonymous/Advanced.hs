@@ -50,6 +50,8 @@ module Data.Record.Anonymous.Advanced (
   , Combinators.cpure
   , Combinators.ap
     -- * Working with rows
+  , Pair(..)
+  , Row
   , Project
   , Merge
   , FieldTypes

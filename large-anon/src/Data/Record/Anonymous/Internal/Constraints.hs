@@ -24,12 +24,12 @@ module Data.Record.Anonymous.Internal.Constraints (
   , recordOfDicts
   ) where
 
+import Data.Kind
 import Data.Proxy
 import Data.SOP.BasicFunctors
 import Data.SOP.Constraint
 import Data.SOP.Dict
 import GHC.Exts (Any)
-import GHC.TypeLits (Symbol)
 
 import Data.Vector.Generic as V
 
@@ -39,7 +39,6 @@ import Data.Record.Anonymous.Internal.Row
 import qualified Data.Record.Anonymous.Internal.Canonical          as Canon
 import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 import qualified Data.Record.Anonymous.Internal.Record             as Record
-import Data.Kind
 
 {-------------------------------------------------------------------------------
   Reifiying dictionaries
@@ -48,9 +47,7 @@ import Data.Kind
 data Constrained (c :: k -> Constraint) (f :: k -> Type) (x :: k) where
   Constrained :: c x => f x -> Constrained c f x
 
-constrain :: forall k (c :: k -> Constraint)
-                      (f :: k -> Type)
-                      (r :: [(Symbol, k)]).
+constrain :: forall k (c :: k -> Constraint) (f :: k -> Type) (r :: Row k).
       AllFields r c
    => Proxy c -> Record f r -> Record (Constrained c f) r
 constrain p (Record.canonicalize -> r) = Record.unsafeFromCanonical $
@@ -64,13 +61,10 @@ constrain p (Record.canonicalize -> r) = Record.unsafeFromCanonical $
   Taking the functor into account
 -------------------------------------------------------------------------------}
 
-class    (AllFields r (Compose c f), KnownFields r) => RecordConstraints (f :: k -> l) (r :: [(Symbol, k)]) (c :: l -> Constraint)
+class    (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
 instance (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
 
-recordOfDicts :: forall k l
-                        (f :: k -> l)
-                        (r :: [(Symbol, k)])
-                        (c :: l -> Constraint).
+recordOfDicts :: forall k l (f :: k -> l) (r :: Row k) (c :: l -> Constraint).
      RecordConstraints f r c
   => Proxy c -> Record (Dict c :.: f) r
 recordOfDicts _ =

@@ -345,12 +345,12 @@ parseRecord tcs ResolvedNames{..} t = do
       _otherwise -> Nothing
 
 parseFields :: TyConSubst -> ResolvedNames -> Type -> Maybe Fields
-parseFields tcs ResolvedNames{..} = go
+parseFields tcs rn@ResolvedNames{..} = go
   where
     go :: Type -> Maybe Fields
     go fields = asum [
           do (f, fs) <- parseCons tcs fields
-             f' <- parseField tcs f
+             f' <- parseField tcs rn f
              (FieldsCons f') <$> go fs
         , do parseNil tcs fields
              return FieldsNil
@@ -362,9 +362,9 @@ parseFields tcs ResolvedNames{..} = go
              FieldsMerge <$> go left <*> go right
         ]
 
-parseField :: TyConSubst -> Type -> Maybe Field
-parseField tcs field = do
-    (label, typ) <- parsePair tcs field
+parseField :: TyConSubst -> ResolvedNames -> Type -> Maybe Field
+parseField tcs rn field = do
+    (label, typ) <- parsePair tcs rn field
     label' <- parseFieldLabel label
     return $ Field label' typ
 
@@ -376,3 +376,12 @@ parseFieldLabel label = asum [
   where
     fieldKnown :: FastString -> FieldLabel
     fieldKnown = FieldKnown . FieldName.fromFastString
+
+-- | Parse @(x := y)@
+parsePair :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type)
+parsePair tcs ResolvedNames{..} t = do
+    args <- parseInjTyConApp tcs tyConPair t
+    case args of
+      [_kx, _ky, x, y] -> Just (x, y)
+      _otherwise       -> Nothing
+

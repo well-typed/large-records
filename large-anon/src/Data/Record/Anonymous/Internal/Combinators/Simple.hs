@@ -31,6 +31,7 @@ import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 import qualified Prelude
 
 import Data.Functor.Product
+import Data.Kind
 import Data.Proxy
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->))
@@ -41,17 +42,15 @@ import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 import qualified Data.Record.Anonymous.Internal.Record    as Record
-import Data.Kind
-import GHC.TypeLits (Symbol)
 
 {-------------------------------------------------------------------------------
   Internal auxiliary (convenient shorthand)
 -------------------------------------------------------------------------------}
 
-c :: forall k (f :: k -> Type) (r :: [(Symbol, k)]). Record f r -> Canonical f
+c :: forall k (f :: k -> Type) (r :: Row k). Record f r -> Canonical f
 c = Record.canonicalize
 
-fromC :: forall k (f :: k -> Type) (r :: [(Symbol, k)]). Canonical f -> Record f r
+fromC :: forall k (f :: k -> Type) (r :: Row k). Canonical f -> Record f r
 fromC = Record.unsafeFromCanonical
 
 {-------------------------------------------------------------------------------

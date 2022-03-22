@@ -57,7 +57,7 @@ recordConstraints _ = aux $ fieldDicts (Proxy @r) (Proxy @(Compose c f))
     aux :: Vector (Dict (Compose c f) Any) -> Rep (Dict c) (Record f r)
     aux = noInlineUnsafeCo
 
-recordMetadata :: forall k (f :: k -> Type) (r :: [(Symbol, k)]).
+recordMetadata :: forall k (f :: k -> Type) (r :: Row k).
      KnownFields r
   => Metadata (Record f r)
 recordMetadata = Metadata {
@@ -134,9 +134,7 @@ describeRecord p =
         ]
 
 -- | Construct record with field metadata for every field
-recordWithMetadata :: forall k
-                             (f :: k -> Type)
-                             (r :: [(Symbol, k)]).
+recordWithMetadata :: forall k (f :: k -> Type) (r :: Row k).
      KnownFields r
   => Proxy (Record f r) -> Record (FieldMetadata :.: f) r
 recordWithMetadata _ =
@@ -146,9 +144,7 @@ recordWithMetadata _ =
     md = recordFieldMetadata (metadata (Proxy @(Record f r)))
 
 -- | Like 'recordWithMetadata', but includes field names only
-recordWithNames :: forall k
-                          (f :: k -> Type)
-                          (r :: [(Symbol, k)]).
+recordWithNames :: forall k (f :: k -> Type) (r :: Row k).
      KnownFields r
   => Proxy (Record f r) -> Record (K String) r
 recordWithNames _ =

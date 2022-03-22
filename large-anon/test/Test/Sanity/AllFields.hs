@@ -1,9 +1,9 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
-{-# LANGUAGE TypeOperators #-}
 
 module Test.Sanity.AllFields (tests) where
 
@@ -11,7 +11,7 @@ import Data.Proxy
 import Data.SOP.BasicFunctors
 import Data.SOP.Dict
 
-import Data.Record.Anonymous.Advanced (Record)
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 import Test.Tasty
@@ -27,7 +27,7 @@ tests = testGroup "Test.Sanity.AllFields" [
   Example value
 -------------------------------------------------------------------------------}
 
-recordA :: Record I '[ '("a", Int), '("b", Bool), '("c", Char) ]
+recordA :: Record I [ "a" := Int, "b" := Bool, "c" := Char ]
 recordA =
       Anon.insert #a (I 1)
     $ Anon.insert #b (I True)
@@ -38,7 +38,7 @@ recordA =
 --
 -- Normally this record would be constructed by the plugin (for 'RecordDicts'
 -- instance).
-recordD :: Record (Dict Show :.: I) '[ '("a", Int), '("b", Bool), '("c", Char) ]
+recordD :: Record (Dict Show :.: I) [ "a" := Int, "b" := Bool, "c" := Char ]
 recordD =
       Anon.insert #a (Comp Dict)
     $ Anon.insert #b (Comp Dict)

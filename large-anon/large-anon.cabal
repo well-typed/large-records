@@ -82,6 +82,7 @@ library
   ghc-options:
       -Wall
       -Wredundant-constraints
+      -Wno-unticked-promoted-constructors
 
 test-suite test-large-anon
   default-language:
@@ -134,4 +135,5 @@ test-suite test-large-anon
     , sop-core
   ghc-options:
       -Wall
+      -Wno-unticked-promoted-constructors
       -fno-show-valid-hole-fits

@@ -4,13 +4,13 @@
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 -- | Simple interface to the anonymous records library
 --
@@ -50,10 +50,13 @@ module Data.Record.Anonymous.Simple (
     -- * Constraints
   , RecordConstraints
     -- * Working with rows
+  , Pair(..)
+  , Row
   , Project
   , Merge
   , AllFields
   , KnownFields
+  , SimpleFieldTypes
     -- * Interop with the advanced interface
   , toAdvanced
   , fromAdvanced
@@ -94,8 +97,8 @@ fromAdvanced = SimpleRecord
 empty :: Record '[]
 empty = fromAdvanced $ Adv.empty
 
-insert :: Field nm -> a -> Record r -> Record ('(nm, a) ': r)
-insert nm x = fromAdvanced . Adv.insert nm (I x) . toAdvanced
+insert :: Field n -> a -> Record r -> Record (n := a : r)
+insert n x = fromAdvanced . Adv.insert n (I x) . toAdvanced
 
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge r r' = fromAdvanced $ Adv.merge (toAdvanced r) (toAdvanced r')
@@ -113,9 +116,9 @@ project = fst . lens
   HasField
 -------------------------------------------------------------------------------}
 
-instance HasField  nm            (Adv.Record I r) (I a)
-      => HasField (nm :: Symbol) (    Record   r)    a where
-  hasField = aux . hasField @nm . toAdvanced
+instance HasField  n            (Adv.Record I r) (I a)
+      => HasField (n :: Symbol) (    Record   r)    a where
+  hasField = aux . hasField @n . toAdvanced
     where
       aux :: (I a -> Adv.Record I r, I a) -> (a -> Record r, a)
       aux (setX, x) = (fromAdvanced . setX . I, unI x)
@@ -123,18 +126,18 @@ instance HasField  nm            (Adv.Record I r) (I a)
 -- | Get field from the record
 --
 -- This is just a wrapper around 'getField'
-get :: forall nm r a.
-     HasField nm (Record r) a
-  => Field nm -> Record r -> a
-get _ = getField @nm @(Record r)
+get :: forall n r a.
+     HasField n (Record r) a
+  => Field n -> Record r -> a
+get _ = getField @n @(Record r)
 
 -- | Update field in the record
 --
 -- This is just a wrapper around 'setField'.
-set :: forall nm r a.
-     HasField nm (Record r) a
-  => Field nm -> a -> Record r -> Record r
-set _ = flip (setField @nm @(Record r))
+set :: forall n r a.
+     HasField n (Record r) a
+  => Field n -> a -> Record r -> Record r
+set _ = flip (setField @n @(Record r))
 
 {-------------------------------------------------------------------------------
   Constraints
@@ -153,7 +156,7 @@ instance (AllFields r c, KnownFields r) => RecordConstraints r c
 
 instance KnownFields r => Generic (Record r) where
   type Constraints (Record r) = RecordConstraints r
-  type MetadataOf  (Record r) = r
+  type MetadataOf  (Record r) = SimpleFieldTypes r
 
   from     = fromAdvancedRep . from . toAdvanced
   to       = fromAdvanced    . to   . toAdvancedRep

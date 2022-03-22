@@ -38,7 +38,7 @@ import Data.Proxy
 import Data.SOP (NP(..), SListI, All)
 import Data.SOP.BasicFunctors
 
-import Data.Record.Anonymous.Advanced (Record)
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 import Test.QuickCheck
@@ -186,7 +186,7 @@ instance Arbitrary (ModelRecord f '[]) where
   arbitrary = pure $ MR Nil
 
 instance ( Arbitrary (f Bool)
-         ) => Arbitrary (ModelRecord f '[ '("b", Bool) ]) where
+         ) => Arbitrary (ModelRecord f '[ "b" := Bool ]) where
   arbitrary =
           (\x -> MR (x :* Nil))
       <$> arbitrary
@@ -197,7 +197,7 @@ instance ( Arbitrary (f Bool)
 
 instance ( Arbitrary (f Word)
          , Arbitrary (f Bool)
-         ) => Arbitrary (ModelRecord f '[ '("a", Word), '("b", Bool) ]) where
+         ) => Arbitrary (ModelRecord f [ "a" := Word, "b" := Bool ]) where
   arbitrary =
           (\x y -> MR (x :* y :* Nil))
       <$> arbitrary
@@ -210,7 +210,7 @@ instance ( Arbitrary (f Word)
 
 instance ( Arbitrary (f Word)
          , Arbitrary (f Bool)
-         ) => Arbitrary (ModelRecord f '[ '("b", Word), '("a", Bool) ]) where
+         ) => Arbitrary (ModelRecord f [ "b" := Word, "a" := Bool ]) where
   arbitrary =
           (\x y -> MR (x :* y :* Nil))
       <$> arbitrary
@@ -357,7 +357,7 @@ instance ( Eq (f Word), Eq (f Bool)
   Auxiliary
 -------------------------------------------------------------------------------}
 
-dropHead :: ModelRecord f ('(fld, x) ': xs) -> ModelRecord f xs
+dropHead :: ModelRecord f (n := x ': xs) -> ModelRecord f xs
 dropHead (MR (_ :* xs)) = MR xs
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d

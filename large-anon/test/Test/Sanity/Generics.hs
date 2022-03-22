@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 {-# OPTIONS_GHC -Wno-orphans #-} -- for the ToJSON/FromJSON instances
@@ -11,7 +12,7 @@ import Data.Aeson
 import Data.Proxy
 import Data.SOP.BasicFunctors
 
-import Data.Record.Anonymous.Advanced (Record)
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 import Test.Tasty
@@ -35,9 +36,9 @@ tests = testGroup "Test.Sanity.Generics" [
   Example values
 -------------------------------------------------------------------------------}
 
-type TypeRecord1 = Record I '[ '("x", Bool), '("y", Char), '("z", ()) ]
+type TypeRecord1 = Record I [ "x" := Bool, "y" := Char, "z" := () ]
 
-record1 :: Record I '[ '("x", Bool), '("y", Char), '("z", ()) ]
+record1 :: Record I [ "x" := Bool, "y" := Char, "z" := () ]
 record1 =
       Anon.insert #x (I True)
     $ Anon.insert #y (I 'a')
@@ -47,14 +48,14 @@ record1 =
 -- | Example where the fields do not appear in alphabetical order
 --
 -- Ordering matters in the 'Generic' instance.
-record2 :: Record I '[ '("y", Char), '("x", Bool) ]
+record2 :: Record I [ "y" := Char, "x" := Bool ]
 record2 =
       Anon.insert #y (I 'a')
     $ Anon.insert #x (I True)
     $ Anon.empty
 
 -- | Example that doesn't use I as the functor
-record3 :: Record (K ()) '[ '("y", Char), '("x", Bool) ]
+record3 :: Record (K ()) [ "y" := Char, "x" := Bool ]
 record3 =
       Anon.insert #y (K ())
     $ Anon.insert #x (K ())

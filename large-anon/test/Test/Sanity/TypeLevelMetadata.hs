@@ -22,8 +22,10 @@ import GHC.TypeLits
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous.Advanced (Record)
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anonymous.Advanced (Pair((:=)))
+
+import qualified Data.Record.Anonymous.Simple   as S
+import qualified Data.Record.Anonymous.Advanced as A
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.TypeLevelMetadata" [
@@ -35,42 +37,55 @@ tests = testGroup "Test.Sanity.TypeLevelMetadata" [
   Example values
 -------------------------------------------------------------------------------}
 
-recordA :: Record I '[ '("a", Bool), '("b", Char) ]
+recordA :: A.Record I [ "a" := Bool, "b" := Char ]
 recordA =
-      Anon.insert #a (I True)
-    $ Anon.insert #b (I 'a')
-    $ Anon.empty
+      A.insert #a (I True)
+    $ A.insert #b (I 'a')
+    $ A.empty
+
+recordS :: S.Record [ "a" := Bool, "b" := Char ]
+recordS =
+      S.insert #a True
+    $ S.insert #b 'a'
+    $ S.empty
 
 {-------------------------------------------------------------------------------
   Auxiliary infrastructure
 
-  Obviously the 'ReflectMetadata' instances are inductive and will result in
+  Obviously the 'GetMetadata' instances are inductive and will result in
   quadratic core code blowup; they are here only for testing.
 -------------------------------------------------------------------------------}
 
 type family Fst (p :: (k1, k2)) :: k1 where Fst '(x, y) = x
 type family Snd (p :: (k1, k2)) :: k2 where Snd '(x, y) = y
 
-class ReflectMetadata (xs :: [(Symbol, Type)]) where
-  reflectMetadata :: Proxy xs -> [(String, String)]
+class GetMetadata (xs :: [(Symbol, Type)]) where
+  getMetadata :: Proxy xs -> [(String, String)]
 
-instance ReflectMetadata '[] where
-  reflectMetadata _ = []
+instance GetMetadata '[] where
+  getMetadata _ = []
 
 instance ( KnownSymbol (Fst x)
          , Typeable (Snd x)
-         , ReflectMetadata xs
-         ) => ReflectMetadata (x ': xs) where
-  reflectMetadata _ =
+         , GetMetadata xs
+         ) => GetMetadata (x ': xs) where
+  getMetadata _ =
         (symbolVal (Proxy @(Fst x)), show (typeRep (Proxy @(Snd x))))
-      : reflectMetadata (Proxy @xs)
+      : getMetadata (Proxy @xs)
 
 -- | Reflect field metadata from the type-level information
-reflectFieldMetadata :: forall f r.
-     ReflectMetadata (Anon.FieldTypes f r)
-  => Record f r  -- ^ Serves as a proxy only
+getMetadataA :: forall f r.
+     GetMetadata (A.FieldTypes f r)
+  => A.Record f r  -- ^ Serves as a proxy only
   -> [(String, String)]
-reflectFieldMetadata _ = reflectMetadata (Proxy @(Anon.FieldTypes f r))
+getMetadataA _ = getMetadata (Proxy @(A.FieldTypes f r))
+
+-- | Like 'getMetadataA', but for the simple API
+getMetadataS :: forall r.
+     GetMetadata (S.SimpleFieldTypes r)
+  => S.Record r  -- ^ Serves as a proxy only
+  -> [(String, String)]
+getMetadataS _ = getMetadata (Proxy @(S.SimpleFieldTypes r))
 
 {-------------------------------------------------------------------------------
   Tests proper
@@ -81,13 +96,20 @@ reflectFieldMetadata _ = reflectMetadata (Proxy @(Anon.FieldTypes f r))
 -------------------------------------------------------------------------------}
 
 test_metadata :: Assertion
-test_metadata =
-    assertEqual "" expected $ reflectFieldMetadata recordA
+test_metadata = do
+    assertEqual "advanced" expectedA $
+      getMetadataA recordA
+    assertEqual "simple" expectedS $
+      getMetadataS recordS
   where
-    expected :: [(String, String)]
-    expected = [
+    expectedA, expectedS :: [(String, String)]
+    expectedA = [
           ("a", "I Bool")
         , ("b", "I Char")
+        ]
+    expectedS = [
+          ("a", "Bool")
+        , ("b", "Char")
         ]
 
 test_toFromSOP :: Assertion

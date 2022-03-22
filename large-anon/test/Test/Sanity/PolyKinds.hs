@@ -8,15 +8,19 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeOperators         #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
 module Test.Sanity.PolyKinds (tests) where
 
+import Data.Bifunctor.Flip
 import Data.Kind
 import Data.Maybe (fromJust)
+import Data.SOP
+import Data.SOP.Dict
 
-import Data.Record.Anonymous.Advanced (Record, KnownFields, AllFields)
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)), KnownFields, AllFields)
 import Data.Record.Anonymous.Existential
 
 import qualified Data.Record.Anonymous.Advanced as Anon
@@ -25,10 +29,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Test.Sanity.Existential.DynRecord
-import Data.Bifunctor.Flip
-import Data.SOP.Dict
-import Data.SOP
-
 import qualified Test.Sanity.Existential.DynRecord as Dyn
 
 {-------------------------------------------------------------------------------
@@ -41,6 +41,7 @@ tests = testGroup "Test.Sanity.PolyKinds" [
     , testCase "show"       test_show
     , testCase "project"    test_project
     , testCase "showParsed" test_showParsed
+    , testCase "merge"      test_merge
     ]
 
 -- | Test generics ('AllFields' and 'KnownFields')
@@ -50,7 +51,7 @@ test_show =
       show exampleRecord1'
   where
     expected :: String
-    expected = "Record {a = BoxLazy True, b = BoxStrict 1234}"
+    expected = "Record {a = True, b = 1234}"
 
 -- | 'HasField' (and 'KnownHash', but that's no different for polykinds)
 test_hasField :: Assertion
@@ -77,25 +78,38 @@ test_showParsed =
         , ("b", Dyn.VB True)
         ]
   where
-    expected = "Record {a = BoxStrict 1, b = BoxLazy True}"
+    expected = "Record {a = 1, b = True}"
+
+-- | Merging
+test_merge :: Assertion
+test_merge =
+    assertEqual "" exampleRecord1' $
+      Anon.project $ Anon.merge exampleRecord2 exampleRecord3
 
 {-------------------------------------------------------------------------------
   Auxiliary: marking strictness at the type level
 -------------------------------------------------------------------------------}
 
-data Strict = Strict | Lazy
+data MarkStrictness a = Strict a | Lazy a
 
-data Boxed :: (Strict, Type) -> Type where
-  BoxStrict :: !a -> Boxed '( 'Strict , a )
-  BoxLazy   ::  a -> Boxed '( 'Lazy   , a )
+data Boxed :: MarkStrictness Type -> Type where
+  BoxStrict :: !a -> Boxed (Strict a)
+  BoxLazy   ::  a -> Boxed (Lazy   a)
 
-deriving instance Show a => Show (Boxed '(strict, a))
-deriving instance Eq   a => Eq   (Boxed '(strict, a))
+instance Show a => Show (Boxed (Strict a)) where
+  show (BoxStrict x) = show x
+instance Show a => Show (Boxed (Lazy a)) where
+  show (BoxLazy x) = show x
 
-instance Parse Boxed '( 'Strict, Int ) where
+instance Eq a => Eq (Boxed (Strict a)) where
+  BoxStrict x == BoxStrict y = x == y
+instance Eq a => Eq (Boxed (Lazy a)) where
+  BoxLazy x == BoxLazy y = x == y
+
+instance Parse Boxed (Strict Int) where
   parseField = fmap (BoxStrict . unI) . Dyn.parseField
 
-instance Parse Boxed '( 'Lazy, Bool ) where
+instance Parse Boxed (Lazy Bool) where
   parseField = fmap (BoxLazy . unI) . Dyn.parseField
 
 {-------------------------------------------------------------------------------
@@ -106,9 +120,9 @@ instance Parse Boxed '( 'Lazy, Bool ) where
 -------------------------------------------------------------------------------}
 
 exampleRecord1, exampleRecord1' ::
-  Record Boxed '[ '("a", '( 'Lazy   , Bool ))
-                , '("b", '( 'Strict , Int  ))
-                ]
+  Record Boxed [ "a" := Lazy   Bool
+               , "b" := Strict Int
+               ]
 exampleRecord1 =
       Anon.insert #a (BoxLazy undefined)
     $ Anon.insert #b (BoxStrict 1234)
@@ -118,9 +132,14 @@ exampleRecord1' =
     $ Anon.insert #b (BoxStrict 1234)
     $ Anon.empty
 
-exampleRecord2 :: Record Boxed '[ '("b", '( 'Strict , Int)) ]
+exampleRecord2 :: Record Boxed '[ "b" := Strict Int ]
 exampleRecord2 =
       Anon.insert #b (BoxStrict 1234)
+    $ Anon.empty
+
+exampleRecord3 :: Record Boxed '[ "a" := Lazy Bool ]
+exampleRecord3 =
+      Anon.insert #a (BoxLazy True)
     $ Anon.empty
 
 {-------------------------------------------------------------------------------
@@ -144,12 +163,12 @@ instance Show SomeRecord where
 recoverType :: DynRecord -> SomeFields '[Compose Show Boxed, Parse Boxed]
 recoverType =
     Dyn.inferType
-      (SomeField @'( 'Strict , Int)  mkDicts)
-      (SomeField @'( 'Lazy   , Bool) mkDicts)
+      (SomeField @(Strict Int)  mkDicts)
+      (SomeField @(Lazy   Bool) mkDicts)
   where
-    mkDicts :: forall (strict :: Strict) (a :: Type).
-         (Show a, Parse Boxed '(strict, a))
-      => NP (Flip Dict '(strict, a)) '[Compose Show Boxed, Parse Boxed]
+    mkDicts ::
+         (Show (Boxed a), Parse Boxed a)
+      => NP (Flip Dict a) '[Compose Show Boxed, Parse Boxed]
     mkDicts = Flip Dict :* Flip Dict :* Nil
 
 parseSomeRecord :: DynRecord -> SomeRecord

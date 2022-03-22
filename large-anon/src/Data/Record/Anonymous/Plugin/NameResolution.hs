@@ -34,6 +34,8 @@ data ResolvedNames = ResolvedNames {
     , tyConMerge            :: TyCon
     , tyConRecord           :: TyCon
     , tyConFieldTypes       :: TyCon
+    , tyConPair             :: TyCon
+    , tyConSimpleFieldTypes :: TyCon
     }
 
 nameResolution :: TcPluginM 'Init ResolvedNames
@@ -71,11 +73,13 @@ nameResolution = do
     idEvidenceProject     <- getVar draiEvidence "evidenceProject"
     idUnsafeCoerce        <- getVar uCoerce      "unsafeCoerce"
 
-    tyConDict          <- getTyCon dDict      "Dict"
-    tyConFieldMetadata <- getTyCon drGeneric  "FieldMetadata"
-    tyConMerge         <- getTyCon draiRow    "Merge"
-    tyConRecord        <- getTyCon draiRecord "Record"
-    tyConFieldTypes    <- getTyCon draiRow    "FieldTypes"
+    tyConDict             <- getTyCon       dDict      "Dict"
+    tyConFieldMetadata    <- getTyCon       drGeneric  "FieldMetadata"
+    tyConFieldTypes       <- getTyCon       draiRow    "FieldTypes"
+    tyConMerge            <- getTyCon       draiRow    "Merge"
+    tyConPair             <- getPromDataCon draiRow    ":="
+    tyConRecord           <- getTyCon       draiRecord "Record"
+    tyConSimpleFieldTypes <- getTyCon       draiRow    "SimpleFieldTypes"
 
     return $ ResolvedNames {..}
 
@@ -98,6 +102,9 @@ getTyCon modl con = lookupOrig modl (mkTcOcc con) >>= tcLookupTyCon
 
 getDataCon :: MonadTcPlugin m => Module -> String -> m DataCon
 getDataCon modl con = lookupOrig modl (mkDataOcc con) >>= tcLookupDataCon
+
+getPromDataCon :: MonadTcPlugin m => Module -> String -> m TyCon
+getPromDataCon modl con = promoteDataCon <$> getDataCon modl con
 
 getVar :: MonadTcPlugin m => Module -> String -> m Id
 getVar modl var = lookupOrig modl (mkVarOcc var) >>= tcLookupId

@@ -16,7 +16,7 @@ import GHC.Records.Compat (HasField)
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous.Advanced (Record)
+import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
 import qualified Data.Record.Anonymous.Advanced as Anon
 import Data.Record.Anonymous.Internal.Generics (debugFieldTypes)
 
@@ -47,20 +47,20 @@ tests = testGroup "Test.Sanity.DuplicateFields" [
 -------------------------------------------------------------------------------}
 
 type InterspersedSameType =
-       Record I '[ '("a", Char)
-                 , '("b", Word)
-                 , '("c", ())
-                 , '("b", Word)
-                 , '("d", [Double])
-                 ]
+       Record I [ "a" := Char
+                , "b" := Word
+                , "c" := ()
+                , "b" := Word
+                , "d" := [Double]
+                ]
 
 type InterspersedDiffType =
-       Record I '[ '("a", Char)
-                 , '("b", Word)
-                 , '("c", ())
-                 , '("b", Bool)
-                 , '("d", [Double])
-                 ]
+       Record I [ "a" := Char
+                , "b" := Word
+                , "c" := ()
+                , "b" := Bool
+                , "d" := [Double]
+                ]
 
 interspersedSameType :: InterspersedSameType
 interspersedSameType =
@@ -216,11 +216,11 @@ test_project = do
     assertEqual "diff" expected $
       Anon.project interspersedDiffType
   where
-    expected :: Record I '[ '("a", Char)
-                          , '("b", Word)
-                          , '("c", ())
-                          , '("d", [Double])
-                          ]
+    expected :: Record I [ "a" := Char
+                         , "b" := Word
+                         , "c" := ()
+                         , "d" := [Double]
+                         ]
     expected =
           Anon.insert #a (I 'a')
         $ Anon.insert #b (I 1)
@@ -242,7 +242,7 @@ test_update = do
     upd :: HasField "d" (Record I r) (I [Double]) => Record I r -> Record I r
     upd r = Anon.set #d (I [1.618]) r
 
-    new :: Record I '[ '("d", [Double])]
+    new :: Record I '[ "d" := [Double] ]
     new = Anon.insert #d (I [1.618]) $ Anon.empty
 
 {-------------------------------------------------------------------------------
@@ -253,23 +253,23 @@ test_mergeSameType :: Assertion
 test_mergeSameType = do
     assertEqual "" expected actual
   where
-    actual :: Record I '[ '("a", Bool) ]
+    actual :: Record I '[ "a" := Bool ]
     actual = Anon.project $
                Anon.merge
                  (Anon.insert #a (I True)  Anon.empty)
                  (Anon.insert #a (I False) Anon.empty)
 
-    expected :: Record I '[ '("a", Bool) ]
+    expected :: Record I '[ "a" := Bool ]
     expected = Anon.insert #a (I True) Anon.empty
 
 test_mergeDifferentType :: Assertion
 test_mergeDifferentType = do
     assertEqual "" expected actual
   where
-    actual :: Record I '[ '("a", Bool) ]
+    actual :: Record I '[ "a" := Bool ]
     actual = Anon.project $
                Anon.merge (Anon.insert #a (I True) Anon.empty)
                           (Anon.insert #a (I 'a')  Anon.empty)
 
-    expected :: Record I '[ '("a", Bool) ]
+    expected :: Record I '[ "a" := Bool ]
     expected = Anon.insert #a (I True) Anon.empty

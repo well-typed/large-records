@@ -12,11 +12,16 @@ import Data.Void
 
 import qualified Data.HashMap.Strict as HashMap
 
+import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
+import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow(..))
+import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
+
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition
@@ -71,8 +76,8 @@ parseProject ::
   -> ParseResult Void (GenLocated CtLoc CProject)
 parseProject tcs rn@ResolvedNames{..} =
     parseConstraint' clsProject $ \[typeKind, typeFunctor, typeLHS, typeRHS] -> do
-      fieldsLHS <- parseFields tcs rn typeLHS
-      fieldsRHS <- parseFields tcs rn typeRHS
+      fieldsLHS <- ParsedRow.parseFields tcs rn typeLHS
+      fieldsRHS <- ParsedRow.parseFields tcs rn typeRHS
       return $ CProject {
             projectParsedLHS   = fieldsLHS
           , projectParsedRHS   = fieldsRHS
@@ -121,18 +126,18 @@ solveProject ::
   -> GenLocated CtLoc CProject
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
 solveProject rn orig (L loc proj@CProject{..}) =
-    case ( checkAllFieldsKnown projectParsedLHS
-         , checkAllFieldsKnown projectParsedRHS
+    case ( ParsedRow.allKnown projectParsedLHS
+         , ParsedRow.allKnown projectParsedRHS
          ) of
       (Just lhs, Just rhs) ->
-        case checkCanProject lhs rhs of
+        case KnownRow.canProject lhs rhs of
           Right inBoth -> do
             eqs <- forM inBoth $ \(l, r) ->
                      newWanted loc $
                        mkPrimEqPredRole
                          Nominal
-                         (knownFieldType l)
-                         (knownFieldType r)
+                         (knownFieldInfo l)
+                         (knownFieldInfo r)
             ev  <- evidenceProject rn proj (mkPerm lhs rhs)
             return (Just (ev, orig), map mkNonCanonical eqs)
           Left _err ->
@@ -144,9 +149,9 @@ solveProject rn orig (L loc proj@CProject{..}) =
 -- | Construct permutation
 --
 -- Precondition: the two records are in fact isomorphic.
-mkPerm :: KnownRecord a -> KnownRecord b -> [Int]
+mkPerm :: KnownRow a -> KnownRow b -> [Int]
 mkPerm old new =
-    map inOld (knownRecordFields new)
+    map inOld (KnownRow.toList new)
   where
     inOld :: KnownField b -> Int
     inOld KnownField{..} = knownRecordVisible old HashMap.! knownFieldName

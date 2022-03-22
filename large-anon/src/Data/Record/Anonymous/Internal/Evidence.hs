@@ -23,7 +23,7 @@ import GHC.Exts (Any)
 
 import qualified Data.Vector as Vector
 
-import Data.Record.Anonymous.Internal.FieldName (FieldName(..), DictKnownHash)
+import Data.Record.Anonymous.Internal.Row.FieldName (FieldName(..), DictKnownHash)
 import Data.Record.Anonymous.Internal.Record
 import Data.Record.Anonymous.Internal.Row
 

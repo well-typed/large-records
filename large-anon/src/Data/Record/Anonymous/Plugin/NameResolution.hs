@@ -48,7 +48,7 @@ nameResolution = do
     draiEvidence <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Evidence"
     draiRecord   <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Record"
     draiRow      <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Row"
-    draiField    <- getModule "large-anon"      "Data.Record.Anonymous.Internal.FieldName"
+    draiField    <- getModule "large-anon"      "Data.Record.Anonymous.Internal.Row.FieldName"
     drGeneric    <- getModule "large-generics"  "Data.Record.Generic"
     grCompat     <- getModule "record-hasfield" "GHC.Records.Compat"
     uCoerce      <- getModule "base"            "Unsafe.Coerce"

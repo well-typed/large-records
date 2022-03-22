@@ -28,9 +28,12 @@ library
       Data.Record.Anonymous.Internal.Constraints
       Data.Record.Anonymous.Internal.Diff
       Data.Record.Anonymous.Internal.Evidence
-      Data.Record.Anonymous.Internal.FieldName
       Data.Record.Anonymous.Internal.Generics
       Data.Record.Anonymous.Internal.Record
+      Data.Record.Anonymous.Internal.Row.FieldName
+      Data.Record.Anonymous.Internal.Row.KnownField
+      Data.Record.Anonymous.Internal.Row.KnownRow
+      Data.Record.Anonymous.Internal.Row.ParsedRow
       Data.Record.Anonymous.Internal.Rep
       Data.Record.Anonymous.Internal.Row
       Data.Record.Anonymous.Internal.StrictVector
@@ -47,7 +50,6 @@ library
       Data.Record.Anonymous.Plugin.GhcTcPluginAPI
       Data.Record.Anonymous.Plugin.NameResolution
       Data.Record.Anonymous.Plugin.Parsing
-      Data.Record.Anonymous.Plugin.Record
       Data.Record.Anonymous.Plugin.Rewriter
       Data.Record.Anonymous.Plugin.Solver
       Data.Record.Anonymous.Plugin.TyConSubst

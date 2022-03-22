@@ -48,12 +48,12 @@ import GHC.TypeLits
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
 import Data.Record.Anonymous.Internal.Diff (Diff)
-import Data.Record.Anonymous.Internal.FieldName (KnownHash)
 import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anonymous.Internal.Row.FieldName (KnownHash)
 
-import qualified Data.Record.Anonymous.Internal.Canonical as Canon
-import qualified Data.Record.Anonymous.Internal.Diff      as Diff
-import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Canonical     as Canon
+import qualified Data.Record.Anonymous.Internal.Diff          as Diff
+import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 
 {-------------------------------------------------------------------------------
   Representation

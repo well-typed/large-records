@@ -41,7 +41,7 @@ import qualified Data.List.NonEmpty  as NE
 import qualified Data.HashMap.Strict as HashMap
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical(..))
-import Data.Record.Anonymous.Internal.FieldName (FieldName)
+import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 
 import qualified Data.Record.Anonymous.Internal.Canonical    as Canon
 import qualified Data.Record.Anonymous.Internal.Util.HashMap as HashMap

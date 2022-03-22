@@ -12,13 +12,17 @@ module Data.Record.Anonymous.Plugin.Constraints.KnownFields (
 import Data.Foldable (toList)
 import Data.Void
 
+import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
+import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow)
+import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
 
-import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition
@@ -60,7 +64,7 @@ parseKnownFields ::
 parseKnownFields tcs rn@ResolvedNames{..} =
     parseConstraint' clsKnownFields $ \case
       [k, r] -> do
-        fields <- parseFields tcs rn r
+        fields <- ParsedRow.parseFields tcs rn r
         return CKnownFields {
             knownFieldsParsedFields = fields
           , knownFieldsTypeRecord   = r
@@ -80,7 +84,7 @@ parseKnownFields tcs rn@ResolvedNames{..} =
 evidenceKnownFields ::
      ResolvedNames
   -> CKnownFields
-  -> KnownRecord EvVar
+  -> KnownRow EvVar
   -> TcPluginM 'Solve EvTerm
 evidenceKnownFields ResolvedNames{..}
                        CKnownFields{..}
@@ -93,7 +97,7 @@ evidenceKnownFields ResolvedNames{..}
         [ mkCoreApps (Var idEvidenceKnownFields) $ concat [
               map Type typeArgsEvidence
             , [ mkListExpr fieldMetadataType $
-                 map mkFieldInfoAny (knownRecordFields r)
+                 map mkFieldInfoAny (KnownRow.toList r)
               ]
             ]
         ]
@@ -139,14 +143,14 @@ solveKnownFields rn@ResolvedNames{..}
                        (L loc cm@CKnownFields{..})
                      = do
     -- See 'solveRecordConstraints' for a discussion of 'allFieldsKnown'
-    case checkAllFieldsKnown knownFieldsParsedFields of
+    case ParsedRow.allKnown knownFieldsParsedFields of
       Nothing ->
         return (Nothing, [])
       Just fields -> do
-        fields' <- knownRecordTraverse fields $ \fld -> do
+        fields' <- KnownRow.traverse fields $ \nm _info -> do
                      newWanted loc $
                        mkClassPred clsKnownSymbol [
-                           FieldName.mkType (knownFieldName fld)
+                           FieldName.mkType nm
                          ]
         ev <- evidenceKnownFields rn cm $ getEvVar <$> fields'
         return (

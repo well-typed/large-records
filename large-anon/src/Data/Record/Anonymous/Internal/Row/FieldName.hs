@@ -6,9 +6,12 @@
 --
 -- Intended for qualified import
 --
--- > import Data.Record.Anonymous.Internal.FieldName (FieldName)
--- > import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
-module Data.Record.Anonymous.Internal.FieldName (
+-- > import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
+-- > import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
+--
+-- TODO: We should separate out the user facing code (like KnownHash) and the
+-- internal code from this module.
+module Data.Record.Anonymous.Internal.Row.FieldName (
     FieldName(..)
     -- * Conversion
   , fromString

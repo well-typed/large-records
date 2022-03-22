@@ -41,6 +41,7 @@ module Data.Record.Anonymous.Internal.Row (
   , Reflected(..)
   , reflectKnownFields
   , reflectAllFields
+  , reflectProject
   ) where
 
 import Data.Kind
@@ -176,3 +177,8 @@ newtype WithAllFields r c = WAF (AllFields r c => Reflected (AllFields r c))
 
 reflectAllFields :: DictAllFields k r c -> Reflected (AllFields r c)
 reflectAllFields = unsafeCoerce (WAF Reflected)
+
+newtype WithProject f r r' = WR (Project f r r' => Reflected (Project f r r'))
+
+reflectProject :: DictProject k f r r' -> Reflected (Project f r r')
+reflectProject = unsafeCoerce (WR Reflected)

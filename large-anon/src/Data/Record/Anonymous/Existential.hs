@@ -18,8 +18,9 @@ module Data.Record.Anonymous.Existential (
 
 import Data.Bifunctor.Flip
 import Data.Kind
-import Data.Record.Generic
+import Data.Record.Generic (FieldMetadata(..), FieldStrictness(..))
 import Data.SOP
+import Data.SOP.Dict
 import GHC.Exts (Any)
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
@@ -94,6 +95,14 @@ someFields fields =
           Reflected -> SomeFields p
       where
         p = Proxy @r
+
+{-------------------------------------------------------------------------------
+  Discover projections
+
+  TODO: If this works, we should change the infrastructure above, and
+  disentangle shape discovery (Record (K a)) from field type discovery.
+-------------------------------------------------------------------------------}
+
 
 {-------------------------------------------------------------------------------
   Internal auxiliary: SOP util

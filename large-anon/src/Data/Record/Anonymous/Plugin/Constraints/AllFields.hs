@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Data.Record.Anonymous.Plugin.Constraints.AllFields (
     CAllFields(..)
@@ -9,14 +10,20 @@ module Data.Record.Anonymous.Plugin.Constraints.AllFields (
   , solveAllFields
   ) where
 
+import Data.Bifunctor
 import Data.Foldable (toList)
 import Data.Void
 
+import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
+import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow)
+import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
+
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition
@@ -62,7 +69,7 @@ parseAllFields ::
 parseAllFields tcs rn@ResolvedNames{..} =
     parseConstraint' clsAllFields $ \case
       [k, r, c] -> do
-        fields <- parseFields tcs rn r
+        fields <- ParsedRow.parseFields tcs rn r
         return CAllFields {
             allFieldsParsedFields   = fields
           , allFieldsTypeFields     = r
@@ -83,10 +90,10 @@ parseAllFields tcs rn@ResolvedNames{..} =
 evidenceAllFields ::
      ResolvedNames
   -> CAllFields
-  -> KnownRecord EvVar
+  -> KnownRow (Type, EvVar)
   -> TcPluginM 'Solve EvTerm
 evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
-    fields' <- mapM dictForField (knownRecordFields fields)
+    fields' <- mapM dictForField (KnownRow.toList fields)
     return $
       evDataConApp
         (classDataCon clsAllFields)
@@ -110,10 +117,8 @@ evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
         , allFieldsTypeConstraint
         ]
 
-    dictForField :: KnownField EvVar -> TcPluginM 'Solve EvExpr
-    dictForField KnownField{ knownFieldType = fieldType
-                           , knownFieldInfo = dict
-                           } = do
+    dictForField :: KnownField (Type, EvVar) -> TcPluginM 'Solve EvExpr
+    dictForField KnownField{ knownFieldInfo = (fieldType, dict) } = do
         return $ mkCoreConApps dataConDict $ concat [
             map Type typeArgsDict
           , [ mkCoreApps (Var idUnsafeCoerce) [
@@ -138,18 +143,18 @@ solveAllFields ::
   -> GenLocated CtLoc CAllFields
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
 solveAllFields rn orig (L loc cr@CAllFields{..}) = do
-    case checkAllFieldsKnown allFieldsParsedFields of
+    case ParsedRow.allKnown allFieldsParsedFields of
       Nothing ->
         return (Nothing, [])
       Just fields -> do
-        fields' :: KnownRecord CtEvidence
-           <- knownRecordTraverse fields $ \fld ->
+        fields' :: KnownRow (Type, CtEvidence)
+           <- KnownRow.traverse fields $ \_nm typ -> fmap (typ,) $
                 newWanted loc $
-                  mkAppTy allFieldsTypeConstraint (knownFieldType fld)
-        ev <- evidenceAllFields rn cr $getEvVar <$> fields'
+                  mkAppTy allFieldsTypeConstraint typ
+        ev <- evidenceAllFields rn cr $ second getEvVar <$> fields'
         return (
             Just (ev, orig)
-          , map mkNonCanonical (toList fields')
+          , map (mkNonCanonical . snd) (toList fields')
           )
   where
     getEvVar :: CtEvidence -> EvVar

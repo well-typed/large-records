@@ -4,12 +4,16 @@
 
 module Data.Record.Anonymous.Plugin.Rewriter (rewrite) where
 
+import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
+import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow)
+import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
-import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
 
-import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 rewrite :: ResolvedNames -> UniqFM TyCon TcPluginRewriter
 rewrite rn@ResolvedNames{..} = listToUFM [
@@ -25,14 +29,14 @@ data Args = Args {
     , argsParsedFields :: Maybe Fields
 
       -- | Known record, if all fields are known
-    , argsParsedKnown :: Maybe (KnownRecord ())
+    , argsParsedKnown :: Maybe (KnownRow Type)
     }
 
 mkArgs :: TyConSubst -> ResolvedNames -> Maybe Type -> Type -> Args
 mkArgs tcs rn argsFunctor r = Args{..}
   where
-    argsParsedFields = parseFields tcs rn r
-    argsParsedKnown  = checkAllFieldsKnown =<< argsParsedFields
+    argsParsedFields = ParsedRow.parseFields tcs rn r
+    argsParsedKnown  = ParsedRow.allKnown =<< argsParsedFields
 
 parseArgs :: [Ct] -> ResolvedNames -> [Type] -> Args
 parseArgs given rn = \case
@@ -92,13 +96,13 @@ rewriteRecordMetadataOf rn@ResolvedNames{..} given args@(parseArgs given rn -> A
             ]
         ]
 
-computeMetadataOf :: Maybe Type -> KnownRecord () -> TcType
+computeMetadataOf :: Maybe Type -> KnownRow Type -> TcType
 computeMetadataOf mf r =
     mkPromotedListTy
       (mkTupleTy Boxed [mkTyConTy typeSymbolKindCon, liftedTypeKind])
-      (map aux $ knownRecordFields r)
+      (map aux $ KnownRow.toList r)
   where
-    aux :: KnownField () -> Type
+    aux :: KnownField Type -> Type
     aux KnownField{..} =
         -- mkPromotedPairTy is only introduced in ghc 9.2
         mkTyConApp
@@ -107,6 +111,6 @@ computeMetadataOf mf r =
           , liftedTypeKind              -- kind of second arg
           , FieldName.mkType knownFieldName
           , case mf of
-              Just f  -> f `mkAppTy` knownFieldType
-              Nothing -> knownFieldType
+              Just f  -> f `mkAppTy` knownFieldInfo
+              Nothing -> knownFieldInfo
           ]

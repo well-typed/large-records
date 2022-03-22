@@ -37,7 +37,6 @@ library
       Data.Record.Anonymous.Internal.Rep
       Data.Record.Anonymous.Internal.Row
       Data.Record.Anonymous.Internal.StrictVector
-      Data.Record.Anonymous.Internal.Util.HashMap
 
       -- Exposed for the benefit of cabal-docspec
       Data.Record.Anonymous.Plugin.EquivClasses

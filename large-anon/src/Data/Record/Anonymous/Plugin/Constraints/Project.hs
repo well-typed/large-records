@@ -10,10 +10,6 @@ module Data.Record.Anonymous.Plugin.Constraints.Project (
 import Control.Monad (forM)
 import Data.Void
 
-import qualified Data.HashMap.Strict as HashMap
-
-import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
-import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow(..))
 import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
@@ -132,27 +128,12 @@ solveProject rn orig (L loc proj@CProject{..}) =
       (Just lhs, Just rhs) ->
         case KnownRow.canProject lhs rhs of
           Right inBoth -> do
-            eqs <- forM inBoth $ \(l, r) ->
-                     newWanted loc $
-                       mkPrimEqPredRole
-                         Nominal
-                         (knownFieldInfo l)
-                         (knownFieldInfo r)
-            ev  <- evidenceProject rn proj (mkPerm lhs rhs)
+            eqs <- forM inBoth $ \(_i, (l, r)) ->
+                     newWanted loc $ mkPrimEqPredRole Nominal l r
+            ev  <- evidenceProject rn proj (map fst inBoth)
             return (Just (ev, orig), map mkNonCanonical eqs)
           Left _err ->
             -- TODO: Return a custom error message
             return (Nothing, [])
       _otherwise ->
         return (Nothing, [])
-
--- | Construct permutation
---
--- Precondition: the two records are in fact isomorphic.
-mkPerm :: KnownRow a -> KnownRow b -> [Int]
-mkPerm old new =
-    map inOld (KnownRow.toList new)
-  where
-    inOld :: KnownField b -> Int
-    inOld KnownField{..} = knownRecordVisible old HashMap.! knownFieldName
-

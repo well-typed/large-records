@@ -20,6 +20,7 @@ module Data.Record.Anonymous.Internal.Row.KnownRow (
   , visibleMap
     -- * Combinators
   , traverse
+  , indexed
     -- * Check for projections
   , CannotProject(..)
   , canProject
@@ -28,21 +29,17 @@ module Data.Record.Anonymous.Internal.Row.KnownRow (
 import Prelude hiding (traverse)
 import qualified Prelude
 
+import Control.Monad.State (State, evalState, state)
 import Data.Either (partitionEithers)
 import Data.HashMap.Strict (HashMap)
-import Data.Maybe (mapMaybe)
 import Data.Vector (Vector)
 
 import qualified Data.Vector         as V
 import qualified Data.HashMap.Strict as HashMap
 
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
-import Data.Record.Anonymous.Internal.Util.HashMap (Merged(..))
-
-import qualified Data.Record.Anonymous.Internal.Util.HashMap as Util.HashMap
+import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 
 {-------------------------------------------------------------------------------
   Definition
@@ -136,10 +133,10 @@ traverse :: forall m a b.
   -> (FieldName -> a -> m b)
   -> m (KnownRow b)
 traverse KnownRow{..} f =
-    mkRecord <$> Prelude.traverse f' knownRecordVector
+    mkRow <$> Prelude.traverse f' knownRecordVector
   where
-    mkRecord :: Vector (KnownField b) -> KnownRow b
-    mkRecord updated = KnownRow {
+    mkRow :: Vector (KnownField b) -> KnownRow b
+    mkRow updated = KnownRow {
           knownRecordVector     = updated
         , knownRecordVisible    = knownRecordVisible
         , knownRecordAllVisible = knownRecordAllVisible
@@ -147,6 +144,14 @@ traverse KnownRow{..} f =
 
     f' :: KnownField a -> m (KnownField b)
     f' (KnownField nm info) = KnownField nm <$> f nm info
+
+indexed :: KnownRow a -> KnownRow (Int, a)
+indexed r =
+    flip evalState 0 $
+      traverse r (const aux)
+  where
+    aux :: a -> State Int (Int, a)
+    aux a = state $ \i -> ((i, a), succ i)
 
 {-------------------------------------------------------------------------------
   Check for projections
@@ -169,46 +174,35 @@ data CannotProject =
 
 -- | Check if we can project from one record to another
 --
+-- If the projection is possible, returns the paired information from both
+-- records in the order of the /target/ record along with the index into the
+-- /source/ record.
+--
 -- See docstring of the  'Project' class for some discussion of shadowing.
 canProject :: forall a b.
      KnownRow a
   -> KnownRow b
-  -> Either CannotProject [(KnownField a, KnownField b)]
+  -> Either CannotProject [(Int, (a, b))]
 canProject recordA recordB =
     if not (knownRecordAllVisible recordB) then
       Left TargetContainsShadowedFields
     else
         uncurry checkMissing
       . partitionEithers
-      . mapMaybe (uncurry checkField)
-      . HashMap.toList
-      $ Util.HashMap.merge visibleA visibleB
+      $ map findInA (toList recordB)
   where
-    visibleA :: HashMap FieldName (KnownField a)
-    visibleA = visibleMap recordA
+    findInA :: KnownField b -> Either FieldName (Int, (a, b))
+    findInA b =
+        case HashMap.lookup (knownFieldName b) (visibleMap (indexed recordA)) of
+          Nothing -> Left  $ knownFieldName b
+          Just a  -> Right $ distrib (knownFieldInfo a, knownFieldInfo b)
 
-    visibleB :: HashMap FieldName (KnownField b)
-    visibleB = visibleMap recordB
+    checkMissing :: [FieldName] -> x -> Either CannotProject x
+    checkMissing []      x = Right x
+    checkMissing missing _ = Left $ SourceMissesFields missing
 
-    checkField ::
-         FieldName
-      -> Merged (KnownField a) (KnownField b)
-      -> Maybe (Either FieldName (KnownField a, KnownField b))
-    checkField n = \case
-        -- A field that only appears on the LHS is irrelevant
-        InLeft _ -> Nothing
-        -- A field that only appears on the RHS is problematic
-        InRight _ -> Just (Left n)
-        -- A field that appears in both is part of the projection
-        InBoth x y -> Just (Right (x, y))
-
-    checkMissing ::
-         [FieldName]
-      -> [(KnownField a, KnownField b)]
-      -> Either CannotProject [(KnownField a, KnownField b)]
-    checkMissing []      matched = Right matched
-    checkMissing missing _       = Left $ SourceMissesFields missing
-
+    distrib :: ((i, a), b) -> (i, (a, b))
+    distrib ((i, a), b) = (i, (a, b))
 
 {-------------------------------------------------------------------------------
   Outputable

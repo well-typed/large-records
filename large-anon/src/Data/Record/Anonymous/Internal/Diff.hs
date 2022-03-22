@@ -6,6 +6,7 @@
 {-# LANGUAGE RoleAnnotations     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
+{-# LANGUAGE TupleSections #-}
 
 -- {-# OPTIONS_GHC -fprint-explicit-kinds #-}
 
@@ -28,11 +29,14 @@ module Data.Record.Anonymous.Internal.Diff (
   , toString
   ) where
 
--- import Data.Coerce (coerce)
+import Control.Monad.State (State, runState, state)
+import Data.Bifunctor
+import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty(..), (<|))
 import Data.SOP.BasicFunctors
+import Data.Tuple (swap)
 import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
 import Unsafe.Coerce (unsafeCoerce)
@@ -43,8 +47,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Record.Anonymous.Internal.Canonical (Canonical(..))
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 
-import qualified Data.Record.Anonymous.Internal.Canonical    as Canon
-import qualified Data.Record.Anonymous.Internal.Util.HashMap as HashMap
+import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 
 {-------------------------------------------------------------------------------
   Definition
@@ -149,7 +152,7 @@ get (i, f) Diff{..} c =
 -- @O(1)@.
 set :: forall f. (Int, FieldName) -> f Any -> Diff f -> Diff f
 set (i, f) x d@Diff{..} =
-    case HashMap.alterExisting f updateInserted diffNew of
+    case hashMapAlterExisting f updateInserted diffNew of
       Just ((), diffNew') -> d { diffNew = diffNew' }
       Nothing             -> d { diffUpd = HashMap.insert i x diffUpd }
   where
@@ -186,7 +189,7 @@ allNewFields = \Diff{..} -> go diffNew diffIns
   where
     go :: HashMap FieldName (NonEmpty (f Any)) -> [FieldName] -> [f Any]
     go _  []     = []
-    go vs (x:xs) = case HashMap.alterExisting x NE.uncons vs of
+    go vs (x:xs) = case hashMapAlterExisting x NE.uncons vs of
                      Nothing       -> error "allNewFields: invariant violation"
                      Just (v, vs') -> v : go vs' xs
 
@@ -202,8 +205,6 @@ apply d =
 {-------------------------------------------------------------------------------
   Debugging support
 -------------------------------------------------------------------------------}
-
-
 
 toString :: forall k (f :: k -> Type). Diff f -> String
 toString = show . mapDiff (K . AnythingToString . co)
@@ -223,3 +224,25 @@ toString = show . mapDiff (K . AnythingToString . co)
     aux :: forall. Diff f -> Diff ((K (AnythingToString (f Any))) :: k -> Type)
     aux = coerce
 -}
+
+{-------------------------------------------------------------------------------
+  Internal 'HashMap' auxiliary
+-------------------------------------------------------------------------------}
+
+-- | Alter an existing key
+--
+-- Returns 'Nothing' if the key does not exist.
+--
+-- @O(1)@.
+hashMapAlterExisting :: forall k a b.
+     (Hashable k, Eq k)
+  => k -> (a -> (b, Maybe a)) -> HashMap k a -> Maybe (b, HashMap k a)
+hashMapAlterExisting k f =
+    fmap swap . distrib . flip runState Nothing . HashMap.alterF f' k
+  where
+    f' :: Maybe a -> State (Maybe b) (Maybe a)
+    f' Nothing  = state $ \_ -> (Nothing, Nothing)
+    f' (Just a) = state $ \_ -> swap $ first Just (f a)
+
+    distrib :: (x, Maybe y) -> Maybe (x, y)
+    distrib (x, my) = (x,) <$> my

@@ -12,14 +12,15 @@ import Control.Monad
 import Data.Void
 import GHC.Stack
 
-import Data.Record.Anonymous.Internal.FieldName (FieldName)
+import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
+import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields, FieldLabel(..))
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
 
-import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition
@@ -84,8 +85,8 @@ parseHasField ::
 parseHasField tcs rn@ResolvedNames{..} =
     -- TODO: We should check what happens when there is a kind mismatch
     parseConstraint isRelevant $ \(args, x, (k, f, tyFields), a) -> do
-      label  <- parseFieldLabel x
-      fields <- parseFields tcs rn tyFields
+      label  <- ParsedRow.parseFieldLabel x
+      fields <- ParsedRow.parseFields tcs rn tyFields
 
       return $ CHasField {
           hasFieldLabel       = label
@@ -112,6 +113,16 @@ parseHasField tcs rn@ResolvedNames{..} =
         tyFields <- parseRecord tcs rn r
         return (args, x, tyFields, a)
     isRelevant _ _ = Nothing
+
+-- | Parse @Record @k f r@
+--
+-- Returns the argument @k, f, r@
+parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type, Type)
+parseRecord tcs ResolvedNames{..} t = do
+    args <- parseInjTyConApp tcs tyConRecord t
+    case args of
+      [k, f, r]  -> Just (k, f, r)
+      _otherwise -> Nothing
 
 {-------------------------------------------------------------------------------
   Evidence
@@ -157,7 +168,7 @@ solveHasField ::
 solveHasField _ _ (L _ CHasField{hasFieldLabel = FieldVar _}) =
     return (Nothing, [])
 solveHasField rn orig (L loc hf@CHasField{hasFieldLabel = FieldKnown name, ..}) =
-    case findField name hasFieldRecord of
+    case ParsedRow.lookup name hasFieldRecord of
       Nothing ->
         -- TODO: If the record is fully known, we should issue a custom type
         -- error here rather than leaving the constraint unsolved

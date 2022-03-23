@@ -10,25 +10,31 @@ module Data.Record.Anonymous.Plugin.Constraints.Project (
 import Control.Monad (forM)
 import Data.Void
 
-import qualified Data.HashMap.Strict as HashMap
-
+import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
 import Data.Record.Anonymous.Plugin.NameResolution
 import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.Record
 import Data.Record.Anonymous.Plugin.TyConSubst
+
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of an @Project (r :: [(Symbol, k)]) (r' :: [(Symbol, k)])@ constraint
+-- | Parsed form of @Project@
+--
+-- > Project f (r :: [(Symbol, k)]) (r' :: [(Symbol, k)])
 data CProject = CProject {
       -- | Fields on the LHS
       projectParsedLHS :: Fields
 
       -- | Fields on the RHS
     , projectParsedRHS :: Fields
+
+      -- | Functor argument (@f@)
+    , projectTypeFunctor :: Type
 
       -- | Left-hand side of the projection (@r@)
     , projectTypeLHS :: Type
@@ -45,13 +51,14 @@ data CProject = CProject {
 -------------------------------------------------------------------------------}
 
 instance Outputable CProject where
-  ppr (CProject parsedLHS parsedRHS typeLHS typeRHS typeKind) = parens $
+  ppr (CProject parsedLHS parsedRHS typeFunctor typeLHS typeRHS typeKind) = parens $
       text "CProject" <+> braces (vcat [
-          text "projectParsedLHS" <+> text "=" <+> ppr parsedLHS
-        , text "projectParsedRHS" <+> text "=" <+> ppr parsedRHS
-        , text "projectTypeLHS"   <+> text "=" <+> ppr typeLHS
-        , text "projectTypeRHS"   <+> text "=" <+> ppr typeRHS
-        , text "projectTypeKind"  <+> text "=" <+> ppr typeKind
+          text "projectParsedLHS"   <+> text "=" <+> ppr parsedLHS
+        , text "projectParsedRHS"   <+> text "=" <+> ppr parsedRHS
+        , text "projectTypeFunctor" <+> text "=" <+> ppr typeFunctor
+        , text "projectTypeLHS"     <+> text "=" <+> ppr typeLHS
+        , text "projectTypeRHS"     <+> text "=" <+> ppr typeRHS
+        , text "projectTypeKind"    <+> text "=" <+> ppr typeKind
         ])
 
 {-------------------------------------------------------------------------------
@@ -64,15 +71,16 @@ parseProject ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CProject)
 parseProject tcs rn@ResolvedNames{..} =
-    parseConstraint' clsProject $ \[typeKind, typeLHS, typeRHS] -> do
-      fieldsLHS <- parseFields tcs rn typeLHS
-      fieldsRHS <- parseFields tcs rn typeRHS
+    parseConstraint' clsProject $ \[typeKind, typeFunctor, typeLHS, typeRHS] -> do
+      fieldsLHS <- ParsedRow.parseFields tcs rn typeLHS
+      fieldsRHS <- ParsedRow.parseFields tcs rn typeRHS
       return $ CProject {
-            projectParsedLHS = fieldsLHS
-          , projectParsedRHS = fieldsRHS
-          , projectTypeLHS   = typeLHS
-          , projectTypeRHS   = typeRHS
-          , projectTypeKind  = typeKind
+            projectParsedLHS   = fieldsLHS
+          , projectParsedRHS   = fieldsRHS
+          , projectTypeFunctor = typeFunctor
+          , projectTypeLHS     = typeLHS
+          , projectTypeRHS     = typeRHS
+          , projectTypeKind    = typeKind
           }
 
 {-------------------------------------------------------------------------------
@@ -99,6 +107,7 @@ evidenceProject ResolvedNames{..} CProject{..} fields = do
     typeArgsEvidence :: [Type]
     typeArgsEvidence = [
           projectTypeKind
+        , projectTypeFunctor
         , projectTypeLHS
         , projectTypeRHS
         ]
@@ -113,33 +122,18 @@ solveProject ::
   -> GenLocated CtLoc CProject
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
 solveProject rn orig (L loc proj@CProject{..}) =
-    case ( checkAllFieldsKnown projectParsedLHS
-         , checkAllFieldsKnown projectParsedRHS
+    case ( ParsedRow.allKnown projectParsedLHS
+         , ParsedRow.allKnown projectParsedRHS
          ) of
       (Just lhs, Just rhs) ->
-        case checkCanProject lhs rhs of
+        case KnownRow.canProject lhs rhs of
           Right inBoth -> do
-            eqs <- forM inBoth $ \(l, r) ->
-                     newWanted loc $
-                       mkPrimEqPredRole
-                         Nominal
-                         (knownFieldType l)
-                         (knownFieldType r)
-            ev  <- evidenceProject rn proj (mkPerm lhs rhs)
+            eqs <- forM inBoth $ \(_i, (l, r)) ->
+                     newWanted loc $ mkPrimEqPredRole Nominal l r
+            ev  <- evidenceProject rn proj (map fst inBoth)
             return (Just (ev, orig), map mkNonCanonical eqs)
           Left _err ->
             -- TODO: Return a custom error message
             return (Nothing, [])
       _otherwise ->
         return (Nothing, [])
-
--- | Construct permutation
---
--- Precondition: the two records are in fact isomorphic.
-mkPerm :: KnownRecord a -> KnownRecord b -> [Int]
-mkPerm old new =
-    map inOld (knownRecordFields new)
-  where
-    inOld :: KnownField b -> Int
-    inOld KnownField{..} = knownRecordVisible old HashMap.! knownFieldName
-

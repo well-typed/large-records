@@ -48,12 +48,12 @@ import GHC.TypeLits
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
 import Data.Record.Anonymous.Internal.Diff (Diff)
-import Data.Record.Anonymous.Internal.FieldName (KnownHash)
 import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anonymous.Internal.Row.FieldName (KnownHash)
 
-import qualified Data.Record.Anonymous.Internal.Canonical as Canon
-import qualified Data.Record.Anonymous.Internal.Diff      as Diff
-import qualified Data.Record.Anonymous.Internal.FieldName as FieldName
+import qualified Data.Record.Anonymous.Internal.Canonical     as Canon
+import qualified Data.Record.Anonymous.Internal.Diff          as Diff
+import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 
 {-------------------------------------------------------------------------------
   Representation
@@ -253,10 +253,11 @@ merge (canonicalize -> r) (canonicalize -> r') =
 -- ...No instance for (Isomorphic...
 -- ...
 lens :: forall f r r'.
-     Project r r'
+     Project f r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = \(canonicalize -> r) ->
-    bimap getter setter (Canon.lens (projectIndices (Proxy @r) (Proxy @r')) r)
+    bimap getter setter $
+      Canon.lens (projectIndices (Proxy @f) (Proxy @r) (Proxy @r')) r
   where
     getter :: Canonical f -> Record f r'
     getter = unsafeFromCanonical
@@ -267,5 +268,5 @@ lens = \(canonicalize -> r) ->
 -- | Project out subrecord
 --
 -- This is just @fst . lens@.
-project :: Project r r' => Record f r -> Record f r'
+project :: Project f r r' => Record f r -> Record f r'
 project = fst . lens

@@ -23,7 +23,7 @@ import GHC.Exts (Any)
 
 import qualified Data.Vector as Vector
 
-import Data.Record.Anonymous.Internal.FieldName (FieldName(..), DictKnownHash)
+import Data.Record.Anonymous.Internal.Row.FieldName (FieldName(..), DictKnownHash)
 import Data.Record.Anonymous.Internal.Record
 import Data.Record.Anonymous.Internal.Row
 
@@ -74,7 +74,7 @@ evidenceKnownHash :: forall (s :: Symbol).
   Int -> DictKnownHash s
 evidenceKnownHash x _   = x
 
-evidenceProject :: forall k (r :: Row k) (r' :: Row k).
-  [Int] -> DictProject k r r'
-evidenceProject x _ _ = x
+evidenceProject :: forall k (f :: k -> Type) (r :: Row k) (r' :: Row k).
+  [Int] -> DictProject k f r r'
+evidenceProject x _ _ _ = x
 

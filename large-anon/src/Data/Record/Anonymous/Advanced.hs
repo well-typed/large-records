@@ -43,6 +43,7 @@ module Data.Record.Anonymous.Advanced (
   , Combinators.czipWithM
     -- ** "Foldable"
   , Combinators.collapse
+  , Combinators.toList
     -- ** "Traversable"
   , Combinators.sequenceA
     -- ** "Applicable"

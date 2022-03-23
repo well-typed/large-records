@@ -4,19 +4,17 @@
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
-{-# LANGUAGE ViewPatterns              #-}
 
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 
 -- For lens derivation
 {-# LANGUAGE ImpredicativeTypes #-}
@@ -28,7 +26,6 @@ import Prelude hiding (product)
 
 import Data.Int
 import Data.Kind
-import Data.Record.TH
 import Data.Text (Text)
 import Data.Time
 import Database.Beam hiding (countAll_)
@@ -56,16 +53,15 @@ import Test.Record.Beam.Util.SQLite
   This does not introduce a new beam features.
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-     data ProductT (f :: Type -> Type) = Product {
-           productId          :: C f Int32
-         , productTitle       :: C f Text
-         , productDescription :: C f Text
-         , productPrice       :: C f Int32 {- Price in cents -}
-         }
-       deriving (Show, Eq)
-       deriving anyclass (Beamable)
-  |]
+{-# ANN type ProductT largeRecordStrict #-}
+data ProductT (f :: Type -> Type) = Product {
+     productId          :: C f Int32
+   , productTitle       :: C f Text
+   , productDescription :: C f Text
+   , productPrice       :: C f Int32 {- Price in cents -}
+   }
+ deriving (Show, Eq)
+ deriving anyclass (Beamable)
 
 instance Table ProductT where
   data PrimaryKey ProductT f = ProductId (Columnar f Int32)
@@ -95,25 +91,25 @@ instance HasSqlValueSyntax be String => HasSqlValueSyntax be ShippingCarrier whe
 instance FromBackendRow Sqlite ShippingCarrier where
   fromBackendRow = read . T.unpack <$> fromBackendRow
 
-largeRecord defaultPureScript [d|
-      data OrderT (f :: Type -> Type) = Order {
-            orderId            :: Columnar f Int32
-          , orderDate          :: Columnar f LocalTime
-          , orderForUser       :: PrimaryKey UserT f
-          , orderShipToAddress :: PrimaryKey AddressT f
-          , orderShippingInfo  :: PrimaryKey ShippingInfoT (Nullable f)
-          }
-        deriving (Show, Eq)
-        deriving anyclass (Beamable)
+{-# ANN type OrderT largeRecordStrict #-}
+data OrderT (f :: Type -> Type) = Order {
+      orderId            :: Columnar f Int32
+    , orderDate          :: Columnar f LocalTime
+    , orderForUser       :: PrimaryKey UserT f
+    , orderShipToAddress :: PrimaryKey AddressT f
+    , orderShippingInfo  :: PrimaryKey ShippingInfoT (Nullable f)
+    }
+  deriving (Show, Eq)
+  deriving anyclass (Beamable)
 
-      data ShippingInfoT (f :: Type -> Type) = ShippingInfo {
-            shippingInfoId             :: Columnar f Int32
-          , shippingInfoCarrier        :: Columnar f ShippingCarrier
-          , shippingInfoTrackingNumber :: Columnar f Text
-          }
-        deriving (Show, Eq)
-        deriving anyclass (Beamable)
-    |]
+{-# ANN type ShippingInfoT largeRecordStrict #-}
+data ShippingInfoT (f :: Type -> Type) = ShippingInfo {
+      shippingInfoId             :: Columnar f Int32
+    , shippingInfoCarrier        :: Columnar f ShippingCarrier
+    , shippingInfoTrackingNumber :: Columnar f Text
+    }
+  deriving (Show, Eq)
+  deriving anyclass (Beamable)
 
 instance Table OrderT where
   data PrimaryKey OrderT f = OrderId (Columnar f Int32)
@@ -142,15 +138,14 @@ type ShippingInfo = ShippingInfoT Identity
   New table: 'LineItem' (many-to-many relation)
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-      data LineItemT (f :: Type -> Type) = LineItem {
-            lineItemInOrder    :: PrimaryKey OrderT f
-          , lineItemForProduct :: PrimaryKey ProductT f
-          , lineItemQuantity   :: Columnar f Int32
-          }
-        deriving (Show, Eq)
-        deriving anyclass (Beamable)
-    |]
+{-# ANN type LineItemT largeRecordStrict #-}
+data LineItemT (f :: Type -> Type) = LineItem {
+      lineItemInOrder    :: PrimaryKey OrderT f
+    , lineItemForProduct :: PrimaryKey ProductT f
+    , lineItemQuantity   :: Columnar f Int32
+    }
+  deriving (Show, Eq)
+  deriving anyclass (Beamable)
 
 type LineItem = LineItemT Identity
 
@@ -166,16 +161,15 @@ instance Table LineItemT where
   Version 3 of the DB
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-      data ShoppingCart3Db (f :: Type -> Type) = ShoppingCart3Db {
-            shoppingCart3Users         :: f (TableEntity UserT)
-          , shoppingCart3UserAddresses :: f (TableEntity AddressT)
-          , shoppingCart3Products      :: f (TableEntity ProductT)
-          , shoppingCart3Orders        :: f (TableEntity OrderT)
-          , shoppingCart3ShippingInfos :: f (TableEntity ShippingInfoT)
-          , shoppingCart3LineItems     :: f (TableEntity LineItemT)
-          }
-    |]
+{-# ANN type ShoppingCart3Db largeRecordStrict #-}
+data ShoppingCart3Db (f :: Type -> Type) = ShoppingCart3Db {
+      shoppingCart3Users         :: f (TableEntity UserT)
+    , shoppingCart3UserAddresses :: f (TableEntity AddressT)
+    , shoppingCart3Products      :: f (TableEntity ProductT)
+    , shoppingCart3Orders        :: f (TableEntity OrderT)
+    , shoppingCart3ShippingInfos :: f (TableEntity ShippingInfoT)
+    , shoppingCart3LineItems     :: f (TableEntity LineItemT)
+    }
 
 instance Database be ShoppingCart3Db
 
@@ -184,30 +178,26 @@ instance Database be ShoppingCart3Db
 -------------------------------------------------------------------------------}
 
 shoppingCart3Db :: DatabaseSettings be ShoppingCart3Db
-shoppingCart3Db = defaultDbSettings `withDbModification` dbModification{
-      shoppingCart3UserAddresses =
-           setEntityName "addresses"
-        <> modifyTableFields tableModification{
-               addressLine1 = "address1",
-               addressLine2 = "address2"
-             }
-    , shoppingCart3Products =
-           setEntityName "products"
-    , shoppingCart3Orders =
-           setEntityName "orders"
-        <> modifyTableFields tableModification{
-               orderShippingInfo = ShippingInfoId "shipping_info__id"
-             }
-    , shoppingCart3ShippingInfos =
-           setEntityName "shipping_info"
-        <> modifyTableFields tableModification{
-               shippingInfoId = "id"
-             , shippingInfoCarrier = "carrier"
-             , shippingInfoTrackingNumber = "tracking_number"
-             }
-    , shoppingCart3LineItems =
-           setEntityName "line_items"
-    }
+shoppingCart3Db = defaultDbSettings `withDbModification`
+    dbModification{shoppingCart3UserAddresses =
+                         setEntityName "addresses"
+                      <> modifyTableFields tableModification{addressLine1 = "address1"
+                                                            ,addressLine2 = "address2"
+                                                            }
+                  , shoppingCart3Products =
+                         setEntityName "products"
+                  , shoppingCart3Orders =
+                         setEntityName "orders"
+                      <> modifyTableFields tableModification{orderShippingInfo = ShippingInfoId "shipping_info__id"}
+                  , shoppingCart3ShippingInfos =
+                         setEntityName "shipping_info"
+                      <> modifyTableFields tableModification{shippingInfoId             = "id"
+                                                            ,shippingInfoCarrier        = "carrier"
+                                                            ,shippingInfoTrackingNumber = "tracking_number"
+                                                            }
+                  , shoppingCart3LineItems =
+                         setEntityName "line_items"
+                  }
 
 {-------------------------------------------------------------------------------
   Lenses

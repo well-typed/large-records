@@ -13,21 +13,19 @@
 -- The point of this module is to verify that largeRecord does not generate
 -- redundant constraints
 {-# OPTIONS_GHC -Werror -Wredundant-constraints #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Sanity.EqualFieldTypes (tests) where
-
-import Data.Record.TH
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
-largeRecord defaultPureScript [d|
-      data R a = MkR {
-            field1 :: a
-          , field2 :: a
-          }
-        deriving (Show, Eq)
-    |]
+{-# ANN type R largeRecordStrict #-}
+data R a = MkR {
+      field1 :: a
+    , field2 :: a
+    }
+  deriving (Show, Eq)
 
 swap :: R a -> R a
 swap MkR{ field1, field2 } = MkR{ field1 = field2, field2 = field1 }
@@ -43,7 +41,6 @@ test_sanity = assertEqual "" expected actual
     expected, actual :: R Int
     expected = MkR 2 1
     actual   = swap $ MkR 1 2
-
 
 
 

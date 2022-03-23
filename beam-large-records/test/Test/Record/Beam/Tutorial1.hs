@@ -1,15 +1,20 @@
 {-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DeriveAnyClass            #-}
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Beam.Tutorial1 (
     tests
@@ -25,7 +30,6 @@ import Data.Functor.Identity
 import Data.Int
 import Data.Kind
 import Data.Record.Beam ()
-import Data.Record.TH
 import Data.Text (Text)
 import Database.Beam hiding (Generic, countAll_)
 import Database.Beam.Schema.Tables
@@ -47,16 +51,15 @@ import Test.Record.Beam.Util.Orphans ()
   See <https://haskell-beam.github.io/beam/>
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-      data UserT (f :: Type -> Type) = User {
-            userEmail     :: Columnar f Text
-          , userFirstName :: Columnar f Text
-          , userLastName  :: Columnar f Text
-          , userPassword  :: Columnar f Text
-          }
-        deriving stock (Show, Eq)
-        deriving anyclass (Beamable)
-    |]
+{-# ANN type UserT largeRecordStrict #-}
+data UserT (f :: Type -> Type) = User {
+      userEmail     :: Columnar f Text
+    , userFirstName :: Columnar f Text
+    , userLastName  :: Columnar f Text
+    , userPassword  :: Columnar f Text
+    }
+  deriving stock (Show, Eq)
+  deriving anyclass (Beamable)
 
 type User   = UserT Identity
 type UserId = PrimaryKey UserT Identity
@@ -87,12 +90,11 @@ deriving instance Eq   (Columnar f Text) => Eq   (PrimaryKey UserT f)
   Example DB
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-      data ShoppingCartDb (f :: Type -> Type) = ShoppingCartDb {
-            shoppingCartUsers :: f (TableEntity UserT)
-          }
-        deriving (Show, Eq)
-    |]
+{-# ANN type ShoppingCartDb largeRecordStrict #-}
+data ShoppingCartDb (f :: Type -> Type) = ShoppingCartDb {
+      shoppingCartUsers :: f (TableEntity UserT)
+    }
+  deriving (Show, Eq)
 
 instance Database be ShoppingCartDb
 

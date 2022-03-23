@@ -2,22 +2,19 @@
 {-# LANGUAGE DataKinds                 #-}
 {-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
--- {-# OPTIONS_GHC -ddump-splices #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Sanity.RecordConstruction (tests) where
 
 import GHC.Records.Compat
-
-import Data.Record.TH
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -29,10 +26,12 @@ import Test.Tasty.HUnit
 --
 -- Test both the case where the name of the type and the name of the constructor
 -- are the same and where they are different.
-largeRecord (defaultPureScript {allFieldsStrict = False}) [d|
-    data R a = MkR { x :: Int, y :: [a] } deriving (Eq, Show)
-    data S a = S   { x :: Int, y :: [a] } deriving (Eq, Show)
-  |]
+
+{-# ANN type R largeRecordLazy #-}
+data R a = MkR { x :: Int, y :: [a] } deriving (Eq, Show)
+
+{-# ANN type S largeRecordLazy #-}
+data S a = S { x :: Int, y :: [a] } deriving (Eq, Show)
 
 inOrder :: R Bool
 inOrder = MkR { x = 1234, y = [True] }
@@ -57,9 +56,8 @@ valueOfS = S { x = 1234, y = [True] }
 data RegularRecord = RR { a :: Int }
   deriving (Show, Eq)
 
-largeRecord defaultPureScript [d|
-    data T = T { x :: Int, y :: S Bool, z :: RegularRecord }
-  |]
+{-# ANN type T largeRecordStrict #-}
+data T = T { x :: Int, y :: S Bool, z :: RegularRecord }
 
 valueOfT :: T
 valueOfT = T { x = 5

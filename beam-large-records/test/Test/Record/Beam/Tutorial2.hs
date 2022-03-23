@@ -4,24 +4,22 @@
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
-{-# LANGUAGE ViewPatterns              #-}
 
 -- For lens derivation
 {-# LANGUAGE ImpredicativeTypes #-}
-{-# OPTIONS_GHC -Wno-missing-signatures -Wno-unused-top-binds #-}
 
-{-# OPTIONS_GHC -F -pgmF=record-dot-preprocessor #-}
--- {-# OPTIONS_GHC -ddump-splices -ddump-to-file #-}
+{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
+
+{-# OPTIONS_GHC -Wno-missing-signatures -Wno-unused-top-binds #-}
 
 module Test.Record.Beam.Tutorial2 (
     tests
@@ -35,7 +33,6 @@ module Test.Record.Beam.Tutorial2 (
 import Data.Functor.Const
 import Data.Int
 import Data.Kind
-import Data.Record.TH
 import Data.Text (Text)
 import Database.Beam
 import Database.Beam.Schema.Tables
@@ -56,19 +53,18 @@ import Test.Record.Beam.Util.SQLite
   New table: with a foreign key
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-      data AddressT (f :: Type -> Type) = Address {
-            addressId      :: C f Int32
-          , addressLine1   :: C f Text
-          , addressLine2   :: C f (Maybe Text)
-          , addressCity    :: C f Text
-          , addressState   :: C f Text
-          , addressZip     :: C f Text
-          , addressForUser :: PrimaryKey UserT f
-          }
-        deriving (Show, Eq)
-        deriving anyclass (Beamable)
-    |]
+{-# ANN type AddressT largeRecordStrict #-}
+data AddressT (f :: Type -> Type) = Address {
+      addressId      :: C f Int32
+    , addressLine1   :: C f Text
+    , addressLine2   :: C f (Maybe Text)
+    , addressCity    :: C f Text
+    , addressState   :: C f Text
+    , addressZip     :: C f Text
+    , addressForUser :: PrimaryKey UserT f
+    }
+  deriving (Show, Eq)
+  deriving anyclass (Beamable)
 
 type Address   = AddressT Identity
 -- type AddressId = PrimaryKey AddressT Identity
@@ -98,25 +94,24 @@ exampleAddress = Address {
   Version 2 of the DB
 -------------------------------------------------------------------------------}
 
-largeRecord defaultPureScript [d|
-       data ShoppingCart2Db (f :: Type -> Type) = ShoppingCart2Db {
-             shoppingCart2Users         :: f (TableEntity UserT)
-           , shoppingCart2UserAddresses :: f (TableEntity AddressT)
-           }
-         deriving (Show, Eq)
-    |]
+{-# ANN type ShoppingCart2Db largeRecordStrict #-}
+data ShoppingCart2Db (f :: Type -> Type) = ShoppingCart2Db {
+     shoppingCart2Users         :: f (TableEntity UserT)
+   , shoppingCart2UserAddresses :: f (TableEntity AddressT)
+   }
+ deriving (Show, Eq)
 
 instance Database be ShoppingCart2Db
 
 shoppingCart2Db :: forall be. DatabaseSettings be ShoppingCart2Db
-shoppingCart2Db = defaultDbSettings `withDbModification` dbModification{
-      shoppingCart2UserAddresses =
-           setEntityName "addresses"
-        <> modifyTableFields tableModification{
-               addressLine1 = fieldNamed "address1"
-             , addressLine2 = fieldNamed "address2"
-             }
-    }
+shoppingCart2Db = defaultDbSettings `withDbModification`
+    dbModification{shoppingCart2UserAddresses =
+             setEntityName "addresses"
+          <> modifyTableFields
+               tableModification{addressLine1 = fieldNamed "address1"
+                                ,addressLine2 = fieldNamed "address2"
+                                }
+      }
 
 {-------------------------------------------------------------------------------
   Derive lenses
@@ -215,7 +210,7 @@ test_tableLenses = do
     expectedGet = 1
 
     expectedSet :: Address
-    expectedSet = exampleAddress{ addressForUser = UserId "A@B.C" }
+    expectedSet = exampleAddress{addressForUser = UserId "A@B.C"}
 
 test_dbLenses :: Assertion
 test_dbLenses = do
@@ -232,7 +227,7 @@ test_dbLenses = do
           shoppingCart2Users         = Const 1
         , shoppingCart2UserAddresses = Const 2
         }
-    expectedSet = exampleDb{ shoppingCart2UserAddresses = Const 3 }
+    expectedSet = exampleDb{shoppingCart2UserAddresses = Const 3}
 
 test_SQL :: Assertion
 test_SQL = runInMemory $ \conn -> do
@@ -299,7 +294,7 @@ test_SQL = runInMemory $ \conn -> do
 
     -- Simple UPDATE
     runUpdate $ save (shoppingCart2Db ^. xshoppingCart2Users) $
-      james{ userPassword = superSecure }
+      james{userPassword = superSecure}
     [james'] <- runSelectReturningList $
       lookup_ (shoppingCart2Db ^. xshoppingCart2Users) jamesId
     liftIO $ assertEqual "James' new password"

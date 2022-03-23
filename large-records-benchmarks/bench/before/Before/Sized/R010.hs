@@ -19,7 +19,6 @@ module Before.Sized.R010 where
 import Data.Aeson
 import Generics.SOP.JSON
 import Generics.SOP.TH
-import GHC.Records.Compat
 
 import Bench.Types
 

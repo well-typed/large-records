@@ -8,15 +8,17 @@ set -e
 # below. They produce less accurate results but avoid recompilation every time
 # the script is invoked because the flags remain the same.
 
-# cabal build before      --flags="+profile-coresize +profile-timing"
-# cabal build after       --flags="+profile-coresize +profile-timing"
-# cabal build experiments --flags="+profile-coresize +profile-timing"
+# cabal build bench-before      --flags="+profile-coresize +profile-timing"
+# cabal build bench-after       --flags="+profile-coresize +profile-timing"
+# cabal build bench-experiments --flags="+profile-coresize +profile-timing"
+# cabal build bench-typelet     --flags="+profile-coresize +profile-timing"
 
 ## Core size
 
-cabal build before       --flags=+profile-coresize
-cabal build after        --flags=+profile-coresize
-cabal build experiments  --flags=+profile-coresize
+cabal build bench-before       --flags=+profile-coresize
+cabal build bench-after        --flags=+profile-coresize
+cabal build bench-experiments  --flags=+profile-coresize
+cabal build bench-typelet      --flags=+profile-coresize
 
 cabal run parse-coresize -- \
   --dist ../../dist-newstyle \
@@ -25,9 +27,10 @@ cabal run parse-coresize -- \
 
 ## Timing
 
-cabal build before       --flags=+profile-timing
-cabal build after        --flags=+profile-timing
-cabal build experiments  --flags=+profile-timing
+cabal build bench-before       --flags=+profile-timing
+cabal build bench-after        --flags=+profile-timing
+cabal build bench-experiments  --flags=+profile-timing
+cabal build bench-typelet      --flags=+profile-timing
 
 cabal run parse-timing -- \
   --dist ../../dist-newstyle \

@@ -172,6 +172,7 @@ jobs:
           if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
+          echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
           cat cabal.project
       - name: sdist
         run: |
@@ -193,6 +194,8 @@ jobs:
           echo "PKGDIR_large_anon=${PKGDIR_large_anon}" >> "$GITHUB_ENV"
           PKGDIR_beam_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/beam-large-records-[0-9.]*')"
           echo "PKGDIR_beam_large_records=${PKGDIR_beam_large_records}" >> "$GITHUB_ENV"
+          PKGDIR_typelet="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/typelet-[0-9.]*')"
+          echo "PKGDIR_typelet=${PKGDIR_typelet}" >> "$GITHUB_ENV"
           rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
@@ -201,6 +204,7 @@ jobs:
           if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_anon}" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
+          echo "packages: ${PKGDIR_typelet}" >> cabal.project
           echo "package large-generics" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
@@ -211,6 +215,8 @@ jobs:
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
+          echo "package typelet" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
           source-repository-package
             type:     git
@@ -233,7 +239,7 @@ jobs:
           if $HEADHACKAGE; then
           echo "allow-newer: $($HCPKG list --simple-output | sed -E 's/([a-zA-Z-]+)-[0-9.]+/*:\1,/g')" >> cabal.project
           fi
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks|typelet)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
@@ -271,6 +277,8 @@ jobs:
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then cd ${PKGDIR_beam_large_records} || false ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
+          cd ${PKGDIR_typelet} || false
+          ${CABAL} -vnormal check
       - name: haddock
         run: |
           $CABAL v2-haddock $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all

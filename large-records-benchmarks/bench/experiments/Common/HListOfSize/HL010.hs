@@ -2,8 +2,8 @@
 
 module Common.HListOfSize.HL010 where
 
+import Bench.HList
 import Bench.Types
-import Infra.HList
 
 type ExampleFields = '[
       -- 0

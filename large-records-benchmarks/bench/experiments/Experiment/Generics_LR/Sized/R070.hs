@@ -9,7 +9,7 @@ module Experiment.Generics_LR.Sized.R070 where
 
 import Data.Aeson (Value)
 
-import Infra.HList
+import Bench.HList
 import Experiment.Generics_LR
 
 import Common.HListOfSize.HL070

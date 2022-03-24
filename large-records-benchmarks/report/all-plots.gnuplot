@@ -204,3 +204,45 @@ set output "graphs/experiment-preeval-timing.png"
 plot "<(cat timing.csv | grep PreEval_Nominal)"        using 2:3 with lines lt rgb "#EE2222" title "PreEval/Nominal" \
    , "<(cat timing.csv | grep PreEval_Phantom)"        using 2:3 with lines lt rgb "#2222EE" title "PreEval/Phantom" \
    , "<(cat timing.csv | grep Induction_Tree_Phantom)" using 2:3 with lines lt rgb "#22EE22" title "NoPreEval/Phantom"
+
+## Typelet: HList
+
+set xlabel "List size"
+set xrange [0:100]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/typelet-hlist-coresize.png"
+plot "<(cat coresize.csv | grep HListBaseline  | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "Baseline (ds-preopt)" \
+   , "<(cat coresize.csv | grep HListBaseline  | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "Baseline (ds)" \
+   , "<(cat coresize.csv | grep HListBaseline  | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "Baseline (simpl)" \
+   , "<(cat coresize.csv | grep HListLetAsCase | grep ds-preopt,)" using 2:7 with lines lt rgb "#2222EE" title "LetAsCase (ds-preopt)" \
+   , "<(cat coresize.csv | grep HListLetAsCase | grep ds,)"        using 2:7 with lines lt rgb "#2222EE" title "LetAsCase (ds)" \
+   , "<(cat coresize.csv | grep HListLetAsCase | grep simpl,)"     using 2:7 with lines lt rgb "#2222EE" title "LetAsCase (simpl)" \
+   , "<(cat coresize.csv | grep HListLetAsCPS  | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "LetAsCPS (ds-preopt)" \
+   , "<(cat coresize.csv | grep HListLetAsCPS  | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "LetAsCPS (ds)" \
+   , "<(cat coresize.csv | grep HListLetAsCPS  | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "LetAsCPS (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/typelet-hlist-timing.png"
+plot "<(cat timing.csv | grep HListBaseline)"  using 2:3 with lines lt rgb "#EE2222" title "Baseline" \
+   , "<(cat timing.csv | grep HListLetAsCase)" using 2:3 with lines lt rgb "#2222EE" title "LetAsCase" \
+   , "<(cat timing.csv | grep HListLetAsCPS)"  using 2:3 with lines lt rgb "#22EE22" title "LetAsCPS"
+
+## Typelet: Ap
+
+set xlabel "List size"
+set xrange [0:100]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/typelet-ap-coresize.png"
+plot "<(cat coresize.csv | grep ApBaseline | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "Baseline (ds-preopt)" \
+   , "<(cat coresize.csv | grep ApBaseline | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "Baseline (ds)" \
+   , "<(cat coresize.csv | grep ApBaseline | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "Baseline (simpl)" \
+   , "<(cat coresize.csv | grep ApLet      | grep ds-preopt,)" using 2:7 with lines lt rgb "#2222EE" title "Let (ds-preopt)" \
+   , "<(cat coresize.csv | grep ApLet      | grep ds,)"        using 2:7 with lines lt rgb "#2222EE" title "Let (ds)" \
+   , "<(cat coresize.csv | grep ApLet      | grep simpl,)"     using 2:7 with lines lt rgb "#2222EE" title "Let (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/typelet-ap-timing.png"
+plot "<(cat timing.csv | grep ApBaseline)" using 2:3 with lines lt rgb "#EE2222" title "Baseline" \
+   , "<(cat timing.csv | grep ApLet)"      using 2:3 with lines lt rgb "#2222EE" title "Let"

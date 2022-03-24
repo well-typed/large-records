@@ -11,7 +11,7 @@ import qualified Data.Aeson.Types as Aeson
 import qualified Experiment.Generics_SOP as SOP
 import qualified Experiment.Generics_LR  as LR
 
-import Infra.HList
+import Bench.HList
 
 {-------------------------------------------------------------------------------
   Sanity check that the instance works

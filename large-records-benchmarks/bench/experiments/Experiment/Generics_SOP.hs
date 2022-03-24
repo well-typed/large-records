@@ -21,7 +21,7 @@ import Generics.SOP.Type.Metadata
 import qualified Generics.SOP.JSON     as SOP
 import qualified Generics.SOP.Metadata as SOP
 
-import Infra.HList
+import Bench.HList
 import Infra.ShowType
 
 gtoJSON :: (HasDatatypeInfo a, All2 ToJSON (Code a)) => a -> Value

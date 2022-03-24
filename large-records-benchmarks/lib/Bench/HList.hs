@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs          #-}
 {-# LANGUAGE TypeOperators  #-}
 
-module Infra.HList (
+module Bench.HList (
     HList(..)
     -- * Conversions
   , hlistToListAny

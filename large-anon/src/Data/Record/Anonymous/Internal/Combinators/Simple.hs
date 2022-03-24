@@ -22,6 +22,7 @@ module Data.Record.Anonymous.Internal.Combinators.Simple (
   , collapse
     -- * "Traversable"
   , sequenceA
+  , sequenceA'
     -- * "Applicable"
   , pure
   , ap
@@ -33,6 +34,7 @@ import qualified Prelude
 import Data.Functor.Product
 import Data.Kind
 import Data.Proxy
+import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->))
 
@@ -85,6 +87,12 @@ collapse (c -> r) = Canon.collapse r
 
 sequenceA :: Monad m => Record (m :.: f) r -> m (Record f r)
 sequenceA (c -> r) = fromC <$> Canon.sequenceA r
+
+sequenceA' :: Monad m => Record m r -> m (Record I r)
+sequenceA' = sequenceA . co
+  where
+    co :: Record m r -> Record (m :.: I) r
+    co = noInlineUnsafeCo
 
 pure :: forall f r. KnownFields r => (forall x. f x) -> Record f r
 pure f = fromC $ Canon.fromList $ Prelude.map (const f) (fieldNames (Proxy @r))

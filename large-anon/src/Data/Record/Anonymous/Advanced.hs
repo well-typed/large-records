@@ -46,6 +46,7 @@ module Data.Record.Anonymous.Advanced (
   , Combinators.toList
     -- ** "Traversable"
   , Combinators.sequenceA
+  , Combinators.sequenceA'
     -- ** "Applicable"
   , Combinators.pure
   , Combinators.cpure

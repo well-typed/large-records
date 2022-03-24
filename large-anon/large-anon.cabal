@@ -41,6 +41,11 @@ library
       -- Exposed for the benefit of cabal-docspec
       Data.Record.Anonymous.TcPlugin.EquivClasses
   other-modules:
+
+      Data.Record.Anonymous.SrcPlugin
+      Data.Record.Anonymous.SrcPlugin.Names
+      Data.Record.Anonymous.SrcPlugin.GhcShim
+
       Data.Record.Anonymous.TcPlugin.Constraints.AllFields
       Data.Record.Anonymous.TcPlugin.Constraints.HasField
       Data.Record.Anonymous.TcPlugin.Constraints.KnownFields
@@ -69,6 +74,7 @@ library
     , text
     , unordered-containers
     , vector
+    , syb
 
       -- TODO: Make this dependency optional (DEBUG flag)
     , recover-rtti >= 0.4.1
@@ -115,6 +121,7 @@ test-suite test-large-anon
       Test.Sanity.Named.Record2
       Test.Sanity.PolyKinds
       Test.Sanity.Simple
+      Test.Sanity.SrcPlugin.WithoutTypelet
       Test.Sanity.TypeLevelMetadata
   build-depends:
       base

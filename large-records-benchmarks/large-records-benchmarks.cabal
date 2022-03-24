@@ -22,6 +22,7 @@ source-repository head
 library
   exposed-modules:
       Bench.Types
+      Bench.HList
   default-language:
       Haskell2010
   hs-source-dirs:
@@ -31,6 +32,7 @@ library
 
     , aeson
     , large-generics
+    , sop-core
   ghc-options:
       -Wall
 
@@ -84,7 +86,7 @@ executable parse-timing
 
 -- The " before " benchmark is independent of the large-records library:
 -- it tests the situation /before/ the introduction of the library.
-executable before
+executable bench-before
   main-is:
       Main.hs
   hs-source-dirs:
@@ -122,7 +124,7 @@ executable before
   if flag(profile-timing)
     cpp-options: -DPROFILE_TIMING
 
-executable after
+executable bench-after
   main-is:
       Main.hs
   hs-source-dirs:
@@ -188,7 +190,7 @@ executable after
 -- and tests various approaches in isolation.
 -- (The "Generics" experiment depends on `large-generics`, but not on the
 -- `large-records` library itself.)
-executable experiments
+executable bench-experiments
   main-is:
       Main.hs
   hs-source-dirs:
@@ -200,7 +202,6 @@ executable experiments
   ghc-options:
       -Wall
   other-modules:
-      Infra.HList
       Infra.ShowType
       Infra.Tree
 
@@ -405,6 +406,113 @@ executable experiments
   if flag(profile-timing)
     cpp-options: -DPROFILE_TIMING
 
+executable bench-typelet
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      bench/typelet
+  default-language:
+      Haskell2010
+  default-extensions:
+      CPP
+      DataKinds
+      ScopedTypeVariables
+      TypeApplications
+  ghc-options:
+      -Wall
+  other-modules:
+      Common.HListOfSize.HL010
+      Common.HListOfSize.HL020
+      Common.HListOfSize.HL030
+      Common.HListOfSize.HL040
+      Common.HListOfSize.HL050
+      Common.HListOfSize.HL060
+      Common.HListOfSize.HL070
+      Common.HListOfSize.HL080
+      Common.HListOfSize.HL090
+      Common.HListOfSize.HL100
+
+      Common.FunOfArity.F010
+      Common.FunOfArity.F020
+      Common.FunOfArity.F030
+      Common.FunOfArity.F040
+      Common.FunOfArity.F050
+      Common.FunOfArity.F060
+      Common.FunOfArity.F070
+      Common.FunOfArity.F080
+      Common.FunOfArity.F090
+      Common.FunOfArity.F100
+
+      Experiment.HListBaseline.Sized.R000
+      Experiment.HListBaseline.Sized.R010
+      Experiment.HListBaseline.Sized.R020
+      Experiment.HListBaseline.Sized.R030
+      Experiment.HListBaseline.Sized.R040
+      Experiment.HListBaseline.Sized.R050
+      Experiment.HListBaseline.Sized.R060
+      Experiment.HListBaseline.Sized.R070
+      Experiment.HListBaseline.Sized.R080
+      Experiment.HListBaseline.Sized.R090
+      Experiment.HListBaseline.Sized.R100
+
+      Experiment.HListLetAsCase.Sized.R000
+      Experiment.HListLetAsCase.Sized.R010
+      Experiment.HListLetAsCase.Sized.R020
+      Experiment.HListLetAsCase.Sized.R030
+      Experiment.HListLetAsCase.Sized.R040
+      Experiment.HListLetAsCase.Sized.R050
+      Experiment.HListLetAsCase.Sized.R060
+      Experiment.HListLetAsCase.Sized.R070
+      Experiment.HListLetAsCase.Sized.R080
+      Experiment.HListLetAsCase.Sized.R090
+      Experiment.HListLetAsCase.Sized.R100
+
+      Experiment.HListLetAsCPS.Sized.R000
+      Experiment.HListLetAsCPS.Sized.R010
+      Experiment.HListLetAsCPS.Sized.R020
+      Experiment.HListLetAsCPS.Sized.R030
+      Experiment.HListLetAsCPS.Sized.R040
+      Experiment.HListLetAsCPS.Sized.R050
+      Experiment.HListLetAsCPS.Sized.R060
+      Experiment.HListLetAsCPS.Sized.R070
+      Experiment.HListLetAsCPS.Sized.R080
+      Experiment.HListLetAsCPS.Sized.R090
+      Experiment.HListLetAsCPS.Sized.R100
+
+      Experiment.ApBaseline.Sized.R000
+      Experiment.ApBaseline.Sized.R010
+      Experiment.ApBaseline.Sized.R020
+      Experiment.ApBaseline.Sized.R030
+      Experiment.ApBaseline.Sized.R040
+      Experiment.ApBaseline.Sized.R050
+      Experiment.ApBaseline.Sized.R060
+      Experiment.ApBaseline.Sized.R070
+      Experiment.ApBaseline.Sized.R080
+      Experiment.ApBaseline.Sized.R090
+      Experiment.ApBaseline.Sized.R100
+
+      Experiment.ApLet.Sized.R000
+      Experiment.ApLet.Sized.R010
+      Experiment.ApLet.Sized.R020
+      Experiment.ApLet.Sized.R030
+      Experiment.ApLet.Sized.R040
+      Experiment.ApLet.Sized.R050
+      Experiment.ApLet.Sized.R060
+      Experiment.ApLet.Sized.R070
+      Experiment.ApLet.Sized.R080
+      Experiment.ApLet.Sized.R090
+      Experiment.ApLet.Sized.R100
+
+  build-depends:
+      base
+    , large-records-benchmarks
+    , typelet
+
+  if flag(profile-coresize)
+    cpp-options: -DPROFILE_CORESIZE
+  if flag(profile-timing)
+    cpp-options: -DPROFILE_TIMING
+
 -- This contains some sanity checks for the various benchmarks. Instead of
 -- making each of those benchmarks their own library just for the sake of these
 -- simple tests, we instead use directory sharing.
@@ -465,7 +573,6 @@ test-suite test-large-records-benchmarks
       Experiment.Generics_LR
       Experiment.Generics_SOP
 
-      Infra.HList
       Infra.ShowType
       Infra.Tree
   build-depends:

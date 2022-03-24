@@ -11,8 +11,8 @@ module Experiment.ConstraintFamily_Deep.Sized.R100 where
 
 import Data.Proxy
 
+import Bench.HList
 import Experiment.ConstraintFamily_Deep
-import Infra.HList
 
 import Common.HListOfSize.HL100
 

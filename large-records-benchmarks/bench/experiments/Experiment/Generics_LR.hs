@@ -27,7 +27,7 @@ import Data.Record.Generic
 import Data.Record.Generic.JSON (gtoJSON)
 import qualified Data.Record.Generic.Rep.Internal as Rep
 
-import Infra.HList
+import Bench.HList
 import Infra.ShowType
 import Infra.Tree
 

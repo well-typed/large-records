@@ -144,10 +144,9 @@ section [More subtle: types][blogpost1-applicative] of the first blog post.
 ![](graphs/experiment-applicative-coresize.png)
 ![](graphs/experiment-applicative-timing.png)
 
-Note: type sharing is discussed in more detail in the third blog post on this
-topic, [Type-level sharing in Haskell, now][blogpost3], but this report
-currently does not include any benchmarks that uses the `typelet` library
-for type-level sharing.
+Note: type-level sharing is discussed in more detail in the third blog post on
+this topic, [Type-level sharing in Haskell, now][blogpost3]; see also the
+corresponding section on [type-level sharing](#type-level-sharing) below.
 
 ### Induction
 
@@ -211,6 +210,33 @@ mildly interesting that this is a case where phantom contexts are actually
 ![](graphs/experiment-preeval-coresize.png)
 ![](graphs/experiment-preeval-timing.png)
 
+## Type-level sharing
+
+Type-level sharing is discussed in detail
+[Type-level sharing in Haskell, now][blogpost3].
+We have two benchmarks here: one for the construction of `HList`s and one
+for applicative chains; both are discussed in more detail in the blog post.
+
+Unfortunately, although these benchmarks show that the [`typelet`][typelet]
+package can indeed help to construct `ghc` core of linear size, they do not
+show an improvement in compilation time, at least for these examples.
+
+### HList
+
+For the `HList` benchmarks we have a baseline (no sharing), using `letAs`,
+and using `letAs'`, the CPS form of `letAs`.
+
+![](graphs/typelet-hlist-coresize.png)
+![](graphs/typelet-hlist-timing.png)
+
+### Applicative chains
+
+For the applicative chains benchmarks we only have a baseline (no sharing),
+and one using `let`.
+
+![](graphs/typelet-ap-coresize.png)
+![](graphs/typelet-ap-timing.png)
+
 <!-- References -->
 
 [blogpost1-applicative]: https://well-typed.com/blog/2021/08/large-records/#more-subtle-types
@@ -228,4 +254,5 @@ mildly interesting that this is a case where phantom contexts are actually
 [large-generics-json]: ../../large-generics/src/Data/Record/Generic/JSON.hs
 [large-generics]: ../../large-generics/
 [RDP]: https://hackage.haskell.org/package/record-dot-preprocessor
+[typelet]: https://hackage.haskell.org/package/typelet
 [very-simple-optimiser]: https://gitlab.haskell.org/ghc/ghc/-/blob/ghc-8.8.4-release/compiler/coreSyn/CoreOpt.hs#L66-86

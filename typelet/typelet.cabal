@@ -95,82 +95,6 @@ test-suite test-typelet
         Test.Infra
         Test.Sanity
         Test.WithoutPlugin
-
-    if flag(include-size-tests)
-      -- Currently the size tests are built, but not actually part of the test
-      -- suite proper. We are just interested in the size of their core.
-      other-modules:
-          Test.Size.Ap.Baseline.Baseline010
-          Test.Size.Ap.Baseline.Baseline020
-          Test.Size.Ap.Baseline.Baseline030
-          Test.Size.Ap.Baseline.Baseline040
-          Test.Size.Ap.Baseline.Baseline050
-          Test.Size.Ap.Baseline.Baseline060
-          Test.Size.Ap.Baseline.Baseline070
-          Test.Size.Ap.Baseline.Baseline080
-          Test.Size.Ap.Baseline.Baseline090
-          Test.Size.Ap.Baseline.Baseline100
-          Test.Size.Ap.Index.Ix010
-          Test.Size.Ap.Index.Ix020
-          Test.Size.Ap.Index.Ix030
-          Test.Size.Ap.Index.Ix040
-          Test.Size.Ap.Index.Ix050
-          Test.Size.Ap.Index.Ix060
-          Test.Size.Ap.Index.Ix070
-          Test.Size.Ap.Index.Ix080
-          Test.Size.Ap.Index.Ix090
-          Test.Size.Ap.Index.Ix100
-          Test.Size.Ap.Let.Let010
-          Test.Size.Ap.Let.Let020
-          Test.Size.Ap.Let.Let030
-          Test.Size.Ap.Let.Let040
-          Test.Size.Ap.Let.Let050
-          Test.Size.Ap.Let.Let060
-          Test.Size.Ap.Let.Let070
-          Test.Size.Ap.Let.Let080
-          Test.Size.Ap.Let.Let090
-          Test.Size.Ap.Let.Let100
-          Test.Size.HList.Baseline.Baseline010
-          Test.Size.HList.Baseline.Baseline020
-          Test.Size.HList.Baseline.Baseline030
-          Test.Size.HList.Baseline.Baseline040
-          Test.Size.HList.Baseline.Baseline050
-          Test.Size.HList.Baseline.Baseline060
-          Test.Size.HList.Baseline.Baseline070
-          Test.Size.HList.Baseline.Baseline080
-          Test.Size.HList.Baseline.Baseline090
-          Test.Size.HList.Baseline.Baseline100
-          Test.Size.HList.Index.Ix010
-          Test.Size.HList.Index.Ix020
-          Test.Size.HList.Index.Ix030
-          Test.Size.HList.Index.Ix040
-          Test.Size.HList.Index.Ix050
-          Test.Size.HList.Index.Ix060
-          Test.Size.HList.Index.Ix070
-          Test.Size.HList.Index.Ix080
-          Test.Size.HList.Index.Ix090
-          Test.Size.HList.Index.Ix100
-          Test.Size.HList.LetAs.LetAs010
-          Test.Size.HList.LetAs.LetAs020
-          Test.Size.HList.LetAs.LetAs030
-          Test.Size.HList.LetAs.LetAs040
-          Test.Size.HList.LetAs.LetAs050
-          Test.Size.HList.LetAs.LetAs060
-          Test.Size.HList.LetAs.LetAs070
-          Test.Size.HList.LetAs.LetAs080
-          Test.Size.HList.LetAs.LetAs090
-          Test.Size.HList.LetAs.LetAs100
-          Test.Size.HList.LetAsCPS.LetAsCPS010
-          Test.Size.HList.LetAsCPS.LetAsCPS020
-          Test.Size.HList.LetAsCPS.LetAsCPS030
-          Test.Size.HList.LetAsCPS.LetAsCPS040
-          Test.Size.HList.LetAsCPS.LetAsCPS050
-          Test.Size.HList.LetAsCPS.LetAsCPS060
-          Test.Size.HList.LetAsCPS.LetAsCPS070
-          Test.Size.HList.LetAsCPS.LetAsCPS080
-          Test.Size.HList.LetAsCPS.LetAsCPS090
-          Test.Size.HList.LetAsCPS.LetAsCPS100
-
     build-depends:
         base
       , typelet
@@ -221,7 +145,3 @@ executable doctest-examples-typelet
 Flag build-doctest-examples
   Description: Build doctest-examples-typelet (for testing only)
   Default: False
-
-Flag include-size-tests
-  Description: Include size tests in the test suite
-  Default: True

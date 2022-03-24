@@ -1,0 +1,227 @@
+cabal-version:      2.4
+build-type:         Custom
+name:               typelet
+version:            0.1.1.0
+synopsis:           Plugin to faciliate type-level let
+description:        For a certain class of programs, type-level let is essential
+                    in order to be able to write these programs in such a way
+                    that they do not result in ghc core that is quadratic in
+                    size. Type-level let is not explicitly supported in ghc,
+                    but we can encode it. The @typelet@ library provides a
+                    type-checker plugin that makes the encoding more convenient
+                    to use as well as more effective.
+bug-reports:        https://github.com/well-typed/typelet/issues
+license:            BSD-3-Clause
+author:             Edsko de Vries
+maintainer:         edsko@well-typed.com
+copyright:          Well-Typed LLP, Juspay Technologies Pvt Ltd
+category:           Plugin
+extra-source-files: CHANGELOG.md
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.2
+
+source-repository head
+  type:     git
+  location: https://github.com/well-typed/typelet
+
+custom-setup
+    setup-depends:
+        base >= 4 && <5
+      , cabal-doctest >= 1 && <1.1
+
+library
+    exposed-modules:
+        TypeLet
+        TypeLet.UserAPI
+        TypeLet.Plugin
+    other-modules:
+        TypeLet.Plugin.Constraints
+        TypeLet.Plugin.GhcTcPluginAPI
+        TypeLet.Plugin.NameResolution
+        TypeLet.Plugin.Substitution
+    build-depends:
+        base >= 4.13 && < 4.17
+      , ghc-tcplugin-api >= 0.7 && < 0.8
+
+        -- whichever versions are bundled with ghc:
+      , containers
+      , ghc
+    hs-source-dirs:
+        src
+    default-language:
+        Haskell2010
+    default-extensions:
+        DataKinds
+        DeriveFunctor
+        FlexibleInstances
+        GADTs
+        KindSignatures
+        LambdaCase
+        MultiParamTypeClasses
+        PolyKinds
+        RankNTypes
+        RecordWildCards
+        ScopedTypeVariables
+        TupleSections
+    other-extensions:
+        CPP
+    ghc-options:
+        -Wall
+
+test-suite test-typelet
+    default-language:
+        Haskell2010
+    default-extensions:
+        DataKinds
+        FlexibleContexts
+        FlexibleInstances
+        GADTs
+        KindSignatures
+        MultiParamTypeClasses
+        PolyKinds
+        RankNTypes
+        ScopedTypeVariables
+        StandaloneDeriving
+        TypeApplications
+        TypeFamilies
+        TypeOperators
+        UndecidableInstances
+    type:
+        exitcode-stdio-1.0
+    hs-source-dirs:
+        test
+    main-is:
+        TestTypeLet.hs
+    other-modules:
+        Test.Infra
+        Test.Sanity
+        Test.WithoutPlugin
+
+    if flag(include-size-tests)
+      -- Currently the size tests are built, but not actually part of the test
+      -- suite proper. We are just interested in the size of their core.
+      other-modules:
+          Test.Size.Ap.Baseline.Baseline010
+          Test.Size.Ap.Baseline.Baseline020
+          Test.Size.Ap.Baseline.Baseline030
+          Test.Size.Ap.Baseline.Baseline040
+          Test.Size.Ap.Baseline.Baseline050
+          Test.Size.Ap.Baseline.Baseline060
+          Test.Size.Ap.Baseline.Baseline070
+          Test.Size.Ap.Baseline.Baseline080
+          Test.Size.Ap.Baseline.Baseline090
+          Test.Size.Ap.Baseline.Baseline100
+          Test.Size.Ap.Index.Ix010
+          Test.Size.Ap.Index.Ix020
+          Test.Size.Ap.Index.Ix030
+          Test.Size.Ap.Index.Ix040
+          Test.Size.Ap.Index.Ix050
+          Test.Size.Ap.Index.Ix060
+          Test.Size.Ap.Index.Ix070
+          Test.Size.Ap.Index.Ix080
+          Test.Size.Ap.Index.Ix090
+          Test.Size.Ap.Index.Ix100
+          Test.Size.Ap.Let.Let010
+          Test.Size.Ap.Let.Let020
+          Test.Size.Ap.Let.Let030
+          Test.Size.Ap.Let.Let040
+          Test.Size.Ap.Let.Let050
+          Test.Size.Ap.Let.Let060
+          Test.Size.Ap.Let.Let070
+          Test.Size.Ap.Let.Let080
+          Test.Size.Ap.Let.Let090
+          Test.Size.Ap.Let.Let100
+          Test.Size.HList.Baseline.Baseline010
+          Test.Size.HList.Baseline.Baseline020
+          Test.Size.HList.Baseline.Baseline030
+          Test.Size.HList.Baseline.Baseline040
+          Test.Size.HList.Baseline.Baseline050
+          Test.Size.HList.Baseline.Baseline060
+          Test.Size.HList.Baseline.Baseline070
+          Test.Size.HList.Baseline.Baseline080
+          Test.Size.HList.Baseline.Baseline090
+          Test.Size.HList.Baseline.Baseline100
+          Test.Size.HList.Index.Ix010
+          Test.Size.HList.Index.Ix020
+          Test.Size.HList.Index.Ix030
+          Test.Size.HList.Index.Ix040
+          Test.Size.HList.Index.Ix050
+          Test.Size.HList.Index.Ix060
+          Test.Size.HList.Index.Ix070
+          Test.Size.HList.Index.Ix080
+          Test.Size.HList.Index.Ix090
+          Test.Size.HList.Index.Ix100
+          Test.Size.HList.LetAs.LetAs010
+          Test.Size.HList.LetAs.LetAs020
+          Test.Size.HList.LetAs.LetAs030
+          Test.Size.HList.LetAs.LetAs040
+          Test.Size.HList.LetAs.LetAs050
+          Test.Size.HList.LetAs.LetAs060
+          Test.Size.HList.LetAs.LetAs070
+          Test.Size.HList.LetAs.LetAs080
+          Test.Size.HList.LetAs.LetAs090
+          Test.Size.HList.LetAs.LetAs100
+          Test.Size.HList.LetAsCPS.LetAsCPS010
+          Test.Size.HList.LetAsCPS.LetAsCPS020
+          Test.Size.HList.LetAsCPS.LetAsCPS030
+          Test.Size.HList.LetAsCPS.LetAsCPS040
+          Test.Size.HList.LetAsCPS.LetAsCPS050
+          Test.Size.HList.LetAsCPS.LetAsCPS060
+          Test.Size.HList.LetAsCPS.LetAsCPS070
+          Test.Size.HList.LetAsCPS.LetAsCPS080
+          Test.Size.HList.LetAsCPS.LetAsCPS090
+          Test.Size.HList.LetAsCPS.LetAsCPS100
+
+    build-depends:
+        base
+      , typelet
+      , tasty
+      , tasty-hunit
+      , tasty-quickcheck
+    ghc-options:
+        -Wall
+
+-- To use the doctest tests, enable flag build-doctest-examples
+test-suite doctest-typelet
+    type:
+        exitcode-stdio-1.0
+    default-language:
+        Haskell2010
+    hs-source-dirs:
+        doctest
+    main-is:
+        DoctestTypeLet.hs
+    build-depends:
+        base
+      , doctest
+      , typelet
+    x-doctest-components:
+        exe:doctest-examples-typelet
+
+    if !flag(build-doctest-examples)
+      buildable: False
+
+executable doctest-examples-typelet
+    main-is:
+        DoctestExamplesTypeLet.hs
+    default-language:
+        Haskell2010
+    default-extensions:
+        FlexibleContexts
+    hs-source-dirs:
+        doctest-examples
+    build-depends:
+        base
+      , typelet
+    ghc-options:
+        -Wwarn
+
+    if !flag(build-doctest-examples)
+      buildable: False
+
+Flag build-doctest-examples
+  Description: Build doctest-examples-typelet (for testing only)
+  Default: False
+
+Flag include-size-tests
+  Description: Include size tests in the test suite
+  Default: True

@@ -16,82 +16,82 @@ import Bench.Types
 import Common.HListOfSize.HL070
 
 hlist :: HList Fields
-hlist = letT' (Proxy @Fields) $ \(_ :: Proxy r) -> castEqual $
+hlist = letT' Proxy $ \(_ :: Proxy r) -> castEqual $
     -- 69 .. 60
-    letAs' @(HList r) (MkT 69 :* Nil)  $ \(xs69 :: HList t69) ->
-    letAs' @(HList r) (MkT 68 :* xs69) $ \(xs68 :: HList t68) ->
-    letAs' @(HList r) (MkT 67 :* xs68) $ \(xs67 :: HList t67) ->
-    letAs' @(HList r) (MkT 66 :* xs67) $ \(xs66 :: HList t66) ->
-    letAs' @(HList r) (MkT 65 :* xs66) $ \(xs65 :: HList t65) ->
-    letAs' @(HList r) (MkT 64 :* xs65) $ \(xs64 :: HList t64) ->
-    letAs' @(HList r) (MkT 63 :* xs64) $ \(xs63 :: HList t63) ->
-    letAs' @(HList r) (MkT 62 :* xs63) $ \(xs62 :: HList t62) ->
-    letAs' @(HList r) (MkT 61 :* xs62) $ \(xs61 :: HList t61) ->
-    letAs' @(HList r) (MkT 60 :* xs61) $ \(xs60 :: HList t60) ->
+    letAs' @(HList r) (MkT 69 :* Nil)  $ \xs69 ->
+    letAs' @(HList r) (MkT 68 :* xs69) $ \xs68 ->
+    letAs' @(HList r) (MkT 67 :* xs68) $ \xs67 ->
+    letAs' @(HList r) (MkT 66 :* xs67) $ \xs66 ->
+    letAs' @(HList r) (MkT 65 :* xs66) $ \xs65 ->
+    letAs' @(HList r) (MkT 64 :* xs65) $ \xs64 ->
+    letAs' @(HList r) (MkT 63 :* xs64) $ \xs63 ->
+    letAs' @(HList r) (MkT 62 :* xs63) $ \xs62 ->
+    letAs' @(HList r) (MkT 61 :* xs62) $ \xs61 ->
+    letAs' @(HList r) (MkT 60 :* xs61) $ \xs60 ->
     -- 59 .. 50
-    letAs' @(HList r) (MkT 59 :* xs60) $ \(xs59 :: HList t59) ->
-    letAs' @(HList r) (MkT 58 :* xs59) $ \(xs58 :: HList t58) ->
-    letAs' @(HList r) (MkT 57 :* xs58) $ \(xs57 :: HList t57) ->
-    letAs' @(HList r) (MkT 56 :* xs57) $ \(xs56 :: HList t56) ->
-    letAs' @(HList r) (MkT 55 :* xs56) $ \(xs55 :: HList t55) ->
-    letAs' @(HList r) (MkT 54 :* xs55) $ \(xs54 :: HList t54) ->
-    letAs' @(HList r) (MkT 53 :* xs54) $ \(xs53 :: HList t53) ->
-    letAs' @(HList r) (MkT 52 :* xs53) $ \(xs52 :: HList t52) ->
-    letAs' @(HList r) (MkT 51 :* xs52) $ \(xs51 :: HList t51) ->
-    letAs' @(HList r) (MkT 50 :* xs51) $ \(xs50 :: HList t50) ->
+    letAs' @(HList r) (MkT 59 :* xs60) $ \xs59 ->
+    letAs' @(HList r) (MkT 58 :* xs59) $ \xs58 ->
+    letAs' @(HList r) (MkT 57 :* xs58) $ \xs57 ->
+    letAs' @(HList r) (MkT 56 :* xs57) $ \xs56 ->
+    letAs' @(HList r) (MkT 55 :* xs56) $ \xs55 ->
+    letAs' @(HList r) (MkT 54 :* xs55) $ \xs54 ->
+    letAs' @(HList r) (MkT 53 :* xs54) $ \xs53 ->
+    letAs' @(HList r) (MkT 52 :* xs53) $ \xs52 ->
+    letAs' @(HList r) (MkT 51 :* xs52) $ \xs51 ->
+    letAs' @(HList r) (MkT 50 :* xs51) $ \xs50 ->
     -- 49 .. 40
-    letAs' @(HList r) (MkT 49 :* xs50) $ \(xs49 :: HList t49) ->
-    letAs' @(HList r) (MkT 48 :* xs49) $ \(xs48 :: HList t48) ->
-    letAs' @(HList r) (MkT 47 :* xs48) $ \(xs47 :: HList t47) ->
-    letAs' @(HList r) (MkT 46 :* xs47) $ \(xs46 :: HList t46) ->
-    letAs' @(HList r) (MkT 45 :* xs46) $ \(xs45 :: HList t45) ->
-    letAs' @(HList r) (MkT 44 :* xs45) $ \(xs44 :: HList t44) ->
-    letAs' @(HList r) (MkT 43 :* xs44) $ \(xs43 :: HList t43) ->
-    letAs' @(HList r) (MkT 42 :* xs43) $ \(xs42 :: HList t42) ->
-    letAs' @(HList r) (MkT 41 :* xs42) $ \(xs41 :: HList t41) ->
-    letAs' @(HList r) (MkT 40 :* xs41) $ \(xs40 :: HList t40) ->
+    letAs' @(HList r) (MkT 49 :* xs50) $ \xs49 ->
+    letAs' @(HList r) (MkT 48 :* xs49) $ \xs48 ->
+    letAs' @(HList r) (MkT 47 :* xs48) $ \xs47 ->
+    letAs' @(HList r) (MkT 46 :* xs47) $ \xs46 ->
+    letAs' @(HList r) (MkT 45 :* xs46) $ \xs45 ->
+    letAs' @(HList r) (MkT 44 :* xs45) $ \xs44 ->
+    letAs' @(HList r) (MkT 43 :* xs44) $ \xs43 ->
+    letAs' @(HList r) (MkT 42 :* xs43) $ \xs42 ->
+    letAs' @(HList r) (MkT 41 :* xs42) $ \xs41 ->
+    letAs' @(HList r) (MkT 40 :* xs41) $ \xs40 ->
     -- 39 .. 30
-    letAs' @(HList r) (MkT 39 :* xs40) $ \(xs39 :: HList t39) ->
-    letAs' @(HList r) (MkT 38 :* xs39) $ \(xs38 :: HList t38) ->
-    letAs' @(HList r) (MkT 37 :* xs38) $ \(xs37 :: HList t37) ->
-    letAs' @(HList r) (MkT 36 :* xs37) $ \(xs36 :: HList t36) ->
-    letAs' @(HList r) (MkT 35 :* xs36) $ \(xs35 :: HList t35) ->
-    letAs' @(HList r) (MkT 34 :* xs35) $ \(xs34 :: HList t34) ->
-    letAs' @(HList r) (MkT 33 :* xs34) $ \(xs33 :: HList t33) ->
-    letAs' @(HList r) (MkT 32 :* xs33) $ \(xs32 :: HList t32) ->
-    letAs' @(HList r) (MkT 31 :* xs32) $ \(xs31 :: HList t31) ->
-    letAs' @(HList r) (MkT 30 :* xs31) $ \(xs30 :: HList t30) ->
+    letAs' @(HList r) (MkT 39 :* xs40) $ \xs39 ->
+    letAs' @(HList r) (MkT 38 :* xs39) $ \xs38 ->
+    letAs' @(HList r) (MkT 37 :* xs38) $ \xs37 ->
+    letAs' @(HList r) (MkT 36 :* xs37) $ \xs36 ->
+    letAs' @(HList r) (MkT 35 :* xs36) $ \xs35 ->
+    letAs' @(HList r) (MkT 34 :* xs35) $ \xs34 ->
+    letAs' @(HList r) (MkT 33 :* xs34) $ \xs33 ->
+    letAs' @(HList r) (MkT 32 :* xs33) $ \xs32 ->
+    letAs' @(HList r) (MkT 31 :* xs32) $ \xs31 ->
+    letAs' @(HList r) (MkT 30 :* xs31) $ \xs30 ->
     -- 29 .. 20
-    letAs' @(HList r) (MkT 29 :* xs30) $ \(xs29 :: HList t29) ->
-    letAs' @(HList r) (MkT 28 :* xs29) $ \(xs28 :: HList t28) ->
-    letAs' @(HList r) (MkT 27 :* xs28) $ \(xs27 :: HList t27) ->
-    letAs' @(HList r) (MkT 26 :* xs27) $ \(xs26 :: HList t26) ->
-    letAs' @(HList r) (MkT 25 :* xs26) $ \(xs25 :: HList t25) ->
-    letAs' @(HList r) (MkT 24 :* xs25) $ \(xs24 :: HList t24) ->
-    letAs' @(HList r) (MkT 23 :* xs24) $ \(xs23 :: HList t23) ->
-    letAs' @(HList r) (MkT 22 :* xs23) $ \(xs22 :: HList t22) ->
-    letAs' @(HList r) (MkT 21 :* xs22) $ \(xs21 :: HList t21) ->
-    letAs' @(HList r) (MkT 20 :* xs21) $ \(xs20 :: HList t20) ->
+    letAs' @(HList r) (MkT 29 :* xs30) $ \xs29 ->
+    letAs' @(HList r) (MkT 28 :* xs29) $ \xs28 ->
+    letAs' @(HList r) (MkT 27 :* xs28) $ \xs27 ->
+    letAs' @(HList r) (MkT 26 :* xs27) $ \xs26 ->
+    letAs' @(HList r) (MkT 25 :* xs26) $ \xs25 ->
+    letAs' @(HList r) (MkT 24 :* xs25) $ \xs24 ->
+    letAs' @(HList r) (MkT 23 :* xs24) $ \xs23 ->
+    letAs' @(HList r) (MkT 22 :* xs23) $ \xs22 ->
+    letAs' @(HList r) (MkT 21 :* xs22) $ \xs21 ->
+    letAs' @(HList r) (MkT 20 :* xs21) $ \xs20 ->
     -- 19 .. 10
-    letAs' @(HList r) (MkT 19 :* xs20) $ \(xs19 :: HList t19) ->
-    letAs' @(HList r) (MkT 18 :* xs19) $ \(xs18 :: HList t18) ->
-    letAs' @(HList r) (MkT 17 :* xs18) $ \(xs17 :: HList t17) ->
-    letAs' @(HList r) (MkT 16 :* xs17) $ \(xs16 :: HList t16) ->
-    letAs' @(HList r) (MkT 15 :* xs16) $ \(xs15 :: HList t15) ->
-    letAs' @(HList r) (MkT 14 :* xs15) $ \(xs14 :: HList t14) ->
-    letAs' @(HList r) (MkT 13 :* xs14) $ \(xs13 :: HList t13) ->
-    letAs' @(HList r) (MkT 12 :* xs13) $ \(xs12 :: HList t12) ->
-    letAs' @(HList r) (MkT 11 :* xs12) $ \(xs11 :: HList t11) ->
-    letAs' @(HList r) (MkT 10 :* xs11) $ \(xs10 :: HList t10) ->
+    letAs' @(HList r) (MkT 19 :* xs20) $ \xs19 ->
+    letAs' @(HList r) (MkT 18 :* xs19) $ \xs18 ->
+    letAs' @(HList r) (MkT 17 :* xs18) $ \xs17 ->
+    letAs' @(HList r) (MkT 16 :* xs17) $ \xs16 ->
+    letAs' @(HList r) (MkT 15 :* xs16) $ \xs15 ->
+    letAs' @(HList r) (MkT 14 :* xs15) $ \xs14 ->
+    letAs' @(HList r) (MkT 13 :* xs14) $ \xs13 ->
+    letAs' @(HList r) (MkT 12 :* xs13) $ \xs12 ->
+    letAs' @(HList r) (MkT 11 :* xs12) $ \xs11 ->
+    letAs' @(HList r) (MkT 10 :* xs11) $ \xs10 ->
     -- 09 .. 00
-    letAs' @(HList r) (MkT 09 :* xs10) $ \(xs09 :: HList t09) ->
-    letAs' @(HList r) (MkT 08 :* xs09) $ \(xs08 :: HList t08) ->
-    letAs' @(HList r) (MkT 07 :* xs08) $ \(xs07 :: HList t07) ->
-    letAs' @(HList r) (MkT 06 :* xs07) $ \(xs06 :: HList t06) ->
-    letAs' @(HList r) (MkT 05 :* xs06) $ \(xs05 :: HList t05) ->
-    letAs' @(HList r) (MkT 04 :* xs05) $ \(xs04 :: HList t04) ->
-    letAs' @(HList r) (MkT 03 :* xs04) $ \(xs03 :: HList t03) ->
-    letAs' @(HList r) (MkT 02 :* xs03) $ \(xs02 :: HList t02) ->
-    letAs' @(HList r) (MkT 01 :* xs02) $ \(xs01 :: HList t01) ->
-    letAs' @(HList r) (MkT 00 :* xs01) $ \(xs00 :: HList t00) ->
+    letAs' @(HList r) (MkT 09 :* xs10) $ \xs09 ->
+    letAs' @(HList r) (MkT 08 :* xs09) $ \xs08 ->
+    letAs' @(HList r) (MkT 07 :* xs08) $ \xs07 ->
+    letAs' @(HList r) (MkT 06 :* xs07) $ \xs06 ->
+    letAs' @(HList r) (MkT 05 :* xs06) $ \xs05 ->
+    letAs' @(HList r) (MkT 04 :* xs05) $ \xs04 ->
+    letAs' @(HList r) (MkT 03 :* xs04) $ \xs03 ->
+    letAs' @(HList r) (MkT 02 :* xs03) $ \xs02 ->
+    letAs' @(HList r) (MkT 01 :* xs02) $ \xs01 ->
+    letAs' @(HList r) (MkT 00 :* xs01) $ \xs00 ->
       castEqual xs00

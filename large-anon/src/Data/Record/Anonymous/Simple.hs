@@ -42,6 +42,7 @@ module Data.Record.Anonymous.Simple (
   , Field -- opaque
   , empty
   , insert
+  , insertA
   , get
   , set
   , merge
@@ -100,6 +101,11 @@ empty = fromAdvanced $ Adv.empty
 insert :: Field n -> a -> Record r -> Record (n := a : r)
 insert n x = fromAdvanced . Adv.insert n (I x) . toAdvanced
 
+insertA ::
+     Applicative m
+  => Field n -> m a -> m (Record r) -> m (Record (n := a : r))
+insertA f x r = insert f <$> x <*> r
+
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge r r' = fromAdvanced $ Adv.merge (toAdvanced r) (toAdvanced r')
 
@@ -125,7 +131,7 @@ instance HasField  n            (Adv.Record I r) (I a)
 
 -- | Get field from the record
 --
--- This is just a wrapper around 'getField'
+-- This is just a wrapper around 'getField'.
 get :: forall n r a.
      HasField n (Record r) a
   => Field n -> Record r -> a

@@ -30,6 +30,7 @@ module Data.Record.Anonymous.Internal.Record (
   , Field(..)
   , empty
   , insert
+  , insertA
   , get
   , set
   , merge
@@ -157,6 +158,29 @@ insert (Field n) x r@Record{recordDiff} = r {
   where
     co :: f a -> f Any
     co = noInlineUnsafeCo
+
+-- | Applicative insert
+--
+-- This is a simple wrapper around 'insert', but can be quite useful when
+-- constructing records. Consider code like
+--
+-- > foo :: m (a, b, c)
+-- > foo = (,,) <$> action1
+-- >            <*> action2
+-- >            <*> action3
+--
+-- We cannot really extend this to the world of named records, but we /can/
+-- do something comparable using anonymous records:
+--
+-- > foo :: m (Record f '[ "x" := a, "y" := b, "z" := c ])
+-- >    insertA #x action1
+-- >  $ insertA #y action2
+-- >  $ insertA #z action3
+-- >  $ pure Anon.empty
+insertA ::
+     Applicative m
+  => Field n -> m (f a) -> m (Record f r) -> m (Record f (n := a : r))
+insertA f x r = insert f <$> x <*> r
 
 -- | Get field from the record
 --

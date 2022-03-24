@@ -5,6 +5,7 @@ import Test.Tasty
 import qualified Test.Prop.Record.Combinators.Constrained
 import qualified Test.Prop.Record.Combinators.Simple
 import qualified Test.Sanity.AllFields
+import qualified Test.Sanity.Applicative
 import qualified Test.Sanity.Discovery
 import qualified Test.Sanity.DuplicateFields
 import qualified Test.Sanity.Generics
@@ -25,6 +26,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.DuplicateFields.tests
         , Test.Sanity.TypeLevelMetadata.tests
         , Test.Sanity.AllFields.tests
+        , Test.Sanity.Applicative.tests
         , Test.Sanity.Simple.tests
         , Test.Sanity.PolyKinds.tests
         , Test.Sanity.Discovery.tests

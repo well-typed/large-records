@@ -104,6 +104,7 @@ test-suite test-large-anon
       Test.Prop.Record.Model.Generator
       Test.Prop.Record.Model.Orphans
       Test.Sanity.AllFields
+      Test.Sanity.Applicative
       Test.Sanity.Discovery
       Test.Sanity.DuplicateFields
       Test.Sanity.Generics
@@ -124,6 +125,7 @@ test-suite test-large-anon
     , tasty
     , tasty-hunit
     , tasty-quickcheck
+    , validation-selective
 
       -- TODO: The dependencies below are unfortunate, and /should/ not be
       -- necessary: users should not have to declare dependencies on

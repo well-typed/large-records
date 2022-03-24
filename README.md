@@ -9,6 +9,7 @@ This repository contains all of the work on scalable records in Haskell:
   `large-records` and `large-anon`.
 - [beam-large-records](beam-large-records/) provides integration for
   `large-records` with [beam](https://hackage.haskell.org/package/beam-core).
+- [typelet](typelet/) provides experimental support for type-level sharing.
 - [large-records-benchmarks](large-records-benchmarks) contains a large number
   of benchmarks measuring the (compile time) performance of the `large-records`
   library.
@@ -22,6 +23,7 @@ blog posts:
 - [Avoiding quadratic core code size with large records](https://well-typed.com/blog/2021/08/large-records/)
 - [Induction without core-size blow-up a.k.a. Large records: anonymous edition](https://well-typed.com/blog/2021/10/large-records-part-2/)
 - [Type-level sharing in Haskell, now](https://well-typed.com/blog/2021/12/type-level-sharing-now/)
+- [New large-records release: now with 100% fewer quotes](https://well-typed.com/blog/2022/03/large-records-without-the-quotes/)
 
 as well as in various presentations:
 

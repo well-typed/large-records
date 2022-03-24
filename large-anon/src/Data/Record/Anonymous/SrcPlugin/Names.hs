@@ -1,45 +1,50 @@
 -- | Names used in code generation
 --
--- Intended for qualified import.
---
--- > import Data.Record.Anonymous.SrcPlugin.Names (Names)
--- > import qualified Data.Record.Anonymous.SrcPlugin.Names as N
+-- Intended for unqualified.
 module Data.Record.Anonymous.SrcPlugin.Names (
-    Names(..)
-  , advanced
-  , simple
+    -- * large-anon
+    LargeAnonNames(..)
+  , largeAnonNames
+    -- * typelet
+  , typelet_castEqual
   ) where
 
-import GHC
-import GhcPlugins
+import Data.Record.Anonymous.SrcPlugin.GhcShim
+import Data.Record.Anonymous.SrcPlugin.Options (Mode(..))
+
+{-------------------------------------------------------------------------------
+  large-anon
+-------------------------------------------------------------------------------}
 
 -- | Named required for code generation
 --
 -- All names are expected to be qualified with the full module name
-data Names = Names {
-      nameEmpty  :: RdrName
-    , nameInsert :: RdrName
+data LargeAnonNames = LargeAnonNames {
+      largeAnon_empty       :: RdrName
+    , largeAnon_insert      :: RdrName
+    , largeAnon_letRecordT  :: RdrName
+    , largeAnon_letInsertAs :: RdrName
     }
 
--- | Names used in the advanced interface
-advanced :: Names
-advanced = Names {
-      nameEmpty  = mkRdrQual modl $ mkVarOcc "empty"
-    , nameInsert = mkRdrQual modl $ mkVarOcc "insert"
-    }
-  where
-    modl :: ModuleName
-    modl = mkModuleName "Data.Record.Anonymous.Advanced"
-
--- | Names used in the simple interface
-simple :: Names
-simple = Names {
-      nameEmpty  = mkRdrQual modl $ mkVarOcc "empty"
-    , nameInsert = mkRdrQual modl $ mkVarOcc "insert"
+largeAnonNames :: Mode -> LargeAnonNames
+largeAnonNames mode = LargeAnonNames {
+      largeAnon_empty       = mkRdrQual modl $ mkVarOcc "empty"
+    , largeAnon_insert      = mkRdrQual modl $ mkVarOcc "insert"
+    , largeAnon_letRecordT  = mkRdrQual modl $ mkVarOcc "letRecordT"
+    , largeAnon_letInsertAs = mkRdrQual modl $ mkVarOcc "letInsertAs"
     }
   where
     modl :: ModuleName
-    modl = mkModuleName "Data.Record.Anonymous.Simple"
+    modl = case mode of
+             Simple   -> mkModuleName "Data.Record.Anonymous.Simple"
+             Advanced -> mkModuleName "Data.Record.Anonymous.Advanced"
 
+{-------------------------------------------------------------------------------
+  Typelet
+-------------------------------------------------------------------------------}
 
+typelet :: ModuleName
+typelet = mkModuleName "TypeLet"
 
+typelet_castEqual :: RdrName
+typelet_castEqual = mkRdrQual typelet $ mkVarOcc "castEqual"

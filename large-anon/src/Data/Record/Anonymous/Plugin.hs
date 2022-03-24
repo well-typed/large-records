@@ -21,8 +21,8 @@ plugin :: GHC.Plugins.Plugin
 plugin = GHC.Plugins.defaultPlugin {
       GHC.Plugins.tcPlugin = \_args -> Just $
         mkTcPlugin tcPlugin
-    , GHC.Plugins.parsedResultAction = \_args _modSummary ->
-        sourcePlugin
+    , GHC.Plugins.parsedResultAction = \args _modSummary ->
+        sourcePlugin args
     , GHC.Plugins.pluginRecompile =
         GHC.Plugins.purePlugin
     }

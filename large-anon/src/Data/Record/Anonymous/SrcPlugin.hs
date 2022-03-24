@@ -1,58 +1,55 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE NamedFieldPuns  #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections   #-}
 
 module Data.Record.Anonymous.SrcPlugin (sourcePlugin) where
 
-import Data.Bifunctor
+import Control.Monad
+import Control.Monad.Trans
 import Data.Generics (everywhereM, mkM)
-import Data.Set (Set)
 
-import qualified Data.Set as Set
-
-import Control.Monad.Reader (ReaderT, runReaderT, ask)
-import Control.Monad.State (StateT, runStateT, state)
-
-import Data.Record.Anonymous.SrcPlugin.Names (Names)
 import Data.Record.Anonymous.SrcPlugin.GhcShim
-
-import qualified Data.Record.Anonymous.SrcPlugin.Names as N
+import Data.Record.Anonymous.SrcPlugin.Names
+import Data.Record.Anonymous.SrcPlugin.NamingT
+import Data.Record.Anonymous.SrcPlugin.Options
 
 {-------------------------------------------------------------------------------
   Top-level
 -------------------------------------------------------------------------------}
 
-sourcePlugin :: HsParsedModule -> Hsc HsParsedModule
-sourcePlugin parsed@HsParsedModule{hpm_module = L l modl} = do
-    modl' <- transformExprs modl
-    return $ parsed { hpm_module = L l modl' }
-
-{-------------------------------------------------------------------------------
-  Module
--------------------------------------------------------------------------------}
-
-data Mode = Simple | Advanced
-
-transformExprs :: HsModule GhcPs -> Hsc (HsModule GhcPs)
-transformExprs modl@HsModule{hsmodDecls = decls, hsmodImports = imports} = do
-    (decls', modls) <- runTrackImports $ everywhereM (mkM goExpr) decls
-    return modl {
-        hsmodDecls   = decls'
-      , hsmodImports = imports ++ map (importDecl True) modls
+sourcePlugin :: [String] -> HsParsedModule -> Hsc HsParsedModule
+sourcePlugin opts
+             parsed@HsParsedModule{
+                 hpm_module = L l modl@HsModule{
+                     hsmodDecls   = decls
+                   , hsmodImports = imports
+                   }
+               } = do
+    (decls', modls) <- runNamingHsc $
+                         everywhereM
+                           (mkM $ transformExpr $ parseOpts opts)
+                           decls
+    return $ parsed {
+        hpm_module = L l $ modl {
+            hsmodDecls   = decls'
+          , hsmodImports = imports ++ map (importDecl True) modls
+          }
       }
+
+transformExpr :: Options -> LHsExpr GhcPs -> NamingT Hsc (LHsExpr GhcPs)
+transformExpr options@Options{debug} e@(L l expr)
+  | RecordCon _ext (L _ nm) (HsRecFields flds dotdot) <- expr
+  , Unqual nm' <- nm
+  , Nothing    <- dotdot
+  , Just mode  <- parseMode (occNameString nm')
+  , Just flds' <- mapM getField flds
+  = do e' <- anonRec options mode l flds'
+       when debug $ lift $ issueWarning l (debugMsg e')
+       return e'
+
+  | otherwise
+  = return e
   where
-    goExpr :: LHsExpr GhcPs -> TrackImports Hsc (LHsExpr GhcPs)
-    goExpr e@(L l expr)
-      | RecordCon _ext (L _ nm) (HsRecFields flds dotdot) <- expr
-      , Unqual nm' <- nm
-      , Nothing    <- dotdot
-      , Just mode  <- pickMode (occNameString nm')
-      , Just flds' <- mapM getField flds
-      = anonRec mode l flds'
-
-      | otherwise
-      = return e
-
     getField ::
          LHsRecField GhcPs (LHsExpr GhcPs)
       -> Maybe (FastString, LHsExpr GhcPs)
@@ -65,81 +62,102 @@ transformExprs modl@HsModule{hsmodDecls = decls, hsmodImports = imports} = do
       | otherwise
       = Nothing
 
-    pickMode :: String -> Maybe Mode
-    pickMode "ANON"   = Just Simple
-    pickMode "ANON_F" = Just Advanced
-    pickMode _        = Nothing
+debugMsg :: LHsExpr GhcPs -> SDoc
+debugMsg expr = pprSetDepth AllTheWay $ vcat [
+      text "large-records: splicing in the following expression:"
+    , ppr expr
+    ]
 
 {-------------------------------------------------------------------------------
   Main translation
 -------------------------------------------------------------------------------}
 
-anonRec :: forall m.
-     Monad m
-  => Mode
+anonRec ::
+     Options
+  -> Mode
   -> SrcSpan
   -> [(FastString, LHsExpr GhcPs)]
-  -> TrackImports m (LHsExpr GhcPs)
-anonRec mode = \l fields -> do
-    varEmpty <- mkVar mode l N.nameEmpty
-    fields'  <- mapM (uncurry insert) fields
-    return $ foldr (.) id fields' varEmpty
+  -> NamingT Hsc (LHsExpr GhcPs)
+anonRec Options{typelet} mode l fields
+  | null fields = do
+      useName largeAnon_empty
+      return $ mkVar l largeAnon_empty
+  | not typelet = do
+      recordWithoutTypelet mode l fields
+  | otherwise = do
+      p       <- freshVar l "p"
+      fields' <- mapM (\(n, e) -> (n,e,) <$> freshVar l "xs") fields
+      recordWithTypelet mode l p fields'
   where
-    insert ::
-         FastString
+    LargeAnonNames{..} = largeAnonNames mode
+
+recordWithoutTypelet ::
+     Mode
+  -> SrcSpan
+  -> [(FastString, LHsExpr GhcPs)]
+  -> NamingT Hsc (LHsExpr GhcPs)
+recordWithoutTypelet mode l = \fields -> do
+    useName largeAnon_empty
+    useName largeAnon_insert
+    return $ go fields
+  where
+    LargeAnonNames{..} = largeAnonNames mode
+
+    go :: [(FastString, LHsExpr GhcPs)] -> LHsExpr GhcPs
+    go []         = mkVar l largeAnon_empty
+    go ((n,e):fs) = mkVar l largeAnon_insert `mkHsApps` [mkLabel l n, e, go fs]
+
+-- | Experimental support for typelet
+--
+-- See documentation of 'letRecordT' and 'letInsertAs'.
+recordWithTypelet ::
+     Mode
+  -> SrcSpan
+  -> RdrName                                -- ^ Fresh var for the proxy
+  -> [(FastString, LHsExpr GhcPs, RdrName)] -- ^ Fresh var for each insert
+  -> NamingT Hsc (LHsExpr GhcPs)
+recordWithTypelet mode l p = \fields -> do
+    useName largeAnon_empty
+    useName largeAnon_insert
+    useName largeAnon_letRecordT
+    useName largeAnon_letInsertAs
+    useName typelet_castEqual
+
+    return $
+      mkHsApp (mkVar l largeAnon_letRecordT) $
+        simpleLam p $ mkHsApp (mkVar l typelet_castEqual) $
+          go (mkVar l largeAnon_empty) $ reverse fields
+  where
+    LargeAnonNames{..} = largeAnonNames mode
+
+    go ::
+         LHsExpr GhcPs
+      -> [(FastString, LHsExpr GhcPs, RdrName)]
       -> LHsExpr GhcPs
-      -> TrackImports m (LHsExpr GhcPs -> LHsExpr GhcPs)
-    insert nm expr@(L l _) = do
-        varInsert <- mkVar mode l N.nameInsert
-        return $ \r -> varInsert `mkHsApp` label `mkHsApp` expr `mkHsApp` r
+    go prev []           = mkHsApp  (mkVar l typelet_castEqual) prev
+    go prev ((n,e,x):fs) = mkHsApps (mkVar l largeAnon_letInsertAs) [
+          mkVar l p
+        , mkLabel l n
+        , e
+        , prev
+        , simpleLam x $ go (mkVar l x) fs
+        ]
       where
-        label :: LHsExpr GhcPs
-        label = L l $ HsOverLabel defExt Nothing nm
 
 {-------------------------------------------------------------------------------
-  Auxiliary: keep track of which imports we need
+  Auxiliary
 -------------------------------------------------------------------------------}
 
-data Env = Env {
-      envNamesAdvanced :: Names
-    , envNamesSimple   :: Names
-    }
+mkVar :: SrcSpan -> RdrName -> LHsExpr GhcPs
+mkVar l name = L l $ HsVar defExt (L l name)
 
-newtype TrackImports m a = WrapTrackImports {
-      unwrapTrackImports :: StateT (Set ModuleName) (ReaderT Env m) a
-    }
-  deriving (Functor, Applicative, Monad)
+mkLabel :: SrcSpan -> FastString -> LHsExpr GhcPs
+mkLabel l n = L l $ HsOverLabel defExt Nothing n
 
-runTrackImports :: Functor m => TrackImports m a -> m (a, [ModuleName])
-runTrackImports =
-      fmap (second Set.toList)
-    . flip runReaderT env
-    . flip runStateT  Set.empty
-    . unwrapTrackImports
-  where
-    env :: Env
-    env = Env {
-          envNamesAdvanced = N.advanced
-        , envNamesSimple   = N.simple
-        }
-
-useName :: Monad m => Mode -> (Names -> RdrName) -> TrackImports m RdrName
-useName mode f = WrapTrackImports $ do
-    env <- ask
-    let nm = case mode of
-               Simple   -> f $ envNamesSimple   env
-               Advanced -> f $ envNamesAdvanced env
-    case nm of
-      Qual modl _ -> state $ \imports -> (nm, Set.insert modl imports)
-      _otherwise  -> error "getName: expected qualified name"
-
-mkVar ::
-     Monad m
-  => Mode
-  -> SrcSpan
-  -> (Names -> RdrName)
-  -> TrackImports m (LHsExpr GhcPs)
-mkVar mode l f = aux <$> useName mode f
-  where
-    aux :: RdrName -> LHsExpr GhcPs
-    aux name = L l (HsVar defExt (L l name))
+-- | Construct simple lambda
+--
+-- Constructs lambda of the form
+--
+-- > \x -> e
+simpleLam :: RdrName -> LHsExpr GhcPs -> LHsExpr GhcPs
+simpleLam x body = mkHsLam [nlVarPat x] body

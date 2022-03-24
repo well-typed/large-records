@@ -2,9 +2,15 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
+-- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:debug   #-}
+{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
 
-module Test.Sanity.SrcPlugin.WithoutTypelet (tests) where
+-- | Tests for @typelet@
+--
+-- These tests are identical to the ones in @WithoutTypelet@, except that we
+-- enable the @typelet@ plugin option here.
+module Test.Sanity.SrcPlugin.WithTypelet (tests) where
 
 import Data.SOP.BasicFunctors
 
@@ -21,7 +27,7 @@ import Test.Tasty.HUnit
 -------------------------------------------------------------------------------}
 
 tests :: TestTree
-tests = testGroup "Test.Sanity.SrcPlugin.WithoutTypelet" [
+tests = testGroup "Test.Sanity.SrcPlugin.WithTypelet" [
       testCase "simple"   test_simple
     , testCase "advanced" test_advanced
     ]
@@ -67,11 +73,7 @@ example_simple = ANON {
     , c = True
     }
 
--- | Example showing that we can easily reorder fields
---
--- Importantly, the @a = 1@ assignment does /not/ lead to warnings about
--- defaulting @1@: the projection causes a unificaiton to happen between its
--- type and @Int@ (provided we have a type annotation, of course).
+-- | Check that the use of typelet does not hinder type inference
 example_simple_reordered :: S.Record '[ "a" := Int, "b" := Char, "c" := Bool ]
 example_simple_reordered = S.project $ ANON {
       a = 1
@@ -79,7 +81,6 @@ example_simple_reordered = S.project $ ANON {
     , b = 'a'
     }
 
--- TODO: If we write a := Int by mistake, this leads to a panic in the plugin
 example_advanced_I :: A.Record I '[ "a" := Int, "b" := Char, "c" := Bool ]
 example_advanced_I = ANON_F {
       a = I 1

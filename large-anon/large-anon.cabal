@@ -43,8 +43,10 @@ library
   other-modules:
 
       Data.Record.Anonymous.SrcPlugin
-      Data.Record.Anonymous.SrcPlugin.Names
       Data.Record.Anonymous.SrcPlugin.GhcShim
+      Data.Record.Anonymous.SrcPlugin.Names
+      Data.Record.Anonymous.SrcPlugin.NamingT
+      Data.Record.Anonymous.SrcPlugin.Options
 
       Data.Record.Anonymous.TcPlugin.Constraints.AllFields
       Data.Record.Anonymous.TcPlugin.Constraints.HasField
@@ -71,10 +73,11 @@ library
     , mtl
     , record-hasfield
     , sop-core
+    , syb
     , text
+    , typelet
     , unordered-containers
     , vector
-    , syb
 
       -- TODO: Make this dependency optional (DEBUG flag)
     , recover-rtti >= 0.4.1
@@ -122,6 +125,7 @@ test-suite test-large-anon
       Test.Sanity.PolyKinds
       Test.Sanity.Simple
       Test.Sanity.SrcPlugin.WithoutTypelet
+      Test.Sanity.SrcPlugin.WithTypelet
       Test.Sanity.TypeLevelMetadata
   build-depends:
       base
@@ -132,6 +136,7 @@ test-suite test-large-anon
     , tasty
     , tasty-hunit
     , tasty-quickcheck
+    , typelet
     , validation-selective
 
       -- TODO: The dependencies below are unfortunate, and /should/ not be
@@ -148,3 +153,7 @@ test-suite test-large-anon
       -Wall
       -Wno-unticked-promoted-constructors
       -fno-show-valid-hole-fits
+
+  if impl(ghc >= 9.0.1)
+    -- Work out ghc problem. See more detailed discussion in large-records.
+    ghc-options: -Wno-unused-imports

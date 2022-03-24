@@ -63,6 +63,9 @@ module Data.Record.Anonymous.Advanced (
   , describeRecord
   , recordWithMetadata
   , recordWithNames
+    -- * Support for @typelet@
+  , Record.letRecordT
+  , Record.letInsertAs
   ) where
 
 import Data.Record.Anonymous.Internal.Record (Record)

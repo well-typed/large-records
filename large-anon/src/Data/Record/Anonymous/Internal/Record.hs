@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -36,6 +37,9 @@ module Data.Record.Anonymous.Internal.Record (
   , merge
   , lens
   , project
+    -- * Support for @typelet@
+  , letRecordT
+  , letInsertAs
   ) where
 
 import Data.Bifunctor
@@ -46,6 +50,7 @@ import GHC.Exts (Any)
 import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
+import TypeLet.UserAPI
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
 import Data.Record.Anonymous.Internal.Diff (Diff)
@@ -294,3 +299,36 @@ lens = \(canonicalize -> r) ->
 -- This is just @fst . lens@.
 project :: Project f r r' => Record f r -> Record f r'
 project = fst . lens
+
+{-------------------------------------------------------------------------------
+  Support for @typelet@
+-------------------------------------------------------------------------------}
+
+-- | Introduce type variable for a row
+--
+-- This can be used in conjunction with 'letInsertAs':
+--
+-- > example :: Record I '[ "a" := Int, "b" := Char, "c" := Bool ]
+-- > example = letRecordT $ \p -> castEqual $
+-- >     letInsertAs p #c (I True) empty $ \xs02 ->
+-- >     letInsertAs p #b (I 'X' ) xs02  $ \xs01 ->
+-- >     letInsertAs p #a (I 1   ) xs01  $ \xs00 ->
+-- >     castEqual xs00
+letRecordT :: forall r f.
+     (forall r'. Let r' r => Proxy r' -> Record f r)
+  -> Record f r
+letRecordT f = letT' (Proxy @r) f
+
+-- | Insert field into a record and introduce type variable for the result
+letInsertAs :: forall r r' f n a.
+     Proxy r       -- ^ Type of the record we are constructing
+  -> Field n       -- ^ New field to be inserted
+  -> f a           -- ^ Value of the new field
+  -> Record f r'   -- ^ Record constructed so far
+  -> (forall r''. Let r'' (n := a : r') => Record f r'' -> Record f r)
+                   -- ^ Assign type variable to new partial record, and continue
+  -> Record f r
+letInsertAs _ n x r = letAs' (insert n x r)
+
+
+

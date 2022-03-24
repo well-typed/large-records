@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anonymous.Plugin.Solver (
+module Data.Record.Anonymous.TcPlugin.Solver (
     solve
   ) where
 
@@ -9,15 +9,15 @@ import Data.Bifunctor
 import Data.Maybe (catMaybes)
 import Data.Traversable (forM)
 
-import Data.Record.Anonymous.Plugin.Constraints.AllFields
-import Data.Record.Anonymous.Plugin.Constraints.HasField
-import Data.Record.Anonymous.Plugin.Constraints.KnownFields
-import Data.Record.Anonymous.Plugin.Constraints.KnownHash
-import Data.Record.Anonymous.Plugin.Constraints.Project
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-import Data.Record.Anonymous.Plugin.NameResolution
-import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.TyConSubst
+import Data.Record.Anonymous.TcPlugin.Constraints.AllFields
+import Data.Record.Anonymous.TcPlugin.Constraints.HasField
+import Data.Record.Anonymous.TcPlugin.Constraints.KnownFields
+import Data.Record.Anonymous.TcPlugin.Constraints.KnownHash
+import Data.Record.Anonymous.TcPlugin.Constraints.Project
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.NameResolution
+import Data.Record.Anonymous.TcPlugin.Parsing
+import Data.Record.Anonymous.TcPlugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Top-level solver

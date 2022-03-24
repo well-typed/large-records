@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anonymous.Plugin.Constraints.KnownHash (
+module Data.Record.Anonymous.TcPlugin.Constraints.KnownHash (
     CKnownHash(..)
   , parseKnownHash
   , solveKnownHash
@@ -10,10 +10,10 @@ module Data.Record.Anonymous.Plugin.Constraints.KnownHash (
 import Data.Hashable (hash)
 import Data.Void
 
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-import Data.Record.Anonymous.Plugin.NameResolution
-import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.TyConSubst
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.NameResolution
+import Data.Record.Anonymous.TcPlugin.Parsing
+import Data.Record.Anonymous.TcPlugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Definition

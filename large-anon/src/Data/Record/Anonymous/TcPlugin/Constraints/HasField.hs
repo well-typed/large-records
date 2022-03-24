@@ -2,7 +2,7 @@
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anonymous.Plugin.Constraints.HasField (
+module Data.Record.Anonymous.TcPlugin.Constraints.HasField (
     CHasField(..)
   , parseHasField
   , solveHasField
@@ -14,10 +14,10 @@ import GHC.Stack
 
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields, FieldLabel(..))
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-import Data.Record.Anonymous.Plugin.NameResolution
-import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.TyConSubst
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.NameResolution
+import Data.Record.Anonymous.TcPlugin.Parsing
+import Data.Record.Anonymous.TcPlugin.TyConSubst
 
 import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow

@@ -1,12 +1,12 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anonymous.Plugin.NameResolution (
+module Data.Record.Anonymous.TcPlugin.NameResolution (
     ResolvedNames(..)
   , nameResolution
   ) where
 
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 
 -- | Names we need to parse constraints or generate core
 --

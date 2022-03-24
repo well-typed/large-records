@@ -39,7 +39,7 @@ import qualified Data.HashMap.Strict as HashMap
 
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 
 {-------------------------------------------------------------------------------
   Definition

@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Data.Record.Anonymous.Plugin.TyConSubst (
+module Data.Record.Anonymous.TcPlugin.TyConSubst (
     TyConSubst -- opaque
   , mkTyConSubst
   , splitTyConApp_upTo
@@ -17,8 +17,8 @@ import Data.Map (Map)
 
 import qualified Data.Map as Map
 
-import Data.Record.Anonymous.Plugin.EquivClasses
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI hiding ((<>))
+import Data.Record.Anonymous.TcPlugin.EquivClasses
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI hiding ((<>))
 
 {-------------------------------------------------------------------------------
   The main type

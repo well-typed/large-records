@@ -31,8 +31,8 @@ import GHC.TypeLits (Symbol, KnownSymbol)
 
 import qualified GHC.TypeLits as GHC
 
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-import Data.Record.Anonymous.Plugin.NameResolution
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.NameResolution
 
 {-------------------------------------------------------------------------------
   Definition

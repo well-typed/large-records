@@ -4,9 +4,9 @@ import GHC.TcPlugin.API
 
 import qualified GHC.Plugins
 
-import Data.Record.Anonymous.Plugin.NameResolution
-import Data.Record.Anonymous.Plugin.Rewriter
-import Data.Record.Anonymous.Plugin.Solver
+import Data.Record.Anonymous.TcPlugin.NameResolution
+import Data.Record.Anonymous.TcPlugin.Rewriter
+import Data.Record.Anonymous.TcPlugin.Solver
 
 plugin :: GHC.Plugins.Plugin
 plugin = GHC.Plugins.defaultPlugin {

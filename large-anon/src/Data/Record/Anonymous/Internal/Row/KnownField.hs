@@ -18,7 +18,7 @@ import Data.Record.Generic (FieldMetadata(..))
 import GHC.TypeLits (symbolVal)
 
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 
 import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 

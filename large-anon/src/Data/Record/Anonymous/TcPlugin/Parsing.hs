@@ -6,7 +6,7 @@
 --
 -- TODO: Perhaps we could move this (or some form of this) to ghc-tcplugin-api?
 -- (The @typelet@ package could then use it, too.)
-module Data.Record.Anonymous.Plugin.Parsing (
+module Data.Record.Anonymous.TcPlugin.Parsing (
     -- * Basic infrastructure
     ParseResult(..)
   , parseAll
@@ -25,8 +25,8 @@ import Data.Foldable (toList)
 import Data.Void
 import GHC.Stack
 
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-import Data.Record.Anonymous.Plugin.TyConSubst
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.TyConSubst
 
 {-------------------------------------------------------------------------------
   Basic infrastructure

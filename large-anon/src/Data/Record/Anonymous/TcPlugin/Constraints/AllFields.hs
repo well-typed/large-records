@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module Data.Record.Anonymous.Plugin.Constraints.AllFields (
+module Data.Record.Anonymous.TcPlugin.Constraints.AllFields (
     CAllFields(..)
   , parseAllFields
   , solveAllFields
@@ -17,10 +17,10 @@ import Data.Void
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
 import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow)
 import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-import Data.Record.Anonymous.Plugin.NameResolution
-import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.TyConSubst
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.NameResolution
+import Data.Record.Anonymous.TcPlugin.Parsing
+import Data.Record.Anonymous.TcPlugin.TyConSubst
 
 import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
 import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow

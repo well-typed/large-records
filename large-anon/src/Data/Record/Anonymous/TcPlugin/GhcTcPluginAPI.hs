@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 -- | Thin layer around ghc-tcplugin-api
-module Data.Record.Anonymous.Plugin.GhcTcPluginAPI (
+module Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI (
     -- * Standard exports
     module GHC.TcPlugin.API
   , module GHC.Builtin.Names

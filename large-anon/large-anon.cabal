@@ -39,19 +39,19 @@ library
       Data.Record.Anonymous.Internal.StrictVector
 
       -- Exposed for the benefit of cabal-docspec
-      Data.Record.Anonymous.Plugin.EquivClasses
+      Data.Record.Anonymous.TcPlugin.EquivClasses
   other-modules:
-      Data.Record.Anonymous.Plugin.Constraints.AllFields
-      Data.Record.Anonymous.Plugin.Constraints.HasField
-      Data.Record.Anonymous.Plugin.Constraints.KnownFields
-      Data.Record.Anonymous.Plugin.Constraints.KnownHash
-      Data.Record.Anonymous.Plugin.Constraints.Project
-      Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-      Data.Record.Anonymous.Plugin.NameResolution
-      Data.Record.Anonymous.Plugin.Parsing
-      Data.Record.Anonymous.Plugin.Rewriter
-      Data.Record.Anonymous.Plugin.Solver
-      Data.Record.Anonymous.Plugin.TyConSubst
+      Data.Record.Anonymous.TcPlugin.Constraints.AllFields
+      Data.Record.Anonymous.TcPlugin.Constraints.HasField
+      Data.Record.Anonymous.TcPlugin.Constraints.KnownFields
+      Data.Record.Anonymous.TcPlugin.Constraints.KnownHash
+      Data.Record.Anonymous.TcPlugin.Constraints.Project
+      Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+      Data.Record.Anonymous.TcPlugin.NameResolution
+      Data.Record.Anonymous.TcPlugin.Parsing
+      Data.Record.Anonymous.TcPlugin.Rewriter
+      Data.Record.Anonymous.TcPlugin.Solver
+      Data.Record.Anonymous.TcPlugin.TyConSubst
   other-extensions:
   build-depends:
       base             >= 4.13  && < 4.18

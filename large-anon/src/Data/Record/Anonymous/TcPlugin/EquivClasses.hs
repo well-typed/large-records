@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Data.Record.Anonymous.Plugin.EquivClasses (
+module Data.Record.Anonymous.TcPlugin.EquivClasses (
     constructEquivClasses
   , canonicalize
   ) where

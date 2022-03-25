@@ -93,8 +93,6 @@ forced (and normally it isn't), compilation time is still fine:
 
 ## Benchmarks for `large-anon`
 
-TODO: We need a comparison here.
-
 ### Record construction
 
 This uses the source plugin, but it offers merely syntactic sugar, it does not
@@ -108,6 +106,11 @@ without.
 
 ![](graphs/large-anon-construct-coresize.png)
 ![](graphs/large-anon-construct-timing.png)
+
+Comparison with [`superrecord`][superrecord]:
+
+![](graphs/large-anon-vs-superrecord-construct-coresize.png)
+![](graphs/large-anon-vs-superrecord-construct-timing.png)
 
 ## Experiments
 
@@ -272,5 +275,6 @@ and one using `let`.
 [large-generics-json]: ../../large-generics/src/Data/Record/Generic/JSON.hs
 [large-generics]: ../../large-generics/
 [RDP]: https://hackage.haskell.org/package/record-dot-preprocessor
+[superrecord]: https://hackage.haskell.org/package/superrecord
 [typelet]: https://hackage.haskell.org/package/typelet
 [very-simple-optimiser]: https://gitlab.haskell.org/ghc/ghc/-/blob/ghc-8.8.4-release/compiler/coreSyn/CoreOpt.hs#L66-86

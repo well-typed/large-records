@@ -13,6 +13,7 @@ set -e
 # cabal build bench-experiments --flags="+profile-coresize +profile-timing"
 # cabal build bench-typelet     --flags="+profile-coresize +profile-timing"
 # cabal build bench-large-anon  --flags="+profile-coresize +profile-timing"
+# cabal build bench-superrecord --flags="+profile-coresize +profile-timing"
 
 ## Core size
 
@@ -21,6 +22,7 @@ cabal build bench-after        --flags=+profile-coresize
 cabal build bench-experiments  --flags=+profile-coresize
 cabal build bench-typelet      --flags=+profile-coresize
 cabal build bench-large-anon   --flags=+profile-coresize
+cabal build bench-superrecord  --flags=+profile-coresize
 
 cabal run parse-coresize -- \
   --dist ../../dist-newstyle \
@@ -34,6 +36,7 @@ cabal build bench-after        --flags=+profile-timing
 cabal build bench-experiments  --flags=+profile-timing
 cabal build bench-typelet      --flags=+profile-timing
 cabal build bench-large-anon   --flags=+profile-timing
+cabal build bench-superrecord  --flags=+profile-timing
 
 cabal run parse-timing -- \
   --dist ../../dist-newstyle \

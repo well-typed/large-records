@@ -513,6 +513,72 @@ executable bench-typelet
   if flag(profile-timing)
     cpp-options: -DPROFILE_TIMING
 
+executable bench-large-anon
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      bench/large-anon
+  default-language:
+      Haskell2010
+  default-extensions:
+      CPP
+  ghc-options:
+      -Wall
+      -Wno-unticked-promoted-constructors
+  other-modules:
+
+      Common.RowOfSize.Row010
+      Common.RowOfSize.Row020
+      Common.RowOfSize.Row030
+      Common.RowOfSize.Row040
+      Common.RowOfSize.Row050
+      Common.RowOfSize.Row060
+      Common.RowOfSize.Row070
+      Common.RowOfSize.Row080
+      Common.RowOfSize.Row090
+      Common.RowOfSize.Row100
+
+      Experiment.ConstructNoTypelet.Sized.R000
+      Experiment.ConstructNoTypelet.Sized.R010
+      Experiment.ConstructNoTypelet.Sized.R020
+      Experiment.ConstructNoTypelet.Sized.R030
+      Experiment.ConstructNoTypelet.Sized.R040
+      Experiment.ConstructNoTypelet.Sized.R050
+      Experiment.ConstructNoTypelet.Sized.R060
+      Experiment.ConstructNoTypelet.Sized.R070
+      Experiment.ConstructNoTypelet.Sized.R080
+      Experiment.ConstructNoTypelet.Sized.R090
+      Experiment.ConstructNoTypelet.Sized.R100
+
+      Experiment.ConstructWithTypelet.Sized.R000
+      Experiment.ConstructWithTypelet.Sized.R010
+      Experiment.ConstructWithTypelet.Sized.R020
+      Experiment.ConstructWithTypelet.Sized.R030
+      Experiment.ConstructWithTypelet.Sized.R040
+      Experiment.ConstructWithTypelet.Sized.R050
+      Experiment.ConstructWithTypelet.Sized.R060
+      Experiment.ConstructWithTypelet.Sized.R070
+      Experiment.ConstructWithTypelet.Sized.R080
+      Experiment.ConstructWithTypelet.Sized.R090
+      Experiment.ConstructWithTypelet.Sized.R100
+
+  build-depends:
+      base
+    , large-records-benchmarks
+    , large-anon
+    , typelet
+
+    -- TODO: These dependencies should not be here
+    -- (This is the module finding problem in large-anon)
+    , sop-core
+    , large-generics
+    , record-hasfield
+
+  if flag(profile-coresize)
+    cpp-options: -DPROFILE_CORESIZE
+  if flag(profile-timing)
+    cpp-options: -DPROFILE_TIMING
+
 -- This contains some sanity checks for the various benchmarks. Instead of
 -- making each of those benchmarks their own library just for the sake of these
 -- simple tests, we instead use directory sharing.

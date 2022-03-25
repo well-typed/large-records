@@ -29,7 +29,7 @@ All measurements are done with `ghc` 8.8.4 as this is the version of `ghc` used
 by the client for whom this work was done ([Juspay](https://juspay.in/)). The
 only exception is the `NoFieldSelectors` experiment, see below.
 
-## Benchmarks
+## Benchmarks for `large-records`
 
 ### Benchmark: "Before vs After"
 
@@ -90,6 +90,24 @@ Provided that the full tree before the very simple optimiser is never fully
 forced (and normally it isn't), compilation time is still fine:
 
 ![](graphs/benchmark-06-hasnormalform-timing.png)
+
+## Benchmarks for `large-anon`
+
+TODO: We need a comparison here.
+
+### Record construction
+
+This uses the source plugin, but it offers merely syntactic sugar, it does not
+use any unsafe features from the library; you could instead just write these
+as repeated inserts. The library _does_ offer experimental integration with
+`typelet`, which confirms that the only source of non-linear core size is indeed
+the lack of type sharing in the type arguments to `insert`. However, as the
+benchmarks show, this does not actually result in an improvement in compilation
+time (at least, not for this benchmark): compilation time is nicely linear
+without.
+
+![](graphs/large-anon-construct-coresize.png)
+![](graphs/large-anon-construct-timing.png)
 
 ## Experiments
 

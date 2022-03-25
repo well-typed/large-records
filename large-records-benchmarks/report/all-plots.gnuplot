@@ -246,3 +246,22 @@ set ylabel "Compilation time (ms)"
 set output "graphs/typelet-ap-timing.png"
 plot "<(cat timing.csv | grep ApBaseline)" using 2:3 with lines lt rgb "#EE2222" title "Baseline" \
    , "<(cat timing.csv | grep ApLet)"      using 2:3 with lines lt rgb "#2222EE" title "Let"
+
+## large-anon: construction
+
+set xlabel "Record size"
+set xrange [0:100]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/large-anon-construct-coresize.png"
+plot "<(cat coresize.csv | grep ConstructNoTypelet   | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds-preopt)" \
+   , "<(cat coresize.csv | grep ConstructNoTypelet   | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds)" \
+   , "<(cat coresize.csv | grep ConstructNoTypelet   | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (simpl)" \
+   , "<(cat coresize.csv | grep ConstructWithTypelet | grep ds-preopt,)" using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds-preopt)" \
+   , "<(cat coresize.csv | grep ConstructWithTypelet | grep ds,)"        using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds)" \
+   , "<(cat coresize.csv | grep ConstructWithTypelet | grep simpl,)"     using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/large-anon-construct-timing.png"
+plot "<(cat timing.csv | grep ConstructNoTypelet)"   using 2:3 with lines lt rgb "#EE2222" title "Without TypeLet" \
+   , "<(cat timing.csv | grep ConstructWithTypelet)" using 2:3 with lines lt rgb "#2222EE" title "With TypeLet"

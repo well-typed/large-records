@@ -25,6 +25,9 @@ cycle). We measure this _without_ also using any of the core dump options
 not only do these flags affect compilation time, they may do so non-linearly if
 part of the tree is never actually forced.
 
+Runtime benchmarks do use `-O1`, since here we are interested in how the library
+would behave in a production build.
+
 All measurements are done with `ghc` 8.8.4 as this is the version of `ghc` used
 by the client for whom this work was done ([Juspay](https://juspay.in/)). The
 only exception is the `NoFieldSelectors` experiment, see below.
@@ -134,6 +137,19 @@ Comparison with `superrecord`:
 
 Here is where we see the win from `applyDiff` (we paid for it during record
 construction).
+
+### Field override
+
+This overwrites half the record fields.
+
+![](graphs/large-anon-set-coresize.png)
+![](graphs/large-anon-set-timing.png)
+
+Comparison with `superrecord`:
+
+![](graphs/large-anon-vs-superrecord-set-coresize.png)
+![](graphs/large-anon-vs-superrecord-set-timing.png)
+![](graphs/large-anon-vs-superrecord-set-runtime.png)
 
 ## Experiments
 

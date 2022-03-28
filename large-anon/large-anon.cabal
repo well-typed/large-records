@@ -71,6 +71,7 @@ library
     , hashable
     , large-generics
     , mtl
+    , primitive
     , record-hasfield
     , sop-core
     , syb

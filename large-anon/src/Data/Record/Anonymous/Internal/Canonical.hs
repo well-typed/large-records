@@ -53,8 +53,8 @@ import Data.SOP.Classes (type (-.->)(apFn))
 import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
 
-import qualified Data.Vector         as Lazy
-import qualified Data.Vector.Generic as V
+import qualified Data.Foldable as Foldable
+import qualified Data.Vector   as Lazy
 
 import Data.Record.Anonymous.Internal.StrictVector (Vector)
 
@@ -107,7 +107,7 @@ deriving instance Show a => Show (Canonical (K a))
 --
 -- @O(1)@.
 getAtIndex :: Canonical f -> Int -> f Any
-getAtIndex Canonical{canonValues} ix = canonValues V.! ix
+getAtIndex Canonical{canonValues} ix = canonValues Strict.! ix
 
 -- | Set fields at the specified indices
 --
@@ -115,7 +115,7 @@ getAtIndex Canonical{canonValues} ix = canonValues V.! ix
 -- @O(1)@ if the list of updates is empty.
 setAtIndex :: [(Int, f Any)] -> Canonical f -> Canonical f
 setAtIndex [] c             = c
-setAtIndex fs (Canonical v) = Canonical (v V.// fs)
+setAtIndex fs (Canonical v) = Canonical (v Strict.// fs)
 
 {-------------------------------------------------------------------------------
   Conversion
@@ -125,7 +125,7 @@ setAtIndex fs (Canonical v) = Canonical (v V.// fs)
 --
 -- @O(n)@
 toList :: Canonical f -> [f Any]
-toList (Canonical v) = V.toList v
+toList (Canonical v) = Foldable.toList v
 
 -- | From list of fields in row order
 --
@@ -168,8 +168,10 @@ insert new = prepend
 -- @O(n)@ (in both directions)
 lens :: [Int] -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
 lens is (Canonical v) = (
-      Canonical $ V.backpermute v (Strict.fromList is)
-    , \(Canonical v') -> Canonical $ v V.// (Prelude.zip is (V.toList v'))
+      Canonical $
+        Strict.permute v is
+    , \(Canonical v') -> Canonical $
+        v Strict.// (Prelude.zip is (Foldable.toList v'))
     )
 
 {-------------------------------------------------------------------------------
@@ -198,7 +200,7 @@ mapM f (Canonical v) = Canonical <$> Strict.mapM f v
 zipWith ::
      (forall x. f x -> g x -> h x)
   -> Canonical f -> Canonical g -> Canonical h
-zipWith f (Canonical v) (Canonical v') = Canonical $ V.zipWith f v v'
+zipWith f (Canonical v) (Canonical v') = Canonical $ Strict.zipWith f v v'
 
 -- | Monadic zip of two records
 --
@@ -207,10 +209,10 @@ zipWithM ::
      Monad m
   => (forall x. f x -> g x -> m (h x))
   -> Canonical f -> Canonical g -> m (Canonical h)
-zipWithM f (Canonical v) (Canonical v') = Canonical <$> V.zipWithM f v v'
+zipWithM f (Canonical v) (Canonical v') = Canonical <$> Strict.zipWithM f v v'
 
 collapse :: Canonical (K a) -> [a]
-collapse (Canonical v) = co $ V.toList v
+collapse (Canonical v) = co $ Foldable.toList v
   where
     co :: [K a Any] -> [a]
     co = coerce

@@ -12,14 +12,16 @@ module Data.Record.Anonymous.SrcPlugin.Options (
 -------------------------------------------------------------------------------}
 
 data Options = Options {
-      debug   :: Bool
-    , typelet :: Bool
+      debug   :: Bool -- ^ Dump generated code
+    , typelet :: Bool -- ^ Integrate with @typelet@ for truly O(1) coresize
+    , noapply :: Bool -- ^ Omit the call to 'applyDiff'
     }
 
 defaultOptions :: Options
 defaultOptions = Options {
       debug   = False
-    , typelet = False -- TODO: Should typelet be the default?
+    , typelet = False
+    , noapply = False
     }
 
 parseOpts :: [String] -> Options
@@ -28,6 +30,7 @@ parseOpts = ($ defaultOptions) . foldr (.) id . map aux
     aux :: String -> Options -> Options
     aux "debug"   opts = opts { debug   = True }
     aux "typelet" opts = opts { typelet = True }
+    aux "noapply" opts = opts { noapply = True }
     aux opt       _    = error $ "invalid option: " ++ show opt
 
 {-------------------------------------------------------------------------------

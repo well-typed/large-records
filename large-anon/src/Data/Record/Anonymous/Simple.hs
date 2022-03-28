@@ -49,6 +49,7 @@ module Data.Record.Anonymous.Simple (
   , merge
   , lens
   , project
+  , applyDiff
     -- * Constraints
   , RecordConstraints
     -- * Working with rows
@@ -122,6 +123,9 @@ lens =
 
 project :: Project I r r' => Record r -> Record r'
 project = fst . lens
+
+applyDiff :: Record r -> Record r
+applyDiff = fromAdvanced . Adv.applyDiff . toAdvanced
 
 {-------------------------------------------------------------------------------
   HasField

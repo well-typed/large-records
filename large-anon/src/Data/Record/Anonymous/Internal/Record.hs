@@ -37,6 +37,7 @@ module Data.Record.Anonymous.Internal.Record (
   , merge
   , lens
   , project
+  , applyDiff
     -- * Support for @typelet@
   , letRecordT
   , letInsertAs
@@ -109,8 +110,8 @@ import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
 data Record (f :: k -> Type) (r :: Row k) = Record {
-      recordDiff  :: Diff f
-    , recordCanon :: Canonical f
+      recordDiff  :: !(Diff f)
+    , recordCanon :: !(Canonical f)
     }
 
 type role Record nominal representational
@@ -299,6 +300,18 @@ lens = \(canonicalize -> r) ->
 -- This is just @fst . lens@.
 project :: Project f r r' => Record f r -> Record f r'
 project = fst . lens
+
+-- | Apply all pending changes to the record
+--
+-- Updates on a record are stored in a hash table. As this hashtable grows,
+-- record field access and update will become more expensive. Applying the
+-- updates, resulting in a flat vector, is an @O(n)@ operation. This will happen
+-- automatically whenever another @O(n)@ operation is applied (for example,
+-- mapping a function over the record). However, cccassionally it is useful to
+-- explicitly apply these changes, for example after constructing a record or
+-- updating a lot of fields.
+applyDiff :: Record f r -> Record f r
+applyDiff (canonicalize -> r) = unsafeFromCanonical r
 
 {-------------------------------------------------------------------------------
   Support for @typelet@

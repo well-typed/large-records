@@ -6,12 +6,12 @@
 #endif
 {-# LANGUAGE OverloadedLabels #-}
 
-module Experiments.SR_Construct.Sized.R070 where
+module Experiment.SR_Construct.Sized.R080 where
 
 import SuperRecord
 
 import Bench.Types
-import Common.RowOfSize.Row070 (Row)
+import Common.RowOfSize.Row080 (Row)
 
 record :: Word -> Rec Row
 record x =
@@ -92,4 +92,15 @@ record x =
     $ rcons (#t67 := MkT x)
     $ rcons (#t68 := MkT x)
     $ rcons (#t69 := MkT x)
+      -- 70 .. 79
+    $ rcons (#t70 := MkT x)
+    $ rcons (#t71 := MkT x)
+    $ rcons (#t72 := MkT x)
+    $ rcons (#t73 := MkT x)
+    $ rcons (#t74 := MkT x)
+    $ rcons (#t75 := MkT x)
+    $ rcons (#t76 := MkT x)
+    $ rcons (#t77 := MkT x)
+    $ rcons (#t78 := MkT x)
+    $ rcons (#t79 := MkT x)
     $ rnil

@@ -25,6 +25,7 @@ module Data.Record.Anonymous.Advanced (
   , Record.merge
   , Record.lens
   , Record.project
+  , Record.applyDiff
     -- * Constraints
   , RecordConstraints
   , recordOfDicts

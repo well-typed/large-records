@@ -98,6 +98,11 @@ common benchmark
   if flag(profile-timing)
     cpp-options:
       -DPROFILE_TIMING
+  if flag(profile-runtime)
+    cpp-options:
+      -DPROFILE_RUNTIME
+    build-depends:
+      criterion
 
 -- The " before " benchmark is independent of the large-records library:
 -- it tests the situation /before/ the introduction of the library.
@@ -529,6 +534,18 @@ executable bench-large-anon
       Experiment.ConstructNoTypeLet.Sized.R090
       Experiment.ConstructNoTypeLet.Sized.R100
 
+      Experiment.ConstructNoApply.Sized.R000
+      Experiment.ConstructNoApply.Sized.R010
+      Experiment.ConstructNoApply.Sized.R020
+      Experiment.ConstructNoApply.Sized.R030
+      Experiment.ConstructNoApply.Sized.R040
+      Experiment.ConstructNoApply.Sized.R050
+      Experiment.ConstructNoApply.Sized.R060
+      Experiment.ConstructNoApply.Sized.R070
+      Experiment.ConstructNoApply.Sized.R080
+      Experiment.ConstructNoApply.Sized.R090
+      Experiment.ConstructNoApply.Sized.R100
+
       Experiment.ConstructWithTypeLet.Sized.R000
       Experiment.ConstructWithTypeLet.Sized.R010
       Experiment.ConstructWithTypeLet.Sized.R020
@@ -570,10 +587,10 @@ executable bench-superrecord
       Common.RowOfSize.Row090
       Common.RowOfSize.Row100
 
-      Experiments.SR_Construct.Sized.R000
-      Experiments.SR_Construct.Sized.R010
-      Experiments.SR_Construct.Sized.R020
-      Experiments.SR_Construct.Sized.R030
+      Experiment.SR_Construct.Sized.R000
+      Experiment.SR_Construct.Sized.R010
+      Experiment.SR_Construct.Sized.R020
+      Experiment.SR_Construct.Sized.R030
 
   --
   -- The SR_Construct benchmark is really expensive:
@@ -600,13 +617,13 @@ executable bench-superrecord
 
   if flag(profile-timing) || flag(profile-runtime)
     other-modules:
-      Experiments.SR_Construct.Sized.R040
-      Experiments.SR_Construct.Sized.R050
-      Experiments.SR_Construct.Sized.R060
-      Experiments.SR_Construct.Sized.R070
-      Experiments.SR_Construct.Sized.R080
-      Experiments.SR_Construct.Sized.R090
-      Experiments.SR_Construct.Sized.R100
+      Experiment.SR_Construct.Sized.R040
+      Experiment.SR_Construct.Sized.R050
+--      Experiment.SR_Construct.Sized.R060
+--      Experiment.SR_Construct.Sized.R070
+--      Experiment.SR_Construct.Sized.R080
+--      Experiment.SR_Construct.Sized.R090
+--      Experiment.SR_Construct.Sized.R100
   if flag(profile-runtime)
     ghc-options:
       -O1

@@ -6,12 +6,12 @@
 #endif
 {-# LANGUAGE OverloadedLabels #-}
 
-module Experiments.SR_Construct.Sized.R040 where
+module Experiment.SR_Construct.Sized.R070 where
 
 import SuperRecord
 
 import Bench.Types
-import Common.RowOfSize.Row040 (Row)
+import Common.RowOfSize.Row070 (Row)
 
 record :: Word -> Rec Row
 record x =
@@ -59,4 +59,37 @@ record x =
     $ rcons (#t37 := MkT x)
     $ rcons (#t38 := MkT x)
     $ rcons (#t39 := MkT x)
+      -- 40 .. 49
+    $ rcons (#t40 := MkT x)
+    $ rcons (#t41 := MkT x)
+    $ rcons (#t42 := MkT x)
+    $ rcons (#t43 := MkT x)
+    $ rcons (#t44 := MkT x)
+    $ rcons (#t45 := MkT x)
+    $ rcons (#t46 := MkT x)
+    $ rcons (#t47 := MkT x)
+    $ rcons (#t48 := MkT x)
+    $ rcons (#t49 := MkT x)
+      -- 50 .. 59
+    $ rcons (#t50 := MkT x)
+    $ rcons (#t51 := MkT x)
+    $ rcons (#t52 := MkT x)
+    $ rcons (#t53 := MkT x)
+    $ rcons (#t54 := MkT x)
+    $ rcons (#t55 := MkT x)
+    $ rcons (#t56 := MkT x)
+    $ rcons (#t57 := MkT x)
+    $ rcons (#t58 := MkT x)
+    $ rcons (#t59 := MkT x)
+      -- 60 .. 69
+    $ rcons (#t60 := MkT x)
+    $ rcons (#t61 := MkT x)
+    $ rcons (#t62 := MkT x)
+    $ rcons (#t63 := MkT x)
+    $ rcons (#t64 := MkT x)
+    $ rcons (#t65 := MkT x)
+    $ rcons (#t66 := MkT x)
+    $ rcons (#t67 := MkT x)
+    $ rcons (#t68 := MkT x)
+    $ rcons (#t69 := MkT x)
     $ rnil

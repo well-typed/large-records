@@ -5,9 +5,10 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
 
-module Experiment.ConstructNoTypelet.Sized.R010 where
+module Experiment.ConstructWithTypeLet.Sized.R010 where
 
 import Data.Record.Anonymous.Simple (Record)
 

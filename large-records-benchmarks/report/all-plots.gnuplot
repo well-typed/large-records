@@ -205,7 +205,7 @@ plot "<(cat timing.csv | grep PreEval_Nominal)"        using 2:3 with lines lt r
    , "<(cat timing.csv | grep PreEval_Phantom)"        using 2:3 with lines lt rgb "#2222EE" title "PreEval/Phantom" \
    , "<(cat timing.csv | grep Induction_Tree_Phantom)" using 2:3 with lines lt rgb "#22EE22" title "NoPreEval/Phantom"
 
-## Typelet: HList
+## TypeLet: HList
 
 set xlabel "List size"
 set xrange [0:100]
@@ -228,7 +228,7 @@ plot "<(cat timing.csv | grep HListBaseline)"  using 2:3 with lines lt rgb "#EE2
    , "<(cat timing.csv | grep HListLetAsCase)" using 2:3 with lines lt rgb "#2222EE" title "LetAsCase" \
    , "<(cat timing.csv | grep HListLetAsCPS)"  using 2:3 with lines lt rgb "#22EE22" title "LetAsCPS"
 
-## Typelet: Ap
+## TypeLet: Ap
 
 set xlabel "List size"
 set xrange [0:100]
@@ -254,33 +254,33 @@ set xrange [0:100]
 
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-construct-coresize.png"
-plot "<(cat coresize.csv | grep ConstructNoTypelet   | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds-preopt)" \
-   , "<(cat coresize.csv | grep ConstructNoTypelet   | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds)" \
-   , "<(cat coresize.csv | grep ConstructNoTypelet   | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (simpl)" \
-   , "<(cat coresize.csv | grep ConstructWithTypelet | grep ds-preopt,)" using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds-preopt)" \
-   , "<(cat coresize.csv | grep ConstructWithTypelet | grep ds,)"        using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds)" \
-   , "<(cat coresize.csv | grep ConstructWithTypelet | grep simpl,)"     using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (simpl)"
+plot "<(cat coresize.csv | grep ConstructNoTypeLet   | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds-preopt)" \
+   , "<(cat coresize.csv | grep ConstructNoTypeLet   | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds)" \
+   , "<(cat coresize.csv | grep ConstructNoTypeLet   | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (simpl)" \
+   , "<(cat coresize.csv | grep ConstructWithTypeLet | grep ds-preopt,)" using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds-preopt)" \
+   , "<(cat coresize.csv | grep ConstructWithTypeLet | grep ds,)"        using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds)" \
+   , "<(cat coresize.csv | grep ConstructWithTypeLet | grep simpl,)"     using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (simpl)"
 
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-construct-timing.png"
-plot "<(cat timing.csv | grep ConstructNoTypelet)"   using 2:3 with lines lt rgb "#EE2222" title "Without TypeLet" \
-   , "<(cat timing.csv | grep ConstructWithTypelet)" using 2:3 with lines lt rgb "#2222EE" title "With TypeLet"
+plot "<(cat timing.csv | grep ConstructNoTypeLet)"   using 2:3 with lines lt rgb "#EE2222" title "Without TypeLet" \
+   , "<(cat timing.csv | grep ConstructWithTypeLet)" using 2:3 with lines lt rgb "#2222EE" title "With TypeLet"
 
 ## large-anon: construction, compared to superrecord
 
 set xlabel "Record size"
-set xrange [0:50]
+set xrange [0:40]
 
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-vs-superrecord-construct-coresize.png"
 plot "<(cat coresize.csv | grep SR_Construct       | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
    , "<(cat coresize.csv | grep SR_Construct       | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds)" \
    , "<(cat coresize.csv | grep SR_Construct       | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
-   , "<(cat coresize.csv | grep ConstructNoTypelet | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
-   , "<(cat coresize.csv | grep ConstructNoTypelet | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
-   , "<(cat coresize.csv | grep ConstructNoTypelet | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+   , "<(cat coresize.csv | grep ConstructNoTypeLet | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
+   , "<(cat coresize.csv | grep ConstructNoTypeLet | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
+   , "<(cat coresize.csv | grep ConstructNoTypeLet | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
 
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-vs-superrecord-construct-timing.png"
 plot "<(cat timing.csv | grep SR_Construct)"       using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
-   , "<(cat timing.csv | grep ConstructNoTypelet)" using 2:3 with lines lt rgb "#2222EE" title "large-anon"
+   , "<(cat timing.csv | grep ConstructNoTypeLet)" using 2:3 with lines lt rgb "#2222EE" title "large-anon"

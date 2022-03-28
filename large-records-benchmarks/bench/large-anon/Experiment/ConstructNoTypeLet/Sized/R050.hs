@@ -7,12 +7,12 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Experiment.ConstructNoTypelet.Sized.R020 where
+module Experiment.ConstructNoTypeLet.Sized.R050 where
 
 import Data.Record.Anonymous.Simple (Record)
 
 import Bench.Types
-import Common.RowOfSize.Row020
+import Common.RowOfSize.Row050
 
 record :: Record Row
 record = ANON {
@@ -38,4 +38,37 @@ record = ANON {
     , t17 = MkT 17
     , t18 = MkT 18
     , t19 = MkT 19
+      -- 20 .. 29
+    , t20 = MkT 20
+    , t21 = MkT 21
+    , t22 = MkT 22
+    , t23 = MkT 23
+    , t24 = MkT 24
+    , t25 = MkT 25
+    , t26 = MkT 26
+    , t27 = MkT 27
+    , t28 = MkT 28
+    , t29 = MkT 29
+      -- 30 .. 39
+    , t30 = MkT 30
+    , t31 = MkT 31
+    , t32 = MkT 32
+    , t33 = MkT 33
+    , t34 = MkT 34
+    , t35 = MkT 35
+    , t36 = MkT 36
+    , t37 = MkT 37
+    , t38 = MkT 38
+    , t39 = MkT 39
+      -- 40 .. 49
+    , t40 = MkT 40
+    , t41 = MkT 41
+    , t42 = MkT 42
+    , t43 = MkT 43
+    , t44 = MkT 44
+    , t45 = MkT 45
+    , t46 = MkT 46
+    , t47 = MkT 47
+    , t48 = MkT 48
+    , t49 = MkT 49
     }

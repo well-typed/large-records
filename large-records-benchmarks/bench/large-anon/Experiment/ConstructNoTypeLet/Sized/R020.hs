@@ -5,15 +5,14 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
-{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Experiment.ConstructWithTypelet.Sized.R010 where
+module Experiment.ConstructNoTypeLet.Sized.R020 where
 
 import Data.Record.Anonymous.Simple (Record)
 
 import Bench.Types
-import Common.RowOfSize.Row010
+import Common.RowOfSize.Row020
 
 record :: Record Row
 record = ANON {
@@ -28,4 +27,15 @@ record = ANON {
     , t07 = MkT 07
     , t08 = MkT 08
     , t09 = MkT 09
+      -- 10 .. 19
+    , t10 = MkT 10
+    , t11 = MkT 11
+    , t12 = MkT 12
+    , t13 = MkT 13
+    , t14 = MkT 14
+    , t15 = MkT 15
+    , t16 = MkT 16
+    , t17 = MkT 17
+    , t18 = MkT 18
+    , t19 = MkT 19
     }

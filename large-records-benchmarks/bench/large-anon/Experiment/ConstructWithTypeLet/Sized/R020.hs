@@ -8,12 +8,12 @@
 {-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
 {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
 
-module Experiment.ConstructWithTypelet.Sized.R030 where
+module Experiment.ConstructWithTypeLet.Sized.R020 where
 
 import Data.Record.Anonymous.Simple (Record)
 
 import Bench.Types
-import Common.RowOfSize.Row030
+import Common.RowOfSize.Row020
 
 record :: Record Row
 record = ANON {
@@ -39,15 +39,4 @@ record = ANON {
     , t17 = MkT 17
     , t18 = MkT 18
     , t19 = MkT 19
-      -- 20 .. 29
-    , t20 = MkT 20
-    , t21 = MkT 21
-    , t22 = MkT 22
-    , t23 = MkT 23
-    , t24 = MkT 24
-    , t25 = MkT 25
-    , t26 = MkT 26
-    , t27 = MkT 27
-    , t28 = MkT 28
-    , t29 = MkT 29
     }

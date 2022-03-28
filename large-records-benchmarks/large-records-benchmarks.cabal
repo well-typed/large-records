@@ -515,29 +515,29 @@ executable bench-large-anon
       Common.RowOfSize.Row090
       Common.RowOfSize.Row100
 
-      Experiment.ConstructNoTypelet.Sized.R000
-      Experiment.ConstructNoTypelet.Sized.R010
-      Experiment.ConstructNoTypelet.Sized.R020
-      Experiment.ConstructNoTypelet.Sized.R030
-      Experiment.ConstructNoTypelet.Sized.R040
-      Experiment.ConstructNoTypelet.Sized.R050
-      Experiment.ConstructNoTypelet.Sized.R060
-      Experiment.ConstructNoTypelet.Sized.R070
-      Experiment.ConstructNoTypelet.Sized.R080
-      Experiment.ConstructNoTypelet.Sized.R090
-      Experiment.ConstructNoTypelet.Sized.R100
+      Experiment.ConstructNoTypeLet.Sized.R000
+      Experiment.ConstructNoTypeLet.Sized.R010
+      Experiment.ConstructNoTypeLet.Sized.R020
+      Experiment.ConstructNoTypeLet.Sized.R030
+      Experiment.ConstructNoTypeLet.Sized.R040
+      Experiment.ConstructNoTypeLet.Sized.R050
+      Experiment.ConstructNoTypeLet.Sized.R060
+      Experiment.ConstructNoTypeLet.Sized.R070
+      Experiment.ConstructNoTypeLet.Sized.R080
+      Experiment.ConstructNoTypeLet.Sized.R090
+      Experiment.ConstructNoTypeLet.Sized.R100
 
-      Experiment.ConstructWithTypelet.Sized.R000
-      Experiment.ConstructWithTypelet.Sized.R010
-      Experiment.ConstructWithTypelet.Sized.R020
-      Experiment.ConstructWithTypelet.Sized.R030
-      Experiment.ConstructWithTypelet.Sized.R040
-      Experiment.ConstructWithTypelet.Sized.R050
-      Experiment.ConstructWithTypelet.Sized.R060
-      Experiment.ConstructWithTypelet.Sized.R070
-      Experiment.ConstructWithTypelet.Sized.R080
-      Experiment.ConstructWithTypelet.Sized.R090
-      Experiment.ConstructWithTypelet.Sized.R100
+      Experiment.ConstructWithTypeLet.Sized.R000
+      Experiment.ConstructWithTypeLet.Sized.R010
+      Experiment.ConstructWithTypeLet.Sized.R020
+      Experiment.ConstructWithTypeLet.Sized.R030
+      Experiment.ConstructWithTypeLet.Sized.R040
+      Experiment.ConstructWithTypeLet.Sized.R050
+      Experiment.ConstructWithTypeLet.Sized.R060
+      Experiment.ConstructWithTypeLet.Sized.R070
+      Experiment.ConstructWithTypeLet.Sized.R080
+      Experiment.ConstructWithTypeLet.Sized.R090
+      Experiment.ConstructWithTypeLet.Sized.R100
 
 executable bench-superrecord
   import:
@@ -584,8 +584,8 @@ executable bench-superrecord
       Experiments.SR_Construct.Sized.R010
       Experiments.SR_Construct.Sized.R020
       Experiments.SR_Construct.Sized.R030
-      Experiments.SR_Construct.Sized.R040
-      Experiments.SR_Construct.Sized.R050
+--      Experiments.SR_Construct.Sized.R040
+--      Experiments.SR_Construct.Sized.R050
 --      Experiments.SR_Construct.Sized.R060
 --      Experiments.SR_Construct.Sized.R070
 --      Experiments.SR_Construct.Sized.R080

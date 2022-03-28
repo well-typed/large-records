@@ -7,12 +7,12 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Experiment.ConstructNoTypelet.Sized.R090 where
+module Experiment.ConstructNoTypeLet.Sized.R100 where
 
 import Data.Record.Anonymous.Simple (Record)
 
 import Bench.Types
-import Common.RowOfSize.Row090
+import Common.RowOfSize.Row100
 
 record :: Record Row
 record = ANON {
@@ -115,4 +115,15 @@ record = ANON {
     , t87 = MkT 87
     , t88 = MkT 88
     , t89 = MkT 89
+      -- 90 .. 99
+    , t90 = MkT 90
+    , t91 = MkT 91
+    , t92 = MkT 92
+    , t93 = MkT 93
+    , t94 = MkT 94
+    , t95 = MkT 95
+    , t96 = MkT 96
+    , t97 = MkT 97
+    , t98 = MkT 98
+    , t99 = MkT 99
     }

@@ -5,4 +5,4 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-module Experiment.ConstructNoTypelet.Sized.R000 where
+module Experiment.ConstructNoTypeLet.Sized.R000 where

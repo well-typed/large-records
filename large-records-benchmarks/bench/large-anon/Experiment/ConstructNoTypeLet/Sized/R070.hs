@@ -7,12 +7,12 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
-module Experiment.ConstructNoTypelet.Sized.R030 where
+module Experiment.ConstructNoTypeLet.Sized.R070 where
 
 import Data.Record.Anonymous.Simple (Record)
 
 import Bench.Types
-import Common.RowOfSize.Row030
+import Common.RowOfSize.Row070
 
 record :: Record Row
 record = ANON {
@@ -49,4 +49,48 @@ record = ANON {
     , t27 = MkT 27
     , t28 = MkT 28
     , t29 = MkT 29
+      -- 30 .. 39
+    , t30 = MkT 30
+    , t31 = MkT 31
+    , t32 = MkT 32
+    , t33 = MkT 33
+    , t34 = MkT 34
+    , t35 = MkT 35
+    , t36 = MkT 36
+    , t37 = MkT 37
+    , t38 = MkT 38
+    , t39 = MkT 39
+      -- 40 .. 49
+    , t40 = MkT 40
+    , t41 = MkT 41
+    , t42 = MkT 42
+    , t43 = MkT 43
+    , t44 = MkT 44
+    , t45 = MkT 45
+    , t46 = MkT 46
+    , t47 = MkT 47
+    , t48 = MkT 48
+    , t49 = MkT 49
+      -- 50 .. 59
+    , t50 = MkT 50
+    , t51 = MkT 51
+    , t52 = MkT 52
+    , t53 = MkT 53
+    , t54 = MkT 54
+    , t55 = MkT 55
+    , t56 = MkT 56
+    , t57 = MkT 57
+    , t58 = MkT 58
+    , t59 = MkT 59
+      -- 60 .. 69
+    , t60 = MkT 60
+    , t61 = MkT 61
+    , t62 = MkT 62
+    , t63 = MkT 63
+    , t64 = MkT 64
+    , t65 = MkT 65
+    , t66 = MkT 66
+    , t67 = MkT 67
+    , t68 = MkT 68
+    , t69 = MkT 69
     }

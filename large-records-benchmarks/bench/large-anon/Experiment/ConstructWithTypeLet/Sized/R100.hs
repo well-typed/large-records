@@ -8,12 +8,12 @@
 {-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
 {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
 
-module Experiment.ConstructWithTypelet.Sized.R070 where
+module Experiment.ConstructWithTypeLet.Sized.R100 where
 
 import Data.Record.Anonymous.Simple (Record)
 
 import Bench.Types
-import Common.RowOfSize.Row070
+import Common.RowOfSize.Row100
 
 record :: Record Row
 record = ANON {
@@ -94,4 +94,37 @@ record = ANON {
     , t67 = MkT 67
     , t68 = MkT 68
     , t69 = MkT 69
+      -- 70 .. 79
+    , t70 = MkT 70
+    , t71 = MkT 71
+    , t72 = MkT 72
+    , t73 = MkT 73
+    , t74 = MkT 74
+    , t75 = MkT 75
+    , t76 = MkT 76
+    , t77 = MkT 77
+    , t78 = MkT 78
+    , t79 = MkT 79
+      -- 80 .. 89
+    , t80 = MkT 80
+    , t81 = MkT 81
+    , t82 = MkT 82
+    , t83 = MkT 83
+    , t84 = MkT 84
+    , t85 = MkT 85
+    , t86 = MkT 86
+    , t87 = MkT 87
+    , t88 = MkT 88
+    , t89 = MkT 89
+      -- 90 .. 99
+    , t90 = MkT 90
+    , t91 = MkT 91
+    , t92 = MkT 92
+    , t93 = MkT 93
+    , t94 = MkT 94
+    , t95 = MkT 95
+    , t96 = MkT 96
+    , t97 = MkT 97
+    , t98 = MkT 98
+    , t99 = MkT 99
     }

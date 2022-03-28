@@ -40,12 +40,25 @@ library
   import:
       defaults
   exposed-modules:
-      Bench.Types
+      Bench.EvensOfSize.Evens010
+      Bench.EvensOfSize.Evens020
+      Bench.EvensOfSize.Evens030
+      Bench.EvensOfSize.Evens040
+      Bench.EvensOfSize.Evens050
+      Bench.EvensOfSize.Evens060
+      Bench.EvensOfSize.Evens070
+      Bench.EvensOfSize.Evens080
+      Bench.EvensOfSize.Evens090
+      Bench.EvensOfSize.Evens100
       Bench.HList
+      Bench.Types
+      Bench.Util.Criterion
   hs-source-dirs:
       lib
   build-depends:
     , aeson
+    , criterion
+    , deepseq
     , large-generics
     , sop-core
 
@@ -558,6 +571,18 @@ executable bench-large-anon
       Experiment.ConstructWithTypeLet.Sized.R090
       Experiment.ConstructWithTypeLet.Sized.R100
 
+      Experiment.GetEvens.Sized.R000
+      Experiment.GetEvens.Sized.R010
+      Experiment.GetEvens.Sized.R020
+      Experiment.GetEvens.Sized.R030
+      Experiment.GetEvens.Sized.R040
+      Experiment.GetEvens.Sized.R050
+      Experiment.GetEvens.Sized.R060
+      Experiment.GetEvens.Sized.R070
+      Experiment.GetEvens.Sized.R080
+      Experiment.GetEvens.Sized.R090
+      Experiment.GetEvens.Sized.R100
+
   if flag(profile-runtime)
     ghc-options:
       -O1
@@ -592,6 +617,14 @@ executable bench-superrecord
       Experiment.SR_Construct.Sized.R020
       Experiment.SR_Construct.Sized.R030
 
+      Experiment.SR_GetEvens.Sized.R000
+      Experiment.SR_GetEvens.Sized.R010
+      Experiment.SR_GetEvens.Sized.R020
+      Experiment.SR_GetEvens.Sized.R030
+      Experiment.SR_GetEvens.Sized.R040
+      Experiment.SR_GetEvens.Sized.R050
+
+
   --
   -- The SR_Construct benchmark is really expensive:
   --
@@ -614,6 +647,10 @@ executable bench-superrecord
   -- these times go through the roof. Moreover, CI runs out of heap when
   -- compiling the larger examples (>= 50?). So we enable only the smallest ones
   -- by default, and larger ones only selectively.
+  --
+  -- The SR_GetEvens benchmarks aren't quite as expensive, but since they rely
+  -- on the construction benchmark, we cannot benchmark them for larger records
+  -- than we can construct.
 
   if flag(profile-timing) || flag(profile-runtime)
     other-modules:
@@ -624,6 +661,13 @@ executable bench-superrecord
 --      Experiment.SR_Construct.Sized.R080
 --      Experiment.SR_Construct.Sized.R090
 --      Experiment.SR_Construct.Sized.R100
+
+--      Experiment.SR_GetEvens.Sized.R060
+--      Experiment.SR_GetEvens.Sized.R070
+--      Experiment.SR_GetEvens.Sized.R080
+--      Experiment.SR_GetEvens.Sized.R090
+--      Experiment.SR_GetEvens.Sized.R100
+
   if flag(profile-runtime)
     ghc-options:
       -O1

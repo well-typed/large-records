@@ -119,6 +119,22 @@ Comparison with [`superrecord`][superrecord]:
 ![](graphs/large-anon-vs-superrecord-construct-timing.png)
 ![](graphs/large-anon-vs-superrecord-construct-runtime.png)
 
+### Field access
+
+This extracts half the record fields into a non-record datatype.
+
+![](graphs/large-anon-get-coresize.png)
+![](graphs/large-anon-get-timing.png)
+
+Comparison with `superrecord`:
+
+![](graphs/large-anon-vs-superrecord-get-coresize.png)
+![](graphs/large-anon-vs-superrecord-get-timing.png)
+![](graphs/large-anon-vs-superrecord-get-runtime.png)
+
+Here is where we see the win from `applyDiff` (we paid for it during record
+construction).
+
 ## Experiments
 
 In this section we report on a number of experiments that test various

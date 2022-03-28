@@ -55,11 +55,8 @@ rm -f runtime.csv
 if [[ "$BENCH" == "" || "$BENCH" == "runtime" ]]
 then
 
-  cabal build bench-large-anon  --flags=+profile-runtime
-  cabal build bench-superrecord --flags=+profile-runtime
-
-  cabal run bench-large-anon  -- --csv runtime.csv
-  cabal run bench-superrecord -- --csv runtime.csv
+  cabal run --flags=+profile-runtime bench-large-anon  -- --csv runtime.csv
+  cabal run --flags=+profile-runtime bench-superrecord -- --csv runtime.csv
 
 fi
 

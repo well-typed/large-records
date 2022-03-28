@@ -583,6 +583,18 @@ executable bench-large-anon
       Experiment.GetEvens.Sized.R090
       Experiment.GetEvens.Sized.R100
 
+      Experiment.SetEvens.Sized.R000
+      Experiment.SetEvens.Sized.R010
+      Experiment.SetEvens.Sized.R020
+      Experiment.SetEvens.Sized.R030
+      Experiment.SetEvens.Sized.R040
+      Experiment.SetEvens.Sized.R050
+      Experiment.SetEvens.Sized.R060
+      Experiment.SetEvens.Sized.R070
+      Experiment.SetEvens.Sized.R080
+      Experiment.SetEvens.Sized.R090
+      Experiment.SetEvens.Sized.R100
+
   if flag(profile-runtime)
     ghc-options:
       -O1
@@ -623,6 +635,13 @@ executable bench-superrecord
       Experiment.SR_GetEvens.Sized.R030
       Experiment.SR_GetEvens.Sized.R040
       Experiment.SR_GetEvens.Sized.R050
+
+      Experiment.SR_SetEvens.Sized.R000
+      Experiment.SR_SetEvens.Sized.R010
+      Experiment.SR_SetEvens.Sized.R020
+      Experiment.SR_SetEvens.Sized.R030
+      Experiment.SR_SetEvens.Sized.R040
+      Experiment.SR_SetEvens.Sized.R050
 
 
   --
@@ -667,6 +686,12 @@ executable bench-superrecord
 --      Experiment.SR_GetEvens.Sized.R080
 --      Experiment.SR_GetEvens.Sized.R090
 --      Experiment.SR_GetEvens.Sized.R100
+
+--      Experiment.SR_SetEvens.Sized.R060
+--      Experiment.SR_SetEvens.Sized.R070
+--      Experiment.SR_SetEvens.Sized.R080
+--      Experiment.SR_SetEvens.Sized.R090
+--      Experiment.SR_SetEvens.Sized.R100
 
   if flag(profile-runtime)
     ghc-options:

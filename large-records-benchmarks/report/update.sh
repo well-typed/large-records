@@ -44,6 +44,13 @@ cabal run parse-timing -- \
   --omit-per-phase \
   -o timing.csv
 
+## Runtime
+
+cabal build bench-large-anon  --flags=+profile-runtime
+cabal build bench-superrecord --flags=+profile-runtime
+
+## TODO: Run criterion
+
 ## Plots
 
 gnuplot all-plots.gnuplot

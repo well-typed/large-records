@@ -93,9 +93,11 @@ common benchmark
   build-depends:
       large-records-benchmarks
   if flag(profile-coresize)
-      cpp-options: -DPROFILE_CORESIZE
+    cpp-options:
+      -DPROFILE_CORESIZE
   if flag(profile-timing)
-      cpp-options: -DPROFILE_TIMING
+    cpp-options:
+      -DPROFILE_TIMING
 
 -- The " before " benchmark is independent of the large-records library:
 -- it tests the situation /before/ the introduction of the library.
@@ -539,6 +541,10 @@ executable bench-large-anon
       Experiment.ConstructWithTypeLet.Sized.R090
       Experiment.ConstructWithTypeLet.Sized.R100
 
+  if flag(profile-runtime)
+    ghc-options:
+      -O1
+
 executable bench-superrecord
   import:
       defaults
@@ -564,33 +570,46 @@ executable bench-superrecord
       Common.RowOfSize.Row090
       Common.RowOfSize.Row100
 
-      -- these are expensive:
-      --
-      -- #size #time
-      --   010       6s
-      --   020       9s
-      --   030      16s
-      --   040      32s
-      --   050   1m  2s
-      --   060   1m 56s
-      --
-      -- Didn't (yet) try these:
-      --
-      --   070 ~ 4min?
-      --   080 ~ 8min?
-      --   090 ~ 16min?
-      --   100 ~ 32min?
       Experiments.SR_Construct.Sized.R000
       Experiments.SR_Construct.Sized.R010
       Experiments.SR_Construct.Sized.R020
       Experiments.SR_Construct.Sized.R030
---      Experiments.SR_Construct.Sized.R040
---      Experiments.SR_Construct.Sized.R050
---      Experiments.SR_Construct.Sized.R060
---      Experiments.SR_Construct.Sized.R070
---      Experiments.SR_Construct.Sized.R080
---      Experiments.SR_Construct.Sized.R090
---      Experiments.SR_Construct.Sized.R100
+
+  --
+  -- The SR_Construct benchmark is really expensive:
+  --
+  -- #size #time
+  --   010       6s
+  --   020       9s
+  --   030      16s
+  --   040      32s
+  --   050   1m  2s
+  --   060   1m 56s
+  --
+  -- Didn't (yet) try these:
+  --
+  --   070 ~ 4min?
+  --   080 ~ 8min?
+  --   090 ~ 16min?
+  --   100 ~ 32min?
+  --
+  -- That's /without/ any of the -ddump-xyz flags. When measuring core size,
+  -- these times go through the roof. Moreover, CI runs out of heap when
+  -- compiling the larger examples (>= 50?). So we enable only the smallest ones
+  -- by default, and larger ones only selectively.
+
+  if flag(profile-timing) || flag(profile-runtime)
+    other-modules:
+      Experiments.SR_Construct.Sized.R040
+      Experiments.SR_Construct.Sized.R050
+      Experiments.SR_Construct.Sized.R060
+      Experiments.SR_Construct.Sized.R070
+      Experiments.SR_Construct.Sized.R080
+      Experiments.SR_Construct.Sized.R090
+      Experiments.SR_Construct.Sized.R100
+  if flag(profile-runtime)
+    ghc-options:
+      -O1
 
 --
 -- TEST SUITE
@@ -683,5 +702,10 @@ Flag profile-coresize
 
 Flag profile-timing
   Description: Enable ghc flags for compilation time profiling
+  Default: False
+  Manual: True
+
+Flag profile-runtime
+  Description: Enable ghc flags for runtime profiling
   Default: False
   Manual: True

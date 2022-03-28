@@ -14,6 +14,8 @@ import qualified Test.Sanity.Lens
 import qualified Test.Sanity.Merging
 import qualified Test.Sanity.PolyKinds
 import qualified Test.Sanity.Simple
+import qualified Test.Sanity.SrcPlugin.WithoutTypelet
+import qualified Test.Sanity.SrcPlugin.WithTypelet
 import qualified Test.Sanity.TypeLevelMetadata
 
 main :: IO ()
@@ -30,6 +32,8 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.Simple.tests
         , Test.Sanity.PolyKinds.tests
         , Test.Sanity.Discovery.tests
+        , Test.Sanity.SrcPlugin.WithoutTypelet.tests
+        , Test.Sanity.SrcPlugin.WithTypelet.tests
         ]
     , testGroup "Prop" [
           Test.Prop.Record.Combinators.Simple.tests

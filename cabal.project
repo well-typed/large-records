@@ -27,13 +27,11 @@ package large-generics
 
 package large-records
   tests: True
---  ghc-options: -Werror
+  ghc-options: -Werror
 
 package large-records-benchmarks
   tests: True
-  -- We are interested in compile-time performance primarily for the sake of
-  -- improving the development cycle, so we test with -O0.
-  ghc-options: -Werror -O0
+  ghc-options: -Werror
 
 package beam-large-records
   tests: True

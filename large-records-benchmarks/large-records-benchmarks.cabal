@@ -17,86 +17,104 @@ source-repository head
   type:     git
   location: https://github.com/well-typed/large-records
 
+common defaults
+  default-language:
+      Haskell2010
+  build-depends:
+      base >= 4.13 && < 4.17
+  ghc-options:
+      -Wall
+
+      -- The primary goal of this work is to improve the development cycle, so
+      -- we compile with -O0 for the benchmarks.
+      -O0
+
+--
+-- LIBRARY
+--
 -- The library contains support code that is used by all benchmarks. It is not
 -- intended for use outside of this package.
+--
+
 library
+  import:
+      defaults
   exposed-modules:
       Bench.Types
       Bench.HList
-  default-language:
-      Haskell2010
   hs-source-dirs:
       lib
   build-depends:
-      base >= 4.13 && < 4.17
-
     , aeson
     , large-generics
     , sop-core
-  ghc-options:
-      -Wall
+
+--
+-- TOOLING
+--
+
+common tooling
+  hs-source-dirs:
+      tooling
+  build-depends:
+      bytestring
+    , cassava
+    , conduit
+    , containers
+    , optparse-applicative
+    , pcre-light
+    , unordered-containers
+    , utf8-string
+    , vector
+  other-modules:
+      Tooling
 
 executable parse-coresize
+  import:
+      defaults
+    , tooling
   main-is:
       ParseCoresize.hs
-  hs-source-dirs:
-      tooling
-  default-language:
-      Haskell2010
-  other-modules:
-      Tooling
-  build-depends:
-      base
-
-    , bytestring
-    , cassava
-    , conduit
-    , containers
-    , optparse-applicative
-    , pcre-light
-    , unordered-containers
-    , utf8-string
-    , vector
-  ghc-options:
-      -Wall
 
 executable parse-timing
+  import:
+      defaults
+    , tooling
   main-is:
       ParseTiming.hs
-  hs-source-dirs:
-      tooling
-  default-language:
-      Haskell2010
-  other-modules:
-      Tooling
-  build-depends:
-      base
 
-    , bytestring
-    , cassava
-    , conduit
-    , containers
-    , optparse-applicative
-    , pcre-light
-    , unordered-containers
-    , utf8-string
-    , vector
-  ghc-options:
-      -Wall
+--
+-- BENCHMARKS
+--
+
+common benchmark
+  default-extensions:
+      CPP
+  build-depends:
+      large-records-benchmarks
+  if flag(profile-coresize)
+    cpp-options:
+      -DPROFILE_CORESIZE
+  if flag(profile-timing)
+    cpp-options:
+      -DPROFILE_TIMING
 
 -- The " before " benchmark is independent of the large-records library:
 -- it tests the situation /before/ the introduction of the library.
 executable bench-before
+  import:
+      defaults
+    , benchmark
   main-is:
       Main.hs
   hs-source-dirs:
       bench/before
-  default-language:
-      Haskell2010
-  default-extensions:
-      CPP
-  ghc-options:
-      -Wall
+  build-depends:
+    , aeson
+    , generics-sop
+    , json-sop
+    , record-dot-preprocessor
+    , record-hasfield
   other-modules:
       Before.Sized.R000
       Before.Sized.R010
@@ -109,34 +127,22 @@ executable bench-before
       Before.Sized.R080
       Before.Sized.R090
       Before.Sized.R100
-  build-depends:
-      base
-    , large-records-benchmarks
-
-    , aeson
-    , generics-sop
-    , json-sop
-    , record-dot-preprocessor
-    , record-hasfield
-
-  if flag(profile-coresize)
-    cpp-options: -DPROFILE_CORESIZE
-  if flag(profile-timing)
-    cpp-options: -DPROFILE_TIMING
 
 executable bench-after
+  import:
+      defaults
+    , benchmark
   main-is:
       Main.hs
   hs-source-dirs:
       bench/after
-  default-language:
-      Haskell2010
-  default-extensions:
-      CPP
   ghc-options:
-      -Wall
       -- Needed for the HasNormalForm benchmark
       -freduction-depth=2000
+  build-depends:
+      aeson
+    , large-generics
+    , large-records
   other-modules:
       After.Sized.R000
       After.Sized.R010
@@ -173,34 +179,25 @@ executable bench-after
       HasNormalForm.Sized.R080
       HasNormalForm.Sized.R090
       HasNormalForm.Sized.R100
-  build-depends:
-      base
-    , large-records-benchmarks
-
-    , aeson
-    , large-generics
-    , large-records
-
-  if flag(profile-coresize)
-    cpp-options: -DPROFILE_CORESIZE
-  if flag(profile-timing)
-    cpp-options: -DPROFILE_TIMING
 
 -- The " experiments " benchmark is independent of the large-records library,
 -- and tests various approaches in isolation.
 -- (The "Generics" experiment depends on `large-generics`, but not on the
 -- `large-records` library itself.)
 executable bench-experiments
+  import:
+      defaults
+    , benchmark
   main-is:
       Main.hs
   hs-source-dirs:
       bench/experiments
-  default-language:
-      Haskell2010
-  default-extensions:
-      CPP
-  ghc-options:
-      -Wall
+  build-depends:
+    , aeson
+    , generics-sop
+    , json-sop
+    , large-generics
+    , sop-core
   other-modules:
       Infra.ShowType
       Infra.Tree
@@ -392,34 +389,20 @@ executable bench-experiments
       Experiment.PreEval_Phantom.Sized.R090
       Experiment.PreEval_Phantom.Sized.R100
 
-  build-depends:
-      base
-    , aeson
-    , generics-sop
-    , json-sop
-    , large-generics
-    , large-records-benchmarks
-    , sop-core
-
-  if flag(profile-coresize)
-    cpp-options: -DPROFILE_CORESIZE
-  if flag(profile-timing)
-    cpp-options: -DPROFILE_TIMING
-
 executable bench-typelet
+  import:
+      defaults
+    , benchmark
   main-is:
       Main.hs
   hs-source-dirs:
       bench/typelet
-  default-language:
-      Haskell2010
   default-extensions:
-      CPP
       DataKinds
       ScopedTypeVariables
       TypeApplications
-  ghc-options:
-      -Wall
+  build-depends:
+      typelet
   other-modules:
       Common.HListOfSize.HL010
       Common.HListOfSize.HL020
@@ -503,35 +486,167 @@ executable bench-typelet
       Experiment.ApLet.Sized.R090
       Experiment.ApLet.Sized.R100
 
+executable bench-large-anon
+  import:
+      defaults
+    , benchmark
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      bench/large-anon
+  ghc-options:
+      -Wno-unticked-promoted-constructors
   build-depends:
-      base
-    , large-records-benchmarks
+      large-anon
     , typelet
 
-  if flag(profile-coresize)
-    cpp-options: -DPROFILE_CORESIZE
-  if flag(profile-timing)
-    cpp-options: -DPROFILE_TIMING
+    -- TODO: These dependencies should not be here
+    -- (This is the module finding problem in large-anon)
+    , sop-core
+    , large-generics
+    , record-hasfield
+  other-modules:
+      Common.RowOfSize.Row010
+      Common.RowOfSize.Row020
+      Common.RowOfSize.Row030
+      Common.RowOfSize.Row040
+      Common.RowOfSize.Row050
+      Common.RowOfSize.Row060
+      Common.RowOfSize.Row070
+      Common.RowOfSize.Row080
+      Common.RowOfSize.Row090
+      Common.RowOfSize.Row100
 
+      Experiment.ConstructNoTypeLet.Sized.R000
+      Experiment.ConstructNoTypeLet.Sized.R010
+      Experiment.ConstructNoTypeLet.Sized.R020
+      Experiment.ConstructNoTypeLet.Sized.R030
+      Experiment.ConstructNoTypeLet.Sized.R040
+      Experiment.ConstructNoTypeLet.Sized.R050
+      Experiment.ConstructNoTypeLet.Sized.R060
+      Experiment.ConstructNoTypeLet.Sized.R070
+      Experiment.ConstructNoTypeLet.Sized.R080
+      Experiment.ConstructNoTypeLet.Sized.R090
+      Experiment.ConstructNoTypeLet.Sized.R100
+
+      Experiment.ConstructWithTypeLet.Sized.R000
+      Experiment.ConstructWithTypeLet.Sized.R010
+      Experiment.ConstructWithTypeLet.Sized.R020
+      Experiment.ConstructWithTypeLet.Sized.R030
+      Experiment.ConstructWithTypeLet.Sized.R040
+      Experiment.ConstructWithTypeLet.Sized.R050
+      Experiment.ConstructWithTypeLet.Sized.R060
+      Experiment.ConstructWithTypeLet.Sized.R070
+      Experiment.ConstructWithTypeLet.Sized.R080
+      Experiment.ConstructWithTypeLet.Sized.R090
+      Experiment.ConstructWithTypeLet.Sized.R100
+
+  if flag(profile-runtime)
+    ghc-options:
+      -O1
+
+executable bench-superrecord
+  import:
+      defaults
+    , benchmark
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      bench/superrecord
+  build-depends:
+      superrecord
+
+      -- superrecord does not like aeson >= 2
+    , aeson < 2
+  other-modules:
+      Common.RowOfSize.Row010
+      Common.RowOfSize.Row020
+      Common.RowOfSize.Row030
+      Common.RowOfSize.Row040
+      Common.RowOfSize.Row050
+      Common.RowOfSize.Row060
+      Common.RowOfSize.Row070
+      Common.RowOfSize.Row080
+      Common.RowOfSize.Row090
+      Common.RowOfSize.Row100
+
+      Experiments.SR_Construct.Sized.R000
+      Experiments.SR_Construct.Sized.R010
+      Experiments.SR_Construct.Sized.R020
+      Experiments.SR_Construct.Sized.R030
+
+  --
+  -- The SR_Construct benchmark is really expensive:
+  --
+  -- #size #time
+  --   010       6s
+  --   020       9s
+  --   030      16s
+  --   040      32s
+  --   050   1m  2s
+  --   060   1m 56s
+  --
+  -- Didn't (yet) try these:
+  --
+  --   070 ~ 4min?
+  --   080 ~ 8min?
+  --   090 ~ 16min?
+  --   100 ~ 32min?
+  --
+  -- That's /without/ any of the -ddump-xyz flags. When measuring core size,
+  -- these times go through the roof. Moreover, CI runs out of heap when
+  -- compiling the larger examples (>= 50?). So we enable only the smallest ones
+  -- by default, and larger ones only selectively.
+
+  if flag(profile-timing) || flag(profile-runtime)
+    other-modules:
+      Experiments.SR_Construct.Sized.R040
+      Experiments.SR_Construct.Sized.R050
+      Experiments.SR_Construct.Sized.R060
+      Experiments.SR_Construct.Sized.R070
+      Experiments.SR_Construct.Sized.R080
+      Experiments.SR_Construct.Sized.R090
+      Experiments.SR_Construct.Sized.R100
+  if flag(profile-runtime)
+    ghc-options:
+      -O1
+
+--
+-- TEST SUITE
+--
 -- This contains some sanity checks for the various benchmarks. Instead of
 -- making each of those benchmarks their own library just for the sake of these
 -- simple tests, we instead use directory sharing.
+--
+
 test-suite test-large-records-benchmarks
+  import:
+      defaults
   type:
       exitcode-stdio-1.0
   main-is:
       TestLargeRecordsBenchmarks.hs
+  default-extensions:
+      CPP
   hs-source-dirs:
       test
       bench/after
       bench/before
       bench/experiments
-  default-language:
-      Haskell2010
-  default-extensions:
-      CPP
-  ghc-options:
-      -Wall
+  build-depends:
+      aeson
+    , generics-sop
+    , json-sop
+    , large-generics
+    , large-records
+    , large-records-benchmarks
+    , record-hasfield
+    , sop-core
+    , tasty
+    , tasty-hunit
+
+    -- This is necessary for the 'Before' modules
+    , record-dot-preprocessor
   other-modules:
       Test.After
       Test.HigherKinded
@@ -575,21 +690,10 @@ test-suite test-large-records-benchmarks
 
       Infra.ShowType
       Infra.Tree
-  build-depends:
-      base
-    , aeson
-    , generics-sop
-    , json-sop
-    , large-generics
-    , large-records
-    , large-records-benchmarks
-    , record-hasfield
-    , sop-core
-    , tasty
-    , tasty-hunit
 
-    -- This is necessary for the 'Before' modules
-    , record-dot-preprocessor
+--
+-- FLAGS
+--
 
 Flag profile-coresize
   Description: Enable ghc flags for core size profiling
@@ -598,5 +702,10 @@ Flag profile-coresize
 
 Flag profile-timing
   Description: Enable ghc flags for compilation time profiling
+  Default: False
+  Manual: True
+
+Flag profile-runtime
+  Description: Enable ghc flags for runtime profiling
   Default: False
   Manual: True

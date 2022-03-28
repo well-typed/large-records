@@ -64,7 +64,7 @@ ghcjs-tools:
 test-output-direct: True
 
 -- Disable cabal check run
-cabal-check: True
+cabal-check: False
 
 -- Enable builds only for specific branches
 branches:

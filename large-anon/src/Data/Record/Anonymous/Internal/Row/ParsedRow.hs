@@ -23,14 +23,13 @@ import Prelude hiding (lookup)
 import Control.Monad (mzero)
 import Data.Foldable (asum)
 
--- TODO: The .Plugin namespace should go.
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
 import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow(..))
-import Data.Record.Anonymous.Plugin.GhcTcPluginAPI
-import Data.Record.Anonymous.Plugin.NameResolution (ResolvedNames(..))
-import Data.Record.Anonymous.Plugin.Parsing
-import Data.Record.Anonymous.Plugin.TyConSubst (TyConSubst)
+import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anonymous.TcPlugin.NameResolution (ResolvedNames(..))
+import Data.Record.Anonymous.TcPlugin.Parsing
+import Data.Record.Anonymous.TcPlugin.TyConSubst (TyConSubst)
 
 import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow

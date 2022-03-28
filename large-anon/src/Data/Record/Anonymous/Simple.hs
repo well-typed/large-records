@@ -5,6 +5,7 @@
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
@@ -61,6 +62,9 @@ module Data.Record.Anonymous.Simple (
     -- * Interop with the advanced interface
   , toAdvanced
   , fromAdvanced
+    -- * Support for @typelet@
+  , letRecordT
+  , letInsertAs
   ) where
 
 import Data.Aeson (ToJSON(..), FromJSON(..))
@@ -72,6 +76,7 @@ import Data.Record.Generic.Show
 import GHC.Exts
 import GHC.Records.Compat
 import GHC.TypeLits
+import TypeLet
 
 import qualified Data.Vector.Generic as Vector
 
@@ -209,3 +214,34 @@ instance RecordConstraints r ToJSON => ToJSON (Record r) where
 
 instance RecordConstraints r FromJSON => FromJSON (Record r) where
   parseJSON = gparseJSON
+
+{-------------------------------------------------------------------------------
+  Support for @typelet@
+-------------------------------------------------------------------------------}
+
+-- | Introduce type variable for a row
+--
+-- This can be used in conjunction with 'letInsertAs':
+--
+-- > example :: Record '[ "a" := Int, "b" := Char, "c" := Bool ]
+-- > example = letRecordT $ \p -> castEqual $
+-- >     letInsertAs p #c True empty $ \xs02 ->
+-- >     letInsertAs p #b 'X'  xs02  $ \xs01 ->
+-- >     letInsertAs p #a 1    xs01  $ \xs00 ->
+-- >     castEqual xs00
+letRecordT :: forall r.
+     (forall r'. Let r' r => Proxy r' -> Record r)
+  -> Record r
+letRecordT f = letT' (Proxy @r) f
+
+-- | Insert field into a record and introduce type variable for the result
+letInsertAs :: forall r r' n a.
+     Proxy r     -- ^ Type of the record we are constructing
+  -> Field n     -- ^ New field to be inserted
+  -> a           -- ^ Value of the new field
+  -> Record r'   -- ^ Record constructed so far
+  -> (forall r''. Let r'' (n := a : r') => Record r'' -> Record r)
+                 -- ^ Assign type variable to new partial record, and continue
+  -> Record r
+letInsertAs _ n x r = letAs' (insert n x r)
+

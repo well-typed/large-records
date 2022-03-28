@@ -265,20 +265,6 @@ jobs:
       - name: tests
         run: |
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
-      - name: cabal check
-        run: |
-          cd ${PKGDIR_large_generics} || false
-          ${CABAL} -vnormal check
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then cd ${PKGDIR_large_records} || false ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
-          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then cd ${PKGDIR_large_records_benchmarks} || false ; fi
-          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then cd ${PKGDIR_large_anon} || false ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then cd ${PKGDIR_beam_large_records} || false ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
-          cd ${PKGDIR_typelet} || false
-          ${CABAL} -vnormal check
       - name: haddock
         run: |
           $CABAL v2-haddock $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all

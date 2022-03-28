@@ -76,7 +76,7 @@ data Diff (f :: k -> Type) = Diff {
       -- | New values of existing fields
       --
       -- Indices refer to the original record.
-      diffUpd :: HashMap Int (f Any)
+      diffUpd :: !(HashMap Int (f Any))
 
       -- | List of new fields, most recently inserted first
       --
@@ -88,7 +88,7 @@ data Diff (f :: k -> Type) = Diff {
       -- If the field is shadowed, the list will have multiple entries. Entries
       -- in the lists are from new to old, so the head of the list is the
       -- "currently visible" entry.
-    , diffNew :: HashMap FieldName (NonEmpty (f Any))
+    , diffNew :: !(HashMap FieldName (NonEmpty (f Any)))
     }
 
 type role Diff representational

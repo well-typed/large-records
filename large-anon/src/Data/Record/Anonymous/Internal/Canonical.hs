@@ -89,8 +89,8 @@ newtype Canonical (f :: k -> Type) = Canonical {
       -- it possible to define functions such as @mapM@ (for which ordering
       -- must be well-defined).
       --
-      -- NOTE: Since @large-anon@ currently only supports records with strict
-      -- fields, we use a strict vector here.
+      -- The default for @large-anon@ is strict fields, so we use a strict
+      -- vector here. Lazy fields can be achieved by boxing them.
       canonValues :: Vector (f Any)
     }
   deriving newtype (Semigroup, Monoid)

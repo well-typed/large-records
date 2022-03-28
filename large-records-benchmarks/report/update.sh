@@ -2,54 +2,63 @@
 
 set -e
 
+#
 # Run this from the report/ directory.
+#
+# To benchmark only coresize, timing, or time, set the BENCH env var.
+#
 
-# During debugging, might want to enable these instead of the cabal commands
-# below. They produce less accurate results but avoid recompilation every time
-# the script is invoked because the flags remain the same.
-
-# cabal build bench-before      --flags="+profile-coresize +profile-timing"
-# cabal build bench-after       --flags="+profile-coresize +profile-timing"
-# cabal build bench-experiments --flags="+profile-coresize +profile-timing"
-# cabal build bench-typelet     --flags="+profile-coresize +profile-timing"
-# cabal build bench-large-anon  --flags="+profile-coresize +profile-timing"
-# cabal build bench-superrecord --flags="+profile-coresize +profile-timing"
 
 ## Core size
 
-cabal build bench-before       --flags=+profile-coresize
-cabal build bench-after        --flags=+profile-coresize
-cabal build bench-experiments  --flags=+profile-coresize
-cabal build bench-typelet      --flags=+profile-coresize
-cabal build bench-large-anon   --flags=+profile-coresize
-cabal build bench-superrecord  --flags=+profile-coresize
+if [[ "$BENCH" == "" || "$BENCH" == "coresize" ]]
+then
 
-cabal run parse-coresize -- \
-  --dist ../../dist-newstyle \
-  --match '.*/(.*)/Sized/R(.*)\.dump-(ds-preopt|ds|simpl)' \
-  -o coresize.csv
+  cabal build bench-before       --flags=+profile-coresize
+  cabal build bench-after        --flags=+profile-coresize
+  cabal build bench-experiments  --flags=+profile-coresize
+  cabal build bench-typelet      --flags=+profile-coresize
+  cabal build bench-large-anon   --flags=+profile-coresize
+  cabal build bench-superrecord  --flags=+profile-coresize
+
+  cabal run parse-coresize -- \
+    --dist ../../dist-newstyle \
+    --match '.*/(.*)/Sized/R(.*)\.dump-(ds-preopt|ds|simpl)' \
+    -o coresize.csv
+
+fi
 
 ## Timing
 
-cabal build bench-before       --flags=+profile-timing
-cabal build bench-after        --flags=+profile-timing
-cabal build bench-experiments  --flags=+profile-timing
-cabal build bench-typelet      --flags=+profile-timing
-cabal build bench-large-anon   --flags=+profile-timing
-cabal build bench-superrecord  --flags=+profile-timing
+if [[ "$BENCH" == "" || "$BENCH" == "timing" ]]
+then
 
-cabal run parse-timing -- \
-  --dist ../../dist-newstyle \
-  --match '.*/(.*)/Sized/R(.*)\.dump-timings' \
-  --omit-per-phase \
-  -o timing.csv
+  cabal build bench-before       --flags=+profile-timing
+  cabal build bench-after        --flags=+profile-timing
+  cabal build bench-experiments  --flags=+profile-timing
+  cabal build bench-typelet      --flags=+profile-timing
+  cabal build bench-large-anon   --flags=+profile-timing
+  cabal build bench-superrecord  --flags=+profile-timing
+
+  cabal run parse-timing -- \
+    --dist ../../dist-newstyle \
+    --match '.*/(.*)/Sized/R(.*)\.dump-timings' \
+    --omit-per-phase \
+    -o timing.csv
+
+fi
 
 ## Runtime
 
-cabal build bench-large-anon  --flags=+profile-runtime
-cabal build bench-superrecord --flags=+profile-runtime
+rm -f runtime.csv
 
-## TODO: Run criterion
+if [[ "$BENCH" == "" || "$BENCH" == "runtime" ]]
+then
+
+  cabal run --flags=+profile-runtime bench-large-anon  -- --csv runtime.csv
+  cabal run --flags=+profile-runtime bench-superrecord -- --csv runtime.csv
+
+fi
 
 ## Plots
 

@@ -78,18 +78,29 @@ anonRec ::
   -> SrcSpan
   -> [(FastString, LHsExpr GhcPs)]
   -> NamingT Hsc (LHsExpr GhcPs)
-anonRec Options{typelet} mode l fields
-  | null fields = do
-      useName largeAnon_empty
-      return $ mkVar l largeAnon_empty
-  | not typelet = do
-      recordWithoutTypelet mode l fields
-  | otherwise = do
-      p       <- freshVar l "p"
-      fields' <- mapM (\(n, e) -> (n,e,) <$> freshVar l "xs") fields
-      recordWithTypelet mode l p fields'
+anonRec Options{typelet, noapply} mode l = \fields ->
+    applyDiff =<< go fields
   where
     LargeAnonNames{..} = largeAnonNames mode
+
+    go :: [(FastString, LHsExpr GhcPs)] -> NamingT Hsc (LHsExpr GhcPs)
+    go fields
+      | null fields = do
+          useName largeAnon_empty
+          return $ mkVar l largeAnon_empty
+      | not typelet = do
+          recordWithoutTypelet mode l fields
+      | otherwise = do
+          p       <- freshVar l "p"
+          fields' <- mapM (\(n, e) -> (n,e,) <$> freshVar l "xs") fields
+          recordWithTypelet mode l p fields'
+
+    applyDiff :: LHsExpr GhcPs -> NamingT Hsc (LHsExpr GhcPs)
+    applyDiff e
+      | noapply   = return e
+      | otherwise = do
+          useName largeAnon_applyDiff
+          return $ mkVar l largeAnon_applyDiff `mkHsApp` e
 
 recordWithoutTypelet ::
      Mode

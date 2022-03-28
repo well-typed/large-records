@@ -3,8 +3,8 @@
 {-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
--- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:debug   #-}
 {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
+-- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:debug   #-}
 
 -- | Tests for @typelet@
 --

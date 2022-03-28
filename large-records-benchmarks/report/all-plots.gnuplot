@@ -4,6 +4,10 @@ set datafile separator ','
 set terminal png
 set key top left
 
+###
+### large-records
+###
+
 ## Benchmark: "Before vs After"
 
 set xlabel "Record size"
@@ -53,6 +57,10 @@ plot "<(cat coresize.csv | grep HasNormalForm | grep ds,)"    using 2:7 with lin
 set ylabel "Compilation time (ms)"
 set output "graphs/benchmark-06-hasnormalform-timing.png"
 plot "<(cat timing.csv | grep HasNormalForm)" using 2:3 with lines lt rgb "#22EE22" title "HasNormalForm"
+
+###
+### EXPERIMENTS
+###
 
 ## Experiment: Simple record
 
@@ -205,6 +213,10 @@ plot "<(cat timing.csv | grep PreEval_Nominal)"        using 2:3 with lines lt r
    , "<(cat timing.csv | grep PreEval_Phantom)"        using 2:3 with lines lt rgb "#2222EE" title "PreEval/Phantom" \
    , "<(cat timing.csv | grep Induction_Tree_Phantom)" using 2:3 with lines lt rgb "#22EE22" title "NoPreEval/Phantom"
 
+###
+### TYPELET
+###
+
 ## TypeLet: HList
 
 set xlabel "List size"
@@ -247,6 +259,10 @@ set output "graphs/typelet-ap-timing.png"
 plot "<(cat timing.csv | grep ApBaseline)" using 2:3 with lines lt rgb "#EE2222" title "Baseline" \
    , "<(cat timing.csv | grep ApLet)"      using 2:3 with lines lt rgb "#2222EE" title "Let"
 
+###
+### LARGE-ANON
+###
+
 ## large-anon: construction
 
 set xlabel "Record size"
@@ -254,23 +270,42 @@ set xrange [0:100]
 
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-construct-coresize.png"
-plot "<(cat coresize.csv | grep ConstructNoTypeLet   | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds-preopt)" \
-   , "<(cat coresize.csv | grep ConstructNoTypeLet   | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (ds)" \
-   , "<(cat coresize.csv | grep ConstructNoTypeLet   | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "Without TypeLet (simpl)" \
+plot "<(cat coresize.csv | grep ConstructNoTypeLet   | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "Without TypeLet (ds-preopt)" \
+   , "<(cat coresize.csv | grep ConstructNoTypeLet   | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "Without TypeLet (ds)" \
+   , "<(cat coresize.csv | grep ConstructNoTypeLet   | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "Without TypeLet (simpl)" \
    , "<(cat coresize.csv | grep ConstructWithTypeLet | grep ds-preopt,)" using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds-preopt)" \
    , "<(cat coresize.csv | grep ConstructWithTypeLet | grep ds,)"        using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (ds)" \
    , "<(cat coresize.csv | grep ConstructWithTypeLet | grep simpl,)"     using 2:7 with lines lt rgb "#2222EE" title "With TypeLet (simpl)"
 
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-construct-timing.png"
-plot "<(cat timing.csv | grep ConstructNoTypeLet)"   using 2:3 with lines lt rgb "#EE2222" title "Without TypeLet" \
+plot "<(cat timing.csv | grep ConstructNoTypeLet)"   using 2:3 with lines lt rgb "#22EE22" title "Without TypeLet" \
    , "<(cat timing.csv | grep ConstructWithTypeLet)" using 2:3 with lines lt rgb "#2222EE" title "With TypeLet"
+
+## large-anon: field access
+
+set xlabel "Record size"
+set xrange [0:100]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/large-anon-get-coresize.png"
+plot "<(cat coresize.csv | grep ^GetEvens | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "Field access (ds-preopt)" \
+   , "<(cat coresize.csv | grep ^GetEvens | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "Field access (ds)" \
+   , "<(cat coresize.csv | grep ^GetEvens | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "Field access (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/large-anon-get-timing.png"
+plot "<(cat timing.csv | grep ^GetEvens)" using 2:3 with lines lt rgb "#22EEEE" title "Field access"
+
+###
+### LARGE-ANON VS SUPERRECORD
+###
 
 ## large-anon: construction, compared to superrecord
 
 set xlabel "Record size"
-set xrange [0:40]
 
+set xrange [0:30]
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-vs-superrecord-construct-coresize.png"
 plot "<(cat coresize.csv | grep SR_Construct       | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
@@ -280,7 +315,48 @@ plot "<(cat coresize.csv | grep SR_Construct       | grep ds-preopt,)" using 2:7
    , "<(cat coresize.csv | grep ConstructNoTypeLet | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
    , "<(cat coresize.csv | grep ConstructNoTypeLet | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
 
+set xrange [0:50]
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-vs-superrecord-construct-timing.png"
 plot "<(cat timing.csv | grep SR_Construct)"       using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
-   , "<(cat timing.csv | grep ConstructNoTypeLet)" using 2:3 with lines lt rgb "#2222EE" title "large-anon"
+   , "<(cat timing.csv | grep ConstructNoTypeLet)" using 2:3 with lines lt rgb "#22EE22" title "large-anon"
+
+set xrange [0:50]
+set ylabel "Runtime (s)"
+set output "graphs/large-anon-vs-superrecord-construct-runtime.png"
+plot "<(cat runtime.csv | grep SR_Construct         | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+                                                          , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#EE2222' notitle \
+   , "<(cat runtime.csv | grep ConstructNoTypeLet   | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (without TypeLet)" \
+                                                          , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \
+   , "<(cat runtime.csv | grep ConstructNoApply     | tr / ,)" using 2:3 with lines lt rgb "#2222EE" title "large-anon (without applyDiff)" \
+                                                          , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#2222EE' notitle \
+   , "<(cat runtime.csv | grep ConstructWithTypeLet | tr / ,)" using 2:3 with lines lt rgb "#22EEEE" title "large-anon (with TypeLet))" \
+                                                          , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EEEE' notitle
+
+## large-anon: field access, compared to superrecord
+
+set xrange [0:30]
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/large-anon-vs-superrecord-get-coresize.png"
+plot "<(cat coresize.csv | grep SR_GetEvens | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
+   , "<(cat coresize.csv | grep SR_GetEvens | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds)" \
+   , "<(cat coresize.csv | grep SR_GetEvens | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
+   , "<(cat coresize.csv | grep ^GetEvens   | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
+   , "<(cat coresize.csv | grep ^GetEvens   | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
+   , "<(cat coresize.csv | grep ^GetEvens   | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+
+set xrange [0:50]
+set ylabel "Compilation time (ms)"
+set output "graphs/large-anon-vs-superrecord-get-timing.png"
+plot "<(cat timing.csv | grep SR_GetEvens)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+   , "<(cat timing.csv | grep ^GetEvens)"   using 2:3 with lines lt rgb "#22EE22" title "large-anon"
+
+set xrange [0:50]
+set ylabel "Runtime (s)"
+set output "graphs/large-anon-vs-superrecord-get-runtime.png"
+plot "<(cat runtime.csv | grep SR_GetEvens        | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+                                                        , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#EE2222' notitle \
+   , "<(cat runtime.csv | grep GetEvensNoApply    | tr / ,)" using 2:3 with lines lt rgb "#2222EE" title "large-anon (without applyDiff)" \
+                                                        , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#2222EE' notitle \
+   , "<(cat runtime.csv | grep GetEvensAfterApply | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (after applyDiff)" \
+                                                        , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \

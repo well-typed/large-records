@@ -3,6 +3,8 @@
 {-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+-- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:debug   #-}
+-- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:noapply #-}
 
 module Test.Sanity.SrcPlugin.WithoutTypelet (tests) where
 

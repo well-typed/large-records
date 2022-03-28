@@ -93,6 +93,12 @@ forced (and normally it isn't), compilation time is still fine:
 
 ## Benchmarks for `large-anon`
 
+Although the focus of these benchmarks is compilation time performance, when
+comparing with `superrecord` we will also look at runtime performance. It is
+expected here that `superrecord` will outperform `large-anon`; that is after all
+the trade-off that we make. However, runtime performance should still be
+somewhat reasonable.
+
 ### Record construction
 
 This uses the source plugin, but it offers merely syntactic sugar, it does not
@@ -111,6 +117,23 @@ Comparison with [`superrecord`][superrecord]:
 
 ![](graphs/large-anon-vs-superrecord-construct-coresize.png)
 ![](graphs/large-anon-vs-superrecord-construct-timing.png)
+![](graphs/large-anon-vs-superrecord-construct-runtime.png)
+
+### Field access
+
+This extracts half the record fields into a non-record datatype.
+
+![](graphs/large-anon-get-coresize.png)
+![](graphs/large-anon-get-timing.png)
+
+Comparison with `superrecord`:
+
+![](graphs/large-anon-vs-superrecord-get-coresize.png)
+![](graphs/large-anon-vs-superrecord-get-timing.png)
+![](graphs/large-anon-vs-superrecord-get-runtime.png)
+
+Here is where we see the win from `applyDiff` (we paid for it during record
+construction).
 
 ## Experiments
 

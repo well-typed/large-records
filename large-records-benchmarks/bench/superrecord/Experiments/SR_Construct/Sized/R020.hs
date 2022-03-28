@@ -13,28 +13,28 @@ import SuperRecord
 import Bench.Types
 import Common.RowOfSize.Row020 (Row)
 
-record :: Rec Row
-record =
+record :: Word -> Rec Row
+record x =
       -- 00 .. 09
-      rcons (#t00 := MkT 00)
-    $ rcons (#t01 := MkT 01)
-    $ rcons (#t02 := MkT 02)
-    $ rcons (#t03 := MkT 03)
-    $ rcons (#t04 := MkT 04)
-    $ rcons (#t05 := MkT 05)
-    $ rcons (#t06 := MkT 06)
-    $ rcons (#t07 := MkT 07)
-    $ rcons (#t08 := MkT 08)
-    $ rcons (#t09 := MkT 09)
+      rcons (#t00 := MkT x)
+    $ rcons (#t01 := MkT x)
+    $ rcons (#t02 := MkT x)
+    $ rcons (#t03 := MkT x)
+    $ rcons (#t04 := MkT x)
+    $ rcons (#t05 := MkT x)
+    $ rcons (#t06 := MkT x)
+    $ rcons (#t07 := MkT x)
+    $ rcons (#t08 := MkT x)
+    $ rcons (#t09 := MkT x)
       -- 10 .. 19
-    $ rcons (#t10 := MkT 10)
-    $ rcons (#t11 := MkT 11)
-    $ rcons (#t12 := MkT 12)
-    $ rcons (#t13 := MkT 13)
-    $ rcons (#t14 := MkT 14)
-    $ rcons (#t15 := MkT 15)
-    $ rcons (#t16 := MkT 16)
-    $ rcons (#t17 := MkT 17)
-    $ rcons (#t18 := MkT 18)
-    $ rcons (#t19 := MkT 19)
+    $ rcons (#t10 := MkT x)
+    $ rcons (#t11 := MkT x)
+    $ rcons (#t12 := MkT x)
+    $ rcons (#t13 := MkT x)
+    $ rcons (#t14 := MkT x)
+    $ rcons (#t15 := MkT x)
+    $ rcons (#t16 := MkT x)
+    $ rcons (#t17 := MkT x)
+    $ rcons (#t18 := MkT x)
+    $ rcons (#t19 := MkT x)
     $ rnil

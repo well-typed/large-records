@@ -1,6 +1,7 @@
 module Bench.Util.Criterion (
     envWHNF
   , envPureWHNF
+  , envPureNF
   ) where
 
 import Control.DeepSeq
@@ -19,3 +20,6 @@ envWHNF mkEnv useEnv = env (WHNF <$> mkEnv) (useEnv . getWHNF)
 
 envPureWHNF :: env -> (env -> Benchmark) -> Benchmark
 envPureWHNF = envWHNF . evaluate
+
+envPureNF :: NFData env => env -> (env -> Benchmark) -> Benchmark
+envPureNF = env . evaluate

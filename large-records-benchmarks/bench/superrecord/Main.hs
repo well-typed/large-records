@@ -48,6 +48,24 @@ import qualified Experiment.SR_SetEvens.Sized.R060
 import qualified Experiment.SR_SetEvens.Sized.R070
 import qualified Experiment.SR_SetEvens.Sized.R080
 
+import qualified Experiment.SR_ToJSON.Sized.R010
+import qualified Experiment.SR_ToJSON.Sized.R020
+import qualified Experiment.SR_ToJSON.Sized.R030
+import qualified Experiment.SR_ToJSON.Sized.R040
+import qualified Experiment.SR_ToJSON.Sized.R050
+import qualified Experiment.SR_ToJSON.Sized.R060
+import qualified Experiment.SR_ToJSON.Sized.R070
+import qualified Experiment.SR_ToJSON.Sized.R080
+
+import qualified Experiment.SR_ParseJSON.Sized.R010
+import qualified Experiment.SR_ParseJSON.Sized.R020
+import qualified Experiment.SR_ParseJSON.Sized.R030
+import qualified Experiment.SR_ParseJSON.Sized.R040
+import qualified Experiment.SR_ParseJSON.Sized.R050
+import qualified Experiment.SR_ParseJSON.Sized.R060
+import qualified Experiment.SR_ParseJSON.Sized.R070
+import qualified Experiment.SR_ParseJSON.Sized.R080
+
 main :: IO ()
 main = defaultMain [
       bgroup "SR_Construct" [
@@ -101,6 +119,42 @@ main = defaultMain [
             bench "070" $ whnf (Experiment.SR_SetEvens.Sized.R070.setEvens evens070) r
         , envPureWHNF (Experiment.SR_Unsafe.Sized.R080.record 0) $ \r ->
             bench "080" $ whnf (Experiment.SR_SetEvens.Sized.R080.setEvens evens080) r
+        ]
+    , bgroup "SR_ToJSON" [
+          envPureWHNF (Experiment.SR_Unsafe.Sized.R010.record 0) $ \r ->
+            bench "010" $ nf Experiment.SR_ToJSON.Sized.R010.recToJSON r
+        , envPureWHNF (Experiment.SR_Unsafe.Sized.R020.record 0) $ \r ->
+            bench "020" $ nf Experiment.SR_ToJSON.Sized.R020.recToJSON r
+        , envPureWHNF (Experiment.SR_Unsafe.Sized.R030.record 0) $ \r ->
+            bench "030" $ nf Experiment.SR_ToJSON.Sized.R030.recToJSON r
+        , envPureWHNF (Experiment.SR_Unsafe.Sized.R040.record 0) $ \r ->
+            bench "040" $ nf Experiment.SR_ToJSON.Sized.R040.recToJSON r
+        , envPureWHNF (Experiment.SR_Unsafe.Sized.R050.record 0) $ \r ->
+            bench "050" $ nf Experiment.SR_ToJSON.Sized.R050.recToJSON r
+        , envPureWHNF (Experiment.SR_Unsafe.Sized.R060.record 0) $ \r ->
+            bench "060" $ nf Experiment.SR_ToJSON.Sized.R060.recToJSON r
+        , envPureWHNF (Experiment.SR_Unsafe.Sized.R070.record 0) $ \r ->
+            bench "070" $ nf Experiment.SR_ToJSON.Sized.R070.recToJSON r
+        , envPureWHNF (Experiment.SR_Unsafe.Sized.R080.record 0) $ \r ->
+            bench "080" $ nf Experiment.SR_ToJSON.Sized.R080.recToJSON r
+        ]
+    , bgroup "SR_ParseJSON" [
+          envPureNF (Experiment.SR_ToJSON.Sized.R010.recToJSON $ Experiment.SR_Unsafe.Sized.R010.record 0) $ \r ->
+            bench "010" $ whnf Experiment.SR_ParseJSON.Sized.R010.recFromJSON r
+        , envPureNF (Experiment.SR_ToJSON.Sized.R020.recToJSON $ Experiment.SR_Unsafe.Sized.R020.record 0) $ \r ->
+            bench "020" $ whnf Experiment.SR_ParseJSON.Sized.R020.recFromJSON r
+        , envPureNF (Experiment.SR_ToJSON.Sized.R030.recToJSON $ Experiment.SR_Unsafe.Sized.R030.record 0) $ \r ->
+            bench "030" $ whnf Experiment.SR_ParseJSON.Sized.R030.recFromJSON r
+        , envPureNF (Experiment.SR_ToJSON.Sized.R040.recToJSON $ Experiment.SR_Unsafe.Sized.R040.record 0) $ \r ->
+            bench "040" $ whnf Experiment.SR_ParseJSON.Sized.R040.recFromJSON r
+        , envPureNF (Experiment.SR_ToJSON.Sized.R050.recToJSON $ Experiment.SR_Unsafe.Sized.R050.record 0) $ \r ->
+            bench "050" $ whnf Experiment.SR_ParseJSON.Sized.R050.recFromJSON r
+        , envPureNF (Experiment.SR_ToJSON.Sized.R060.recToJSON $ Experiment.SR_Unsafe.Sized.R060.record 0) $ \r ->
+            bench "060" $ whnf Experiment.SR_ParseJSON.Sized.R060.recFromJSON r
+        , envPureNF (Experiment.SR_ToJSON.Sized.R070.recToJSON $ Experiment.SR_Unsafe.Sized.R070.record 0) $ \r ->
+            bench "070" $ whnf Experiment.SR_ParseJSON.Sized.R070.recFromJSON r
+        , envPureNF (Experiment.SR_ToJSON.Sized.R080.recToJSON $ Experiment.SR_Unsafe.Sized.R080.record 0) $ \r ->
+            bench "080" $ whnf Experiment.SR_ParseJSON.Sized.R080.recFromJSON r
         ]
     ]
   where

@@ -23,7 +23,7 @@ import Data.Record.Generic.Transform
 
 -- | 'T' gives us as many different types as we need
 newtype T (i :: Nat) = MkT Word
-  deriving (Show, Eq, ToJSON)
+  deriving (Show, Eq, ToJSON, FromJSON)
 
 type instance Interpreted I (T i) = T i
 

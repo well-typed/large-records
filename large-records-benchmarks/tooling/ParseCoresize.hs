@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns    #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections   #-}
 
@@ -6,6 +7,7 @@ module Main (main) where
 import Conduit
 import Data.List (sort)
 import Options.Applicative
+import System.IO
 import Text.Read (readMaybe)
 import Text.Regex.PCRE.Light (Regex)
 
@@ -51,10 +53,10 @@ getOptions = execParser opts
 -------------------------------------------------------------------------------}
 
 data Stats = Stats {
-      statsTerms     :: Int
-    , statsTypes     :: Int
-    , statsCoercions :: Int
-    , statsTotal     :: Int
+      statsTerms     :: !Int
+    , statsTypes     :: !Int
+    , statsCoercions :: !Int
+    , statsTotal     :: !Int
     }
   -- The 'Ord' instance dictates the default ordering in the CSV file.
   deriving (Show, Eq, Ord)
@@ -99,7 +101,9 @@ parseStats fp raw =
 -------------------------------------------------------------------------------}
 
 processFile :: FilePath -> IO (Maybe Stats)
-processFile fp = (Just . parseStats fp) <$> readFile fp
+processFile fp = withFile fp ReadMode $ \h -> do
+    !stats <- parseStats fp <$> hGetContents h
+    return $ Just stats
 
 main :: IO ()
 main = do

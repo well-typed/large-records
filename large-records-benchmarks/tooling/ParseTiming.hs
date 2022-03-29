@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns      #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
@@ -5,10 +6,13 @@ module Main (main) where
 
 import Conduit
 import Data.Bifunctor
+import Data.ByteString.Lazy (ByteString)
 import Data.List (sort, isPrefixOf)
-import Data.Map (Map)
+import Data.Map.Strict (Map)
 import Data.Set (Set)
+import Data.Text (Text)
 import Options.Applicative hiding (columns)
+import System.IO
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 import Text.Regex.PCRE.Light (Regex)
@@ -19,12 +23,12 @@ import qualified Data.Conduit.Combinators  as C
 import qualified Data.Conduit.List         as C.List
 import qualified Data.Csv                  as Csv
 import qualified Data.HashMap.Strict       as HM
-import qualified Data.Map                  as Map
+import qualified Data.Map.Strict           as Map
 import qualified Data.Set                  as Set
+import qualified Data.Text                 as Text
 import qualified Data.Vector               as V
 
 import Tooling
-import Data.ByteString.Lazy (ByteString)
 
 {-------------------------------------------------------------------------------
   Command line options
@@ -72,15 +76,15 @@ getOptions = execParser opts
 -------------------------------------------------------------------------------}
 
 data Timings = Timings {
-      timingsTotal :: AllocAndTime
-    , timingsMap   :: Map Phase AllocAndTime
+      timingsTotal :: !AllocAndTime
+    , timingsMap   :: !(Map Phase AllocAndTime)
     }
   -- 'Ord' instance dictates ordering in the CSV file
   deriving (Show, Eq, Ord)
 
 data AllocAndTime = AllocAndTime {
-      alloc :: Int
-    , time  :: Double
+      alloc :: !Int
+    , time  :: !Double
     }
   deriving (Show, Eq, Ord)
 
@@ -97,7 +101,7 @@ mkTimings entries = Timings{..}
     timingsMap   = Map.fromListWith (<>) entries
     timingsTotal = mconcat $ map snd entries
 
-type Phase = String
+type Phase = Text
 
 -- | Parse a line from the timings file
 --
@@ -112,7 +116,7 @@ parseLine str0
   , Just time'  <- readMaybe (drop 5 time)
   , "alloc=" `isPrefixOf` alloc
   , "time="  `isPrefixOf` time
-  = (phase, AllocAndTime { alloc = alloc', time = time' })
+  = (Text.pack phase, AllocAndTime { alloc = alloc', time = time' })
 
   | otherwise
   = error $ "parseLine: could not parse " ++ show str0
@@ -156,8 +160,8 @@ toNamedRecord phases Parsed{..} =
 
     aux :: Phase -> (String, String)
     aux phase = case Map.lookup phase timingsMap of
-                  Just at -> (phase, showTime (time at))
-                  Nothing -> (phase, "0") -- Phase didn't happen in this module
+                  Just at -> (Text.unpack phase, showTime (time at))
+                  Nothing -> (Text.unpack phase, "0") -- Phase didn't happen in this module
 
 -- | Construct unnamed record (no headers, don't flatten labels)
 --
@@ -180,7 +184,7 @@ toCSV Options{optsOmitPerPhase = False} phases timings =
     columns = V.fromList $
                  "module"
                : "total time"
-               : map BS.UTF8.fromString phases
+               : map (BS.UTF8.fromString . Text.unpack) phases
 toCSV Options{optsOmitPerPhase = True} _phases timings =
     Csv.encode $ map toUnnamedRecord timings
 
@@ -189,9 +193,9 @@ toCSV Options{optsOmitPerPhase = True} _phases timings =
 -------------------------------------------------------------------------------}
 
 processFile :: FilePath -> IO (Maybe Timings)
-processFile fp = do
-    contents <- readFile fp
-    return $ Just (parseTimings contents)
+processFile fp = withFile fp ReadMode $ \h -> do
+    !timings <- parseTimings <$> hGetContents h
+    return $ Just timings
 
 main :: IO ()
 main = do

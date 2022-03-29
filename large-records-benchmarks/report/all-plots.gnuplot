@@ -315,31 +315,45 @@ plot "<(cat timing.csv | grep ^SetEvens)" using 2:3 with lines lt rgb "#22EEEE" 
 ###
 ### LARGE-ANON VS SUPERRECORD
 ###
-
-## large-anon: construction, compared to superrecord
+### For all superrecord graphs, we only show "simpl" for the timings, to keep
+### benchmarking time in check.
+###
 
 set xlabel "Record size"
 
-set xrange [0:30]
+## superrecord: safe construction
+## This dwarves everything else, so we plot it by itself
+
+set xrange [0:40]
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/superrecord-construct-coresize.png"
+plot "<(cat coresize.csv | grep SR_Construct | grep simpl,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)"
+
+set xrange [0:40]
+set ylabel "Compilation time (ms)"
+set output "graphs/superrecord-construct-timing.png"
+plot "<(cat timing.csv | grep SR_Construct)" using 2:3 with lines lt rgb "#EE2222" title "superrecord"
+
+## large-anon: construction, compared to superrecord
+## We only show the unsafe record construction here
+
+set xrange [0:80]
+
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-vs-superrecord-construct-coresize.png"
-plot "<(cat coresize.csv | grep SR_Construct       | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
-   , "<(cat coresize.csv | grep SR_Construct       | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds)" \
-   , "<(cat coresize.csv | grep SR_Construct       | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
-   , "<(cat coresize.csv | grep ConstructNoTypeLet | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
-   , "<(cat coresize.csv | grep ConstructNoTypeLet | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
-   , "<(cat coresize.csv | grep ConstructNoTypeLet | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+plot "<(cat coresize.csv | grep SR_Unsafe          | grep simpl,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (unsafe, simpl)" \
+   , "<(cat coresize.csv | grep ConstructNoTypeLet | grep simpl,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
 
-set xrange [0:50]
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-vs-superrecord-construct-timing.png"
-plot "<(cat timing.csv | grep SR_Construct)"       using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+plot "<(cat timing.csv | grep SR_Unsafe)"          using 2:3 with lines lt rgb "#EE2222" title "superrecord (unsafe)" \
    , "<(cat timing.csv | grep ConstructNoTypeLet)" using 2:3 with lines lt rgb "#22EE22" title "large-anon"
 
-set xrange [0:50]
 set ylabel "Runtime (s)"
 set output "graphs/large-anon-vs-superrecord-construct-runtime.png"
-plot "<(cat runtime.csv | grep SR_Construct         | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+plot "<(cat runtime.csv | grep SR_Unsafe            | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord (unsafe)" \
+                                                          , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#EE2222' notitle \
+   , "<(cat runtime.csv | grep SR_Construct         | tr / ,)" using 2:3 with lines lt rgb "#EEEE22" linewidth 5 title "superrecord (safe)" \
                                                           , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#EE2222' notitle \
    , "<(cat runtime.csv | grep ConstructNoTypeLet   | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (without TypeLet)" \
                                                           , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \
@@ -350,23 +364,18 @@ plot "<(cat runtime.csv | grep SR_Construct         | tr / ,)" using 2:3 with li
 
 ## large-anon: field access, compared to superrecord
 
-set xrange [0:30]
+set xrange [0:80]
+
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-vs-superrecord-get-coresize.png"
-plot "<(cat coresize.csv | grep SR_GetEvens | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
-   , "<(cat coresize.csv | grep SR_GetEvens | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds)" \
-   , "<(cat coresize.csv | grep SR_GetEvens | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
-   , "<(cat coresize.csv | grep ^GetEvens   | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
-   , "<(cat coresize.csv | grep ^GetEvens   | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
-   , "<(cat coresize.csv | grep ^GetEvens   | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+plot "<(cat coresize.csv | grep SR_GetEvens | grep simpl,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
+   , "<(cat coresize.csv | grep ^GetEvens   | grep simpl,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
 
-set xrange [0:50]
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-vs-superrecord-get-timing.png"
 plot "<(cat timing.csv | grep SR_GetEvens)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
    , "<(cat timing.csv | grep ^GetEvens)"   using 2:3 with lines lt rgb "#22EE22" title "large-anon"
 
-set xrange [0:50]
 set ylabel "Runtime (s)"
 set output "graphs/large-anon-vs-superrecord-get-runtime.png"
 plot "<(cat runtime.csv | grep SR_GetEvens        | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
@@ -378,23 +387,18 @@ plot "<(cat runtime.csv | grep SR_GetEvens        | tr / ,)" using 2:3 with line
 
 ## large-anon: field override, compared to superrecord
 
-set xrange [0:30]
+set xrange [0:80]
+
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-vs-superrecord-set-coresize.png"
-plot "<(cat coresize.csv | grep SR_SetEvens | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
-   , "<(cat coresize.csv | grep SR_SetEvens | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds)" \
-   , "<(cat coresize.csv | grep SR_SetEvens | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
-   , "<(cat coresize.csv | grep ^SetEvens   | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
-   , "<(cat coresize.csv | grep ^SetEvens   | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
-   , "<(cat coresize.csv | grep ^SetEvens   | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+plot "<(cat coresize.csv | grep SR_SetEvens | grep simpl,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
+   , "<(cat coresize.csv | grep ^SetEvens   | grep simpl,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
 
-set xrange [0:50]
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-vs-superrecord-set-timing.png"
 plot "<(cat timing.csv | grep SR_SetEvens)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
    , "<(cat timing.csv | grep ^SetEvens)"   using 2:3 with lines lt rgb "#22EE22" title "large-anon"
 
-set xrange [0:50]
 set ylabel "Runtime (s)"
 set output "graphs/large-anon-vs-superrecord-set-runtime.png"
 plot "<(cat runtime.csv | grep SR_SetEvens       | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \

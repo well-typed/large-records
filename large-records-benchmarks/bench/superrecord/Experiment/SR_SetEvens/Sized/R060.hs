@@ -1,5 +1,5 @@
 #if PROFILE_CORESIZE
-{-# OPTIONS_GHC -ddump-to-file -ddump-ds-preopt -ddump-ds -ddump-simpl #-}
+{-# OPTIONS_GHC -ddump-to-file -ddump-simpl #-}
 #endif
 #if PROFILE_TIMING
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
@@ -54,10 +54,4 @@ setEvens Evens{..} r =
     . SR.set #t54 evens54
     . SR.set #t56 evens56
     . SR.set #t58 evens58
-      -- 60 .. 69
-    . SR.set #t60 evens60
-    . SR.set #t62 evens62
-    . SR.set #t64 evens64
-    . SR.set #t66 evens66
-    . SR.set #t68 evens68
     $ r

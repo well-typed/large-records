@@ -5,4 +5,4 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-module Experiment.SR_SetEvens.Sized.R000 where
+module Experiment.SR_Unsafe.Sized.R000 where

@@ -1,5 +1,5 @@
 #if PROFILE_CORESIZE
-{-# OPTIONS_GHC -ddump-to-file -ddump-ds-preopt -ddump-ds -ddump-simpl #-}
+{-# OPTIONS_GHC -ddump-to-file -ddump-simpl #-}
 #endif
 #if PROFILE_TIMING
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
@@ -8,7 +8,8 @@
 
 module Experiment.SR_Construct.Sized.R040 where
 
-import SuperRecord
+import SuperRecord (Rec, (:=)(..))
+import qualified SuperRecord as SR
 
 import Bench.Types
 import Common.RowOfSize.Row040 (Row)
@@ -16,47 +17,47 @@ import Common.RowOfSize.Row040 (Row)
 record :: Word -> Rec Row
 record x =
       -- 00 .. 09
-      rcons (#t00 := MkT x)
-    $ rcons (#t01 := MkT x)
-    $ rcons (#t02 := MkT x)
-    $ rcons (#t03 := MkT x)
-    $ rcons (#t04 := MkT x)
-    $ rcons (#t05 := MkT x)
-    $ rcons (#t06 := MkT x)
-    $ rcons (#t07 := MkT x)
-    $ rcons (#t08 := MkT x)
-    $ rcons (#t09 := MkT x)
+      SR.rcons (#t00 := MkT x)
+    $ SR.rcons (#t01 := MkT x)
+    $ SR.rcons (#t02 := MkT x)
+    $ SR.rcons (#t03 := MkT x)
+    $ SR.rcons (#t04 := MkT x)
+    $ SR.rcons (#t05 := MkT x)
+    $ SR.rcons (#t06 := MkT x)
+    $ SR.rcons (#t07 := MkT x)
+    $ SR.rcons (#t08 := MkT x)
+    $ SR.rcons (#t09 := MkT x)
       -- 10 .. 19
-    $ rcons (#t10 := MkT x)
-    $ rcons (#t11 := MkT x)
-    $ rcons (#t12 := MkT x)
-    $ rcons (#t13 := MkT x)
-    $ rcons (#t14 := MkT x)
-    $ rcons (#t15 := MkT x)
-    $ rcons (#t16 := MkT x)
-    $ rcons (#t17 := MkT x)
-    $ rcons (#t18 := MkT x)
-    $ rcons (#t19 := MkT x)
+    $ SR.rcons (#t10 := MkT x)
+    $ SR.rcons (#t11 := MkT x)
+    $ SR.rcons (#t12 := MkT x)
+    $ SR.rcons (#t13 := MkT x)
+    $ SR.rcons (#t14 := MkT x)
+    $ SR.rcons (#t15 := MkT x)
+    $ SR.rcons (#t16 := MkT x)
+    $ SR.rcons (#t17 := MkT x)
+    $ SR.rcons (#t18 := MkT x)
+    $ SR.rcons (#t19 := MkT x)
       -- 20 .. 29
-    $ rcons (#t20 := MkT x)
-    $ rcons (#t21 := MkT x)
-    $ rcons (#t22 := MkT x)
-    $ rcons (#t23 := MkT x)
-    $ rcons (#t24 := MkT x)
-    $ rcons (#t25 := MkT x)
-    $ rcons (#t26 := MkT x)
-    $ rcons (#t27 := MkT x)
-    $ rcons (#t28 := MkT x)
-    $ rcons (#t29 := MkT x)
+    $ SR.rcons (#t20 := MkT x)
+    $ SR.rcons (#t21 := MkT x)
+    $ SR.rcons (#t22 := MkT x)
+    $ SR.rcons (#t23 := MkT x)
+    $ SR.rcons (#t24 := MkT x)
+    $ SR.rcons (#t25 := MkT x)
+    $ SR.rcons (#t26 := MkT x)
+    $ SR.rcons (#t27 := MkT x)
+    $ SR.rcons (#t28 := MkT x)
+    $ SR.rcons (#t29 := MkT x)
       -- 30 .. 39
-    $ rcons (#t30 := MkT x)
-    $ rcons (#t31 := MkT x)
-    $ rcons (#t32 := MkT x)
-    $ rcons (#t33 := MkT x)
-    $ rcons (#t34 := MkT x)
-    $ rcons (#t35 := MkT x)
-    $ rcons (#t36 := MkT x)
-    $ rcons (#t37 := MkT x)
-    $ rcons (#t38 := MkT x)
-    $ rcons (#t39 := MkT x)
-    $ rnil
+    $ SR.rcons (#t30 := MkT x)
+    $ SR.rcons (#t31 := MkT x)
+    $ SR.rcons (#t32 := MkT x)
+    $ SR.rcons (#t33 := MkT x)
+    $ SR.rcons (#t34 := MkT x)
+    $ SR.rcons (#t35 := MkT x)
+    $ SR.rcons (#t36 := MkT x)
+    $ SR.rcons (#t37 := MkT x)
+    $ SR.rcons (#t38 := MkT x)
+    $ SR.rcons (#t39 := MkT x)
+    $ SR.rnil

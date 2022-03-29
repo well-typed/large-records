@@ -30,12 +30,13 @@ library
       Data.Record.Anonymous.Internal.Evidence
       Data.Record.Anonymous.Internal.Generics
       Data.Record.Anonymous.Internal.Record
+      Data.Record.Anonymous.Internal.Rep
+      Data.Record.Anonymous.Internal.Row
       Data.Record.Anonymous.Internal.Row.FieldName
       Data.Record.Anonymous.Internal.Row.KnownField
       Data.Record.Anonymous.Internal.Row.KnownRow
       Data.Record.Anonymous.Internal.Row.ParsedRow
-      Data.Record.Anonymous.Internal.Rep
-      Data.Record.Anonymous.Internal.Row
+      Data.Record.Anonymous.Internal.SmallHashMap
       Data.Record.Anonymous.Internal.StrictVector
 
       -- Exposed for the benefit of cabal-docspec
@@ -77,7 +78,6 @@ library
     , syb
     , text
     , typelet
-    , unordered-containers
     , vector
 
       -- TODO: Make this dependency optional (DEBUG flag)

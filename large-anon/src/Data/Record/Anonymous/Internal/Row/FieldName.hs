@@ -47,7 +47,7 @@ data FieldName = FieldName {
     , fieldNameLabel :: String
     }
   -- For the 'Eq' and 'Ord' instances it's important the 'Int' comes first
-  deriving (Eq)
+  deriving (Eq, Ord)
 
 instance Hashable FieldName where
   hash           = fieldNameHash

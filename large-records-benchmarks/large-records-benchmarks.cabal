@@ -610,6 +610,18 @@ executable bench-large-anon
       Experiment.ToJSON.Sized.R090
       Experiment.ToJSON.Sized.R100
 
+      Experiment.ParseJSON.Sized.R000
+      Experiment.ParseJSON.Sized.R010
+      Experiment.ParseJSON.Sized.R020
+      Experiment.ParseJSON.Sized.R030
+      Experiment.ParseJSON.Sized.R040
+      Experiment.ParseJSON.Sized.R050
+      Experiment.ParseJSON.Sized.R060
+      Experiment.ParseJSON.Sized.R070
+      Experiment.ParseJSON.Sized.R080
+      Experiment.ParseJSON.Sized.R090
+      Experiment.ParseJSON.Sized.R100
+
   if flag(profile-runtime)
     ghc-options:
       -O1
@@ -693,6 +705,16 @@ executable bench-superrecord
       Experiment.SR_ToJSON.Sized.R060
       Experiment.SR_ToJSON.Sized.R070
       Experiment.SR_ToJSON.Sized.R080
+
+      Experiment.SR_ParseJSON.Sized.R000
+      Experiment.SR_ParseJSON.Sized.R010
+      Experiment.SR_ParseJSON.Sized.R020
+      Experiment.SR_ParseJSON.Sized.R030
+      Experiment.SR_ParseJSON.Sized.R040
+      Experiment.SR_ParseJSON.Sized.R050
+      Experiment.SR_ParseJSON.Sized.R060
+      Experiment.SR_ParseJSON.Sized.R070
+      Experiment.SR_ParseJSON.Sized.R080
 
   if flag(profile-runtime)
     ghc-options:

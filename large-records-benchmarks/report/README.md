@@ -191,6 +191,17 @@ This overwrites half the record fields.
 ![](graphs/large-anon-vs-superrecord-toJSON-timing.png)
 ![](graphs/large-anon-vs-superrecord-toJSON-runtime.png)
 
+### ParseJSON
+
+![](graphs/large-anon-parseJSON-coresize.png)
+![](graphs/large-anon-parseJSON-timing.png)
+
+#### Comparison with `superrecord`
+
+![](graphs/large-anon-vs-superrecord-parseJSON-coresize.png)
+![](graphs/large-anon-vs-superrecord-parseJSON-timing.png)
+![](graphs/large-anon-vs-superrecord-parseJSON-runtime.png)
+
 ## Experiments
 
 In this section we report on a number of experiments that test various

@@ -86,6 +86,17 @@ import qualified Experiment.ToJSON.Sized.R080
 import qualified Experiment.ToJSON.Sized.R090
 import qualified Experiment.ToJSON.Sized.R100
 
+import qualified Experiment.ParseJSON.Sized.R010
+import qualified Experiment.ParseJSON.Sized.R020
+import qualified Experiment.ParseJSON.Sized.R030
+import qualified Experiment.ParseJSON.Sized.R040
+import qualified Experiment.ParseJSON.Sized.R050
+import qualified Experiment.ParseJSON.Sized.R060
+import qualified Experiment.ParseJSON.Sized.R070
+import qualified Experiment.ParseJSON.Sized.R080
+import qualified Experiment.ParseJSON.Sized.R090
+import qualified Experiment.ParseJSON.Sized.R100
+
 main :: IO ()
 main = defaultMain [
       bgroup "ConstructNoTypeLet" [
@@ -233,6 +244,28 @@ main = defaultMain [
             bench "090" $ nf Experiment.ToJSON.Sized.R090.recToJSON r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R100.record 0) $ \r ->
             bench "100" $ nf Experiment.ToJSON.Sized.R100.recToJSON r
+        ]
+    , bgroup "ParseJSON" [
+          envPureNF (Experiment.ToJSON.Sized.R010.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R010.record 0) $ \r ->
+            bench "010" $ whnf Experiment.ParseJSON.Sized.R010.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R020.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R020.record 0) $ \r ->
+            bench "020" $ whnf Experiment.ParseJSON.Sized.R020.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R030.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R030.record 0) $ \r ->
+            bench "030" $ whnf Experiment.ParseJSON.Sized.R030.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R040.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R040.record 0) $ \r ->
+            bench "040" $ whnf Experiment.ParseJSON.Sized.R040.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R050.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R050.record 0) $ \r ->
+            bench "050" $ whnf Experiment.ParseJSON.Sized.R050.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R060.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R060.record 0) $ \r ->
+            bench "060" $ whnf Experiment.ParseJSON.Sized.R060.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R070.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R070.record 0) $ \r ->
+            bench "070" $ whnf Experiment.ParseJSON.Sized.R070.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R080.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R080.record 0) $ \r ->
+            bench "080" $ whnf Experiment.ParseJSON.Sized.R080.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R090.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R090.record 0) $ \r ->
+            bench "090" $ whnf Experiment.ParseJSON.Sized.R090.recFromJSON r
+        , envPureNF (Experiment.ToJSON.Sized.R100.recToJSON $ Experiment.ConstructNoTypeLet.Sized.R100.record 0) $ \r ->
+            bench "100" $ whnf Experiment.ParseJSON.Sized.R100.recFromJSON r
         ]
     ]
   where

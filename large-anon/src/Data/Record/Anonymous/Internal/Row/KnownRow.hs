@@ -31,15 +31,16 @@ import qualified Prelude
 
 import Control.Monad.State (State, evalState, state)
 import Data.Either (partitionEithers)
-import Data.HashMap.Strict (HashMap)
 import Data.Vector (Vector)
 
-import qualified Data.Vector         as V
-import qualified Data.HashMap.Strict as HashMap
+import qualified Data.Vector  as V
 
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
+import Data.Record.Anonymous.Internal.SmallHashMap (HashMap)
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+
+import qualified Data.Record.Anonymous.Internal.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition

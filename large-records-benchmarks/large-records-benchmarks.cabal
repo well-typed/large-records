@@ -517,12 +517,14 @@ executable bench-large-anon
       -Wno-unticked-promoted-constructors
   build-depends:
       large-anon
+    , aeson
+    , large-generics
     , typelet
 
     -- TODO: These dependencies should not be here
     -- (This is the module finding problem in large-anon)
+    -- (large-generics is in this list too, but we need it anyway)
     , sop-core
-    , large-generics
     , record-hasfield
   other-modules:
       Common.RowOfSize.Row010
@@ -595,6 +597,18 @@ executable bench-large-anon
       Experiment.SetEvens.Sized.R080
       Experiment.SetEvens.Sized.R090
       Experiment.SetEvens.Sized.R100
+
+      Experiment.ToJSON.Sized.R000
+      Experiment.ToJSON.Sized.R010
+      Experiment.ToJSON.Sized.R020
+      Experiment.ToJSON.Sized.R030
+      Experiment.ToJSON.Sized.R040
+      Experiment.ToJSON.Sized.R050
+      Experiment.ToJSON.Sized.R060
+      Experiment.ToJSON.Sized.R070
+      Experiment.ToJSON.Sized.R080
+      Experiment.ToJSON.Sized.R090
+      Experiment.ToJSON.Sized.R100
 
   if flag(profile-runtime)
     ghc-options:
@@ -669,6 +683,16 @@ executable bench-superrecord
       Experiment.SR_SetEvens.Sized.R060
       Experiment.SR_SetEvens.Sized.R070
       Experiment.SR_SetEvens.Sized.R080
+
+      Experiment.SR_ToJSON.Sized.R000
+      Experiment.SR_ToJSON.Sized.R010
+      Experiment.SR_ToJSON.Sized.R020
+      Experiment.SR_ToJSON.Sized.R030
+      Experiment.SR_ToJSON.Sized.R040
+      Experiment.SR_ToJSON.Sized.R050
+      Experiment.SR_ToJSON.Sized.R060
+      Experiment.SR_ToJSON.Sized.R070
+      Experiment.SR_ToJSON.Sized.R080
 
   if flag(profile-runtime)
     ghc-options:

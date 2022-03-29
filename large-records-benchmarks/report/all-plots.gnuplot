@@ -312,6 +312,21 @@ set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-set-timing.png"
 plot "<(cat timing.csv | grep ^SetEvens)" using 2:3 with lines lt rgb "#22EEEE" title "Field override"
 
+## large-anon: toJSON
+
+set xlabel "Record size"
+set xrange [0:100]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/large-anon-toJSON-coresize.png"
+plot "<(cat coresize.csv | grep ^ToJSON | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "toJSON (ds-preopt)" \
+   , "<(cat coresize.csv | grep ^ToJSON | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "toJSON (ds)" \
+   , "<(cat coresize.csv | grep ^ToJSON | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "toJSON (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/large-anon-toJSON-timing.png"
+plot "<(cat timing.csv | grep ^ToJSON)" using 2:3 with lines lt rgb "#22EEEE" title "Field override"
+
 ###
 ### LARGE-ANON VS SUPERRECORD
 ###
@@ -407,3 +422,24 @@ plot "<(cat runtime.csv | grep SR_SetEvens       | tr / ,)" using 2:3 with lines
                                                        , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#2222EE' notitle \
    , "<(cat runtime.csv | grep SetEvensThenApply | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (followed by applyDiff)" \
                                                        , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \
+
+## large-anon: toJSON, compared to superrecord
+
+set xrange [0:80]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/large-anon-vs-superrecord-toJSON-coresize.png"
+plot "<(cat coresize.csv | grep SR_ToJSON | grep simpl,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
+   , "<(cat coresize.csv | grep ^ToJSON   | grep simpl,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/large-anon-vs-superrecord-toJSON-timing.png"
+plot "<(cat timing.csv | grep SR_ToJSON)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+   , "<(cat timing.csv | grep ^ToJSON)"   using 2:3 with lines lt rgb "#22EE22" title "large-anon"
+
+set ylabel "Runtime (s)"
+set output "graphs/large-anon-vs-superrecord-toJSON-runtime.png"
+plot "<(cat runtime.csv | grep SR_ToJSON | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+                                               , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#EE2222' notitle \
+   , "<(cat runtime.csv | grep ^ToJSON   | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (followed by applyDiff)" \
+                                               , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \

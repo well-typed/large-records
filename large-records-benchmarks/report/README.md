@@ -109,6 +109,13 @@ and showing only one significantly reduces benchmarking time. The output of
 the simplifier is also what continues on through the compilation pipeline,
 of course.
 
+There is no explicit support for generics in `superrecord`, so we instead we use
+translation from and to JSON as a substitute; the way that these are defined in
+`superrecord` is somewhat reminiscent of how generic functions are defined in
+`GHC.Generics`. To `ToJSON` benchmark then would be an example of a generic
+_consumer_, whereas the `ParseJSON` benchmark would be an example of a generic
+_producer_.
+
 ### Record construction
 
 This uses the source plugin, but it offers merely syntactic sugar, it does not
@@ -172,6 +179,17 @@ This overwrites half the record fields.
 ![](graphs/large-anon-vs-superrecord-set-coresize.png)
 ![](graphs/large-anon-vs-superrecord-set-timing.png)
 ![](graphs/large-anon-vs-superrecord-set-runtime.png)
+
+### ToJSON
+
+![](graphs/large-anon-toJSON-coresize.png)
+![](graphs/large-anon-toJSON-timing.png)
+
+#### Comparison with `superrecord`
+
+![](graphs/large-anon-vs-superrecord-toJSON-coresize.png)
+![](graphs/large-anon-vs-superrecord-toJSON-timing.png)
+![](graphs/large-anon-vs-superrecord-toJSON-runtime.png)
 
 ## Experiments
 

@@ -39,7 +39,7 @@ import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->))
 
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
-import Data.Record.Anonymous.Internal.Record (Record(..))
+import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Canonical as Canon

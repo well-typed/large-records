@@ -24,9 +24,12 @@
 -- > import qualified Data.Record.Anonymous.Internal.Record as Record
 module Data.Record.Anonymous.Internal.Record (
     -- * Representation
-    Record(..)
+    Record -- opaque
   , canonicalize
   , unsafeFromCanonical
+    -- * Low-level field access API
+  , unsafeGetField
+  , unsafeSetField
     -- * Main API
   , Field(..)
   , empty
@@ -56,7 +59,7 @@ import TypeLet.UserAPI
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
 import Data.Record.Anonymous.Internal.Diff (Diff)
 import Data.Record.Anonymous.Internal.Row
-import Data.Record.Anonymous.Internal.Row.FieldName (KnownHash)
+import Data.Record.Anonymous.Internal.Row.FieldName (FieldName, KnownHash)
 
 import qualified Data.Record.Anonymous.Internal.Canonical     as Canon
 import qualified Data.Record.Anonymous.Internal.Diff          as Diff
@@ -110,8 +113,14 @@ import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 -- it would have little benefit; instead we just leave the 'HasField' constraint
 -- unresolved until we know more about the record.
 data Record (f :: k -> Type) (r :: Row k) = Record {
-      recordDiff  :: !(Diff f)
-    , recordCanon :: !(Canonical f)
+      -- | Pending changes
+      recordDiff :: !(Diff f)
+
+      -- | Number of pending changes
+    , recordDiffSize :: {-# UNPACK #-} !Int
+
+      -- | The original record
+    , recordCanon :: {-# UNPACK #-} !(Canonical f)
     }
 
 type role Record nominal representational
@@ -129,9 +138,37 @@ canonicalize Record{..} = Diff.apply recordDiff recordCanon
 -- it's row specification @r@.
 unsafeFromCanonical :: Canonical f -> Record f r
 unsafeFromCanonical canon = Record {
-      recordDiff  = Diff.empty
-    , recordCanon = canon
+      recordDiff     = Diff.empty
+    , recordDiffSize = 0
+    , recordCanon    = canon
     }
+
+{-------------------------------------------------------------------------------
+  Low-level field access API
+
+  These are used in the generated 'HasField' instances. It is the responsibility
+  of the plugin to make sure that the @Int@ index and the type @a@ are correct.
+-------------------------------------------------------------------------------}
+
+unsafeGetField :: Int -> FieldName -> Record f r -> a
+unsafeGetField  i n Record{recordDiff, recordDiffSize, recordCanon}
+  | recordDiffSize == 0
+  = co $ Canon.getAtIndex recordCanon i
+
+  | otherwise
+  = co $ Diff.get (i, n) recordDiff recordCanon
+  where
+    co  :: f Any -> a
+    co = noInlineUnsafeCo
+
+unsafeSetField :: Int -> FieldName -> a -> Record f r -> Record f r
+unsafeSetField i n x r@Record{recordDiff, recordDiffSize} =
+    r { recordDiff     = Diff.set (i, n) (co x) recordDiff
+      , recordDiffSize = recordDiffSize + 1
+      }
+  where
+    co :: a -> f Any
+    co = noInlineUnsafeCo
 
 {-------------------------------------------------------------------------------
   Main API
@@ -154,12 +191,13 @@ instance (n ~ n', KnownSymbol n, KnownHash n) => IsLabel n' (Field n) where
 
 -- | Empty record
 empty :: Record f '[]
-empty = Record Diff.empty mempty
+empty = Record Diff.empty 0 mempty
 
 -- | Insert new field
 insert :: Field n -> f a -> Record f r -> Record f (n := a : r)
-insert (Field n) x r@Record{recordDiff} = r {
-      recordDiff = Diff.insert (FieldName.symbolVal n) (co x) recordDiff
+insert (Field n) x r@Record{recordDiff, recordDiffSize} = r {
+      recordDiff     = Diff.insert (FieldName.symbolVal n) (co x) recordDiff
+    , recordDiffSize = recordDiffSize + 1
     }
   where
     co :: f a -> f Any

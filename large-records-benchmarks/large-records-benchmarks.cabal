@@ -76,6 +76,7 @@ common tooling
     , containers
     , optparse-applicative
     , pcre-light
+    , text
     , unordered-containers
     , utf8-string
     , vector
@@ -613,6 +614,17 @@ executable bench-superrecord
       -- superrecord does not like aeson >= 2
     , aeson < 2
   other-modules:
+
+      --
+      -- The SR_Construct benchmark is expensive: only measure up to 40 fields.
+      --
+      -- The other benchmarks also get expensive for larger records, but we
+      -- can go up to 80 without things getting /too/ ridiculous.
+      --
+      -- (These benchmarks are /especially/ expensive when we measure the core
+      -- size using @-ddump-ds-preopt@ and friends.)
+      --
+
       Common.RowOfSize.Row010
       Common.RowOfSize.Row020
       Common.RowOfSize.Row030
@@ -621,13 +633,12 @@ executable bench-superrecord
       Common.RowOfSize.Row060
       Common.RowOfSize.Row070
       Common.RowOfSize.Row080
-      Common.RowOfSize.Row090
-      Common.RowOfSize.Row100
 
       Experiment.SR_Construct.Sized.R000
       Experiment.SR_Construct.Sized.R010
       Experiment.SR_Construct.Sized.R020
       Experiment.SR_Construct.Sized.R030
+      Experiment.SR_Construct.Sized.R040
 
       Experiment.SR_Unsafe.Sized.R000
       Experiment.SR_Unsafe.Sized.R010
@@ -638,8 +649,6 @@ executable bench-superrecord
       Experiment.SR_Unsafe.Sized.R060
       Experiment.SR_Unsafe.Sized.R070
       Experiment.SR_Unsafe.Sized.R080
-      Experiment.SR_Unsafe.Sized.R090
-      Experiment.SR_Unsafe.Sized.R100
 
       Experiment.SR_GetEvens.Sized.R000
       Experiment.SR_GetEvens.Sized.R010
@@ -647,6 +656,9 @@ executable bench-superrecord
       Experiment.SR_GetEvens.Sized.R030
       Experiment.SR_GetEvens.Sized.R040
       Experiment.SR_GetEvens.Sized.R050
+      Experiment.SR_GetEvens.Sized.R060
+      Experiment.SR_GetEvens.Sized.R070
+      Experiment.SR_GetEvens.Sized.R080
 
       Experiment.SR_SetEvens.Sized.R000
       Experiment.SR_SetEvens.Sized.R010
@@ -654,56 +666,9 @@ executable bench-superrecord
       Experiment.SR_SetEvens.Sized.R030
       Experiment.SR_SetEvens.Sized.R040
       Experiment.SR_SetEvens.Sized.R050
-
-
-  --
-  -- The SR_Construct benchmark is really expensive:
-  --
-  -- #size #time
-  --   010       6s
-  --   020       9s
-  --   030      16s
-  --   040      32s
-  --   050   1m  2s
-  --   060   1m 56s
-  --
-  -- Didn't (yet) try these:
-  --
-  --   070 ~ 4min?
-  --   080 ~ 8min?
-  --   090 ~ 16min?
-  --   100 ~ 32min?
-  --
-  -- That's /without/ any of the -ddump-xyz flags. When measuring core size,
-  -- these times go through the roof. Moreover, CI runs out of heap when
-  -- compiling the larger examples (>= 50?). So we enable only the smallest ones
-  -- by default, and larger ones only selectively.
-  --
-  -- The SR_GetEvens benchmarks aren't quite as expensive, but since they rely
-  -- on the construction benchmark, we cannot benchmark them for larger records
-  -- than we can construct.
-
-  if flag(profile-timing) || flag(profile-runtime)
-    other-modules:
-      Experiment.SR_Construct.Sized.R040
-      Experiment.SR_Construct.Sized.R050
---      Experiment.SR_Construct.Sized.R060
---      Experiment.SR_Construct.Sized.R070
---      Experiment.SR_Construct.Sized.R080
---      Experiment.SR_Construct.Sized.R090
---      Experiment.SR_Construct.Sized.R100
-
---      Experiment.SR_GetEvens.Sized.R060
---      Experiment.SR_GetEvens.Sized.R070
---      Experiment.SR_GetEvens.Sized.R080
---      Experiment.SR_GetEvens.Sized.R090
---      Experiment.SR_GetEvens.Sized.R100
-
---      Experiment.SR_SetEvens.Sized.R060
---      Experiment.SR_SetEvens.Sized.R070
---      Experiment.SR_SetEvens.Sized.R080
---      Experiment.SR_SetEvens.Sized.R090
---      Experiment.SR_SetEvens.Sized.R100
+      Experiment.SR_SetEvens.Sized.R060
+      Experiment.SR_SetEvens.Sized.R070
+      Experiment.SR_SetEvens.Sized.R080
 
   if flag(profile-runtime)
     ghc-options:

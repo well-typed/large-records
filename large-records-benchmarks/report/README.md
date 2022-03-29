@@ -102,6 +102,13 @@ expected here that `superrecord` will outperform `large-anon`; that is after all
 the trade-off that we make. However, runtime performance should still be
 somewhat reasonable.
 
+In order to keep benchmarking time within check, we only show the core size
+the simplifier (`-ddump-simpl`); the output of `-ddump-ds-preopt` and
+`-ddump-ds` is similar, so showing all three does not provide further insights,
+and showing only one significantly reduces benchmarking time. The output of
+the simplifier is also what continues on through the compilation pipeline,
+of course.
+
 ### Record construction
 
 This uses the source plugin, but it offers merely syntactic sugar, it does not

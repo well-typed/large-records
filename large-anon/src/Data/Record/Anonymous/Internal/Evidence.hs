@@ -1,8 +1,8 @@
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
 
 -- | Used by the plugin for evidence construction during constraint resolution
 --
@@ -16,20 +16,17 @@ module Data.Record.Anonymous.Internal.Evidence (
   , evidenceProject
   ) where
 
+import Data.Kind
 import Data.Record.Generic (FieldMetadata)
-import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.Dict
 import GHC.Exts (Any)
+import GHC.TypeLits (Symbol)
 
 import qualified Data.Vector as Vector
 
 import Data.Record.Anonymous.Internal.Row.FieldName (FieldName(..), DictKnownHash)
 import Data.Record.Anonymous.Internal.Record
 import Data.Record.Anonymous.Internal.Row
-
-import qualified Data.Record.Anonymous.Internal.Diff as Diff
-import Data.Kind
-import GHC.TypeLits (Symbol)
 
 {-------------------------------------------------------------------------------
   'HasField'
@@ -45,16 +42,10 @@ evidenceHasField :: forall k (f :: k -> Type) (r :: Row k) a.
   -> FieldName -- ^ Field name
   -> Record f r
   -> (a -> Record f r, a)
-evidenceHasField i n r@Record{..} = (
-      \x -> r { recordDiff = Diff.set (i, n) (co' x) recordDiff }
-    , co $ Diff.get (i, n) recordDiff recordCanon
+evidenceHasField i n r = (
+      \x -> unsafeSetField i n x r
+    ,       unsafeGetField i n   r
     )
-  where
-    co  :: f Any -> a
-    co' :: a -> f Any
-
-    co =  noInlineUnsafeCo
-    co' = noInlineUnsafeCo
 
 {-------------------------------------------------------------------------------
   Simple evidence

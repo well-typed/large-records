@@ -24,9 +24,12 @@
 -- > import qualified Data.Record.Anonymous.Internal.Record as Record
 module Data.Record.Anonymous.Internal.Record (
     -- * Representation
-    Record(..)
+    Record -- opaque
   , canonicalize
   , unsafeFromCanonical
+    -- * Low-level field access API
+  , unsafeGetField
+  , unsafeSetField
     -- * Main API
   , Field(..)
   , empty
@@ -56,7 +59,7 @@ import TypeLet.UserAPI
 import Data.Record.Anonymous.Internal.Canonical (Canonical)
 import Data.Record.Anonymous.Internal.Diff (Diff)
 import Data.Record.Anonymous.Internal.Row
-import Data.Record.Anonymous.Internal.Row.FieldName (KnownHash)
+import Data.Record.Anonymous.Internal.Row.FieldName (FieldName, KnownHash)
 
 import qualified Data.Record.Anonymous.Internal.Canonical     as Canon
 import qualified Data.Record.Anonymous.Internal.Diff          as Diff
@@ -132,6 +135,27 @@ unsafeFromCanonical canon = Record {
       recordDiff  = Diff.empty
     , recordCanon = canon
     }
+
+{-------------------------------------------------------------------------------
+  Low-level field access API
+
+  These are used in the generated 'HasField' instances. It is the responsibility
+  of the plugin to make sure that the @Int@ index and the type @a@ are correct.
+-------------------------------------------------------------------------------}
+
+unsafeGetField :: Int -> FieldName -> Record f r -> a
+unsafeGetField  i n Record{recordDiff, recordCanon} =
+    co $ Diff.get (i, n) recordDiff recordCanon
+  where
+    co  :: f Any -> a
+    co = noInlineUnsafeCo
+
+unsafeSetField :: Int -> FieldName -> a -> Record f r -> Record f r
+unsafeSetField i n x r@Record{recordDiff} =
+    r { recordDiff = Diff.set (i, n) (co x) recordDiff }
+  where
+    co :: a -> f Any
+    co = noInlineUnsafeCo
 
 {-------------------------------------------------------------------------------
   Main API

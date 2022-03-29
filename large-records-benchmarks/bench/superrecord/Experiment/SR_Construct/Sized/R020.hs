@@ -8,7 +8,8 @@
 
 module Experiment.SR_Construct.Sized.R020 where
 
-import SuperRecord
+import SuperRecord (Rec, (:=)(..))
+import qualified SuperRecord as SR
 
 import Bench.Types
 import Common.RowOfSize.Row020 (Row)
@@ -16,25 +17,25 @@ import Common.RowOfSize.Row020 (Row)
 record :: Word -> Rec Row
 record x =
       -- 00 .. 09
-      rcons (#t00 := MkT x)
-    $ rcons (#t01 := MkT x)
-    $ rcons (#t02 := MkT x)
-    $ rcons (#t03 := MkT x)
-    $ rcons (#t04 := MkT x)
-    $ rcons (#t05 := MkT x)
-    $ rcons (#t06 := MkT x)
-    $ rcons (#t07 := MkT x)
-    $ rcons (#t08 := MkT x)
-    $ rcons (#t09 := MkT x)
+      SR.rcons (#t00 := MkT x)
+    $ SR.rcons (#t01 := MkT x)
+    $ SR.rcons (#t02 := MkT x)
+    $ SR.rcons (#t03 := MkT x)
+    $ SR.rcons (#t04 := MkT x)
+    $ SR.rcons (#t05 := MkT x)
+    $ SR.rcons (#t06 := MkT x)
+    $ SR.rcons (#t07 := MkT x)
+    $ SR.rcons (#t08 := MkT x)
+    $ SR.rcons (#t09 := MkT x)
       -- 10 .. 19
-    $ rcons (#t10 := MkT x)
-    $ rcons (#t11 := MkT x)
-    $ rcons (#t12 := MkT x)
-    $ rcons (#t13 := MkT x)
-    $ rcons (#t14 := MkT x)
-    $ rcons (#t15 := MkT x)
-    $ rcons (#t16 := MkT x)
-    $ rcons (#t17 := MkT x)
-    $ rcons (#t18 := MkT x)
-    $ rcons (#t19 := MkT x)
-    $ rnil
+    $ SR.rcons (#t10 := MkT x)
+    $ SR.rcons (#t11 := MkT x)
+    $ SR.rcons (#t12 := MkT x)
+    $ SR.rcons (#t13 := MkT x)
+    $ SR.rcons (#t14 := MkT x)
+    $ SR.rcons (#t15 := MkT x)
+    $ SR.rcons (#t16 := MkT x)
+    $ SR.rcons (#t17 := MkT x)
+    $ SR.rcons (#t18 := MkT x)
+    $ SR.rcons (#t19 := MkT x)
+    $ SR.rnil

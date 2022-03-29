@@ -116,7 +116,22 @@ without.
 ![](graphs/large-anon-construct-coresize.png)
 ![](graphs/large-anon-construct-timing.png)
 
-Comparison with [`superrecord`][superrecord]:
+#### Comparison with [`superrecord`][superrecord]
+
+In `superrecord` there are two APIs for constructing records: a safe one and
+an unsafe one, which requires a conservative size estimate up-front (specified
+as an argument to `unsafeRNil`) and modifies the record inplace, thus requiring
+very careful use.
+
+The safe API results in such enormous core size and corresponding compilation
+time that it dwarves everything else in comparison, so we show it in a graph
+by itself; we only measured core size up to records of size 30 and compilation
+time up to size 50:
+
+![](graphs/superrecord-construct-coresize.png)
+![](graphs/superrecord-construct-timing.png)
+
+The unsafe API is somewhat more reasonable:
 
 ![](graphs/large-anon-vs-superrecord-construct-coresize.png)
 ![](graphs/large-anon-vs-superrecord-construct-timing.png)
@@ -129,7 +144,7 @@ This extracts half the record fields into a non-record datatype.
 ![](graphs/large-anon-get-coresize.png)
 ![](graphs/large-anon-get-timing.png)
 
-Comparison with `superrecord`:
+#### Comparison with `superrecord`
 
 ![](graphs/large-anon-vs-superrecord-get-coresize.png)
 ![](graphs/large-anon-vs-superrecord-get-timing.png)
@@ -145,7 +160,7 @@ This overwrites half the record fields.
 ![](graphs/large-anon-set-coresize.png)
 ![](graphs/large-anon-set-timing.png)
 
-Comparison with `superrecord`:
+#### Comparison with `superrecord`
 
 ![](graphs/large-anon-vs-superrecord-set-coresize.png)
 ![](graphs/large-anon-vs-superrecord-set-timing.png)

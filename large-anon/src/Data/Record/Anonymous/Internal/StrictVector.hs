@@ -39,6 +39,22 @@ import qualified Data.Vector   as V
 -- Implemented as a wrapper around a 'SmallArray'.
 --
 -- NOTE: None of the operations on 'Vector' do any bounds checking.
+--
+-- NOTE: 'Vector' is implemented as a newtype around 'SmallArray', which in turn
+-- is defined as
+--
+-- > data SmallArray a = SmallArray (SmallArray# a)
+--
+-- Furthermore, 'Canonical' is a newtype around 'Vector', which is then used in
+-- 'Record' as
+--
+-- > data Record (f :: k -> Type) (r :: Row k) = Record {
+-- >       recordCanon :: {-# UNPACK #-} !(Canonical f)
+-- >     , ..
+-- >     }
+--
+-- This means that 'Record' will have /direct/ access (no pointers) to the
+-- 'SmallArray#'.
 newtype Vector a = WrapLazy { unwrapLazy :: SmallArray a }
   deriving newtype (Show, Eq, Foldable, Semigroup, Monoid)
 

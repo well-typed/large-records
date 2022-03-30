@@ -1,13 +1,13 @@
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Common.RowOfSize.Row060 (Row) where
+module Common.RowOfSize.Row060 (ExampleRow) where
 
 import SuperRecord
 
 import Bench.Types
 
-type Row = [
+type ExampleRow = [
     -- 00 .. 09
     "t00" := T 00
   , "t01" := T 01

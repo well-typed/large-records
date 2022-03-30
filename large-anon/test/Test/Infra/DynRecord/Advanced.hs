@@ -27,12 +27,9 @@ import Data.Kind
 import Data.Record.Generic
 import Data.SOP.Constraint
 
-import Data.Record.Anonymous.Advanced (Record, KnownFields, Row, AllFields)
-import Data.Record.Anonymous.Discovery
-import Data.Record.Anonymous.Internal.Reflection
-import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject)
-
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record, CannotProject(..))
+import qualified Data.Record.Anon.Advanced as Anon
 
 import Test.Infra.DynRecord
 
@@ -52,9 +49,9 @@ toLens' :: forall k (r :: Row k) proxy.
   -> Either CannotProject
             (Record (K Value) r, Record (K Value) r -> DynRecord)
 toLens' p (DynRecord r) =
-    case discoverRow $ map (Some . K) r of
+    case Anon.someRecord $ map (Some . K) r of
       Some record ->
-        case discoverKnownFields (Anon.map (mapKK fst) record) of
+        case Anon.reflectKnownFields (Anon.map (mapKK fst) record) of
           Reflected -> withSomeRecord (Anon.map (mapKK snd) record)
   where
     -- @r'@ is the "inferred" row of the actual 'DynRecord'
@@ -65,7 +62,7 @@ toLens' p (DynRecord r) =
        -> Either CannotProject
                  (Record (K Value) r, Record (K Value) r -> DynRecord)
     withSomeRecord record =
-        (fmap setter  . ($ record)) <$> discoverLens record p
+        (fmap setter  . ($ record)) <$> makeLens record p
 
     setter ::
          KnownFields r'
@@ -136,17 +133,17 @@ inferType :: forall k (f :: k -> Type).
   -> DynRecord
   -> SomeRecord f
 inferType mkField (DynRecord r) =
-    case discoverRow $ map (uncurry mkField) r of
+    case Anon.someRecord $ map (uncurry mkField) r of
       Some record ->
-        case discoverKnownFields $ Anon.map fieldName record of
+        case Anon.reflectKnownFields $ Anon.map fieldName record of
           Reflected -> withSomeRecord record
   where
     withSomeRecord :: KnownFields r => Record (ValidField f) r -> SomeRecord f
     withSomeRecord record =
-        case ( discoverConstraint (Anon.map dictShow      record)
-             , discoverConstraint (Anon.map dictEq        record)
-             , discoverConstraint (Anon.map dictFromValue record)
-             , discoverConstraint (Anon.map dictToValue   record)
+        case ( Anon.reflectAllFields (Anon.map dictShow      record)
+             , Anon.reflectAllFields (Anon.map dictEq        record)
+             , Anon.reflectAllFields (Anon.map dictFromValue record)
+             , Anon.reflectAllFields (Anon.map dictToValue   record)
              ) of
           (Reflected, Reflected, Reflected, Reflected) ->
             SomeRecord (Anon.map fieldValue record)
@@ -166,3 +163,23 @@ inferType mkField (DynRecord r) =
     dictEq        (ValidField _ _) = Dict
     dictFromValue (ValidField _ _) = Dict
     dictToValue   (ValidField _ _) = Dict
+
+{-------------------------------------------------------------------------------
+  Auxiliary: try to construct a lens
+-------------------------------------------------------------------------------}
+
+makeLens :: forall k (r :: Row k) (r' :: Row k) (a :: Type) proxy proxy'.
+     (KnownFields r, KnownFields r')
+  => proxy   r
+  -> proxy'  r'
+  -> Either CannotProject
+            (Record (K a) r -> ( Record (K a) r'
+                               , Record (K a) r' -> Record (K a) r
+                               ))
+makeLens pr pr' = aux <$> Anon.reflectProject pr pr'
+  where
+    aux :: Reflected (Project (K a) r r')
+        -> Record (K a) r
+        -> (Record (K a) r', Record (K a) r' -> Record (K a) r)
+    aux Reflected = Anon.lens
+

@@ -43,7 +43,7 @@ parseArgs given rn = \case
     [_k, f, r] -> mkArgs tcs rn (Just f) r
     [       r] -> mkArgs tcs rn Nothing  r
     args       -> panic $ concat [
-        "Data.Record.Anonymous.Plugin.Rewriter.parseArgs: "
+        "Data.Record.Anon.Plugin.Rewriter.parseArgs: "
       , "unexpected arguments: "
       , showSDocUnsafe (ppr args)
       ]

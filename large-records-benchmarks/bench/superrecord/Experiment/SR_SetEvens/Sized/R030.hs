@@ -16,7 +16,7 @@ import qualified SuperRecord as SR
 import Bench.EvensOfSize.Evens030
 import Common.RowOfSize.Row030
 
-setEvens :: Evens -> Rec Row -> Rec Row
+setEvens :: Evens -> Rec ExampleRow -> Rec ExampleRow
 setEvens Evens{..} r =
       -- 00 .. 09
       SR.set #t00 evens00

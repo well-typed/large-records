@@ -40,7 +40,6 @@ package beam-large-records
 package large-anon
   tests: True
   ghc-options: -Werror -dcore-lint
---  ghc-options: -dcore-lint -ddump-ds-preopt -ddump-to-file -dppr-cols=1000
 
 package typelet
   tests: True

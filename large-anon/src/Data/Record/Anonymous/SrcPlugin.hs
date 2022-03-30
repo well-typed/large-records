@@ -99,8 +99,8 @@ anonRec Options{typelet, noapply} mode l = \fields ->
     applyDiff e
       | noapply   = return e
       | otherwise = do
-          useName largeAnon_applyDiff
-          return $ mkVar l largeAnon_applyDiff `mkHsApp` e
+          useName largeAnon_applyPending
+          return $ mkVar l largeAnon_applyPending `mkHsApp` e
 
 recordWithoutTypelet ::
      Mode

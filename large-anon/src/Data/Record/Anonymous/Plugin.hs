@@ -15,8 +15,7 @@ import Data.Record.Anonymous.SrcPlugin
 --
 -- 1. The type checker plugin forms the heart of this package. It solves
 --    the various constraints we have on rows, and computes type-level metadata.
--- 2. The source plugin offers syntactic sugar for record construction, and
---    provides integration with the @typelet@ plugin.
+-- 2. The source plugin offers syntactic sugar for record construction.
 plugin :: GHC.Plugins.Plugin
 plugin = GHC.Plugins.defaultPlugin {
       GHC.Plugins.tcPlugin = \_args -> Just $

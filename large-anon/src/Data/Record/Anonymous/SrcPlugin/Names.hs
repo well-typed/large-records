@@ -20,26 +20,26 @@ import Data.Record.Anonymous.SrcPlugin.Options (Mode(..))
 --
 -- All names are expected to be qualified with the full module name
 data LargeAnonNames = LargeAnonNames {
-      largeAnon_empty       :: RdrName
-    , largeAnon_insert      :: RdrName
-    , largeAnon_applyDiff   :: RdrName
-    , largeAnon_letRecordT  :: RdrName
-    , largeAnon_letInsertAs :: RdrName
+      largeAnon_empty        :: RdrName
+    , largeAnon_insert       :: RdrName
+    , largeAnon_applyPending :: RdrName
+    , largeAnon_letRecordT   :: RdrName
+    , largeAnon_letInsertAs  :: RdrName
     }
 
 largeAnonNames :: Mode -> LargeAnonNames
 largeAnonNames mode = LargeAnonNames {
-      largeAnon_empty       = mkRdrQual modl $ mkVarOcc "empty"
-    , largeAnon_insert      = mkRdrQual modl $ mkVarOcc "insert"
-    , largeAnon_applyDiff   = mkRdrQual modl $ mkVarOcc "applyDiff"
-    , largeAnon_letRecordT  = mkRdrQual modl $ mkVarOcc "letRecordT"
-    , largeAnon_letInsertAs = mkRdrQual modl $ mkVarOcc "letInsertAs"
+      largeAnon_empty        = mkRdrQual modl $ mkVarOcc "empty"
+    , largeAnon_insert       = mkRdrQual modl $ mkVarOcc "insert"
+    , largeAnon_applyPending = mkRdrQual modl $ mkVarOcc "applyPending"
+    , largeAnon_letRecordT   = mkRdrQual modl $ mkVarOcc "letRecordT"
+    , largeAnon_letInsertAs  = mkRdrQual modl $ mkVarOcc "letInsertAs"
     }
   where
     modl :: ModuleName
     modl = case mode of
-             Simple   -> mkModuleName "Data.Record.Anonymous.Simple"
-             Advanced -> mkModuleName "Data.Record.Anonymous.Advanced"
+             Simple   -> mkModuleName "Data.Record.Anon.Simple"
+             Advanced -> mkModuleName "Data.Record.Anon.Advanced"
 
 {-------------------------------------------------------------------------------
   Typelet

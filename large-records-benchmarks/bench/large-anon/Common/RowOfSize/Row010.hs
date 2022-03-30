@@ -1,13 +1,13 @@
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Common.RowOfSize.Row010 (Row) where
+module Common.RowOfSize.Row010 (ExampleRow) where
 
-import Data.Record.Anonymous.Simple (Pair((:=)))
+import Data.Record.Anon
 
 import Bench.Types
 
-type Row = '[
+type ExampleRow = [
     -- 00 .. 09
     "t00" := T 00
   , "t01" := T 01

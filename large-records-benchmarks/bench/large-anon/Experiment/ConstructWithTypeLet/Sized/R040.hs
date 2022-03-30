@@ -5,17 +5,17 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
-{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
+{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anon.Plugin #-}
+{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anon.Plugin:typelet #-}
 
 module Experiment.ConstructWithTypeLet.Sized.R040 where
 
-import Data.Record.Anonymous.Simple (Record)
+import Data.Record.Anon.Simple (Record)
 
 import Bench.Types
 import Common.RowOfSize.Row040
 
-record :: Word -> Record Row
+record :: Word -> Record ExampleRow
 record x = ANON {
       -- 00 .. 09
       t00 = MkT x

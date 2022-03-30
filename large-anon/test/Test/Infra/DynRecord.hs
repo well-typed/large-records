@@ -22,12 +22,10 @@ module Test.Infra.DynRecord (
 
 import Data.Bifunctor
 import Data.Kind
-import Data.Proxy
-import Data.SOP.BasicFunctors
 
-import Data.Record.Anonymous.Advanced (Record, KnownFields, AllFields, Row)
-
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record)
+import qualified Data.Record.Anon.Advanced as Anon
 
 {-------------------------------------------------------------------------------
   Definition
@@ -68,7 +66,7 @@ fromValues :: forall k (f :: k -> Type) (r :: Row k).
    => Record (K Value) r
    -> Either ParseError (Record f r)
 fromValues r =
-    Anon.czipWithM (Proxy @(FromValue f)) aux (Anon.recordWithNames r) r
+    Anon.czipWithM (Proxy @(FromValue f)) aux (Anon.reifyKnownFields r) r
   where
     aux :: FromValue f x => K String x -> K Value x -> Either ParseError (f x)
     aux (K n) (K v) = first (\e -> n ++ ": " ++ e) $ fromValue v

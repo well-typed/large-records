@@ -49,7 +49,7 @@ module Data.Record.Anonymous.Simple (
   , merge
   , lens
   , project
-  , applyDiff
+  , applyPending
     -- * Constraints
   , RecordConstraints
     -- * Working with rows
@@ -91,7 +91,25 @@ import qualified Data.Record.Anonymous.Advanced as Adv
   Definition
 -------------------------------------------------------------------------------}
 
--- | Anonymous record with fields @r@
+-- | Anonymous record
+--
+-- A @Record r@ has a field @n@ of type @x@ for every @(n := x)@ in @r@.
+--
+-- To construct a 'Record', use 'Data.Record.Anon.Simple.insert' and
+-- 'Data.Record.Anon.Simple.empty', or use the @ANON@ syntax. See
+-- 'Data.Record.Anon.Simple.insert' for examples.
+--
+-- To access fields of the record, either use the 'GHC.Records.Compat.HasField'
+-- instances (possibly using the @record-dot-preprocessor@), or using
+-- 'Data.Record.Anon.Simple.get' and 'Data.Record.Anon.Simple.set'.
+--
+-- Remember to enable the plugin when working with anonymous records:
+--
+-- > {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
+--
+-- NOTE: For some applications it is useful to have an additional functor
+-- parameter @f@, so that every field has type @f x@ instead.
+-- See "Data.Record.Anon.Advanced".
 newtype Record r = SimpleRecord { toAdvanced :: Adv.Record I r }
 
 fromAdvanced :: Adv.Record I r -> Record r
@@ -124,8 +142,8 @@ lens =
 project :: Project I r r' => Record r -> Record r'
 project = fst . lens
 
-applyDiff :: Record r -> Record r
-applyDiff = fromAdvanced . Adv.applyDiff . toAdvanced
+applyPending :: Record r -> Record r
+applyPending = fromAdvanced . Adv.applyPending . toAdvanced
 
 {-------------------------------------------------------------------------------
   HasField
@@ -233,15 +251,6 @@ instance RecordConstraints r FromJSON => FromJSON (Record r) where
 -------------------------------------------------------------------------------}
 
 -- | Introduce type variable for a row
---
--- This can be used in conjunction with 'letInsertAs':
---
--- > example :: Record '[ "a" := Int, "b" := Char, "c" := Bool ]
--- > example = letRecordT $ \p -> castEqual $
--- >     letInsertAs p #c True empty $ \xs02 ->
--- >     letInsertAs p #b 'X'  xs02  $ \xs01 ->
--- >     letInsertAs p #a 1    xs01  $ \xs00 ->
--- >     castEqual xs00
 letRecordT :: forall r.
      (forall r'. Let r' r => Proxy r' -> Record r)
   -> Record r

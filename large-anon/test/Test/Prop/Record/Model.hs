@@ -15,7 +15,7 @@
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 -- | Model for records
 --
@@ -64,14 +64,13 @@ import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 
 import Data.Functor.Product
 import Data.Kind
-import Data.Proxy
-import Data.SOP (NP(..), type (-.->)(..), SListI, All)
-import Data.SOP.BasicFunctors
+import Data.SOP (NP(..), SListI, All)
 
 import qualified Data.SOP as SOP
 
-import Data.Record.Anonymous.Advanced (Record, Pair((:=)), Row)
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record)
+import qualified Data.Record.Anon.Advanced as Anon
 
 {-------------------------------------------------------------------------------
   Model proper
@@ -157,7 +156,7 @@ toRecordOfDicts ::
      ModelSatisfies c
   => Proxy c
   -> ModelFields r
-  -> (Anon.AllFields r c => a)
+  -> (AllFields r c => a)
   -> a
 toRecordOfDicts _ MF0  k = k
 toRecordOfDicts _ MF1  k = k

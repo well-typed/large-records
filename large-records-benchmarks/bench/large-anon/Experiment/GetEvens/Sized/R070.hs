@@ -7,17 +7,17 @@
 
 {-# LANGUAGE OverloadedLabels #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Experiment.GetEvens.Sized.R070 where
 
-import Data.Record.Anonymous.Simple (Record)
-import qualified Data.Record.Anonymous.Simple as Anon
+import Data.Record.Anon.Simple (Record)
+import qualified Data.Record.Anon.Simple as Anon
 
 import Bench.EvensOfSize.Evens070
 import Common.RowOfSize.Row070
 
-getEvens :: Record Row -> Evens
+getEvens :: Record ExampleRow -> Evens
 getEvens r = Evens {
       -- 00 .. 09
       evens00 = Anon.get #t00 r

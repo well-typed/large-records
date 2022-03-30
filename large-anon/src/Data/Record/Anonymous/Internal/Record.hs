@@ -38,7 +38,7 @@ module Data.Record.Anonymous.Internal.Record (
   , merge
   , lens
   , project
-  , applyDiff
+  , applyPending
     -- * Support for @typelet@
   , letRecordT
   , letInsertAs
@@ -68,6 +68,24 @@ import qualified Data.Record.Anon.Core.Record    as Core.Record
   Definition
 -------------------------------------------------------------------------------}
 
+-- | Anonymous record
+--
+-- A @Record f r@ has a field @n@ of type @f x@ for every @(n := x)@ in @r@.
+--
+-- To construct a 'Record', use 'Data.Record.Anon.Advanced.insert' and
+-- 'Data.Record.Anon.Advanced.empty', or use the @ANON_F@ syntax. See
+-- 'Data.Record.Anon.Advanced.insert' for examples.
+--
+-- To access fields of the record, either use the 'GHC.Records.Compat.HasField'
+-- instances (possibly using the @record-dot-preprocessor@), or using
+-- 'Data.Record.Anon.Advanced.get' and 'Data.Record.Anon.Advanced.set'.
+--
+-- Remember to enable the plugin when working with anonymous records:
+--
+-- > {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
+--
+-- NOTE: If you do not need the functor parameter, see
+-- "Data.Record.Anon.Simple" for a simplified interface.
 newtype Record (f :: k -> Type) (r :: Row k) = Wrap { unwrap :: Core.Record f }
 
 pattern Record :: Diff f -> Int -> Canonical f -> Record f r
@@ -119,11 +137,9 @@ data Field n where
 instance (n ~ n', KnownSymbol n, KnownHash n) => IsLabel n' (Field n) where
   fromLabel = Field (Proxy @n)
 
--- | Empty record
 empty :: Record f '[]
 empty = Record Diff.empty 0 mempty
 
--- | Insert new field
 insert :: Field n -> f a -> Record f r -> Record f (n := a : r)
 insert (Field n) x r@Record{ recordDiff     = diff
                            , recordDiffSize = diffSize
@@ -139,123 +155,25 @@ insert (Field n) x r@Record{ recordDiff     = diff
     mkFieldName :: (KnownSymbol s, KnownHash s) => Proxy s -> FieldName
     mkFieldName p = FieldName (hashVal p) (symbolVal p)
 
--- | Applicative insert
---
--- This is a simple wrapper around 'insert', but can be quite useful when
--- constructing records. Consider code like
---
--- > foo :: m (a, b, c)
--- > foo = (,,) <$> action1
--- >            <*> action2
--- >            <*> action3
---
--- We cannot really extend this to the world of named records, but we /can/
--- do something comparable using anonymous records:
---
--- > foo :: m (Record f '[ "x" := a, "y" := b, "z" := c ])
--- >    insertA #x action1
--- >  $ insertA #y action2
--- >  $ insertA #z action3
--- >  $ pure Anon.empty
 insertA ::
      Applicative m
   => Field n -> m (f a) -> m (Record f r) -> m (Record f (n := a : r))
 insertA f x r = insert f <$> x <*> r
 
--- | Get field from the record
---
--- This is just a wrapper around 'getField'
 get :: forall n f r a.
      HasField n (Record f r) a
   => Field n -> Record f r -> a
 get _ = getField @n @(Record f r)
 
--- | Update field in the record
---
--- This is just a wrapper around 'setField'.
 set :: forall n f r a.
      HasField n (Record f r) a
   => Field n -> a -> Record f r -> Record f r
 set _ = flip (setField @n @(Record f r))
 
--- | Merge two records
---
--- 'HasField' constraint can be resolved for merged records, subject to the same
--- condition discussed in the documentation of 'Record': since records are left
--- biased, all fields in the record must be known up to the requested field:
---
--- Simple example, completely known record:
---
--- >>> :{
---   let example :: Record I (Merge '[ '("a", Bool)] '[ '("b", Char)])
---       example = merge (insert #a (I True) empty) (insert #b (I 'a') empty)
---   in get #b example
--- :}
--- I 'a'
---
--- Slightly more sophisticated, only part of the record known:
---
--- >>> :{
---   let example :: Record I (Merge '[ '("a", Bool)] r) -> I Bool
---       example = get #a
---   in example (merge (insert #a (I True) empty) (insert #b (I 'a') empty))
--- :}
--- I True
---
--- Rejected example: first part of the record unknown:
---
--- >>> :{
---   let example :: Record I (Merge r '[ '("b", Char)]) -> I Char
---       example = get #b
---   in example (merge (insert #a (I True) empty) (insert #b (I 'a') empty))
--- :}
--- ...
--- ...No instance for (HasField "b" (...
--- ...
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (toCanonical -> r) (toCanonical -> r') =
     unsafeFromCanonical $ r <> r'
 
--- | Lens from one record to another
---
--- TODO: Update docs (these are still from the old castRecord).
--- TODO: Make all doctests work agian.
---
--- Some examples of valid casts. We can cast a record to itself:
---
--- >>> castRecord example :: Record I '[ '("a", Bool) ]
--- Record {a = I True}
---
--- We can reorder fields:
---
--- >>> castRecord (insert #a (I True) $ insert #b (I 'a') $ empty) :: Record I '[ '("b", Char), '("a", Bool) ]
--- Record {b = I 'a', a = I True}
---
--- We can flatten merged records:
---
--- >>> castRecord (merge (insert #a (I True) empty) (insert #b (I 'a') empty)) :: Record I '[ '("a", Bool), '("b", Char) ]
--- Record {a = I True, b = I 'a'}
---
--- Some examples of invalid casts. We cannot change the types of the fields:
---
--- >>> castRecord example :: Record I '[ '("a", Int) ]
--- ...
--- ...Couldn't match...Bool...Int...
--- ...
---
--- We cannot drop fields:
---
--- >>> castRecord (insert #a (I True) $ insert #b (I 'a') $ empty) :: Record I '[ '("a", Bool) ]
--- ...
--- ...No instance for (Isomorphic...
--- ...
---
--- We cannot add fields:
---
--- >>> castRecord example :: Record I '[ '("a", Bool), '("b", Char) ]
--- ...
--- ...No instance for (Isomorphic...
--- ...
 lens :: forall f r r'.
      Project f r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
@@ -275,32 +193,14 @@ lens = \(toCanonical -> r) ->
 project :: Project f r r' => Record f r -> Record f r'
 project = fst . lens
 
--- | Apply all pending changes to the record
---
--- Updates on a record are stored in a hash table. As this hashtable grows,
--- record field access and update will become more expensive. Applying the
--- updates, resulting in a flat vector, is an @O(n)@ operation. This will happen
--- automatically whenever another @O(n)@ operation is applied (for example,
--- mapping a function over the record). However, cccassionally it is useful to
--- explicitly apply these changes, for example after constructing a record or
--- updating a lot of fields.
-applyDiff :: Record f r -> Record f r
-applyDiff (toCanonical -> r) = unsafeFromCanonical r
+applyPending :: Record f r -> Record f r
+applyPending (toCanonical -> r) = unsafeFromCanonical r
 
 {-------------------------------------------------------------------------------
   Support for @typelet@
 -------------------------------------------------------------------------------}
 
 -- | Introduce type variable for a row
---
--- This can be used in conjunction with 'letInsertAs':
---
--- > example :: Record I '[ "a" := Int, "b" := Char, "c" := Bool ]
--- > example = letRecordT $ \p -> castEqual $
--- >     letInsertAs p #c (I True) empty $ \xs02 ->
--- >     letInsertAs p #b (I 'X' ) xs02  $ \xs01 ->
--- >     letInsertAs p #a (I 1   ) xs01  $ \xs00 ->
--- >     castEqual xs00
 letRecordT :: forall r f.
      (forall r'. Let r' r => Proxy r' -> Record f r)
   -> Record f r

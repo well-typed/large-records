@@ -7,7 +7,7 @@ module Main (main) where
 import Bench.Util.Criterion
 import Criterion.Main
 
-import Data.Record.Anonymous.Simple (applyDiff)
+import Data.Record.Anon.Simple (applyPending)
 
 import qualified Bench.EvensOfSize.Evens010
 import qualified Bench.EvensOfSize.Evens020
@@ -181,25 +181,25 @@ main = defaultMain [
         ]
     , bgroup "SetEvensThenApply" [
           envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R010.record 0) $ \r ->
-            bench "010" $ whnf (applyDiff . Experiment.SetEvens.Sized.R010.setEvens evens010) r
+            bench "010" $ whnf (applyPending . Experiment.SetEvens.Sized.R010.setEvens evens010) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R020.record 0) $ \r ->
-            bench "020" $ whnf (applyDiff . Experiment.SetEvens.Sized.R020.setEvens evens020) r
+            bench "020" $ whnf (applyPending . Experiment.SetEvens.Sized.R020.setEvens evens020) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R030.record 0) $ \r ->
-            bench "030" $ whnf (applyDiff . Experiment.SetEvens.Sized.R030.setEvens evens030) r
+            bench "030" $ whnf (applyPending . Experiment.SetEvens.Sized.R030.setEvens evens030) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R040.record 0) $ \r ->
-            bench "040" $ whnf (applyDiff . Experiment.SetEvens.Sized.R040.setEvens evens040) r
+            bench "040" $ whnf (applyPending . Experiment.SetEvens.Sized.R040.setEvens evens040) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R050.record 0) $ \r ->
-            bench "050" $ whnf (applyDiff . Experiment.SetEvens.Sized.R050.setEvens evens050) r
+            bench "050" $ whnf (applyPending . Experiment.SetEvens.Sized.R050.setEvens evens050) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R060.record 0) $ \r ->
-            bench "060" $ whnf (applyDiff . Experiment.SetEvens.Sized.R060.setEvens evens060) r
+            bench "060" $ whnf (applyPending . Experiment.SetEvens.Sized.R060.setEvens evens060) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R070.record 0) $ \r ->
-            bench "070" $ whnf (applyDiff . Experiment.SetEvens.Sized.R070.setEvens evens070) r
+            bench "070" $ whnf (applyPending . Experiment.SetEvens.Sized.R070.setEvens evens070) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R080.record 0) $ \r ->
-            bench "080" $ whnf (applyDiff . Experiment.SetEvens.Sized.R080.setEvens evens080) r
+            bench "080" $ whnf (applyPending . Experiment.SetEvens.Sized.R080.setEvens evens080) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R090.record 0) $ \r ->
-            bench "090" $ whnf (applyDiff . Experiment.SetEvens.Sized.R090.setEvens evens090) r
+            bench "090" $ whnf (applyPending . Experiment.SetEvens.Sized.R090.setEvens evens090) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R100.record 0) $ \r ->
-            bench "100" $ whnf (applyDiff . Experiment.SetEvens.Sized.R100.setEvens evens100) r
+            bench "100" $ whnf (applyPending . Experiment.SetEvens.Sized.R100.setEvens evens100) r
         ]
     , bgroup "SetEvensNoApply" [
           envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R010.record 0) $ \r ->

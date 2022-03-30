@@ -10,7 +10,7 @@ import Data.Record.Generic.LowerBound
 import Data.SOP.BasicFunctors
 import Data.STRef
 
-import qualified Data.Record.Anonymous.Advanced as Anon
+import qualified Data.Record.Anon.Advanced as Anon
 
 import Test.Tasty
 import Test.Tasty.QuickCheck

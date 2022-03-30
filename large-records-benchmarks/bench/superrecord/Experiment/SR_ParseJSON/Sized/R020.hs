@@ -14,6 +14,6 @@ import SuperRecord (Rec, recJsonParser)
 
 import Common.RowOfSize.Row020
 
-recFromJSON :: Value -> Rec Row
+recFromJSON :: Value -> Rec ExampleRow
 recFromJSON = fromJust . parseMaybe recJsonParser
 

@@ -2,14 +2,15 @@
 {-# LANGUAGE TypeOperators    #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.Applicative (tests) where
 
 import Validation
 
-import Data.Record.Anonymous.Simple (Record, Pair((:=)))
-import qualified Data.Record.Anonymous.Simple as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Simple (Record)
+import qualified Data.Record.Anon.Simple as Anon
 
 import Test.Tasty
 import Test.Tasty.HUnit

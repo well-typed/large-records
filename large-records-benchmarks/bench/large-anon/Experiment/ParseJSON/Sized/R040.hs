@@ -5,17 +5,17 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Experiment.ParseJSON.Sized.R040 where
 
 import Data.Aeson (Value,)
 import Data.Aeson.Types (parseMaybe)
 import Data.Maybe (fromJust)
-import Data.Record.Anonymous.Simple (Record)
+import Data.Record.Anon.Simple (Record)
 import Data.Record.Generic.JSON (gparseJSON)
 
 import Common.RowOfSize.Row040
 
-recFromJSON :: Value -> Record Row
+recFromJSON :: Value -> Record ExampleRow
 recFromJSON = fromJust . parseMaybe gparseJSON

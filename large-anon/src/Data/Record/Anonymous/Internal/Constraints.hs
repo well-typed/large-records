@@ -21,7 +21,7 @@ module Data.Record.Anonymous.Internal.Constraints (
   , constrain
     -- * Taking the functor into account
   , RecordConstraints
-  , recordOfDicts
+  , reifyAllFields
   ) where
 
 import Data.Kind
@@ -39,8 +39,7 @@ import qualified Data.Record.Anon.Core.Canonical as Canon
 
 import Data.Record.Anonymous.Internal.Record (Record)
 
-import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
-import qualified Data.Record.Anonymous.Internal.Record             as Record
+import qualified Data.Record.Anonymous.Internal.Record as Record
 
 {-------------------------------------------------------------------------------
   Reifiying dictionaries
@@ -66,11 +65,13 @@ constrain p (Record.toCanonical -> r) = Record.unsafeFromCanonical $
 class    (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
 instance (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
 
-recordOfDicts :: forall k l (f :: k -> l) (r :: Row k) (c :: l -> Constraint).
-     RecordConstraints f r c
-  => Proxy c -> Record (Dict c :.: f) r
-recordOfDicts _ =
-    Simple.map aux $ constrain (Proxy @(Compose c f)) (Simple.pure (K ()))
+reifyAllFields :: forall k l (f :: k -> l) (r :: Row k) (c :: l -> Constraint) proxy.
+     AllFields r (Compose c f)
+  => proxy c -> Record (Dict c :.: f) r
+reifyAllFields _ = Record.unsafeFromCanonical $
+    Canon.fromLazyVector $
+      V.map aux $ fieldDicts (Proxy @r) (Proxy @(Compose c f))
   where
-    aux :: forall (x :: k). Constrained (Compose c f) (K ()) x -> (:.:) (Dict c) f x
-    aux (Constrained _) = Comp Dict
+    aux :: DictAny (Compose c f) -> (:.:) (Dict c) f Any
+    aux DictAny = Comp Dict
+

@@ -46,7 +46,7 @@ import qualified Data.Record.Anon.Core.Diff      as Diff
 -- or using the simple wrappers 'get' and 'set'. The 'HasField' instances
 -- are resolved by the plugin, so be sure to use
 --
--- > {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+-- > {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 --
 -- Let's consider a few examples. After we define
 --

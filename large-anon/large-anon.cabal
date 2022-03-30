@@ -5,7 +5,7 @@ synopsis:           Scalable anonymous records
 description:        The @large-anon@ package provides support for anonymous
                     records in Haskell, with a focus on compile-time (and
                     run-time) scalability.
-bug-reports:        https://github.com/well-typed/large-amnon/issues
+bug-reports:        https://github.com/well-typed/large-records/issues
 license:            BSD-3-Clause
 author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
@@ -15,12 +15,13 @@ tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2
 
 library
   exposed-modules:
+      Data.Record.Anon
+      Data.Record.Anon.Simple
+      Data.Record.Anon.Advanced
+      Data.Record.Anon.Plugin
       Data.Record.Anon.Plugin.Internal.Runtime
 
-      --
-      -- BELOW THIS LINE STILL NEEDS REORGANIZATION
-      --
-
+  other-modules:
       Data.Record.Anonymous.Simple
       Data.Record.Anonymous.Advanced
       Data.Record.Anonymous.Plugin
@@ -41,7 +42,6 @@ library
 
       -- Exposed for the benefit of cabal-docspec
       Data.Record.Anonymous.TcPlugin.EquivClasses
-  other-modules:
 
       -- The modules in @Core.*@ can only import from other modules in @Core.*@,
       -- and cannot import from @.Runtime@. See detailed discussion in
@@ -75,7 +75,7 @@ library
       Data.Record.Anonymous.TcPlugin.Rewriter
       Data.Record.Anonymous.TcPlugin.Solver
       Data.Record.Anonymous.TcPlugin.TyConSubst
-  other-extensions:
+
   build-depends:
       base             >= 4.13  && < 4.18
 
@@ -119,6 +119,7 @@ test-suite test-large-anon
   main-is:
       TestLargeAnon.hs
   other-modules:
+      Test.Infra.Generics
       Test.Infra.MarkStrictness
       Test.Infra.DynRecord
       Test.Infra.DynRecord.Advanced

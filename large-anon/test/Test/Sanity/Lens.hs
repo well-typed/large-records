@@ -2,18 +2,16 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.Lens (tests) where
-
-import Data.SOP.BasicFunctors
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
--- TODO: We should have a Data.Record.Anonymous module for unqualified imports
-import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record)
+import qualified Data.Record.Anon.Advanced as Anon
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.Lens" [
@@ -45,7 +43,7 @@ recordA' =
     $ Anon.insert #c (I 1)
     $ Anon.empty
 
-recordWithMerge :: Record I (Anon.Merge '[ "a" := Bool ] [ "b" := Char, "c" := Int ])
+recordWithMerge :: Record I (Merge '[ "a" := Bool ] [ "b" := Char, "c" := Int ])
 recordWithMerge =
     Anon.merge
       ( Anon.insert #a (I True)

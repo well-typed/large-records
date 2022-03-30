@@ -1,24 +1,24 @@
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns    #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Data.Record.Anonymous.TcPlugin.Rewriter (rewrite) where
 
-import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
 import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow)
 import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 import Data.Record.Anonymous.TcPlugin.NameResolution
 import Data.Record.Anonymous.TcPlugin.TyConSubst
 
-import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
-import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
-import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
+import qualified Data.Record.Anonymous.Internal.Row.KnownField as KnownField
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow   as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow  as ParsedRow
 
 rewrite :: ResolvedNames -> UniqFM TyCon TcPluginRewriter
 rewrite rn@ResolvedNames{..} = listToUFM [
-      (tyConFieldTypes       , rewriteRecordMetadataOf rn)
-    , (tyConSimpleFieldTypes , rewriteRecordMetadataOf rn)
+      (tyConFieldTypes       , rewriteRecordMetadataOf tyConFieldTypes       rn)
+    , (tyConSimpleFieldTypes , rewriteRecordMetadataOf tyConSimpleFieldTypes rn)
     ]
 
 data Args = Args {
@@ -51,8 +51,8 @@ parseArgs given rn = \case
     tcs :: TyConSubst
     tcs = mkTyConSubst given
 
-rewriteRecordMetadataOf :: ResolvedNames -> TcPluginRewriter
-rewriteRecordMetadataOf rn@ResolvedNames{..} given args@(parseArgs given rn -> Args{..}) =
+rewriteRecordMetadataOf :: TyCon -> ResolvedNames -> TcPluginRewriter
+rewriteRecordMetadataOf fun rn given args@(parseArgs given rn -> Args{..}) =
 --  trace _debugInput  $
 --  trace _debugParsed $
     case argsParsedKnown of
@@ -65,7 +65,7 @@ rewriteRecordMetadataOf rn@ResolvedNames{..} given args@(parseArgs given rn -> A
                mkTyFamAppReduction
                  "large-anon"
                  Nominal
-                 tyConFieldTypes
+                 fun
                  args
                  (computeMetadataOf argsFunctor knownFields)
           }
@@ -100,17 +100,4 @@ computeMetadataOf :: Maybe Type -> KnownRow Type -> TcType
 computeMetadataOf mf r =
     mkPromotedListTy
       (mkTupleTy Boxed [mkTyConTy typeSymbolKindCon, liftedTypeKind])
-      (map aux $ KnownRow.toList r)
-  where
-    aux :: KnownField Type -> Type
-    aux KnownField{..} =
-        -- mkPromotedPairTy is only introduced in ghc 9.2
-        mkTyConApp
-          (promotedTupleDataCon Boxed 2)
-          [ mkTyConTy typeSymbolKindCon -- kind of first arg
-          , liftedTypeKind              -- kind of second arg
-          , FieldName.mkType knownFieldName
-          , case mf of
-              Just f  -> f `mkAppTy` knownFieldInfo
-              Nothing -> knownFieldInfo
-          ]
+      (map (KnownField.toType mf) $ KnownRow.toList r)

@@ -72,20 +72,20 @@ import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
-import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.Record.Generic.Show
 import GHC.Exts
 import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet
+import Data.Bifunctor
 
 import qualified Data.Vector.Generic as Vector
 
+import Data.Record.Anon.Plugin.Internal.Runtime
+
 import Data.Record.Anonymous.Internal.Record (Field)
-import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Advanced as Adv
-import Data.Bifunctor
 
 {-------------------------------------------------------------------------------
   Definition
@@ -169,13 +169,22 @@ instance (AllFields r c, KnownFields r) => RecordConstraints r c
   really buy us anything.
 -------------------------------------------------------------------------------}
 
+recordConstraints :: forall r c.
+     RecordConstraints r c
+  => Proxy c -> Rep (Dict c) (Record r)
+recordConstraints _ = Rep $
+    Vector.map aux $ fieldDicts (Proxy @r) (Proxy @c)
+  where
+    aux :: DictAny c -> Dict c Any
+    aux DictAny = Dict
+
 instance KnownFields r => Generic (Record r) where
   type Constraints (Record r) = RecordConstraints r
   type MetadataOf  (Record r) = SimpleFieldTypes r
 
   from     = fromAdvancedRep . from . toAdvanced
   to       = fromAdvanced    . to   . toAdvancedRep
-  dict     = Rep . fieldDicts (Proxy @r)
+  dict     = recordConstraints
   metadata = const recordMetadata
 
 fromAdvancedRep :: Rep I (Adv.Record I r) -> Rep I (Record r)

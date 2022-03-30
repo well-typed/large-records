@@ -15,7 +15,7 @@
 --
 -- > import Data.Record.Anonymous.Internal.SmallHashMap (HashMap)
 -- > import qualified Data.Record.Anonymous.Internal.SmallHashMap as HashMap
-module Data.Record.Anonymous.Internal.SmallHashMap (
+module Data.Record.Anon.Core.Util.SmallHashMap (
     HashMap
     -- * Standard operations
   , null

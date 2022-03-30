@@ -72,9 +72,10 @@ import Data.Record.Generic (FieldMetadata(..))
 import Data.SOP.BasicFunctors
 import GHC.TypeLits (symbolVal)
 
+import Data.Record.Anon.Plugin.Internal.Runtime
+
 import Data.Record.Anonymous.Internal.Constraints
 import Data.Record.Anonymous.Internal.Record (Record)
-import Data.Record.Anonymous.Internal.Row
 
 import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 

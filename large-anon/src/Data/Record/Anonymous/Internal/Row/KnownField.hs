@@ -1,5 +1,8 @@
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor  #-}
+{-# LANGUAGE DeriveFoldable  #-}
+{-# LANGUAGE DeriveFunctor   #-}
+{-# LANGUAGE NamedFieldPuns  #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DataKinds #-}
 
 -- | Information about a field in a record
 --
@@ -11,16 +14,16 @@ module Data.Record.Anonymous.Internal.Row.KnownField (
     -- * Definition
     KnownField(..)
     -- * Interop with @large-generics@
-  , fromFieldMetadata
+  , fromString
+    -- * Code generation
+  , toExpr
+  , toType
   ) where
 
-import Data.Record.Generic (FieldMetadata(..))
-import GHC.TypeLits (symbolVal)
+import Data.Record.Anon.Core.FieldName (FieldName(..))
+import qualified Data.Record.Anon.Core.FieldName as FieldName
 
-import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
-
-import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 
 {-------------------------------------------------------------------------------
   Definition
@@ -40,15 +43,38 @@ data KnownField a = KnownField {
   Interop with @large-generics@
 -------------------------------------------------------------------------------}
 
--- | Construct 'KnownField' from @large-generics@ metadata
+-- | Construct 'KnownField' from just a string
 --
--- NOTE: This currently involves a hash computation, since @large-generics@
--- does not precompute those. We could change that in @large-generics@.
-fromFieldMetadata :: FieldMetadata a -> KnownField ()
-fromFieldMetadata (FieldMetadata p _) = KnownField {
-      knownFieldName = FieldName.fromString $ symbolVal p
+-- NOTE: This involves a hash computation. This is unavoidable as long as
+-- @large-generics@ does not precompute those.
+fromString :: String -> KnownField ()
+fromString name = KnownField {
+      knownFieldName = FieldName.fromString name
     , knownFieldInfo = ()
     }
+
+{-------------------------------------------------------------------------------
+  Code generation
+-------------------------------------------------------------------------------}
+
+-- | Name of the field as a term-level expression
+toExpr :: KnownField a -> TcPluginM 'Solve CoreExpr
+toExpr KnownField{knownFieldName = FieldName{..}} =
+    mkStringExpr fieldNameLabel
+
+-- | Type-level pair @'(n, a)@ or @'(n, f a)@
+toType :: Maybe Type -> KnownField Type -> Type
+toType mf KnownField{knownFieldName = FieldName{..}, knownFieldInfo} =
+    -- mkPromotedPairTy is only introduced in ghc 9.2
+    mkTyConApp
+      (promotedTupleDataCon Boxed 2)
+      [ mkTyConTy typeSymbolKindCon -- kind of first arg
+      , liftedTypeKind              -- kind of second arg
+      , mkStrLitTy (fsLit fieldNameLabel)
+      , case mf of
+          Just f  -> f `mkAppTy` knownFieldInfo
+          Nothing -> knownFieldInfo
+      ]
 
 {-------------------------------------------------------------------------------
   Outputable

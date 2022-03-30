@@ -33,10 +33,12 @@ import GHC.Exts (Any)
 
 import Data.Vector.Generic as V
 
-import Data.Record.Anonymous.Internal.Record (Record)
-import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anonymous.Internal.Canonical          as Canon
+import qualified Data.Record.Anon.Core.Canonical as Canon
+
+import Data.Record.Anonymous.Internal.Record (Record)
+
 import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 import qualified Data.Record.Anonymous.Internal.Record             as Record
 
@@ -50,12 +52,12 @@ data Constrained (c :: k -> Constraint) (f :: k -> Type) (x :: k) where
 constrain :: forall k (c :: k -> Constraint) (f :: k -> Type) (r :: Row k).
       AllFields r c
    => Proxy c -> Record f r -> Record (Constrained c f) r
-constrain p (Record.canonicalize -> r) = Record.unsafeFromCanonical $
+constrain p (Record.toCanonical -> r) = Record.unsafeFromCanonical $
     Canon.fromLazyVector $
       V.zipWith aux (Canon.toLazyVector r) (fieldDicts (Proxy @r) p)
   where
-    aux :: f Any -> Dict c Any -> Constrained c f Any
-    aux x Dict = Constrained x
+    aux :: f Any -> DictAny c -> Constrained c f Any
+    aux x DictAny = Constrained x
 
 {-------------------------------------------------------------------------------
   Taking the functor into account

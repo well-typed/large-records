@@ -8,25 +8,24 @@ module Data.Record.Anonymous.TcPlugin.Constraints.HasField (
   , solveHasField
   ) where
 
-import Control.Monad
 import Data.Void
 import GHC.Stack
 
-import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
+import Data.Record.Anon.Core.FieldName
+
 import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields, FieldLabel(..))
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 import Data.Record.Anonymous.TcPlugin.NameResolution
 import Data.Record.Anonymous.TcPlugin.Parsing
 import Data.Record.Anonymous.TcPlugin.TyConSubst
 
-import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
 import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of a @HasField x r a@, where @r = Record f r'@
+-- | Parsed form of a @HasField n f r a@ constraint
 data CHasField = CHasField {
       -- | Label we're looking for (@x@)
       hasFieldLabel :: FieldLabel
@@ -36,17 +35,17 @@ data CHasField = CHasField {
       -- These may be fully or partially known, or completely unknown.
     , hasFieldRecord :: Fields
 
-      -- | Raw arguments to @HasField@ (for evidence construction)
-    , hasFieldTypeRaw :: [Type]
+      -- | Functor argument kind (the @k@ in @f :: k -> Type@)
+    , hasFieldTypeKind :: Type
+
+      -- | Record field (@n@)
+    , hasFieldTypeLabel :: Type
 
       -- | Record functor argument (@f@)
     , hasFieldTypeFunctor :: Type
 
-      -- | Functor argument kind (the @k@ in @f :: k -> Type@)
-    , hasFieldTypeKind :: Type
-
-      -- | Type of the record (@r@)
-    , hasFieldTypeRecord :: Type
+      -- | Row (@r@)
+    , hasFieldTypeRow :: Type
 
       -- | Type of the record field we're looking for (@a@)
       --
@@ -61,14 +60,14 @@ data CHasField = CHasField {
 -------------------------------------------------------------------------------}
 
 instance Outputable CHasField where
-  ppr (CHasField label record typeRaw typeRecord typeFunctor typeKind typeField) = parens $
+  ppr (CHasField label record typeKind typeLabel typeFunctor typeRow typeField) = parens $
       text "CHasField" <+> braces (vcat [
           text "hasFieldLabel"       <+> text "=" <+> ppr label
         , text "hasFieldRecord"      <+> text "=" <+> ppr record
-        , text "hasFieldTypeRaw"     <+> text "=" <+> ppr typeRaw
-        , text "hasFieldTypeFunctor" <+> text "=" <+> ppr typeFunctor
         , text "hasFieldTypeKind"    <+> text "=" <+> ppr typeKind
-        , text "hasFieldTypeRecord"  <+> text "=" <+> ppr typeRecord
+        , text "hasFieldTypeLabel"   <+> text "=" <+> ppr typeLabel
+        , text "hasFieldTypeFunctor" <+> text "=" <+> ppr typeFunctor
+        , text "hasFieldTypeRow"     <+> text "=" <+> ppr typeRow
         , text "hasFieldTypeField"   <+> text "=" <+> ppr typeField
         ])
 
@@ -83,46 +82,19 @@ parseHasField ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CHasField)
 parseHasField tcs rn@ResolvedNames{..} =
-    -- TODO: We should check what happens when there is a kind mismatch
-    parseConstraint isRelevant $ \(args, x, (k, f, tyFields), a) -> do
-      label  <- ParsedRow.parseFieldLabel x
-      fields <- ParsedRow.parseFields tcs rn tyFields
+    parseConstraint' clsRecordHasField $ \[k, n, f, r, a] -> do
+      label  <- ParsedRow.parseFieldLabel n
+      fields <- ParsedRow.parseFields tcs rn r
 
       return $ CHasField {
           hasFieldLabel       = label
         , hasFieldRecord      = fields
-        , hasFieldTypeRaw     = args
-        , hasFieldTypeFunctor = f
         , hasFieldTypeKind    = k
-        , hasFieldTypeRecord  = tyFields
+        , hasFieldTypeLabel   = n
+        , hasFieldTypeFunctor = f
+        , hasFieldTypeRow     = r
         , hasFieldTypeField   = a
         }
-  where
-    -- The constraint is relevant if
-    --
-    -- o It is of the form @HasField k x r a@
-    -- o @k == Symbol@
-    -- o @r == Record f r'@
-    --
-    -- If relevant, returns the raw arguments @[k, x, r, a]@ and @(x, (f, r'), a)@
-    isRelevant :: Class -> [Type] -> Maybe ([Type], Type, (Type, Type, Type), Type)
-    isRelevant cls args@[k, x, r, a] = do
-        guard $ cls == clsHasField
-        tcSymbol <- tyConAppTyCon_maybe k -- TODO: equal up to equalities..?
-        guard $ tcSymbol == typeSymbolKindCon
-        tyFields <- parseRecord tcs rn r
-        return (args, x, tyFields, a)
-    isRelevant _ _ = Nothing
-
--- | Parse @Record @k f r@
---
--- Returns the argument @k, f, r@
-parseRecord :: TyConSubst -> ResolvedNames -> Type -> Maybe (Type, Type, Type)
-parseRecord tcs ResolvedNames{..} t = do
-    args <- parseInjTyConApp tcs tyConRecord t
-    case args of
-      [k, f, r]  -> Just (k, f, r)
-      _otherwise -> Nothing
 
 {-------------------------------------------------------------------------------
   Evidence
@@ -134,16 +106,19 @@ evidenceHasField ::
   -> Int        -- ^ Field index
   -> FieldName  -- ^ Field name
   -> TcPluginM 'Solve EvTerm
-evidenceHasField rn@ResolvedNames{..} CHasField{..} i name = do
-    name' <- FieldName.mkExpr rn name
+evidenceHasField ResolvedNames{..} CHasField{..} i FieldName{..} = do
+    name' <- mkStringExpr fieldNameLabel
     return $
       evDataConApp
-        (classDataCon clsHasField)
-        hasFieldTypeRaw
-        [ mkCoreApps (Var idEvidenceHasField) $ concat [
+        (classDataCon clsRecordHasField)
+        typeArgsEvidence
+        [ mkCoreApps (Var idEvidenceRecordHasField) $ concat [
               map Type typeArgsEvidence
             , [ mkUncheckedIntExpr (fromIntegral i)
-              , name'
+              , mkCoreTup [
+                   mkUncheckedIntExpr (fromIntegral fieldNameHash)
+                 , name'
+                 ]
               ]
             ]
         ]
@@ -151,8 +126,9 @@ evidenceHasField rn@ResolvedNames{..} CHasField{..} i name = do
     typeArgsEvidence :: [Type]
     typeArgsEvidence = [
           hasFieldTypeKind
+        , hasFieldTypeLabel
         , hasFieldTypeFunctor
-        , hasFieldTypeRecord
+        , hasFieldTypeRow
         , hasFieldTypeField
         ]
 

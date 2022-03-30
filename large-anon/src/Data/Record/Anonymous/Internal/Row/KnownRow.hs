@@ -35,12 +35,13 @@ import Data.Vector (Vector)
 
 import qualified Data.Vector  as V
 
-import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
+import Data.Record.Anon.Core.FieldName (FieldName)
+import Data.Record.Anon.Core.Util.SmallHashMap (HashMap)
+
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
-import Data.Record.Anonymous.Internal.SmallHashMap (HashMap)
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 
-import qualified Data.Record.Anonymous.Internal.SmallHashMap as HashMap
+import qualified Data.Record.Anon.Core.Util.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition

@@ -34,23 +34,24 @@ import qualified Prelude
 import Data.Functor.Product
 import Data.Kind
 import Data.Proxy
-import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->))
 
-import Data.Record.Anonymous.Internal.Canonical (Canonical)
-import Data.Record.Anonymous.Internal.Record (Record)
-import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anon.Core.Canonical (Canonical)
+import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anonymous.Internal.Canonical as Canon
-import qualified Data.Record.Anonymous.Internal.Record    as Record
+import qualified Data.Record.Anon.Core.Canonical as Canon
+
+import Data.Record.Anonymous.Internal.Record (Record)
+
+import qualified Data.Record.Anonymous.Internal.Record as Record
 
 {-------------------------------------------------------------------------------
   Internal auxiliary (convenient shorthand)
 -------------------------------------------------------------------------------}
 
 c :: forall k (f :: k -> Type) (r :: Row k). Record f r -> Canonical f
-c = Record.canonicalize
+c = Record.toCanonical
 
 fromC :: forall k (f :: k -> Type) (r :: Row k). Canonical f -> Record f r
 fromC = Record.unsafeFromCanonical

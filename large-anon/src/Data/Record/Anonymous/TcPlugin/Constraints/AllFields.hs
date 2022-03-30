@@ -100,7 +100,7 @@ evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
         typeArgsEvidence
         [ mkCoreApps (Var idEvidenceAllFields) $ concat [
               map Type typeArgsEvidence
-            , [mkListExpr (mkTyConApp tyConDict typeArgsDict) fields']
+            , [mkListExpr (mkTyConApp tyConDictAny typeArgsDict) fields']
             ]
         ]
   where
@@ -109,7 +109,6 @@ evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
     typeArgsDict = [
           allFieldsTypeKind
         , allFieldsTypeConstraint
-        , anyAtKind
         ]
     typeArgsEvidence = [
           allFieldsTypeKind
@@ -119,9 +118,11 @@ evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
 
     dictForField :: KnownField (Type, EvVar) -> TcPluginM 'Solve EvExpr
     dictForField KnownField{ knownFieldInfo = (fieldType, dict) } = do
-        return $ mkCoreConApps dataConDict $ concat [
+        return $ mkCoreConApps dataConDictAny $ concat [
             map Type typeArgsDict
-          , [ mkCoreApps (Var idUnsafeCoerce) [
+          , [ -- We have a dictionary of type @c a@ from the evidence we get
+              -- from ghc; we cast it to @c Any@ to serve as arg to @DictAny@.
+               mkCoreApps (Var idUnsafeCoerce) [
                 Type $ mkAppTy allFieldsTypeConstraint fieldType
               , Type $ mkAppTy allFieldsTypeConstraint anyAtKind
               , Var dict

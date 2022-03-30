@@ -15,6 +15,12 @@ tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2
 
 library
   exposed-modules:
+      Data.Record.Anon.Plugin.Internal.Runtime
+
+      --
+      -- BELOW THIS LINE STILL NEEDS REORGANIZATION
+      --
+
       Data.Record.Anonymous.Simple
       Data.Record.Anonymous.Advanced
       Data.Record.Anonymous.Plugin
@@ -22,26 +28,35 @@ library
 
       -- Exposed for the benefit of the plugin/docspec
       -- TODO: Reconsider if we need to export all of this.
-      Data.Record.Anonymous.Internal.Canonical
       Data.Record.Anonymous.Internal.Combinators.Constrained
       Data.Record.Anonymous.Internal.Combinators.Simple
       Data.Record.Anonymous.Internal.Constraints
-      Data.Record.Anonymous.Internal.Diff
-      Data.Record.Anonymous.Internal.Evidence
       Data.Record.Anonymous.Internal.Generics
       Data.Record.Anonymous.Internal.Record
       Data.Record.Anonymous.Internal.Rep
-      Data.Record.Anonymous.Internal.Row
-      Data.Record.Anonymous.Internal.Row.FieldName
+      Data.Record.Anonymous.Internal.Reflection
       Data.Record.Anonymous.Internal.Row.KnownField
       Data.Record.Anonymous.Internal.Row.KnownRow
       Data.Record.Anonymous.Internal.Row.ParsedRow
-      Data.Record.Anonymous.Internal.SmallHashMap
-      Data.Record.Anonymous.Internal.StrictVector
 
       -- Exposed for the benefit of cabal-docspec
       Data.Record.Anonymous.TcPlugin.EquivClasses
   other-modules:
+
+      -- The modules in @Core.*@ can only import from other modules in @Core.*@,
+      -- and cannot import from @.Runtime@. See detailed discussion in
+      -- "Data.Record.Anon.Plugin.Internal.Runtime".
+
+      Data.Record.Anon.Core.Canonical
+      Data.Record.Anon.Core.Diff
+      Data.Record.Anon.Core.FieldName
+      Data.Record.Anon.Core.Record
+      Data.Record.Anon.Core.Util.SmallHashMap
+      Data.Record.Anon.Core.Util.StrictVector
+
+      --
+      -- BELOW THIS LINE STILL NEEDS REORGANIZATION
+      --
 
       Data.Record.Anonymous.SrcPlugin
       Data.Record.Anonymous.SrcPlugin.GhcShim
@@ -129,27 +144,21 @@ test-suite test-large-anon
       Test.Sanity.SrcPlugin.WithTypelet
       Test.Sanity.TypeLevelMetadata
   build-depends:
+      -- TODO: Re-export some basic definitions from .Anon (e.g., HasField),
+      -- then cull this list.
       base
     , aeson
     , large-anon
     , mtl
     , QuickCheck
+    , sop-core
     , tasty
     , tasty-hunit
     , tasty-quickcheck
     , typelet
     , validation-selective
-
-      -- TODO: The dependencies below are unfortunate, and /should/ not be
-      -- necessary: users should not have to declare dependencies on
-      -- dependencies of large-anon.
-      --
-      -- Matthew: I would change findImportedModule to instead use
-      -- moduleNameProvidersMap; or you can use lookupModuleWithSuggestions
-      -- (this avoids the need to declare the dependency here)
     , large-generics
     , record-hasfield
-    , sop-core
   ghc-options:
       -Wall
       -Wno-unticked-promoted-constructors

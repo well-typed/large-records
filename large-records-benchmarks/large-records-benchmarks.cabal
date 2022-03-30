@@ -520,12 +520,6 @@ executable bench-large-anon
     , aeson
     , large-generics
     , typelet
-
-    -- TODO: These dependencies should not be here
-    -- (This is the module finding problem in large-anon)
-    -- (large-generics is in this list too, but we need it anyway)
-    , sop-core
-    , record-hasfield
   other-modules:
       Common.RowOfSize.Row010
       Common.RowOfSize.Row020

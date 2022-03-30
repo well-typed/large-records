@@ -22,19 +22,20 @@ module Data.Record.Anonymous.Discovery (
 
 import Data.Kind
 import Data.Proxy
-import Data.Record.Generic (FieldMetadata(..), FieldStrictness(..))
-import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
 import Data.SOP.Dict
 import GHC.Exts (Any)
-import GHC.TypeLits
 
-import Data.Record.Anonymous.Advanced (Record, lens)
-import Data.Record.Anonymous.Internal.Record (unsafeFromCanonical, canonicalize)
-import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anon.Plugin.Internal.Runtime
+
+import qualified Data.Record.Anon.Core.Canonical as Canon
+
+import Data.Record.Anonymous.Advanced (lens)
+import Data.Record.Anonymous.Internal.Record (Record)
+import Data.Record.Anonymous.Internal.Reflection
 import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject, KnownRow)
 
-import qualified Data.Record.Anonymous.Internal.Canonical      as Canon
+import qualified Data.Record.Anonymous.Internal.Record         as Record
 import qualified Data.Record.Anonymous.Internal.Row.KnownField as KnownField
 import qualified Data.Record.Anonymous.Internal.Row.KnownRow   as KnownRow
 
@@ -80,21 +81,16 @@ data Shape (f :: k -> Type) where
 discoverShape :: forall k (f :: k -> Type). [(String, SomeField f)] -> Shape f
 discoverShape fields =
     mkSomeRecord $
-      reflectKnownFields (\_proxyR -> map (mkMetadata . fst) fields)
+      reflectKnownFields (\_proxyR -> map fst fields)
   where
     mkSomeRecord :: forall (r :: Row k).
          Reflected (KnownFields r)
       -> Shape f
-    mkSomeRecord Reflected = Shape @k @f @r . unsafeFromCanonical $
+    mkSomeRecord Reflected = Shape @k @f @r . Record.unsafeFromCanonical $
         Canon.fromList $ map (\(_, SomeField fx) -> co fx) fields
 
     co :: f x -> f Any
     co = noInlineUnsafeCo
-
-    mkMetadata :: String -> FieldMetadata Any
-    mkMetadata name =
-        case (someSymbolVal name) of
-          SomeSymbol p -> FieldMetadata p FieldStrict
 
 {-------------------------------------------------------------------------------
   Constraints
@@ -108,7 +104,10 @@ discoverConstraint :: forall k (c :: k -> Constraint) (r :: Row k).
   -> Reflected (AllFields r c)
 discoverConstraint dicts =
     reflectAllFields $ \_ _ ->
-      Canon.toLazyVector $ canonicalize dicts
+      fmap aux $ Canon.toLazyVector $ Record.toCanonical dicts
+  where
+    aux :: Dict c Any -> DictAny c
+    aux Dict = DictAny
 
 {-------------------------------------------------------------------------------
   Projections
@@ -128,11 +127,11 @@ discoverProjection :: forall k (r :: Row k) (r' :: Row k) a proxy proxy'.
 discoverProjection _ _ =
     go . map fst <$>
       KnownRow.canProject
-        (mkKnownRow $ fieldMetadata (Proxy @r))
-        (mkKnownRow $ fieldMetadata (Proxy @r'))
+        (mkKnownRow $ fieldNames (Proxy @r))
+        (mkKnownRow $ fieldNames (Proxy @r'))
   where
-    mkKnownRow :: [FieldMetadata a1] -> KnownRow ()
-    mkKnownRow = KnownRow.fromList . map KnownField.fromFieldMetadata
+    mkKnownRow :: [String] -> KnownRow ()
+    mkKnownRow = KnownRow.fromList . map KnownField.fromString
 
     go :: [Int] -> Reflected (Project (K a) r r')
     go proj = reflectProject $ \_ _ _ -> proj

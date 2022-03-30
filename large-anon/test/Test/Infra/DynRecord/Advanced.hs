@@ -26,9 +26,9 @@ import Data.Kind
 import Data.Record.Generic
 import Data.SOP.Constraint
 
-import Data.Record.Anonymous.Advanced (Record)
+import Data.Record.Anonymous.Advanced (Record, KnownFields, Row, AllFields)
 import Data.Record.Anonymous.Discovery
-import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anonymous.Internal.Reflection
 import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject)
 
 import qualified Data.Record.Anonymous.Advanced as Anon

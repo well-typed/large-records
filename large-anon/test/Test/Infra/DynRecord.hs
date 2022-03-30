@@ -20,12 +20,13 @@ module Test.Infra.DynRecord (
   , toValues
   ) where
 
-import Data.Proxy
 import Data.Bifunctor
 import Data.Kind
+import Data.Proxy
 import Data.SOP.BasicFunctors
-import Data.Record.Anonymous.Internal.Row
-import Data.Record.Anonymous.Advanced (Record)
+
+import Data.Record.Anonymous.Advanced (Record, KnownFields, AllFields, Row)
+
 import qualified Data.Record.Anonymous.Advanced as Anon
 
 {-------------------------------------------------------------------------------

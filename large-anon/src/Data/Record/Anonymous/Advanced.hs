@@ -69,10 +69,10 @@ module Data.Record.Anonymous.Advanced (
   , Record.letInsertAs
   ) where
 
-import Data.Record.Anonymous.Internal.Record (Record)
+import Data.Record.Anon.Plugin.Internal.Runtime
 
+import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Constraints
-import Data.Record.Anonymous.Internal.Row
 import Data.Record.Anonymous.Internal.Generics
 
 import qualified Data.Record.Anonymous.Internal.Combinators.Constrained as Combinators

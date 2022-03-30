@@ -23,7 +23,10 @@ import Prelude hiding (lookup)
 import Control.Monad (mzero)
 import Data.Foldable (asum)
 
-import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
+import Data.Record.Anon.Core.FieldName (FieldName)
+
+import qualified Data.Record.Anon.Core.FieldName as FieldName
+
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
 import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow(..))
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
@@ -31,8 +34,7 @@ import Data.Record.Anonymous.TcPlugin.NameResolution (ResolvedNames(..))
 import Data.Record.Anonymous.TcPlugin.Parsing
 import Data.Record.Anonymous.TcPlugin.TyConSubst (TyConSubst)
 
-import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
-import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow as KnownRow
 
 {-------------------------------------------------------------------------------
   Definition

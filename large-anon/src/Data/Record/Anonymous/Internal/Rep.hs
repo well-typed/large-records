@@ -18,17 +18,19 @@ module Data.Record.Anonymous.Internal.Rep (
   ) where
 
 import Data.Kind
-import Data.Record.Generic.Rep.Internal (Rep(..), noInlineUnsafeCo)
+import Data.Record.Generic.Rep.Internal (Rep(..))
 import Data.SOP.BasicFunctors
 import GHC.Exts (Any)
 
 import qualified Data.Vector as Lazy
 
-import Data.Record.Anonymous.Internal.Record (Record)
-import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anonymous.Internal.Canonical as Canon
-import qualified Data.Record.Anonymous.Internal.Record    as Record
+import qualified Data.Record.Anon.Core.Canonical as Canon
+
+import Data.Record.Anonymous.Internal.Record (Record)
+
+import qualified Data.Record.Anonymous.Internal.Record as Record
 
 {-------------------------------------------------------------------------------
   Normalize 'Rep'
@@ -63,7 +65,7 @@ normalize (Rep r) = Rep (co r)
 -------------------------------------------------------------------------------}
 
 fromRecord :: Record f r -> Rep I (Record f r)
-fromRecord (Record.canonicalize -> r) =
+fromRecord (Record.toCanonical -> r) =
     Rep $ co . Canon.toLazyVector $ r
   where
     -- Second @Any@ is really (f (Any))

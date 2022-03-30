@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedLabels  #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TypeOperators     #-}
 
@@ -13,7 +14,6 @@ import Data.Record.Generic
 import Data.Record.Anonymous.Discovery
 import Data.Record.Anonymous.Simple (Pair((:=)))
 import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject(..))
-import Data.Record.Anonymous.Internal.Row.FieldName (fromString)
 
 import qualified Data.Record.Anonymous.Simple   as S
 import qualified Data.Record.Anonymous.Advanced as A
@@ -70,7 +70,7 @@ test_simple_toLens = do
     expectedGet = "Record {a = 1, c = 'a'}"
 
     expectedMissingField :: Either (Either CannotProject ParseError) ()
-    expectedMissingField = Left (Left (SourceMissesFields [fromString "c"]))
+    expectedMissingField = Left (Left (SourceMissesFields ["c"]))
 
     expectedWrongType :: Either (Either CannotProject ParseError) ()
     expectedWrongType = Left (Right "c: Expected Char")

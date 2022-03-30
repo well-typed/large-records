@@ -12,7 +12,7 @@
 --
 -- > import Data.Record.Anonymous.Internal.Diff (Diff)
 -- > import qualified Data.Record.Anonymous.Internal.Diff as Diff
-module Data.Record.Anonymous.Internal.Diff (
+module Data.Record.Anon.Core.Diff (
     Diff(..)
     -- * Incremental construction
   , empty
@@ -34,12 +34,12 @@ import GHC.Exts (Any)
 
 import qualified Data.List.NonEmpty as NE
 
-import Data.Record.Anonymous.Internal.Canonical (Canonical(..))
-import Data.Record.Anonymous.Internal.Row.FieldName (FieldName)
-import Data.Record.Anonymous.Internal.SmallHashMap (HashMap)
+import Data.Record.Anon.Core.Canonical (Canonical(..))
+import Data.Record.Anon.Core.FieldName (FieldName)
+import Data.Record.Anon.Core.Util.SmallHashMap (HashMap)
 
-import qualified Data.Record.Anonymous.Internal.Canonical as Canon
-import qualified Data.Record.Anonymous.Internal.SmallHashMap as HashMap
+import qualified Data.Record.Anon.Core.Canonical         as Canon
+import qualified Data.Record.Anon.Core.Util.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition

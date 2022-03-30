@@ -4,7 +4,7 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE RecordWildCards       #-}
@@ -12,6 +12,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ViewPatterns          #-}
 
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
@@ -25,11 +26,8 @@
 module Data.Record.Anonymous.Internal.Record (
     -- * Representation
     Record -- opaque
-  , canonicalize
+  , toCanonical
   , unsafeFromCanonical
-    -- * Low-level field access API
-  , unsafeGetField
-  , unsafeSetField
     -- * Main API
   , Field(..)
   , empty
@@ -47,128 +45,60 @@ module Data.Record.Anonymous.Internal.Record (
   ) where
 
 import Data.Bifunctor
+import Data.Coerce (coerce)
 import Data.Kind
 import Data.Proxy
-import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet.UserAPI
 
-import Data.Record.Anonymous.Internal.Canonical (Canonical)
-import Data.Record.Anonymous.Internal.Diff (Diff)
-import Data.Record.Anonymous.Internal.Row
-import Data.Record.Anonymous.Internal.Row.FieldName (FieldName, KnownHash)
+import Data.Record.Anon.Core.Canonical (Canonical)
+import Data.Record.Anon.Core.Diff (Diff)
+import Data.Record.Anon.Core.FieldName (FieldName(..))
+import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anonymous.Internal.Canonical     as Canon
-import qualified Data.Record.Anonymous.Internal.Diff          as Diff
-import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
+import qualified Data.Record.Anon.Core.Canonical as Canon
+import qualified Data.Record.Anon.Core.Diff      as Diff
+import qualified Data.Record.Anon.Core.Record    as Core (Record(..))
+import qualified Data.Record.Anon.Core.Record    as Core.Record
 
 {-------------------------------------------------------------------------------
-  Representation
+  Definition
 -------------------------------------------------------------------------------}
 
--- | Anonymous record
---
--- A @Record f xs@ has a field @n@ of type @f x@ for every @(n, x)@ in @xs@.
---
--- To access fields of the record, either use the 'HasField' instances
--- (possibly using the record-dot-preprocessor to get record-dot syntax),
--- or using the simple wrappers 'get' and 'set'. The 'HasField' instances
--- are resolved by the plugin, so be sure to use
---
--- > {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
---
--- Let's consider a few examples. After we define
---
--- > example :: Record '[ '("a", Bool) ]
--- > example = insert #a True empty
---
--- we get
---
--- >>> get #a example -- or @example.a@ if using RecordDotSyntax
--- I True
---
--- >>> get #b example
--- ...
--- ...No instance for (HasField "b" (Record...
--- ...
---
--- >>> get #a example :: I Int
--- ...
--- ...Couldn't match...Int...Bool...
--- ...
---
--- When part of the record is not known, it might not be possible to resolve a
--- 'HasField' constraint until later. For example, in
---
--- >>> (\r -> get #x r) :: Record I '[ '(f, a), '("x", b) ] -> I b
--- ...
--- ...No instance for (HasField "x" (...
--- ...
---
--- This is important, because if @f == "x"@, this would only be sound if also
--- @a == b@. We /could/ introduce a new constraint to say precisely that, but
--- it would have little benefit; instead we just leave the 'HasField' constraint
--- unresolved until we know more about the record.
-data Record (f :: k -> Type) (r :: Row k) = Record {
-      -- | Pending changes
-      recordDiff :: !(Diff f)
+newtype Record (f :: k -> Type) (r :: Row k) = Wrap { unwrap :: Core.Record f }
 
-      -- | Number of pending changes
-    , recordDiffSize :: {-# UNPACK #-} !Int
+pattern Record :: Diff f -> Int -> Canonical f -> Record f r
+pattern Record {recordDiff, recordDiffSize, _recordCanon} =
+    Wrap (Core.Record recordDiff recordDiffSize _recordCanon)
 
-      -- | The original record
-    , recordCanon :: {-# UNPACK #-} !(Canonical f)
-    }
+{-# COMPLETE Record #-}
 
-type role Record nominal representational
-
--- | Construct canonical form of the record (i.e., apply the internal 'Diff')
---
--- This is @O(n)@, and should be done only for operations on records that are
--- @O(n)@ /anyway/, so that the cost can be absorbed.
-canonicalize :: Record f r -> Canonical f
-canonicalize Record{..} = Diff.apply recordDiff recordCanon
+toCanonical :: Record f r -> Canonical f
+toCanonical = Core.Record.toCanonical . unwrap
 
 -- | Construct 'Record' from 'Canonical' representation (empty 'Diff')
 --
 -- This function is unsafe because we cannot verify whether the record matches
 -- it's row specification @r@.
 unsafeFromCanonical :: Canonical f -> Record f r
-unsafeFromCanonical canon = Record {
-      recordDiff     = Diff.empty
-    , recordDiffSize = 0
-    , recordCanon    = canon
-    }
+unsafeFromCanonical = Wrap . Core.Record.fromCanonical
 
 {-------------------------------------------------------------------------------
-  Low-level field access API
-
-  These are used in the generated 'HasField' instances. It is the responsibility
-  of the plugin to make sure that the @Int@ index and the type @a@ are correct.
+  Forwarding instances
 -------------------------------------------------------------------------------}
 
-unsafeGetField :: Int -> FieldName -> Record f r -> a
-unsafeGetField  i n Record{recordDiff, recordDiffSize, recordCanon}
-  | recordDiffSize == 0
-  = co $ Canon.getAtIndex recordCanon i
-
-  | otherwise
-  = co $ Diff.get (i, n) recordDiff recordCanon
-  where
-    co  :: f Any -> a
-    co = noInlineUnsafeCo
-
-unsafeSetField :: Int -> FieldName -> a -> Record f r -> Record f r
-unsafeSetField i n x r@Record{recordDiff, recordDiffSize} =
-    r { recordDiff     = Diff.set (i, n) (co x) recordDiff
-      , recordDiffSize = recordDiffSize + 1
-      }
-  where
-    co :: a -> f Any
-    co = noInlineUnsafeCo
+instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: Type).
+       RecordHasField n f r a
+    => HasField n (Record f r) a where
+  hasField = aux $ recordHasField (Proxy @n) (Proxy @r)
+    where
+      aux ::
+           (Core.Record f   -> (a -> Core.Record f  , a))
+        -> (     Record f r -> (a ->      Record f r, a))
+      aux = coerce
 
 {-------------------------------------------------------------------------------
   Main API
@@ -195,13 +125,19 @@ empty = Record Diff.empty 0 mempty
 
 -- | Insert new field
 insert :: Field n -> f a -> Record f r -> Record f (n := a : r)
-insert (Field n) x r@Record{recordDiff, recordDiffSize} = r {
-      recordDiff     = Diff.insert (FieldName.symbolVal n) (co x) recordDiff
-    , recordDiffSize = recordDiffSize + 1
+insert (Field n) x r@Record{ recordDiff     = diff
+                           , recordDiffSize = diffSize
+                           } = r {
+      recordDiff     = Diff.insert (mkFieldName n) (co x) diff
+    , recordDiffSize = diffSize + 1
     }
   where
     co :: f a -> f Any
     co = noInlineUnsafeCo
+
+    -- | Compile-time construction of a 'FieldName'
+    mkFieldName :: (KnownSymbol s, KnownHash s) => Proxy s -> FieldName
+    mkFieldName p = FieldName (hashVal p) (symbolVal p)
 
 -- | Applicative insert
 --
@@ -277,7 +213,7 @@ set _ = flip (setField @n @(Record f r))
 -- ...No instance for (HasField "b" (...
 -- ...
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
-merge (canonicalize -> r) (canonicalize -> r') =
+merge (toCanonical -> r) (toCanonical -> r') =
     unsafeFromCanonical $ r <> r'
 
 -- | Lens from one record to another
@@ -323,7 +259,7 @@ merge (canonicalize -> r) (canonicalize -> r') =
 lens :: forall f r r'.
      Project f r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
-lens = \(canonicalize -> r) ->
+lens = \(toCanonical -> r) ->
     bimap getter setter $
       Canon.lens (projectIndices (Proxy @f) (Proxy @r) (Proxy @r')) r
   where
@@ -331,7 +267,7 @@ lens = \(canonicalize -> r) ->
     getter = unsafeFromCanonical
 
     setter :: (Canonical f -> Canonical f) -> Record f r' -> Record f r
-    setter f (canonicalize -> r) = unsafeFromCanonical (f r)
+    setter f (toCanonical -> r) = unsafeFromCanonical (f r)
 
 -- | Project out subrecord
 --
@@ -349,7 +285,7 @@ project = fst . lens
 -- explicitly apply these changes, for example after constructing a record or
 -- updating a lot of fields.
 applyDiff :: Record f r -> Record f r
-applyDiff (canonicalize -> r) = unsafeFromCanonical r
+applyDiff (toCanonical -> r) = unsafeFromCanonical r
 
 {-------------------------------------------------------------------------------
   Support for @typelet@

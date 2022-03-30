@@ -25,9 +25,9 @@ import Data.Kind
 import Data.SOP.BasicFunctors
 
 import Data.Record.Anonymous.Discovery
-import Data.Record.Anonymous.Internal.Row
+import Data.Record.Anonymous.Internal.Reflection
 import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject)
-import Data.Record.Anonymous.Simple (Record)
+import Data.Record.Anonymous.Simple (Record, AllFields, KnownFields, Row)
 
 import qualified Data.Record.Anonymous.Simple   as S
 import qualified Data.Record.Anonymous.Advanced as A

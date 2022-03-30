@@ -9,10 +9,8 @@ module Data.Record.Anonymous.TcPlugin.Constraints.KnownFields (
   , solveKnownFields
   ) where
 
-import Data.Foldable (toList)
 import Data.Void
 
-import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
 import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow)
 import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields)
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
@@ -20,9 +18,9 @@ import Data.Record.Anonymous.TcPlugin.NameResolution
 import Data.Record.Anonymous.TcPlugin.Parsing
 import Data.Record.Anonymous.TcPlugin.TyConSubst
 
-import qualified Data.Record.Anonymous.Internal.Row.FieldName as FieldName
-import qualified Data.Record.Anonymous.Internal.Row.KnownRow  as KnownRow
-import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
+import qualified Data.Record.Anonymous.Internal.Row.KnownField as KnownField
+import qualified Data.Record.Anonymous.Internal.Row.KnownRow   as KnownRow
+import qualified Data.Record.Anonymous.Internal.Row.ParsedRow  as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition
@@ -84,21 +82,17 @@ parseKnownFields tcs rn@ResolvedNames{..} =
 evidenceKnownFields ::
      ResolvedNames
   -> CKnownFields
-  -> KnownRow EvVar
+  -> KnownRow a
   -> TcPluginM 'Solve EvTerm
-evidenceKnownFields ResolvedNames{..}
-                       CKnownFields{..}
-                       r
-                     = do
+evidenceKnownFields ResolvedNames{..} CKnownFields{..} r = do
+    fields <- mapM KnownField.toExpr (KnownRow.toList r)
     return $
       evDataConApp
         (classDataCon clsKnownFields)
         typeArgsEvidence
         [ mkCoreApps (Var idEvidenceKnownFields) $ concat [
               map Type typeArgsEvidence
-            , [ mkListExpr fieldMetadataType $
-                 map mkFieldInfoAny (KnownRow.toList r)
-              ]
+            , [ mkListExpr stringTy fields ]
             ]
         ]
   where
@@ -107,27 +101,6 @@ evidenceKnownFields ResolvedNames{..}
           knownFieldsTypeKind
         , knownFieldsTypeRecord
         ]
-
-    fieldMetadataType :: Type
-    fieldMetadataType = mkTyConApp tyConFieldMetadata [anyType]
-
-    mkFieldInfoAny :: KnownField EvVar -> EvExpr
-    mkFieldInfoAny KnownField{knownFieldName = name, knownFieldInfo = dict} =
-        mkCoreConApps dataConFieldMetadata [
-            Type anyType
-          , Type (FieldName.mkType name)
-          , Var dict
-          , mkCoreConApps dataConProxy [
-                Type $ mkTyConTy typeSymbolKindCon
-              , Type $ FieldName.mkType name
-              ]
-            -- @large-anon@ currently only supports records with strict fields
-          , mkCoreConApps dataConFieldStrict []
-          ]
-
-    -- Any at kind Type
-    anyType :: Type
-    anyType = mkTyConApp anyTyCon [liftedTypeKind]
 
 {-------------------------------------------------------------------------------
   Solver
@@ -138,27 +111,11 @@ solveKnownFields ::
   -> Ct
   -> GenLocated CtLoc CKnownFields
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
-solveKnownFields rn@ResolvedNames{..}
-                       orig
-                       (L loc cm@CKnownFields{..})
-                     = do
+solveKnownFields rn orig (L _ cm@CKnownFields{..}) = do
     -- See 'solveRecordConstraints' for a discussion of 'allFieldsKnown'
     case ParsedRow.allKnown knownFieldsParsedFields of
       Nothing ->
         return (Nothing, [])
       Just fields -> do
-        fields' <- KnownRow.traverse fields $ \nm _info -> do
-                     newWanted loc $
-                       mkClassPred clsKnownSymbol [
-                           FieldName.mkType nm
-                         ]
-        ev <- evidenceKnownFields rn cm $ getEvVar <$> fields'
-        return (
-            Just (ev, orig)
-          , map mkNonCanonical (toList fields')
-          )
-  where
-    getEvVar :: CtEvidence -> EvVar
-    getEvVar ct = case ctev_dest ct of
-      EvVarDest var -> var
-      HoleDest  _   -> error "impossible (we don't ask for primitive equality)"
+        ev <- evidenceKnownFields rn cm fields
+        return (Just (ev, orig), [])

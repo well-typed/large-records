@@ -27,21 +27,20 @@ import Data.List (intercalate)
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
-import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.Record.Generic.Show
 import Data.SOP
 import Data.Typeable
-import Data.Vector (Vector)
 import GHC.Exts (Any)
 import GHC.TypeLits
 
-import qualified Data.Vector as Vector
+import qualified Data.Record.Generic.Rep as Rep
+import qualified Data.Vector             as Vector
+
+import Data.Record.Anon.Plugin.Internal.Runtime
 
 import Data.Record.Anonymous.Internal.Record (Record)
-import Data.Record.Anonymous.Internal.Row
 import Data.Record.Anonymous.Internal.Constraints
 
-import qualified Data.Record.Generic.Rep            as Rep
 import qualified Data.Record.Anonymous.Internal.Rep as Rep
 import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 
@@ -52,10 +51,15 @@ import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 recordConstraints :: forall f r c.
      RecordConstraints f r c
   => Proxy c -> Rep (Dict c) (Record f r)
-recordConstraints _ = aux $ fieldDicts (Proxy @r) (Proxy @(Compose c f))
+recordConstraints _ = Rep $
+    Vector.map (co . aux) $ fieldDicts (Proxy @r) (Proxy @(Compose c f))
   where
-    aux :: Vector (Dict (Compose c f) Any) -> Rep (Dict c) (Record f r)
-    aux = noInlineUnsafeCo
+    aux :: DictAny (Compose c f) -> Dict (Compose c f) Any
+    aux DictAny = Dict
+
+    -- The second 'Any' is really (f Any)
+    co :: Dict (Compose c f) Any -> Dict c Any
+    co = noInlineUnsafeCo
 
 recordMetadata :: forall k (f :: k -> Type) (r :: Row k).
      KnownFields r

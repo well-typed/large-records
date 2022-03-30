@@ -18,7 +18,7 @@
 --
 -- > import Data.Record.Anonymous.Internal.Canonical (Canonical)
 -- > import qualified Data.Record.Anonymous.Internal.Canonical as Canon
-module Data.Record.Anonymous.Internal.Canonical (
+module Data.Record.Anon.Core.Canonical (
     Canonical(..)
     -- * Indexed access
   , getAtIndex
@@ -56,9 +56,9 @@ import GHC.Exts (Any)
 import qualified Data.Foldable as Foldable
 import qualified Data.Vector   as Lazy
 
-import Data.Record.Anonymous.Internal.StrictVector (Vector)
+import Data.Record.Anon.Core.Util.StrictVector (Vector)
 
-import qualified Data.Record.Anonymous.Internal.StrictVector as Strict
+import qualified Data.Record.Anon.Core.Util.StrictVector as Strict
 
 {-------------------------------------------------------------------------------
   Definition

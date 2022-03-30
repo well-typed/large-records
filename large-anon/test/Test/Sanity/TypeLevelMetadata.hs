@@ -11,6 +11,10 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
 
+-- | Test type-level metadata
+--
+-- It is important that we have a separate test for this, because we don't
+-- actually rely on this information anywhere; it is only for SOP interop.
 module Test.Sanity.TypeLevelMetadata (tests) where
 
 import Data.Record.Generic
@@ -116,4 +120,3 @@ test_toFromSOP :: Assertion
 test_toFromSOP =
     assertEqual "" (Just recordA) $
       (to . fromSOP <$> toSOP (from recordA))
-

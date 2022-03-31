@@ -10,14 +10,14 @@
 -- values as records.
 module Data.Record.Anonymous.Discovery (
     -- * Discover shape
-    SomeField(..)
-  , Shape(..)
-  , discoverShape
+    Some(..)
+  , discoverRow
     -- * Discover projections
   , discoverProjection
   , discoverLens
     -- * Constraints
   , discoverConstraint
+  , discoverKnownFields
   ) where
 
 import Data.Kind
@@ -30,7 +30,7 @@ import Data.Record.Anon.Plugin.Internal.Runtime
 
 import qualified Data.Record.Anon.Core.Canonical as Canon
 
-import Data.Record.Anonymous.Advanced (lens)
+import Data.Record.Anonymous.Advanced (lens, collapse)
 import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Reflection
 import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject, KnownRow)
@@ -43,13 +43,8 @@ import qualified Data.Record.Anonymous.Internal.Row.KnownRow   as KnownRow
   Shape
 -------------------------------------------------------------------------------}
 
-data SomeField (f :: k -> Type) where
-  SomeField :: forall k (f :: k -> Type) (x :: k). f x -> SomeField f
-
-data Shape (f :: k -> Type) where
-  Shape :: forall k (f :: k -> Type) (r :: Row k).
-       KnownFields r
-    => Record f r -> Shape f
+data Some (f :: k -> Type) where
+  Some :: forall k (f :: k -> Type) (x :: k). f x -> Some f
 
 -- | Discover record shape
 --
@@ -78,17 +73,11 @@ data Shape (f :: k -> Type) where
 --    type then /is/ statically known, which means that once we have such a
 --    lens, further discovery of additional constraints is not necesssary:
 --    these constraints can be proved in the normal way for the concrete type.
-discoverShape :: forall k (f :: k -> Type). [(String, SomeField f)] -> Shape f
-discoverShape fields =
-    mkSomeRecord $
-      reflectKnownFields (\_proxyR -> map fst fields)
+discoverRow :: forall k (f :: k -> Type). [Some f] -> Some (Record f)
+discoverRow fields =
+   Some $ Record.unsafeFromCanonical $
+      Canon.fromList $ map (\(Some x) -> co x) fields
   where
-    mkSomeRecord :: forall (r :: Row k).
-         Reflected (KnownFields r)
-      -> Shape f
-    mkSomeRecord Reflected = Shape @k @f @r . Record.unsafeFromCanonical $
-        Canon.fromList $ map (\(_, SomeField fx) -> co fx) fields
-
     co :: f x -> f Any
     co = noInlineUnsafeCo
 
@@ -96,9 +85,15 @@ discoverShape fields =
   Constraints
 -------------------------------------------------------------------------------}
 
+discoverKnownFields ::
+     Record (K String) r
+  -> Reflected (KnownFields r)
+discoverKnownFields names =
+    reflectKnownFields $ \_ -> collapse names
+
 -- | Discover additional constraints for an unknown record
 --
--- See 'discoverShape' for a detailed discussion.
+-- See 'discoverRow' for a detailed discussion.
 discoverConstraint :: forall k (c :: k -> Constraint) (r :: Row k).
      Record (Dict c) r
   -> Reflected (AllFields r c)
@@ -118,7 +113,7 @@ discoverConstraint dicts =
 -- Since we cannot do runtime type checks, we insist that the fields of the
 -- record must all be of one type @a@.
 --
--- See 'discoverShape' for additional discussion.
+-- See 'discoverRow' for additional discussion.
 discoverProjection :: forall k (r :: Row k) (r' :: Row k) a proxy proxy'.
      (KnownFields r, KnownFields r')
   => proxy  r
@@ -138,8 +133,8 @@ discoverProjection _ _ =
 
 discoverLens :: forall k (r :: Row k) (r' :: Row k) (a :: Type) proxy proxy'.
      (KnownFields r, KnownFields r')
-  => proxy  r
-  -> proxy' r'
+  => proxy   r
+  -> proxy'  r'
   -> Either CannotProject
             (Record (K a) r -> ( Record (K a) r'
                                , Record (K a) r' -> Record (K a) r

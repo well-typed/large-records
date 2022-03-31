@@ -15,7 +15,7 @@ module Test.Infra.DynRecord.Simple (
     toLens
   , toRecord
     -- * Type inference
-  , IsValue(..)
+  , ValidField(..)
   , SomeRecord(..)
   , inferType
   ) where
@@ -69,14 +69,14 @@ toRecord p = fmap S.fromAdvanced . A.Dyn.toRecord p
   relevant for this test case.
 -------------------------------------------------------------------------------}
 
-data IsValue x where
-  IsValue ::
+data ValidField x where
+  ValidField ::
        ( Show        x
        , Eq          x
        , ToValue   I x
        , FromValue I x
        )
-    => x -> IsValue x
+    => String -> x -> ValidField x
 
 data SomeRecord where
   SomeRecord :: forall (r :: Row Type).
@@ -92,31 +92,38 @@ deriving instance Show SomeRecord
 
 inferType :: DynRecord -> SomeRecord
 inferType (DynRecord r) =
-    case discoverShape (map (second mkField) r) of
-      Shape s ->
-        case ( discoverConstraint (A.map dictShow      s)
-             , discoverConstraint (A.map dictEq        s)
-             , discoverConstraint (A.map dictFromValue s)
-             , discoverConstraint (A.map dictToValue   s)
+    case discoverRow $ map (uncurry mkField) r of
+      Some record ->
+        case discoverKnownFields $ A.map fieldName record of
+          Reflected -> withSomeRecord record
+  where
+    withSomeRecord :: KnownFields r => A.Record ValidField r -> SomeRecord
+    withSomeRecord record =
+        case ( discoverConstraint (A.map dictShow      record)
+             , discoverConstraint (A.map dictEq        record)
+             , discoverConstraint (A.map dictFromValue record)
+             , discoverConstraint (A.map dictToValue   record)
              ) of
           (Reflected, Reflected, Reflected, Reflected) ->
-            SomeRecord (aux s)
-  where
-    mkField :: Value -> SomeField IsValue
-    mkField (VI x) = SomeField (IsValue x)
-    mkField (VB x) = SomeField (IsValue x)
-    mkField (VC x) = SomeField (IsValue x)
+            SomeRecord (S.fromAdvanced $ A.map fieldValue record)
 
-    aux :: A.Record IsValue r -> Record r
-    aux = S.fromAdvanced . A.map (\(IsValue x) -> I x)
+    fieldName  :: ValidField x -> K String x
+    fieldValue :: ValidField x -> I x
 
-    dictShow      :: IsValue x -> Dict Show x
-    dictEq        :: IsValue x -> Dict Eq   x
-    dictFromValue :: IsValue x -> Dict (FromValue I) x
-    dictToValue   :: IsValue x -> Dict (ToValue   I) x
+    fieldName  (ValidField name _    ) = K name
+    fieldValue (ValidField _    value) = I value
 
-    dictShow      (IsValue _) = Dict
-    dictEq        (IsValue _) = Dict
-    dictFromValue (IsValue _) = Dict
-    dictToValue   (IsValue _) = Dict
+    dictShow      :: ValidField x -> Dict Show x
+    dictEq        :: ValidField x -> Dict Eq   x
+    dictFromValue :: ValidField x -> Dict (FromValue I) x
+    dictToValue   :: ValidField x -> Dict (ToValue   I) x
 
+    dictShow      (ValidField _ _) = Dict
+    dictEq        (ValidField _ _) = Dict
+    dictFromValue (ValidField _ _) = Dict
+    dictToValue   (ValidField _ _) = Dict
+
+    mkField :: String -> Value -> Some ValidField
+    mkField name (VI x) = Some $ ValidField name x
+    mkField name (VB x) = Some $ ValidField name x
+    mkField name (VC x) = Some $ ValidField name x

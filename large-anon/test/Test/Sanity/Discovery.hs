@@ -136,10 +136,10 @@ test_advanced_inferType =
 --
 -- Just for the example, we infer all 'Int' fields are strict and all other
 -- fields as lazy.
-boxValue :: Value -> SomeField (Dyn.A.IsValue Boxed)
-boxValue (VI x) = SomeField $ Dyn.A.IsValue $ BoxStrict x
-boxValue (VB x) = SomeField $ Dyn.A.IsValue $ BoxLazy   x
-boxValue (VC x) = SomeField $ Dyn.A.IsValue $ BoxLazy   x
+boxValue :: String -> Value -> Some (Dyn.A.ValidField Boxed)
+boxValue name (VI x) = Some $ Dyn.A.ValidField name $ BoxStrict x
+boxValue name (VB x) = Some $ Dyn.A.ValidField name $ BoxLazy   x
+boxValue name (VC x) = Some $ Dyn.A.ValidField name $ BoxLazy   x
 
 {-------------------------------------------------------------------------------
   Example 'DynRecord' values

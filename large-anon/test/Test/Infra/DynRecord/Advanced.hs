@@ -5,6 +5,7 @@
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
+{-# LANGUAGE TypeApplications    #-}
 
 -- | 'DynRecord' interop with the advanced record API.
 --
@@ -16,7 +17,7 @@ module Test.Infra.DynRecord.Advanced (
     toLens
   , toRecord
     -- * Type inference
-  , IsValue(..)
+  , ValidField(..)
   , SomeRecord(..)
   , inferType
   ) where
@@ -51,12 +52,21 @@ toLens' :: forall k (r :: Row k) proxy.
   -> Either CannotProject
             (Record (K Value) r, Record (K Value) r -> DynRecord)
 toLens' p (DynRecord r) =
-    case discoverShape $ map (second (SomeField . K)) r of
-      Shape s ->
-        (fmap setter  . ($ s)) <$> discoverLens s p
+    case discoverRow $ map (Some . K) r of
+      Some record ->
+        case discoverKnownFields (Anon.map (mapKK fst) record) of
+          Reflected -> withSomeRecord (Anon.map (mapKK snd) record)
   where
     -- @r'@ is the "inferred" row of the actual 'DynRecord'
     -- (as opposed to the expected row specified as an argument)
+    withSomeRecord :: forall (r' :: Row k).
+          KnownFields r'
+       => Record (K Value) r'
+       -> Either CannotProject
+                 (Record (K Value) r, Record (K Value) r -> DynRecord)
+    withSomeRecord record =
+        (fmap setter  . ($ record)) <$> discoverLens record p
+
     setter ::
          KnownFields r'
       => (Record (K Value) r -> Record (K Value) r')
@@ -100,14 +110,14 @@ toRecord p = distrib . fmap (fromValues . fst) . toLens' p
   Type inference
 -------------------------------------------------------------------------------}
 
-data IsValue (f :: k -> Type) (x :: k) where
-  IsValue ::
+data ValidField (f :: k -> Type) (x :: k) where
+  ValidField ::
        ( Show     (f x)
        , Eq       (f x)
        , ToValue   f x
        , FromValue f x
        )
-    => f x -> IsValue f x
+    => String -> f x -> ValidField f x
 
 data SomeRecord (f :: k -> Type) where
   SomeRecord :: forall k (f :: k -> Type) (r :: Row k).
@@ -122,29 +132,37 @@ data SomeRecord (f :: k -> Type) where
 deriving instance Show (SomeRecord f)
 
 inferType :: forall k (f :: k -> Type).
-     (Value -> SomeField (IsValue f))
+     (String -> Value -> Some (ValidField f))
   -> DynRecord
   -> SomeRecord f
 inferType mkField (DynRecord r) =
-    case discoverShape (map (second mkField) r) of
-      Shape s ->
-        case ( discoverConstraint (Anon.map dictShow      s)
-             , discoverConstraint (Anon.map dictEq        s)
-             , discoverConstraint (Anon.map dictFromValue s)
-             , discoverConstraint (Anon.map dictToValue   s)
+    case discoverRow $ map (uncurry mkField) r of
+      Some record ->
+        case discoverKnownFields $ Anon.map fieldName record of
+          Reflected -> withSomeRecord record
+  where
+    withSomeRecord :: KnownFields r => Record (ValidField f) r -> SomeRecord f
+    withSomeRecord record =
+        case ( discoverConstraint (Anon.map dictShow      record)
+             , discoverConstraint (Anon.map dictEq        record)
+             , discoverConstraint (Anon.map dictFromValue record)
+             , discoverConstraint (Anon.map dictToValue   record)
              ) of
           (Reflected, Reflected, Reflected, Reflected) ->
-            SomeRecord (aux s)
-  where
-    aux :: Record (IsValue f) r -> Record f r
-    aux = Anon.map (\(IsValue x) -> x)
+            SomeRecord (Anon.map fieldValue record)
 
-    dictShow      :: IsValue f x -> Dict (Compose Show f) x
-    dictEq        :: IsValue f x -> Dict (Compose Eq   f) x
-    dictFromValue :: IsValue f x -> Dict (FromValue    f) x
-    dictToValue   :: IsValue f x -> Dict (ToValue      f) x
+    fieldName  :: ValidField f x -> K String x
+    fieldValue :: ValidField f x -> f x
 
-    dictShow      (IsValue _) = Dict
-    dictEq        (IsValue _) = Dict
-    dictFromValue (IsValue _) = Dict
-    dictToValue   (IsValue _) = Dict
+    fieldName  (ValidField name _    ) = K name
+    fieldValue (ValidField _    value) = value
+
+    dictShow      :: ValidField f x -> Dict (Compose Show f) x
+    dictEq        :: ValidField f x -> Dict (Compose Eq   f) x
+    dictFromValue :: ValidField f x -> Dict (FromValue    f) x
+    dictToValue   :: ValidField f x -> Dict (ToValue      f) x
+
+    dictShow      (ValidField _ _) = Dict
+    dictEq        (ValidField _ _) = Dict
+    dictFromValue (ValidField _ _) = Dict
+    dictToValue   (ValidField _ _) = Dict

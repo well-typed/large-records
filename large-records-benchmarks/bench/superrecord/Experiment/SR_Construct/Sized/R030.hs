@@ -12,9 +12,9 @@ import SuperRecord (Rec, (:=)(..))
 import qualified SuperRecord as SR
 
 import Bench.Types
-import Common.RowOfSize.Row030 (Row)
+import Common.RowOfSize.Row030 (ExampleRow)
 
-record :: Word -> Rec Row
+record :: Word -> Rec ExampleRow
 record x =
       -- 00 .. 09
       SR.rcons (#t00 := MkT x)

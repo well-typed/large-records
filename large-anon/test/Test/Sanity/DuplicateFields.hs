@@ -5,21 +5,22 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.DuplicateFields (tests) where
 
 import Data.Proxy
 import Data.Record.Generic.LowerBound
 import Data.SOP.BasicFunctors
-import GHC.Records.Compat (HasField)
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
-import qualified Data.Record.Anonymous.Advanced as Anon
-import Data.Record.Anonymous.Internal.Generics (debugFieldTypes)
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record)
+import qualified Data.Record.Anon.Advanced as Anon
+
+import Test.Infra.Generics
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.DuplicateFields" [
@@ -98,9 +99,9 @@ test_fieldTypes = do
 test_describe :: Assertion
 test_describe = do
     assertEqual "same" expectedSame $
-      Anon.describeRecord (Proxy @InterspersedSameType)
+      describeRecord (Proxy @InterspersedSameType)
     assertEqual "diff" expectedDiff $
-      Anon.describeRecord (Proxy @InterspersedDiffType)
+      describeRecord (Proxy @InterspersedDiffType)
   where
     expectedSame, expectedDiff :: String
     expectedSame = concat [

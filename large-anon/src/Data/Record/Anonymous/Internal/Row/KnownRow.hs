@@ -161,7 +161,7 @@ indexed r =
 
 -- | Reason why we cannot project
 data CannotProject =
-    -- | We do not supporting to records with shadowed fields
+    -- | We do not support projecting to records with shadowed fields
     --
     -- Since these fields can only come from the source record, and shadowed
     -- fields in the source record are invisible, shadowed fields in the target

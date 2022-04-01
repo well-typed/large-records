@@ -12,5 +12,5 @@ import SuperRecord (Rec, recToValue)
 
 import Common.RowOfSize.Row030
 
-recToJSON :: Rec Row -> Value
+recToJSON :: Rec ExampleRow -> Value
 recToJSON = recToValue

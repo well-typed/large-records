@@ -15,7 +15,7 @@ import qualified SuperRecord as SR
 import Bench.EvensOfSize.Evens030
 import Common.RowOfSize.Row030
 
-getEvens :: Rec Row -> Evens
+getEvens :: Rec ExampleRow -> Evens
 getEvens r = Evens {
       -- 00 .. 09
       evens00 = SR.get #t00 r

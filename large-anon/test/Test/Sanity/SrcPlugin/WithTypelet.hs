@@ -2,9 +2,9 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anonymous.Plugin #-}
-{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:typelet #-}
--- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anonymous.Plugin:debug   #-}
+{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anon.Plugin #-}
+{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anon.Plugin:typelet #-}
+-- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anon.Plugin:debug   #-}
 
 -- | Tests for @typelet@
 --
@@ -14,10 +14,10 @@ module Test.Sanity.SrcPlugin.WithTypelet (tests) where
 
 import Data.SOP.BasicFunctors
 
-import Data.Record.Anonymous.Advanced (Pair((:=)))
+import Data.Record.Anon
 
-import qualified Data.Record.Anonymous.Advanced as A
-import qualified Data.Record.Anonymous.Simple   as S
+import qualified Data.Record.Anon.Advanced as A
+import qualified Data.Record.Anon.Simple   as S
 
 import Test.Tasty
 import Test.Tasty.HUnit

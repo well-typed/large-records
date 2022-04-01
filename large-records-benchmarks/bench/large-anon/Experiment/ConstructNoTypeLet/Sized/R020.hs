@@ -5,16 +5,16 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Experiment.ConstructNoTypeLet.Sized.R020 where
 
-import Data.Record.Anonymous.Simple (Record)
+import Data.Record.Anon.Simple (Record)
 
 import Bench.Types
 import Common.RowOfSize.Row020
 
-record :: Word -> Record Row
+record :: Word -> Record ExampleRow
 record x = ANON {
       -- 00 .. 09
       t00 = MkT x

@@ -20,15 +20,16 @@ module Data.Record.Anonymous.Advanced (
   , Record.Field -- opaque
   , Record.empty
   , Record.insert
+  , Record.insertA
   , Record.get
   , Record.set
   , Record.merge
   , Record.lens
   , Record.project
-  , Record.applyDiff
+  , Record.applyPending
     -- * Constraints
   , RecordConstraints
-  , recordOfDicts
+  , reifyAllFields
   , constrain
     -- * Combinators
     -- ** "Functor"
@@ -61,9 +62,8 @@ module Data.Record.Anonymous.Advanced (
   , AllFields
   , KnownFields
     -- * Additional generic functions
-  , describeRecord
-  , recordWithMetadata
-  , recordWithNames
+  , recordOfMetadata
+  , reifyKnownFields
     -- * Support for @typelet@
   , Record.letRecordT
   , Record.letInsertAs

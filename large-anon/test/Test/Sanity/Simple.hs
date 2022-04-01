@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 -- | Tests for the @Simple@ interface
 --
@@ -13,8 +13,9 @@ module Test.Sanity.Simple (tests) where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous.Simple (Record, Pair((:=)))
-import qualified Data.Record.Anonymous.Simple as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Simple (Record)
+import qualified Data.Record.Anon.Simple as Anon
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.Simple" [

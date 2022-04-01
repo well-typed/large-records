@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -ddump-to-file -ddump-timings #-}
 #endif
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Experiment.ToJSON.Sized.R060 where
 
@@ -13,7 +13,7 @@ import Data.Aeson (Value)
 import Data.Record.Generic.JSON (gtoJSON)
 
 import Common.RowOfSize.Row060
-import Data.Record.Anonymous.Simple (Record)
+import Data.Record.Anon.Simple (Record)
 
-recToJSON :: Record Row -> Value
+recToJSON :: Record ExampleRow -> Value
 recToJSON = gtoJSON

@@ -2,12 +2,13 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.PolyKinds (tests) where
 
-import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record)
+import qualified Data.Record.Anon.Advanced as Anon
 
 import Test.Tasty
 import Test.Tasty.HUnit

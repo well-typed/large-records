@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 -- | Test type-level metadata
 --
@@ -26,10 +26,10 @@ import GHC.TypeLits
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Anonymous.Advanced (Pair((:=)))
+import Data.Record.Anon
 
-import qualified Data.Record.Anonymous.Simple   as S
-import qualified Data.Record.Anonymous.Advanced as A
+import qualified Data.Record.Anon.Simple   as S
+import qualified Data.Record.Anon.Advanced as A
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.TypeLevelMetadata" [
@@ -79,17 +79,17 @@ instance ( KnownSymbol (Fst x)
 
 -- | Reflect field metadata from the type-level information
 getMetadataA :: forall f r.
-     GetMetadata (A.FieldTypes f r)
+     GetMetadata (FieldTypes f r)
   => A.Record f r  -- ^ Serves as a proxy only
   -> [(String, String)]
-getMetadataA _ = getMetadata (Proxy @(A.FieldTypes f r))
+getMetadataA _ = getMetadata (Proxy @(FieldTypes f r))
 
 -- | Like 'getMetadataA', but for the simple API
 getMetadataS :: forall r.
-     GetMetadata (S.SimpleFieldTypes r)
+     GetMetadata (SimpleFieldTypes r)
   => S.Record r  -- ^ Serves as a proxy only
   -> [(String, String)]
-getMetadataS _ = getMetadata (Proxy @(S.SimpleFieldTypes r))
+getMetadataS _ = getMetadata (Proxy @(SimpleFieldTypes r))
 
 {-------------------------------------------------------------------------------
   Tests proper

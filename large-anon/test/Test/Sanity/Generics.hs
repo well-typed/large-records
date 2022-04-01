@@ -3,20 +3,22 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 {-# OPTIONS_GHC -Wno-orphans #-} -- for the ToJSON/FromJSON instances
 
 module Test.Sanity.Generics (tests) where
 
 import Data.Aeson
-import Data.Proxy
-import Data.SOP.BasicFunctors
+import Data.Record.Generic
 
-import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record)
+import qualified Data.Record.Anon.Advanced as Anon
 
 import Test.Tasty
 import Test.Tasty.HUnit
+
+import Test.Infra.Generics
 
 import qualified Test.Sanity.Named.Record1 as R1
 import qualified Test.Sanity.Named.Record2 as R2
@@ -87,13 +89,13 @@ test_Ord = do
 
 -- Test 'describeRecord'
 --
--- The primary motivation for this test is actually not the function itself,
--- but to verify that constraint resolution is working ok. Specifically,
--- that the implicit kind argument to 'Typeable' is handled by ghc and does not
--- need to be taken into account by the @large-anon@ plugin.
+-- The primary motivation for 'test_describeRecord' is actually not to test the
+-- function itself, but to verify that constraint resolution is working ok.
+-- Specifically, that the implicit kind argument to 'Typeable' is handled by ghc
+-- and does not need to be taken into account by the @large-anon@ plugin.
 test_describeRecord :: Assertion
 test_describeRecord = do
-    assertEqual "" expected $ Anon.describeRecord (Proxy @TypeRecord1)
+    assertEqual "" expected $ describeRecord (Proxy @TypeRecord1)
   where
     expected :: String
     expected = "Record {x :: I Bool, y :: I Char, z :: I ()}"

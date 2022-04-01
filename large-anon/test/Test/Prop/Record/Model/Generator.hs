@@ -12,7 +12,7 @@
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 {-# OPTIONS -Wno-orphans #-}
 
 module Test.Prop.Record.Model.Generator (
@@ -38,8 +38,8 @@ import Data.Proxy
 import Data.SOP (NP(..), SListI, All)
 import Data.SOP.BasicFunctors
 
-import Data.Record.Anonymous.Advanced (Record, Pair((:=)))
-import qualified Data.Record.Anonymous.Advanced as Anon
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (Record)
 
 import Test.QuickCheck
 
@@ -82,7 +82,7 @@ someAnonRecord :: forall c f.
      ModelSatisfies c
   => Proxy c
   -> SomeFields
-  -> (forall r. (Anon.KnownFields r, Anon.AllFields r c) => Record f r)
+  -> (forall r. (KnownFields r, AllFields r c) => Record f r)
   -> SomeRecord f
 someAnonRecord _ (SF mf) f = SR mf (Model.fromRecord mf $ f' mf)
   where
@@ -133,24 +133,21 @@ onModlRecordPairM p f (SR2 mf r r') = Model.satisfyAll p mf $ SR mf <$> f r r'
 onAnonRecord ::
      ModelSatisfies c
   => Proxy c
-  -> (forall r. Anon.AllFields r c => Record f r -> Record g r)
+  -> (forall r. AllFields r c => Record f r -> Record g r)
   -> SomeRecord f -> SomeRecord g
 onAnonRecord p f = unI . onAnonRecordM p (I . f)
 
 onAnonRecordPair ::
      ModelSatisfies c
   => Proxy c
-  -> ( forall r.
-            Anon.AllFields r c
-         => Record f r -> Record g r -> Record h r
-     )
+  -> (forall r. AllFields r c => Record f r -> Record g r -> Record h r)
   -> SomeRecordPair f g -> SomeRecord h
 onAnonRecordPair p f = unI . onAnonRecordPairM p (I .: f)
 
 onAnonRecordM :: forall m c f g.
      (Functor m, ModelSatisfies c)
   => Proxy c
-  -> (forall r. Anon.AllFields r c => Record f r -> m (Record g r))
+  -> (forall r. AllFields r c => Record f r -> m (Record g r))
   -> SomeRecord f -> m (SomeRecord g)
 onAnonRecordM p f = \(SR mf r) -> SR mf <$> f' mf r
   where
@@ -163,10 +160,7 @@ onAnonRecordM p f = \(SR mf r) -> SR mf <$> f' mf r
 onAnonRecordPairM :: forall m c f g h.
      (Functor m, ModelSatisfies c)
   => Proxy c
-  -> ( forall r.
-            Anon.AllFields r c
-         => Record f r -> Record g r -> m (Record h r)
-     )
+  -> (forall r. AllFields r c => Record f r -> Record g r -> m (Record h r))
   -> SomeRecordPair f g -> m (SomeRecord h)
 onAnonRecordPairM p f = \(SR2 mf r r') -> SR mf <$> f' mf r r'
   where

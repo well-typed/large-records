@@ -8,17 +8,17 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE RecordWildCards  #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Experiment.SetEvens.Sized.R020 where
 
-import Data.Record.Anonymous.Simple (Record)
-import qualified Data.Record.Anonymous.Simple as Anon
+import Data.Record.Anon.Simple (Record)
+import qualified Data.Record.Anon.Simple as Anon
 
 import Bench.EvensOfSize.Evens020
 import Common.RowOfSize.Row020
 
-setEvens :: Evens -> Record Row -> Record Row
+setEvens :: Evens -> Record ExampleRow -> Record ExampleRow
 setEvens Evens{..} r =
     -- 00 .. 09
     Anon.set #t00 evens00

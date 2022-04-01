@@ -4,19 +4,17 @@
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TypeOperators     #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Anonymous.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.Discovery (tests) where
 
 import Data.Either (fromRight)
 import Data.Record.Generic
 
-import Data.Record.Anonymous.Discovery
-import Data.Record.Anonymous.Simple (Pair((:=)))
-import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject(..))
+import Data.Record.Anon
 
-import qualified Data.Record.Anonymous.Simple   as S
-import qualified Data.Record.Anonymous.Advanced as A
+import qualified Data.Record.Anon.Simple   as S
+import qualified Data.Record.Anon.Advanced as A
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -69,10 +67,10 @@ test_simple_toLens = do
     expectedGet :: String
     expectedGet = "Record {a = 1, c = 'a'}"
 
-    expectedMissingField :: Either (Either CannotProject ParseError) ()
-    expectedMissingField = Left (Left (SourceMissesFields ["c"]))
+    expectedMissingField :: Either (Either A.CannotProject ParseError) ()
+    expectedMissingField = Left (Left (A.SourceMissesFields ["c"]))
 
-    expectedWrongType :: Either (Either CannotProject ParseError) ()
+    expectedWrongType :: Either (Either A.CannotProject ParseError) ()
     expectedWrongType = Left (Right "c: Expected Char")
 
 test_simple_inferType :: Assertion

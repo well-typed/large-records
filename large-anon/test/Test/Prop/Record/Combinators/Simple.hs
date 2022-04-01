@@ -9,7 +9,7 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.SOP
 
-import qualified Data.Record.Anonymous.Advanced as Anon
+import qualified Data.Record.Anon.Advanced as Anon
 
 import Test.Tasty
 import Test.Tasty.QuickCheck

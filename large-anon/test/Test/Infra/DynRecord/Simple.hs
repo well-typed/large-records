@@ -22,20 +22,17 @@ module Test.Infra.DynRecord.Simple (
 
 import Data.Bifunctor
 import Data.Kind
-import Data.SOP.BasicFunctors
 
-import Data.Record.Anonymous.Discovery
-import Data.Record.Anonymous.Internal.Reflection
-import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject)
-import Data.Record.Anonymous.Simple (Record, AllFields, KnownFields, Row)
+import Data.Record.Anon
+import Data.Record.Anon.Advanced (CannotProject)
+import Data.Record.Anon.Simple (Record)
 
-import qualified Data.Record.Anonymous.Simple   as S
-import qualified Data.Record.Anonymous.Advanced as A
+import qualified Data.Record.Anon.Advanced as A
+import qualified Data.Record.Anon.Simple   as S
 
 import Test.Infra.DynRecord
 
 import qualified Test.Infra.DynRecord.Advanced as A.Dyn
-import Data.SOP.Dict
 
 {-------------------------------------------------------------------------------
   Projection to known row
@@ -92,17 +89,17 @@ deriving instance Show SomeRecord
 
 inferType :: DynRecord -> SomeRecord
 inferType (DynRecord r) =
-    case discoverRow $ map (uncurry mkField) r of
+    case A.someRecord $ map (uncurry mkField) r of
       Some record ->
-        case discoverKnownFields $ A.map fieldName record of
+        case A.reflectKnownFields $ A.map fieldName record of
           Reflected -> withSomeRecord record
   where
     withSomeRecord :: KnownFields r => A.Record ValidField r -> SomeRecord
     withSomeRecord record =
-        case ( discoverConstraint (A.map dictShow      record)
-             , discoverConstraint (A.map dictEq        record)
-             , discoverConstraint (A.map dictFromValue record)
-             , discoverConstraint (A.map dictToValue   record)
+        case ( A.reflectAllFields (A.map dictShow      record)
+             , A.reflectAllFields (A.map dictEq        record)
+             , A.reflectAllFields (A.map dictFromValue record)
+             , A.reflectAllFields (A.map dictToValue   record)
              ) of
           (Reflected, Reflected, Reflected, Reflected) ->
             SomeRecord (S.fromAdvanced $ A.map fieldValue record)

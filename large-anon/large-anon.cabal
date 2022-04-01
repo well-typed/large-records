@@ -65,10 +65,10 @@ library
       Data.Record.Anonymous.SrcPlugin.Options
 
       Data.Record.Anonymous.TcPlugin.Constraints.AllFields
-      Data.Record.Anonymous.TcPlugin.Constraints.HasField
       Data.Record.Anonymous.TcPlugin.Constraints.KnownFields
       Data.Record.Anonymous.TcPlugin.Constraints.KnownHash
       Data.Record.Anonymous.TcPlugin.Constraints.Project
+      Data.Record.Anonymous.TcPlugin.Constraints.RowHasField
       Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
       Data.Record.Anonymous.TcPlugin.NameResolution
       Data.Record.Anonymous.TcPlugin.Parsing
@@ -91,7 +91,6 @@ library
     , record-hasfield
     , sop-core
     , syb
-    , text
     , typelet
     , vector
 
@@ -109,6 +108,9 @@ library
       -Wredundant-constraints
       -Wno-unticked-promoted-constructors
 
+  if impl(ghc >= 8.10)
+    ghc-options: -Wunused-packages
+
 test-suite test-large-anon
   default-language:
       Haskell2010
@@ -121,6 +123,7 @@ test-suite test-large-anon
   other-modules:
       Test.Infra.Generics
       Test.Infra.MarkStrictness
+      Test.Infra.Discovery
       Test.Infra.DynRecord
       Test.Infra.DynRecord.Advanced
       Test.Infra.DynRecord.Simple
@@ -131,10 +134,12 @@ test-suite test-large-anon
       Test.Prop.Record.Model.Orphans
       Test.Sanity.AllFields
       Test.Sanity.Applicative
+      Test.Sanity.CheckCanProject
       Test.Sanity.Discovery
       Test.Sanity.DuplicateFields
       Test.Sanity.Generics
       Test.Sanity.HasField
+      Test.Sanity.Intersection
       Test.Sanity.Lens
       Test.Sanity.Merging
       Test.Sanity.Named.Record1
@@ -150,20 +155,24 @@ test-suite test-large-anon
       base
     , aeson
     , large-anon
+    , large-generics
     , mtl
     , QuickCheck
+    , record-hasfield
     , sop-core
     , tasty
     , tasty-hunit
     , tasty-quickcheck
     , typelet
     , validation-selective
-    , large-generics
-    , record-hasfield
   ghc-options:
       -Wall
+      -Wredundant-constraints
       -Wno-unticked-promoted-constructors
       -fno-show-valid-hole-fits
+
+  if impl(ghc >= 8.10)
+    ghc-options: -Wunused-packages
 
   if impl(ghc >= 9.0.1)
     -- Work out ghc problem. See more detailed discussion in large-records.

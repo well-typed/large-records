@@ -49,6 +49,7 @@ module Data.Record.Anonymous.Simple (
   , merge
   , lens
   , project
+  , inject
   , applyPending
     -- * Constraints
   , RecordConstraints
@@ -133,14 +134,17 @@ insertA f x r = insert f <$> x <*> r
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge r r' = fromAdvanced $ Adv.merge (toAdvanced r) (toAdvanced r')
 
-lens :: Project I r r' => Record r -> (Record r', Record r' -> Record r)
+lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
 lens =
       bimap fromAdvanced (\f -> fromAdvanced . f . toAdvanced)
     . Adv.lens
     . toAdvanced
 
-project :: Project I r r' => Record r -> Record r'
+project :: Project r r' => Record r -> Record r'
 project = fst . lens
+
+inject :: Project r r' => Record r' -> Record r -> Record r
+inject small = ($ small) . snd . lens
 
 applyPending :: Record r -> Record r
 applyPending = fromAdvanced . Adv.applyPending . toAdvanced

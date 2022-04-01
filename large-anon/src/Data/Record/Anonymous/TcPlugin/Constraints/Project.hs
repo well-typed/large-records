@@ -25,16 +25,13 @@ import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
 
 -- | Parsed form of @Project@
 --
--- > Project f (r :: [(Symbol, k)]) (r' :: [(Symbol, k)])
+-- > Project (r :: [(Symbol, k)]) (r' :: [(Symbol, k)])
 data CProject = CProject {
       -- | Fields on the LHS
       projectParsedLHS :: Fields
 
       -- | Fields on the RHS
     , projectParsedRHS :: Fields
-
-      -- | Functor argument (@f@)
-    , projectTypeFunctor :: Type
 
       -- | Left-hand side of the projection (@r@)
     , projectTypeLHS :: Type
@@ -51,11 +48,10 @@ data CProject = CProject {
 -------------------------------------------------------------------------------}
 
 instance Outputable CProject where
-  ppr (CProject parsedLHS parsedRHS typeFunctor typeLHS typeRHS typeKind) = parens $
+  ppr (CProject parsedLHS parsedRHS typeLHS typeRHS typeKind) = parens $
       text "CProject" <+> braces (vcat [
           text "projectParsedLHS"   <+> text "=" <+> ppr parsedLHS
         , text "projectParsedRHS"   <+> text "=" <+> ppr parsedRHS
-        , text "projectTypeFunctor" <+> text "=" <+> ppr typeFunctor
         , text "projectTypeLHS"     <+> text "=" <+> ppr typeLHS
         , text "projectTypeRHS"     <+> text "=" <+> ppr typeRHS
         , text "projectTypeKind"    <+> text "=" <+> ppr typeKind
@@ -71,16 +67,15 @@ parseProject ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CProject)
 parseProject tcs rn@ResolvedNames{..} =
-    parseConstraint' clsProject $ \[typeKind, typeFunctor, typeLHS, typeRHS] -> do
+    parseConstraint' clsProject $ \[typeKind, typeLHS, typeRHS] -> do
       fieldsLHS <- ParsedRow.parseFields tcs rn typeLHS
       fieldsRHS <- ParsedRow.parseFields tcs rn typeRHS
       return $ CProject {
-            projectParsedLHS   = fieldsLHS
-          , projectParsedRHS   = fieldsRHS
-          , projectTypeFunctor = typeFunctor
-          , projectTypeLHS     = typeLHS
-          , projectTypeRHS     = typeRHS
-          , projectTypeKind    = typeKind
+            projectParsedLHS = fieldsLHS
+          , projectParsedRHS = fieldsRHS
+          , projectTypeLHS   = typeLHS
+          , projectTypeRHS   = typeRHS
+          , projectTypeKind  = typeKind
           }
 
 {-------------------------------------------------------------------------------
@@ -107,7 +102,6 @@ evidenceProject ResolvedNames{..} CProject{..} fields = do
     typeArgsEvidence :: [Type]
     typeArgsEvidence = [
           projectTypeKind
-        , projectTypeFunctor
         , projectTypeLHS
         , projectTypeRHS
         ]

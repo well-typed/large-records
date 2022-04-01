@@ -26,6 +26,7 @@ module Data.Record.Anonymous.Advanced (
   , Record.merge
   , Record.lens
   , Record.project
+  , Record.inject
   , Record.applyPending
     -- * Constraints
   , RecordConstraints
@@ -61,9 +62,6 @@ module Data.Record.Anonymous.Advanced (
   , FieldTypes
   , AllFields
   , KnownFields
-    -- * Additional generic functions
-  , recordOfMetadata
-  , reifyKnownFields
     -- * Support for @typelet@
   , Record.letRecordT
   , Record.letInsertAs
@@ -73,7 +71,7 @@ import Data.Record.Anon.Plugin.Internal.Runtime
 
 import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Constraints
-import Data.Record.Anonymous.Internal.Generics
+import Data.Record.Anonymous.Internal.Generics ()
 
 import qualified Data.Record.Anonymous.Internal.Combinators.Constrained as Combinators
 import qualified Data.Record.Anonymous.Internal.Combinators.Simple      as Combinators

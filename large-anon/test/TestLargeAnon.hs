@@ -6,10 +6,12 @@ import qualified Test.Prop.Record.Combinators.Constrained
 import qualified Test.Prop.Record.Combinators.Simple
 import qualified Test.Sanity.AllFields
 import qualified Test.Sanity.Applicative
+import qualified Test.Sanity.CheckCanProject
 import qualified Test.Sanity.Discovery
 import qualified Test.Sanity.DuplicateFields
 import qualified Test.Sanity.Generics
 import qualified Test.Sanity.HasField
+import qualified Test.Sanity.Intersection
 import qualified Test.Sanity.Lens
 import qualified Test.Sanity.Merging
 import qualified Test.Sanity.PolyKinds
@@ -31,9 +33,11 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.Applicative.tests
         , Test.Sanity.Simple.tests
         , Test.Sanity.PolyKinds.tests
+        , Test.Sanity.CheckCanProject.tests
         , Test.Sanity.Discovery.tests
         , Test.Sanity.SrcPlugin.WithoutTypelet.tests
         , Test.Sanity.SrcPlugin.WithTypelet.tests
+        , Test.Sanity.Intersection.tests
         ]
     , testGroup "Prop" [
           Test.Prop.Record.Combinators.Simple.tests

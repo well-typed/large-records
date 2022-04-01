@@ -6,6 +6,8 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE PolyKinds              #-}
 {-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE TypeApplications       #-}
 {-# LANGUAGE TypeFamilies           #-}
 
 {-# OPTIONS_HADDOCK hide #-}
@@ -17,9 +19,10 @@ module Data.Record.Anon.Plugin.Internal.Runtime (
     -- * Row
     Pair(..)
   , Row
-    -- * RecordHasField
-  , RecordHasField(..)
-  , evidenceRecordHasField
+    -- * RowHasField
+  , RowHasField(..)
+  , DictRowHasField
+  , evidenceRowHasField
     -- * Term-level metadata
   , KnownFields(..)
   , DictKnownFields
@@ -53,10 +56,6 @@ import GHC.Exts (Any)
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
 
-import Data.Record.Anon.Core.FieldName
-import Data.Record.Anon.Core.Record
-
-import qualified Data.Record.Anon.Core.Record as Record
 import qualified Data.Vector as Lazy
 import qualified Data.Vector as Vector
 
@@ -124,37 +123,21 @@ type Row k = [Pair Symbol k]
 
 -- | Specialized form of 'HasField'
 --
--- @RecordHasField n f r a@ holds if there is an @(n := a)@ in @r@.
-class RecordHasField (n :: Symbol)
-                     (f :: k -> Type)
-                     (r :: Row k)
-                     (a :: Type) | n r -> a where
-  -- Implementation note: We use this more specialized form of 'HasField'
-  -- instead of a straight copy of 'HasField', so that the plugin does not need
-  -- to ever the 'Record' type constructor (if it did, it would need to be
-  -- defined here in this module, which would be annoying).
-  recordHasField :: DictRecordHasField k n f r a
-  recordHasField = undefined
+-- @RowHasField n r a@ holds if there is an @(n := a)@ in @r@.
+--
+-- TODO: Record now no longer needs to live in Core?
+class RowHasField (n :: Symbol) (r :: Row k) (a :: k) | n r -> a where
+  rowHasField :: DictRowHasField k n r a
+  rowHasField = undefined
 
-type DictRecordHasField k (n :: Symbol) (f :: k -> Type) (r :: Row k) a =
-  forall proxy proxy'. proxy n -> proxy' r -> Record f -> (a -> Record f, a)
+type DictRowHasField k (n :: Symbol) (r :: Row k) (a :: k) =
+   Proxy n -> Proxy r -> Proxy a -> Int
 
 -- | Evidence for 'HasField'
 --
--- Precondition: the record must have the specified field with type @a@ (where
--- @a@ will be of the form @f a'@ for some @a'@). This precondition is verified
--- by the plugin before generating "evidence" that uses this function.
-evidenceRecordHasField :: forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) a.
-     Int           -- ^ Field index
-  -> (Int, String) -- ^ Field name and hash
-  -> DictRecordHasField k n f r a
-evidenceRecordHasField i n _proxyN _proxyR r = (
-      \x -> Record.setField i n' x r
-    ,       Record.getField i n'   r
-    )
-  where
-    n' :: FieldName
-    n' = uncurry FieldName n
+-- The evidence is simply the index of the field.
+evidenceRowHasField :: Int -> DictRowHasField k n r a
+evidenceRowHasField i _ _ _ = i
 
 {-------------------------------------------------------------------------------
   Term-level metadata
@@ -170,8 +153,7 @@ class KnownFields (r :: Row k) where
   fieldNames :: DictKnownFields k r
   fieldNames = undefined
 
-type DictKnownFields k (r :: Row k) =
-       forall proxy. proxy r -> [String]
+type DictKnownFields k (r :: Row k) = Proxy r -> [String]
 
 evidenceKnownFields :: forall k (r :: Row k).
   [String] -> DictKnownFields k r
@@ -206,7 +188,7 @@ class AllFields (r :: Row k) (c :: k -> Constraint) where
   fieldDicts = undefined
 
 type DictAllFields k (r :: Row k) (c :: k -> Constraint) =
-       forall proxy proxy'. proxy r -> proxy' c -> Lazy.Vector (DictAny c)
+       Proxy r -> Proxy c -> Lazy.Vector (DictAny c)
 
 data DictAny c where
   DictAny :: c Any => DictAny c
@@ -233,7 +215,7 @@ instance {-# OVERLAPPING #-}
 fieldMetadata :: forall k (r :: Row k) proxy.
      KnownFields r
   => proxy r -> [FieldMetadata Any]
-fieldMetadata = map aux . fieldNames
+fieldMetadata _ = map aux $ fieldNames (Proxy @r)
   where
     -- @large-anon@ only supports records with strict fields.
     aux :: String -> FieldMetadata Any
@@ -275,19 +257,19 @@ evidenceKnownHash x _ = x
 
 -- | Subrecords
 --
--- If @Project f r r'@ holds, we can project (or create a lens) @r@ to @r'@.
+-- If @Project r r'@ holds, we can project (or create a lens) @r@ to @r'@.
 -- See 'Data.Record.Anon.Advanced.project' for detailed discussion.
-class Project (f :: k -> Type) (r :: Row k) (r' :: Row k) where
-  projectIndices :: DictProject k f r r'
+class Project (r :: Row k) (r' :: Row k) where
+  projectIndices :: DictProject k r r'
   projectIndices = undefined
 
 -- | In order of the fields in the /target/ record, the index in the /source/
-type DictProject k (f :: k -> Type) (r :: Row k) (r' :: Row k) =
-       Proxy f -> Proxy r -> Proxy r' -> [Int]
+type DictProject k (r :: Row k) (r' :: Row k) =
+       Proxy r -> Proxy r' -> [Int]
 
-evidenceProject :: forall k (f :: k -> Type) (r :: Row k) (r' :: Row k).
-  [Int] -> DictProject k f r r'
-evidenceProject x _ _ _ = x
+evidenceProject :: forall k (r :: Row k) (r' :: Row k).
+  [Int] -> DictProject k r r'
+evidenceProject x _ _ = x
 
 {-------------------------------------------------------------------------------
   Utility

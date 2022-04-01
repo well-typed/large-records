@@ -18,6 +18,7 @@ module Data.Record.Anonymous.Internal.Reflection (
   , unsafeReflectKnownFields
   , unsafeReflectAllFields
   , unsafeReflectProject
+  , unsafeReflectRowHasField
   ) where
 
 import Data.Record.Anon.Plugin.Internal.Runtime
@@ -42,7 +43,12 @@ newtype WithAllFields r c = WAF (AllFields r c => Reflected (AllFields r c))
 unsafeReflectAllFields :: DictAllFields k r c -> Reflected (AllFields r c)
 unsafeReflectAllFields f = noInlineUnsafeCo (WAF Reflected) f
 
-newtype WithProject f r r' = WR (Project f r r' => Reflected (Project f r r'))
+newtype WithProject r r' = WR (Project r r' => Reflected (Project r r'))
 
-unsafeReflectProject :: DictProject k f r r' -> Reflected (Project f r r')
+unsafeReflectProject :: DictProject k r r' -> Reflected (Project r r')
 unsafeReflectProject = noInlineUnsafeCo (WR Reflected)
+
+newtype WithRowHasField n r a = WRHF (RowHasField n r a => Reflected (RowHasField n r a))
+
+unsafeReflectRowHasField :: DictRowHasField k n r a -> Reflected (RowHasField n r a)
+unsafeReflectRowHasField = noInlineUnsafeCo (WRHF Reflected)

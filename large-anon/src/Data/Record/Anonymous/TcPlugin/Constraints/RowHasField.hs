@@ -2,16 +2,14 @@
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anonymous.TcPlugin.Constraints.HasField (
-    CHasField(..)
-  , parseHasField
-  , solveHasField
+module Data.Record.Anonymous.TcPlugin.Constraints.RowHasField (
+    CRowHasField(..)
+  , parseRowHasField
+  , solveRowHasField
   ) where
 
 import Data.Void
 import GHC.Stack
-
-import Data.Record.Anon.Core.FieldName
 
 import Data.Record.Anonymous.Internal.Row.ParsedRow (Fields, FieldLabel(..))
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
@@ -25,24 +23,21 @@ import qualified Data.Record.Anonymous.Internal.Row.ParsedRow as ParsedRow
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of a @HasField n f r a@ constraint
-data CHasField = CHasField {
-      -- | Label we're looking for (@x@)
+-- | Parsed form of a @RowHasField n r@ with @r :: Row k@ constraint
+data CRowHasField = CRowHasField {
+      -- | Label we're looking for (@n@)
       hasFieldLabel :: FieldLabel
 
-      -- | Fields of the record (parsed form of @r'@)
+      -- | Fields of the record (parsed form of @r@)
       --
       -- These may be fully or partially known, or completely unknown.
     , hasFieldRecord :: Fields
 
-      -- | Functor argument kind (the @k@ in @f :: k -> Type@)
+      -- | Row kind (@k@)
     , hasFieldTypeKind :: Type
 
       -- | Record field (@n@)
     , hasFieldTypeLabel :: Type
-
-      -- | Record functor argument (@f@)
-    , hasFieldTypeFunctor :: Type
 
       -- | Row (@r@)
     , hasFieldTypeRow :: Type
@@ -59,41 +54,39 @@ data CHasField = CHasField {
   Outputable
 -------------------------------------------------------------------------------}
 
-instance Outputable CHasField where
-  ppr (CHasField label record typeKind typeLabel typeFunctor typeRow typeField) = parens $
-      text "CHasField" <+> braces (vcat [
-          text "hasFieldLabel"       <+> text "=" <+> ppr label
-        , text "hasFieldRecord"      <+> text "=" <+> ppr record
-        , text "hasFieldTypeKind"    <+> text "=" <+> ppr typeKind
-        , text "hasFieldTypeLabel"   <+> text "=" <+> ppr typeLabel
-        , text "hasFieldTypeFunctor" <+> text "=" <+> ppr typeFunctor
-        , text "hasFieldTypeRow"     <+> text "=" <+> ppr typeRow
-        , text "hasFieldTypeField"   <+> text "=" <+> ppr typeField
+instance Outputable CRowHasField where
+  ppr (CRowHasField label record typeKind typeLabel typeRow typeField) = parens $
+      text "CRowHasField" <+> braces (vcat [
+          text "hasFieldLabel"     <+> text "=" <+> ppr label
+        , text "hasFieldRecord"    <+> text "=" <+> ppr record
+        , text "hasFieldTypeKind"  <+> text "=" <+> ppr typeKind
+        , text "hasFieldTypeLabel" <+> text "=" <+> ppr typeLabel
+        , text "hasFieldTypeRow"   <+> text "=" <+> ppr typeRow
+        , text "hasFieldTypeField" <+> text "=" <+> ppr typeField
         ])
 
 {-------------------------------------------------------------------------------
   Parser
 -------------------------------------------------------------------------------}
 
-parseHasField ::
+parseRowHasField ::
      HasCallStack
   => TyConSubst
   -> ResolvedNames
   -> Ct
-  -> ParseResult Void (GenLocated CtLoc CHasField)
-parseHasField tcs rn@ResolvedNames{..} =
-    parseConstraint' clsRecordHasField $ \[k, n, f, r, a] -> do
+  -> ParseResult Void (GenLocated CtLoc CRowHasField)
+parseRowHasField tcs rn@ResolvedNames{..} =
+    parseConstraint' clsRowHasField $ \[k, n, r, a] -> do
       label  <- ParsedRow.parseFieldLabel n
       fields <- ParsedRow.parseFields tcs rn r
 
-      return $ CHasField {
-          hasFieldLabel       = label
-        , hasFieldRecord      = fields
-        , hasFieldTypeKind    = k
-        , hasFieldTypeLabel   = n
-        , hasFieldTypeFunctor = f
-        , hasFieldTypeRow     = r
-        , hasFieldTypeField   = a
+      return $ CRowHasField {
+          hasFieldLabel     = label
+        , hasFieldRecord    = fields
+        , hasFieldTypeKind  = k
+        , hasFieldTypeLabel = n
+        , hasFieldTypeRow   = r
+        , hasFieldTypeField = a
         }
 
 {-------------------------------------------------------------------------------
@@ -102,24 +95,17 @@ parseHasField tcs rn@ResolvedNames{..} =
 
 evidenceHasField ::
      ResolvedNames
-  -> CHasField
+  -> CRowHasField
   -> Int        -- ^ Field index
-  -> FieldName  -- ^ Field name
   -> TcPluginM 'Solve EvTerm
-evidenceHasField ResolvedNames{..} CHasField{..} i FieldName{..} = do
-    name' <- mkStringExpr fieldNameLabel
+evidenceHasField ResolvedNames{..} CRowHasField{..} i = do
     return $
       evDataConApp
-        (classDataCon clsRecordHasField)
+        (classDataCon clsRowHasField)
         typeArgsEvidence
-        [ mkCoreApps (Var idEvidenceRecordHasField) $ concat [
+        [ mkCoreApps (Var idEvidenceRowHasField) $ concat [
               map Type typeArgsEvidence
-            , [ mkUncheckedIntExpr (fromIntegral i)
-              , mkCoreTup [
-                   mkUncheckedIntExpr (fromIntegral fieldNameHash)
-                 , name'
-                 ]
-              ]
+            , [mkUncheckedIntExpr $ fromIntegral i]
             ]
         ]
   where
@@ -127,7 +113,6 @@ evidenceHasField ResolvedNames{..} CHasField{..} i FieldName{..} = do
     typeArgsEvidence = [
           hasFieldTypeKind
         , hasFieldTypeLabel
-        , hasFieldTypeFunctor
         , hasFieldTypeRow
         , hasFieldTypeField
         ]
@@ -136,14 +121,14 @@ evidenceHasField ResolvedNames{..} CHasField{..} i FieldName{..} = do
   Solver
 -------------------------------------------------------------------------------}
 
-solveHasField ::
+solveRowHasField ::
      ResolvedNames
   -> Ct
-  -> GenLocated CtLoc CHasField
+  -> GenLocated CtLoc CRowHasField
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
-solveHasField _ _ (L _ CHasField{hasFieldLabel = FieldVar _}) =
+solveRowHasField _ _ (L _ CRowHasField{hasFieldLabel = FieldVar _}) =
     return (Nothing, [])
-solveHasField rn orig (L loc hf@CHasField{hasFieldLabel = FieldKnown name, ..}) =
+solveRowHasField rn orig (L loc hf@CRowHasField{hasFieldLabel = FieldKnown name, ..}) =
     case ParsedRow.lookup name hasFieldRecord of
       Nothing ->
         -- TODO: If the record is fully known, we should issue a custom type
@@ -153,6 +138,6 @@ solveHasField rn orig (L loc hf@CHasField{hasFieldLabel = FieldKnown name, ..}) 
         eq <- newWanted loc $
                 mkPrimEqPredRole Nominal
                   hasFieldTypeField
-                  (hasFieldTypeFunctor `mkAppTy` typ)
-        ev <- evidenceHasField rn hf i name
+                  typ
+        ev <- evidenceHasField rn hf i
         return (Just (ev, orig), [mkNonCanonical eq])

@@ -19,6 +19,7 @@ import qualified Data.Record.Anon.Advanced as A
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import Test.Infra.Discovery
 import Test.Infra.DynRecord
 import Test.Infra.MarkStrictness
 
@@ -32,12 +33,12 @@ import qualified Test.Infra.DynRecord.Advanced as Dyn.A
 tests :: TestTree
 tests = testGroup "Test.Sanity.Discovery" [
       testGroup "Simple" [
-          testCase "toLens"    test_simple_toLens
-        , testCase "inferType" test_simple_inferType
+          testCase "inferType" test_simple_inferType
+        , testCase "toLens"    test_simple_toLens
         ]
     , testGroup "Advanced" [
-          testCase "toLens"    test_advanced_toLens
-        , testCase "inferType" test_advanced_inferType
+          testCase "inferType" test_advanced_inferType
+        , testCase "toLens"    test_advanced_toLens
         ]
     ]
 
@@ -46,6 +47,21 @@ tests = testGroup "Test.Sanity.Discovery" [
 -------------------------------------------------------------------------------}
 
 type ExpectedSimple = [ "a" := Int, "c" := Char ]
+
+test_simple_inferType :: Assertion
+test_simple_inferType =
+    case Dyn.S.inferType example1 of
+      Dyn.S.SomeRecord r -> do
+        assertEqual "show" expected $
+          show r
+
+        -- The comparison test implies that we are parsing one record, then
+        -- using the result to parse another /in the same shape/
+        assertEqual "compare" (Right r) $
+          Dyn.S.toRecord r example2
+  where
+    expected :: String
+    expected = "Record {a = 1, b = True, c = 'a'}"
 
 test_simple_toLens :: Assertion
 test_simple_toLens = do
@@ -67,37 +83,38 @@ test_simple_toLens = do
     expectedGet :: String
     expectedGet = "Record {a = 1, c = 'a'}"
 
-    expectedMissingField :: Either (Either A.CannotProject ParseError) ()
-    expectedMissingField = Left (Left (A.SourceMissesFields ["c"]))
+    expectedMissingField :: Either CannotProject ()
+    expectedMissingField = Left ["c"]
 
-    expectedWrongType :: Either (Either A.CannotProject ParseError) ()
-    expectedWrongType = Left (Right "c: Expected Char")
+    -- TODO: For now we don't get more information in case of a type error
+    expectedWrongType :: Either CannotProject ()
+    expectedWrongType = Left ["c"]
 
-test_simple_inferType :: Assertion
-test_simple_inferType =
-    case Dyn.S.inferType example1 of
-      Dyn.S.SomeRecord r -> do
+{-------------------------------------------------------------------------------
+  Tests for the advanced API (kind other than Type)
+
+  These follow the same structure as the tests for the simple API. We don't
+  explicitly test the error cases again here ('CannotProject'), since the
+  projection and parsing machinery is the same for the simple and the advanced
+  case.
+-------------------------------------------------------------------------------}
+
+type ExpectedAdvanced = [ "a" := Strict Int, "c" := Lazy Char ]
+
+test_advanced_inferType :: Assertion
+test_advanced_inferType =
+    case Dyn.A.inferType example1 :: Dyn.A.SomeRecord Boxed of
+      Dyn.A.SomeRecord r -> do
         assertEqual "show" expected $
           show r
 
         -- The comparison test implies that we are parsing one record, then
         -- using the result to parse another /in the same shape/
         assertEqual "compare" (Right r) $
-          Dyn.S.toRecord r example2
+          Dyn.A.toRecord r example2
   where
     expected :: String
     expected = "Record {a = 1, b = True, c = 'a'}"
-
-{-------------------------------------------------------------------------------
-  Tests for the advanced API (kind other than Type)
-
-  These follow the same structure as the tests for the simple API. We don't
-  explicitly test the error cases again here ('CannotProject' or 'ParseError'),
-  since the projection and parsing machinery is the same for the simple and the
-  advanced case.
--------------------------------------------------------------------------------}
-
-type ExpectedAdvanced = [ "a" := Strict Int, "c" := Lazy Char ]
 
 test_advanced_toLens :: Assertion
 test_advanced_toLens = do
@@ -114,30 +131,6 @@ test_advanced_toLens = do
 
     expectedGet :: String
     expectedGet = "Record {a = 1, c = 'a'}"
-
-test_advanced_inferType :: Assertion
-test_advanced_inferType =
-    case Dyn.A.inferType boxValue example1 of
-      Dyn.A.SomeRecord r -> do
-        assertEqual "show" expected $
-          show r
-
-        -- The comparison test implies that we are parsing one record, then
-        -- using the result to parse another /in the same shape/
-        assertEqual "compare" (Right r) $
-          Dyn.A.toRecord r example2
-  where
-    expected :: String
-    expected = "Record {a = 1, b = True, c = 'a'}"
-
--- | Type inference for a value
---
--- Just for the example, we infer all 'Int' fields are strict and all other
--- fields as lazy.
-boxValue :: String -> Value -> Some (Dyn.A.ValidField Boxed)
-boxValue name (VI x) = Some $ Dyn.A.ValidField name $ BoxStrict x
-boxValue name (VB x) = Some $ Dyn.A.ValidField name $ BoxLazy   x
-boxValue name (VC x) = Some $ Dyn.A.ValidField name $ BoxLazy   x
 
 {-------------------------------------------------------------------------------
   Example 'DynRecord' values

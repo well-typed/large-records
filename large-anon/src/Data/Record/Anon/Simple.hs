@@ -27,6 +27,7 @@ module Data.Record.Anon.Simple (
     -- * Changing rows
   , merge
   , project
+  , inject
   , lens
     -- * Interop with the advanced API
   , toAdvanced
@@ -206,14 +207,20 @@ merge = S.merge
 --
 -- As we saw in 'merge', 'project' can also flatten 'Merge'd rows.
 -- See 'Data.Record.Anon.Advanced.project' for additional discussion.
-project :: Project I r r' => Record r -> Record r'
+project :: Project r r' => Record r -> Record r'
 project = S.project
+
+-- | Inject smaller record into larger record
+--
+-- This is just the 'lens' setter.
+inject :: Project r r' => Record r' -> Record r -> Record r
+inject = S.inject
 
 -- | Lens from one record to another
 --
 -- See 'project' for examples ('project' is just the lens getter, without the
 -- setter).
-lens :: Project I r r' => Record r -> (Record r', Record r' -> Record r)
+lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
 lens = S.lens
 
 {-------------------------------------------------------------------------------

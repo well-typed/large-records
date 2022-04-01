@@ -12,11 +12,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 -- | Integration with @large-generics@
-module Data.Record.Anonymous.Internal.Generics (
-    -- * Additional generic functions
-    recordOfMetadata
-  , reifyKnownFields
-  ) where
+module Data.Record.Anonymous.Internal.Generics () where
 
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Kind
@@ -35,7 +31,6 @@ import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Constraints
 
 import qualified Data.Record.Anonymous.Internal.Rep as Rep
-import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 
 {-------------------------------------------------------------------------------
   Integrate with large-generics
@@ -98,31 +93,3 @@ instance RecordConstraints f r ToJSON => ToJSON (Record f r) where
 
 instance RecordConstraints f r FromJSON => FromJSON (Record f r) where
   parseJSON = gparseJSON
-
-{-------------------------------------------------------------------------------
-  Additional functions
--------------------------------------------------------------------------------}
-
--- | Construct record with field metadata for every field
-recordOfMetadata :: forall k (f :: k -> Type) (r :: Row k) proxy.
-     KnownFields r
-  => proxy r -> Record (FieldMetadata :.: f) r
-recordOfMetadata _ =
-    Rep.toRecord' md
-  where
-    md :: Rep FieldMetadata (Record f r)
-    md = recordFieldMetadata (metadata (Proxy @(Record f r)))
-
--- | Like 'recordOfMetadata', but includes field names only
-reifyKnownFields :: forall k (r :: Row k) proxy.
-     KnownFields r
-  => proxy r -> Record (K String) r
-reifyKnownFields _ =
-    Simple.map aux $ Rep.toRecord' md
-  where
-    md :: Rep (K String) (Record (K ()) r)
-    md = recordFieldNames (metadata (Proxy @(Record (K ()) r)))
-
-    aux :: (K String :.: f) x -> K String x
-    aux (Comp (K name)) = K name
-

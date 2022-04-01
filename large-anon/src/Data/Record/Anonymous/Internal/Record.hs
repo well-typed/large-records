@@ -38,6 +38,7 @@ module Data.Record.Anonymous.Internal.Record (
   , merge
   , lens
   , project
+  , inject
   , applyPending
     -- * Support for @typelet@
   , letRecordT
@@ -45,7 +46,6 @@ module Data.Record.Anonymous.Internal.Record (
   ) where
 
 import Data.Bifunctor
-import Data.Coerce (coerce)
 import Data.Kind
 import Data.Proxy
 import GHC.Exts (Any)
@@ -108,15 +108,23 @@ unsafeFromCanonical = Wrap . Core.Record.fromCanonical
   Forwarding instances
 -------------------------------------------------------------------------------}
 
-instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: Type).
-       RecordHasField n f r a
-    => HasField n (Record f r) a where
-  hasField = aux $ recordHasField (Proxy @n) (Proxy @r)
+instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: k).
+       (KnownSymbol n, KnownHash n, RowHasField n r a)
+    => HasField n (Record f r) (f a) where
+  hasField (Wrap r) = (
+        \x -> Wrap $ Core.Record.setField ix name x r
+      , Core.Record.getField ix name r
+      )
     where
-      aux ::
-           (Core.Record f   -> (a -> Core.Record f  , a))
-        -> (     Record f r -> (a ->      Record f r, a))
-      aux = coerce
+      name :: FieldName
+      name = mkFieldName (Proxy @n)
+
+      ix :: Int
+      ix = rowHasField (Proxy @n) (Proxy @r) (Proxy @a)
+
+-- | Compile-time construction of a 'FieldName'
+mkFieldName :: (KnownSymbol n, KnownHash n) => Proxy n -> FieldName
+mkFieldName p = FieldName (hashVal p) (symbolVal p)
 
 {-------------------------------------------------------------------------------
   Main API
@@ -151,10 +159,6 @@ insert (Field n) x r@Record{ recordDiff     = diff
     co :: f a -> f Any
     co = noInlineUnsafeCo
 
-    -- | Compile-time construction of a 'FieldName'
-    mkFieldName :: (KnownSymbol s, KnownHash s) => Proxy s -> FieldName
-    mkFieldName p = FieldName (hashVal p) (symbolVal p)
-
 insertA ::
      Applicative m
   => Field n -> m (f a) -> m (Record f r) -> m (Record f (n := a : r))
@@ -175,11 +179,11 @@ merge (toCanonical -> r) (toCanonical -> r') =
     unsafeFromCanonical $ r <> r'
 
 lens :: forall f r r'.
-     Project f r r'
+     Project r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = \(toCanonical -> r) ->
     bimap getter setter $
-      Canon.lens (projectIndices (Proxy @f) (Proxy @r) (Proxy @r')) r
+      Canon.lens (projectIndices (Proxy @r) (Proxy @r')) r
   where
     getter :: Canonical f -> Record f r'
     getter = unsafeFromCanonical
@@ -189,9 +193,15 @@ lens = \(toCanonical -> r) ->
 
 -- | Project out subrecord
 --
--- This is just @fst . lens@.
-project :: Project f r r' => Record f r -> Record f r'
+-- This is just the 'lens' getter.
+project :: Project r r' => Record f r -> Record f r'
 project = fst . lens
+
+-- | Inject subrecord
+--
+-- This is just the 'lens' setter.
+inject :: Project r r' => Record f r' -> Record f r -> Record f r
+inject small = ($ small) . snd . lens
 
 applyPending :: Record f r -> Record f r
 applyPending (toCanonical -> r) = unsafeFromCanonical r

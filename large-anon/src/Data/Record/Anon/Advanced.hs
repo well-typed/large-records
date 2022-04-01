@@ -31,6 +31,7 @@ module Data.Record.Anon.Advanced (
     -- * Changing rows
   , merge
   , project
+  , inject
   , lens
     -- * Combinators
     -- ** " Functor "
@@ -56,12 +57,14 @@ module Data.Record.Anon.Advanced (
   , czipWithM
     -- * Constraint reification and reflection
   , reifyAllFields
-  , reflectKnownFields
-  , reifyKnownFields
   , reflectAllFields
-  , CannotProject(..)
+  , reifyKnownFields
+  , reflectKnownFields
+  , A.InRow(..)
+  , reifyProject
   , reflectProject
     -- * Existential records
+  , A.SomeRecord(..)
   , someRecord
     -- * Experimental integration with @typelet@
     --
@@ -83,7 +86,6 @@ import Data.Record.Anonymous.Advanced (Record)
 
 import qualified Data.Record.Anonymous.Advanced  as A
 import qualified Data.Record.Anonymous.Discovery as A
-import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject(..))
 
 -- $setup
 -- >>> :set -XDataKinds
@@ -195,14 +197,14 @@ applyPending = A.applyPending
 -- > example r = r.a
 --
 -- If the field does not exist, you will get a type error about an unsolvable
--- 'RecordHasField' constraint:
+-- 'RowHasField' constraint:
 --
 -- >>> :{
 -- absentField :: Record Maybe [ "a" := Bool, "b" := Int ] -> Maybe Char
 -- absentField r = get #c r
 -- :}
 -- ...
--- ...No instance for (RecordHasField "c"...
+-- ...No instance for (RowHasField "c"...
 -- ...
 --
 -- Type mismatches will result in regular type errors:
@@ -223,7 +225,7 @@ applyPending = A.applyPending
 -- unknownField r = get #b r
 -- :}
 -- ...
--- ...No instance for (RecordHasField "b"...
+-- ...No instance for (RowHasField "b"...
 -- ...
 --
 -- (Note that @x@ here is a variable, not a string.) It is important that the
@@ -297,7 +299,7 @@ set = A.set
 -- example r = get #b r
 -- :}
 -- ...
--- ...No instance for (RecordHasField "b"...
+-- ...No instance for (RowHasField "b"...
 -- ...
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge = A.merge
@@ -342,17 +344,20 @@ merge = A.merge
 -- ...
 --
 -- As we saw in 'merge', 'project' can also flatten 'Merge'd rows.
-project :: Project f r r' => Record f r -> Record f r'
+project :: Project r r' => Record f r -> Record f r'
 project = A.project
+
+-- | Inject smaller record into larger record
+--
+-- This is just the 'lens' setter.
+inject :: Project r r' => Record f r' -> Record f r -> Record f r
+inject = A.inject
 
 -- | Lens from one record to another
 --
 -- See 'project' for examples ('project' is just the lens getter, without the
 -- setter).
-lens ::
-     Project f r r'
-  => Record f r
-  -> (Record f r', Record f r' -> Record f r)
+lens :: Project r r' => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = A.lens
 
 {-------------------------------------------------------------------------------
@@ -453,14 +458,14 @@ czipWithM p f = A.czipWithM p f
 -- This reifies an 'AllFields' constraint as a record.
 --
 -- Inverse to 'reflectKnownFields'.
-reifyAllFields :: AllFields r (Compose c f) => proxy c -> Record (Dict c :.: f) r
+reifyAllFields :: AllFields r c => proxy c -> Record (Dict c) r
 reifyAllFields = A.reifyAllFields
 
--- | Establish 'KnownFields' from a record of field names
+-- | Establish 'AllFields' from a record of dictionaries
 --
--- Inverse to 'reifyAllFields'.
-reflectKnownFields :: Record (K String) r -> Reflected (KnownFields r)
-reflectKnownFields = A.reflectKnownFields
+-- Inverse to 'reifyKnownFields'.
+reflectAllFields :: Record (Dict c) r -> Reflected (AllFields r c)
+reflectAllFields = A.reflectAllFields
 
 -- | Record of field names
 --
@@ -470,21 +475,24 @@ reflectKnownFields = A.reflectKnownFields
 reifyKnownFields :: KnownFields r => proxy r -> Record (K String) r
 reifyKnownFields = A.reifyKnownFields
 
--- | Establish 'AllFields' from a record of dictionaries
+-- | Establish 'KnownFields' from a record of field names
 --
--- Inverse to 'reifyKnownFields'.
-reflectAllFields :: Record (Dict c) r -> Reflected (AllFields r c)
-reflectAllFields = A.reflectAllFields
+-- Inverse to 'reifyAllFields'.
+reflectKnownFields :: Record (K String) r -> Reflected (KnownFields r)
+reflectKnownFields = A.reflectKnownFields
 
--- | Runtime check if we can project from one record to another
+-- | Record over @r'@ with evidence that every field is in @r@.
 --
--- Since we cannot do runtime type checks, we insist that the fields of the
--- record must all be of one type @a@.
-reflectProject ::
-     (KnownFields r, KnownFields r')
-  => proxy  r
-  -> proxy' r'
-  -> Either CannotProject (Reflected (Project (K a) r r'))
+-- This reifies a 'Project' constraint.
+--
+-- Inverse to 'reflectProject'.
+reifyProject :: (KnownFields r', Project r r') => Record (A.InRow r) r'
+reifyProject = A.reifyProject
+
+-- | Establish 'Project' from a record of evidence.
+--
+-- Inverse to 'reifyProject'.
+reflectProject :: Record (A.InRow r) r' -> Reflected (Project r r')
 reflectProject = A.reflectProject
 
 {-------------------------------------------------------------------------------
@@ -494,38 +502,39 @@ reflectProject = A.reflectProject
 -- | Construct record with existentially quantified row variable
 --
 -- Existentially quantified records arise for example when parsing JSON values
--- as records. The typical process is as follows:
+-- as records. Pattern matching on the result of 'someRecord' brings into scope
+-- an existentially quantified row variable @r@, along with a record over @r@;
+-- every field in record contains the value specified, as well as evidence that
+-- that that field is indeed an element of @r@.
 --
--- 1.  Construct a record with an existentially quantified row variable @r@ using
---     'someRecord'. Pattern match on the result to bring @r@ into scope.
+-- For such a record to be useful, you will probably want to prove additional
+-- constraints @AllFields r c@; you can do this using 'reflectAllFields',
+-- provided that you carefully pick your @f@ such that you can define a function
 --
--- 2.  In order to prove 'KnownFields' for @r@, pick an @f@ such that it's
---     possible to define a function
+-- > fieldSatisfiesC :: forall c. f x -> Dict c x
 --
---     > fieldName :: f x -> K String x
+-- for every @c@ you want to prove.
 --
---     'map' this function over the record, then use 'reflectKnownFields' to
---     prove 'KnownFields'.
+-- It is also possible to do a runtime check to see if the existential row @r@
+-- can be projected to some concrete known row @r'@. To do this, construct a
+-- record of evidence with type
 --
--- 3.  At this point there are two alternatives:
+-- > Record (InRow r) r'
 --
---     a.  Use 'reflectAllFields' to prove that 'AllFields c' holds for your
---         record, for one or more constraints @c@. To be able to do this, you
---         will need to choose your @f@ such that (in addition to 'fieldName')
---         you can define
+-- and then call 'reflectProject'. To construct this record of evidence you will
+-- need to do a runtime type check to verify that the types of the fields in
+-- concrete row match the types of the corresponding fields in the inferred row
+-- (the inferred row may contain fields that are not present in the concrete
+-- row, of course). An obvious candidate for doing this is
+-- 'Data.Typeable.Typeable', but for specific applications (with specific
+-- subsets of types of interest) other choices may be possible also.
 --
---         > fieldDict :: f x -> Dict (Compose c f) x
---
---         This option is primarily useful when dealing with records only
---         "wholesale", never accessing (statically known) fields of the record.
---
---     b.  Use 'reflectProject' to check whether there we can construct a lens
---         from the existentially quantified record to another record. Typically
---         the type of that other record /is/ statically known, which means that
---         once we have such a lens, further discovery of additional constraints
---         is not necesssary: these constraints can be proved in the normal way
---         for the concrete type.
-someRecord :: [Some f] -> Some (Record f)
+-- The @large-anon@ test suite contains examples of doing both of these things;
+-- see @Test.Infra.DynRecord.Simple@ (or @Test.Infra.DynRecord.Advanced@ for
+-- rows over kind other than @Type@) for examples of proving additional
+-- constraints, and @Test.Infra.Discovery@ for an example of how you could do a
+-- projection check.
+someRecord :: [(String, Some f)] -> A.SomeRecord f
 someRecord = A.someRecord
 
 {-------------------------------------------------------------------------------

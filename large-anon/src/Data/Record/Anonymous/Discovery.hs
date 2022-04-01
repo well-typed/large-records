@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
@@ -11,12 +12,17 @@
 module Data.Record.Anonymous.Discovery (
     -- * Discover shape
     Some(..)
+  , SomeRecord(..)
   , someRecord
-    -- * Discover projections
-  , reflectProject
-    -- * Constraints
-  , reflectAllFields
+    -- * KnownFields
+  , reifyKnownFields
   , reflectKnownFields
+    -- * AllFields
+  , reflectAllFields
+    -- * Project
+  , InRow(..)
+  , reifyProject
+  , reflectProject
   ) where
 
 import Data.Kind
@@ -24,6 +30,7 @@ import Data.Proxy
 import Data.SOP.BasicFunctors
 import Data.SOP.Dict
 import GHC.Exts (Any)
+import GHC.TypeLits
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
@@ -32,37 +39,32 @@ import qualified Data.Record.Anon.Core.Canonical as Canon
 import Data.Record.Anonymous.Advanced (collapse)
 import Data.Record.Anonymous.Internal.Record (Record)
 import Data.Record.Anonymous.Internal.Reflection
-import Data.Record.Anonymous.Internal.Row.KnownRow (CannotProject, KnownRow)
 
-import qualified Data.Record.Anonymous.Internal.Record         as Record
-import qualified Data.Record.Anonymous.Internal.Row.KnownField as KnownField
-import qualified Data.Record.Anonymous.Internal.Row.KnownRow   as KnownRow
-
-{-------------------------------------------------------------------------------
-  Shape
--------------------------------------------------------------------------------}
-
--- | Existential type ("there exists an @x@ such that @f x@")
-data Some (f :: k -> Type) where
-  Some :: forall k (f :: k -> Type) (x :: k). f x -> Some f
-
-someRecord :: forall k (f :: k -> Type). [Some f] -> Some (Record f)
-someRecord fields =
-   Some $ Record.unsafeFromCanonical $
-      Canon.fromList $ map (\(Some x) -> co x) fields
-  where
-    co :: f x -> f Any
-    co = noInlineUnsafeCo
+import qualified Data.Record.Anonymous.Internal.Record             as Record
+import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
+import Data.Functor.Product
+import Data.Bifunctor
 
 {-------------------------------------------------------------------------------
-  Constraints
+  KnownFields
 -------------------------------------------------------------------------------}
+
+reifyKnownFields :: forall k (r :: Row k) proxy.
+     KnownFields r
+  => proxy r -> Record (K String) r
+reifyKnownFields _ =
+    Record.unsafeFromCanonical $
+      Canon.fromList $ map K $ fieldNames (Proxy @r)
 
 reflectKnownFields :: forall k (r :: Row k).
      Record (K String) r
   -> Reflected (KnownFields r)
 reflectKnownFields names =
     unsafeReflectKnownFields $ \_ -> collapse names
+
+{-------------------------------------------------------------------------------
+  AllFields
+-------------------------------------------------------------------------------}
 
 -- | Discover additional constraints for an unknown record
 --
@@ -79,28 +81,104 @@ reflectAllFields dicts =
 
 {-------------------------------------------------------------------------------
   Projections
+
+  The @KnownFields@ constraint on @reifyProject@ is a little dissatisfying, as
+  it feels like an orthogonal concern. Ultimately the reason is that in
+
+  > Record f (r :: Row k)
+
+  we have @f :: k -> Type@, as opposed to @f :: Symbol -> k -> Type@. That is
+  a generalization we could at some point consider, but until we do, the
+
+  > RowHasField n r a
+
+  constraint introduced in the body 'InRow' involves an /existential/ @n@;
+  a /separate/ record with 'KnownSymbol' evidence would therefore not give us
+  any information about /this/ @n@.
 -------------------------------------------------------------------------------}
 
--- | Runtime check if we can project from one record to another
---
--- Since we cannot do runtime type checks, we insist that the fields of the
--- record must all be of one type @a@.
---
--- See 'discoverRow' for additional discussion.
-reflectProject :: forall k (r :: Row k) (r' :: Row k) a proxy proxy'.
-     (KnownFields r, KnownFields r')
-  => proxy  r
-  -> proxy' r'
-  -> Either CannotProject (Reflected (Project (K a) r r'))
-reflectProject _ _ =
-    go . map fst <$>
-      KnownRow.canProject
-        (mkKnownRow $ fieldNames (Proxy @r))
-        (mkKnownRow $ fieldNames (Proxy @r'))
-  where
-    mkKnownRow :: [String] -> KnownRow ()
-    mkKnownRow = KnownRow.fromList . map KnownField.fromString
+-- | @InRow r a@ is evidence that there exists some @n@ s.t. @(n := a)@ in @r@.
+data InRow (r :: Row k) (a :: k) where
+  InRow :: forall k (n :: Symbol) (r :: Row k) (a :: k).
+       ( KnownSymbol n
+       , RowHasField n r a
+       )
+    => Proxy n -> InRow r a
 
-    go :: [Int] -> Reflected (Project (K a) r r')
-    go proj = unsafeReflectProject $ \_ _ _ -> proj
+reifyProject :: forall k (r :: Row k) (r' :: Row k).
+     (Project r r', KnownFields r')
+  => Record (InRow r) r'
+reifyProject =
+    Simple.zipWith aux ixs (reifyKnownFields (Proxy @r'))
+  where
+    ixs :: Record (K Int) r'
+    ixs = Record.unsafeFromCanonical $
+            Canon.fromList $ map K $ projectIndices (Proxy @r) (Proxy @r')
+
+    aux :: forall x. K Int x -> K String x -> InRow r x
+    aux (K i) (K name) =
+        case someSymbolVal name of
+          SomeSymbol p -> unsafeInRow i p
+
+reflectProject :: forall k (r :: Row k) (r' :: Row k).
+     Record (InRow r) r'
+  -> Reflected (Project r r')
+reflectProject ixs =
+    unsafeReflectProject $ \_ _ ->
+      Simple.collapse $ Simple.map aux ixs
+  where
+    aux :: forall x. InRow r x -> K Int x
+    aux (InRow p) = K $ rowHasField p (Proxy @r) (Proxy @x)
+
+{-------------------------------------------------------------------------------
+  Existential records
+-------------------------------------------------------------------------------}
+
+-- | Existential type ("there exists an @x@ such that @f x@")
+data Some (f :: k -> Type) where
+  Some :: forall k (f :: k -> Type) (x :: k). f x -> Some f
+
+-- | Discovered row variable
+--
+-- See 'Data.Record.Anon.Advanced.someRecord' for detailed discussion.
+data SomeRecord (f :: k -> Type) where
+  SomeRecord :: forall k (r :: Row k) (f :: k -> Type).
+       KnownFields r
+    => Record (Product (InRow r) f) r
+    -> SomeRecord f
+
+someRecord :: forall k (f :: k -> Type). [(String, Some f)] -> SomeRecord f
+someRecord fields =
+    mkSomeRecord $
+      Record.unsafeFromCanonical $
+        Canon.fromList $ zipWith aux [0..] (map (first someSymbolVal) fields)
+  where
+    aux :: Int -> (SomeSymbol, Some f) -> Product (InRow r) f Any
+    aux i (SomeSymbol n, Some fx) = Pair (unsafeInRow i n) (co fx)
+
+    co :: f x -> f Any
+    co = noInlineUnsafeCo
+
+    mkSomeRecord :: forall r. Record (Product (InRow r) f) r -> SomeRecord f
+    mkSomeRecord r =
+        case reflected of
+          Reflected -> SomeRecord r
+      where
+        reflected :: Reflected (KnownFields r)
+        reflected = reflectKnownFields $ Simple.map getName r
+
+        getName :: Product (InRow r) f x -> K String x
+        getName (Pair (InRow p) _) = K $ symbolVal p
+
+{-------------------------------------------------------------------------------
+  Internal auxiliary
+-------------------------------------------------------------------------------}
+
+unsafeInRow :: forall n r a. KnownSymbol n => Int -> Proxy n -> InRow r a
+unsafeInRow i p =
+    case reflected of
+      Reflected -> InRow p
+  where
+    reflected :: Reflected (RowHasField n r a)
+    reflected = unsafeReflectRowHasField $ \_ _ _ -> i
 

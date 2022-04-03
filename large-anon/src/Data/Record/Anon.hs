@@ -26,7 +26,7 @@ module Data.Record.Anon (
   , AllFields
   , KnownFields
   , Project
-  , RecordHasField
+  , RowHasField
 
     -- * Fields
   , Field

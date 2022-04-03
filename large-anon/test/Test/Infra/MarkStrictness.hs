@@ -18,7 +18,10 @@ module Test.Infra.MarkStrictness (
 import Data.Kind
 import Data.SOP.BasicFunctors
 
+import Data.Record.Anon
+
 import Test.Infra.DynRecord
+import Test.Infra.DynRecord.Advanced
 
 {-------------------------------------------------------------------------------
   Definition
@@ -48,13 +51,16 @@ instance Eq a => Eq (Boxed (Lazy a)) where
   Interop with 'DynRecord'
 -------------------------------------------------------------------------------}
 
-instance FromValue I a => FromValue Boxed (Lazy a) where
-  fromValue = fmap (BoxLazy . unI) . fromValue
-instance FromValue I a => FromValue Boxed (Strict a) where
-  fromValue = fmap (BoxStrict . unI) . fromValue
-
 instance ToValue I a => ToValue Boxed (Lazy a) where
   toValue (BoxLazy x) = toValue (I x)
 instance ToValue I a => ToValue Boxed (Strict a) where
   toValue (BoxStrict x) = toValue (I x)
 
+-- | Type inference for a value
+--
+-- Just for the example, we infer all 'Int' fields are strict and all other
+-- fields as lazy.
+instance IsValue Boxed where
+  isValue (VI x) = Some $ ValidField $ BoxStrict x
+  isValue (VB x) = Some $ ValidField $ BoxLazy   x
+  isValue (VC x) = Some $ ValidField $ BoxLazy   x

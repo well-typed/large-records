@@ -12,23 +12,23 @@ import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 --
 -- Listed alphabetically.
 data ResolvedNames = ResolvedNames {
-      clsAllFields             :: Class
-    , clsKnownFields           :: Class
-    , clsKnownHash             :: Class
-    , clsProject               :: Class
-    , clsRecordHasField        :: Class
-    , dataConDictAny           :: DataCon
-    , idEvidenceAllFields      :: Id
-    , idEvidenceKnownFields    :: Id
-    , idEvidenceKnownHash      :: Id
-    , idEvidenceProject        :: Id
-    , idEvidenceRecordHasField :: Id
-    , idUnsafeCoerce           :: Id
-    , tyConDictAny             :: TyCon
-    , tyConMerge               :: TyCon
-    , tyConFieldTypes          :: TyCon
-    , tyConPair                :: TyCon
-    , tyConSimpleFieldTypes    :: TyCon
+      clsAllFields          :: Class
+    , clsKnownFields        :: Class
+    , clsKnownHash          :: Class
+    , clsProject            :: Class
+    , clsRowHasField        :: Class
+    , dataConDictAny        :: DataCon
+    , idEvidenceAllFields   :: Id
+    , idEvidenceKnownFields :: Id
+    , idEvidenceKnownHash   :: Id
+    , idEvidenceProject     :: Id
+    , idEvidenceRowHasField :: Id
+    , idUnsafeCoerce        :: Id
+    , tyConDictAny          :: TyCon
+    , tyConMerge            :: TyCon
+    , tyConFieldTypes       :: TyCon
+    , tyConPair             :: TyCon
+    , tyConSimpleFieldTypes :: TyCon
     }
 
 nameResolution :: TcPluginM 'Init ResolvedNames
@@ -47,26 +47,26 @@ nameResolution = do
         getVar         var = lookupOrig modl (mkVarOcc var)  >>= tcLookupId
         getPromDataCon con = promoteDataCon <$> getDataCon con
 
-    clsAllFields             <- getClass "AllFields"
-    clsKnownFields           <- getClass "KnownFields"
-    clsKnownHash             <- getClass "KnownHash"
-    clsProject               <- getClass "Project"
-    clsRecordHasField        <- getClass "RecordHasField"
+    clsAllFields          <- getClass "AllFields"
+    clsKnownFields        <- getClass "KnownFields"
+    clsKnownHash          <- getClass "KnownHash"
+    clsProject            <- getClass "Project"
+    clsRowHasField        <- getClass "RowHasField"
 
-    dataConDictAny           <- getDataCon "DictAny"
+    dataConDictAny        <- getDataCon "DictAny"
 
-    idEvidenceAllFields      <- getVar "evidenceAllFields"
-    idEvidenceKnownFields    <- getVar "evidenceKnownFields"
-    idEvidenceKnownHash      <- getVar "evidenceKnownHash"
-    idEvidenceProject        <- getVar "evidenceProject"
-    idEvidenceRecordHasField <- getVar "evidenceRecordHasField"
-    idUnsafeCoerce           <- getVar "noInlineUnsafeCo"
+    idEvidenceAllFields   <- getVar "evidenceAllFields"
+    idEvidenceKnownFields <- getVar "evidenceKnownFields"
+    idEvidenceKnownHash   <- getVar "evidenceKnownHash"
+    idEvidenceProject     <- getVar "evidenceProject"
+    idEvidenceRowHasField <- getVar "evidenceRowHasField"
+    idUnsafeCoerce        <- getVar "noInlineUnsafeCo"
 
-    tyConDictAny             <- getTyCon       "DictAny"
-    tyConFieldTypes          <- getTyCon       "FieldTypes"
-    tyConMerge               <- getTyCon       "Merge"
-    tyConPair                <- getPromDataCon ":="
-    tyConSimpleFieldTypes    <- getTyCon       "SimpleFieldTypes"
+    tyConDictAny          <- getTyCon       "DictAny"
+    tyConFieldTypes       <- getTyCon       "FieldTypes"
+    tyConMerge            <- getTyCon       "Merge"
+    tyConPair             <- getPromDataCon ":="
+    tyConSimpleFieldTypes <- getTyCon       "SimpleFieldTypes"
 
     return $ ResolvedNames {..}
 

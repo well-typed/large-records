@@ -39,22 +39,22 @@ recordA =
 --
 -- Normally this record would be constructed by the plugin (for 'RecordDicts'
 -- instance).
-recordD :: Record (Dict Show :.: I) [ "a" := Int, "b" := Bool, "c" := Char ]
+recordD :: Record (Dict (Compose Show I)) [ "a" := Int, "b" := Bool, "c" := Char ]
 recordD =
-      Anon.insert #a (Comp Dict)
-    $ Anon.insert #b (Comp Dict)
-    $ Anon.insert #c (Comp Dict)
+      Anon.insert #a Dict
+    $ Anon.insert #b Dict
+    $ Anon.insert #c Dict
     $ Anon.empty
 
 {-------------------------------------------------------------------------------
   Auxiliary
 -------------------------------------------------------------------------------}
 
-showFields :: Record (Dict Show :.: f) r -> Record f r -> [String]
+showFields :: Record (Dict (Compose Show f)) r -> Record f r -> [String]
 showFields ds xs = Anon.collapse $ Anon.zipWith aux ds xs
   where
-    aux :: (Dict Show :.: f) x -> f x -> K String x
-    aux (Comp Dict) x = K (show x)
+    aux :: (Dict (Compose Show f)) x -> f x -> K String x
+    aux Dict x = K (show x)
 
 {-------------------------------------------------------------------------------
   Tests proper
@@ -73,7 +73,7 @@ test_manual = do
 test_derived :: Assertion
 test_derived = do
      assertEqual "" expected $
-       showFields (Anon.reifyAllFields (Proxy @Show)) recordA
+       showFields (Anon.reifyAllFields (Proxy @(Compose Show I))) recordA
   where
     expected :: [String]
     expected = ["I 1", "I True", "I 'a'"]

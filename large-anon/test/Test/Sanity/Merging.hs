@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies     #-}
 {-# LANGUAGE TypeOperators    #-}
 
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.Merging (tests) where

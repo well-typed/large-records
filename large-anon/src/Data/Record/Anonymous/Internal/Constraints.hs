@@ -26,12 +26,11 @@ module Data.Record.Anonymous.Internal.Constraints (
 
 import Data.Kind
 import Data.Proxy
-import Data.SOP.BasicFunctors
 import Data.SOP.Constraint
 import Data.SOP.Dict
 import GHC.Exts (Any)
 
-import Data.Vector.Generic as V
+import qualified Data.Vector.Generic as V
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
@@ -65,13 +64,12 @@ constrain p (Record.toCanonical -> r) = Record.unsafeFromCanonical $
 class    (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
 instance (AllFields r (Compose c f), KnownFields r) => RecordConstraints f r c
 
-reifyAllFields :: forall k l (f :: k -> l) (r :: Row k) (c :: l -> Constraint) proxy.
-     AllFields r (Compose c f)
-  => proxy c -> Record (Dict c :.: f) r
+reifyAllFields :: forall k (r :: Row k) (c :: k -> Constraint) proxy.
+     AllFields r c
+  => proxy c -> Record (Dict c) r
 reifyAllFields _ = Record.unsafeFromCanonical $
     Canon.fromLazyVector $
-      V.map aux $ fieldDicts (Proxy @r) (Proxy @(Compose c f))
+      V.map aux $ fieldDicts (Proxy @r) (Proxy @c)
   where
-    aux :: DictAny (Compose c f) -> (:.:) (Dict c) f Any
-    aux DictAny = Comp Dict
-
+    aux :: DictAny c -> Dict c Any
+    aux DictAny = Dict

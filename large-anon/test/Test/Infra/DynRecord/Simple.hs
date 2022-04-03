@@ -11,50 +11,27 @@
 --
 -- > import qualified Test.Infra.DynRecord.Simple as Dyn
 module Test.Infra.DynRecord.Simple (
-    -- * Projection to known row
-    toLens
-  , toRecord
     -- * Type inference
-  , ValidField(..)
+    ValidField(..)
   , SomeRecord(..)
   , inferType
+    -- * Lens
+  , toLens
+  , toRecord
   ) where
 
 import Data.Bifunctor
 import Data.Kind
+import Data.Typeable
 
 import Data.Record.Anon
-import Data.Record.Anon.Advanced (CannotProject)
 import Data.Record.Anon.Simple (Record)
 
 import qualified Data.Record.Anon.Advanced as A
 import qualified Data.Record.Anon.Simple   as S
 
+import Test.Infra.Discovery
 import Test.Infra.DynRecord
-
-import qualified Test.Infra.DynRecord.Advanced as A.Dyn
-
-{-------------------------------------------------------------------------------
-  Projection to known row
--------------------------------------------------------------------------------}
-
-toLens ::
-     ( KnownFields r
-     , AllFields   r (FromValue I)
-     , AllFields   r (ToValue   I)
-     )
-  => proxy r
-  -> DynRecord
-  -> Either (Either CannotProject ParseError)
-            (Record r, Record r -> DynRecord)
-toLens p = fmap (bimap S.fromAdvanced (. S.toAdvanced)) . A.Dyn.toLens p
-
-toRecord ::
-     (KnownFields r, AllFields r (FromValue I))
-  => proxy r
-  -> DynRecord
-  -> Either (Either CannotProject ParseError) (Record r)
-toRecord p = fmap S.fromAdvanced . A.Dyn.toRecord p
 
 {-------------------------------------------------------------------------------
   Type inference
@@ -68,59 +45,108 @@ toRecord p = fmap S.fromAdvanced . A.Dyn.toRecord p
 
 data ValidField x where
   ValidField ::
-       ( Show        x
-       , Eq          x
-       , ToValue   I x
-       , FromValue I x
+       ( Typeable  x
+       , Show      x
+       , Eq        x
+       , ToValue I x
        )
-    => String -> x -> ValidField x
+    => x -> ValidField x
 
 data SomeRecord where
   SomeRecord :: forall (r :: Row Type).
        ( KnownFields r
+       , Project r r
+       , AllFields r Typeable
        , AllFields r Show
        , AllFields r Eq
-       , AllFields r (FromValue I)
-       , AllFields r (ToValue   I)
+       , AllFields r (ToValue I)
        )
     => Record r -> SomeRecord
 
-deriving instance Show SomeRecord
-
 inferType :: DynRecord -> SomeRecord
 inferType (DynRecord r) =
-    case A.someRecord $ map (uncurry mkField) r of
-      Some record ->
-        case A.reflectKnownFields $ A.map fieldName record of
-          Reflected -> withSomeRecord record
+    case A.someRecord $ map (second mkField) r of
+      A.SomeRecord record ->
+        case A.reflectProject (A.map pairFst record) of
+          Reflected -> withSomeRecord (A.map pairSnd record)
   where
-    withSomeRecord :: KnownFields r => A.Record ValidField r -> SomeRecord
+    withSomeRecord ::
+         ( KnownFields r
+         , Project r r
+         )
+      => A.Record ValidField r -> SomeRecord
     withSomeRecord record =
-        case ( A.reflectAllFields (A.map dictShow      record)
+        case ( A.reflectAllFields (A.map dictTypeable  record)
+             , A.reflectAllFields (A.map dictShow      record)
              , A.reflectAllFields (A.map dictEq        record)
-             , A.reflectAllFields (A.map dictFromValue record)
              , A.reflectAllFields (A.map dictToValue   record)
              ) of
           (Reflected, Reflected, Reflected, Reflected) ->
             SomeRecord (S.fromAdvanced $ A.map fieldValue record)
 
-    fieldName  :: ValidField x -> K String x
     fieldValue :: ValidField x -> I x
+    fieldValue (ValidField value) = I value
 
-    fieldName  (ValidField name _    ) = K name
-    fieldValue (ValidField _    value) = I value
+    dictTypeable  :: ValidField x -> Dict Typeable    x
+    dictShow      :: ValidField x -> Dict Show        x
+    dictEq        :: ValidField x -> Dict Eq          x
+    dictToValue   :: ValidField x -> Dict (ToValue I) x
 
-    dictShow      :: ValidField x -> Dict Show x
-    dictEq        :: ValidField x -> Dict Eq   x
-    dictFromValue :: ValidField x -> Dict (FromValue I) x
-    dictToValue   :: ValidField x -> Dict (ToValue   I) x
+    dictTypeable (ValidField _) = Dict
+    dictShow     (ValidField _) = Dict
+    dictEq       (ValidField _) = Dict
+    dictToValue  (ValidField _) = Dict
 
-    dictShow      (ValidField _ _) = Dict
-    dictEq        (ValidField _ _) = Dict
-    dictFromValue (ValidField _ _) = Dict
-    dictToValue   (ValidField _ _) = Dict
+    mkField :: Value -> Some ValidField
+    mkField (VI x) = Some $ ValidField x
+    mkField (VB x) = Some $ ValidField x
+    mkField (VC x) = Some $ ValidField x
 
-    mkField :: String -> Value -> Some ValidField
-    mkField name (VI x) = Some $ ValidField name x
-    mkField name (VB x) = Some $ ValidField name x
-    mkField name (VC x) = Some $ ValidField name x
+{-------------------------------------------------------------------------------
+  Projection to known row
+-------------------------------------------------------------------------------}
+
+-- | Lens to record over some known row @r@
+toLens :: forall (r :: Row Type) proxy.
+     ( KnownFields r
+     , Project r r
+     , AllFields r Typeable
+     )
+  => proxy r
+  -> DynRecord
+  -> Either CannotProject (Record r, Record r -> DynRecord)
+toLens p = \r ->
+    -- In order to be able to check if we can project to the known row @r@,
+    -- we must first to type inference on the @DynRecord@. /If/ this succeeds,
+    -- we know the types line up, and there can be no further type errors
+    -- (there is no need for a separate parsing step).
+    case inferType r of
+      SomeRecord r' ->
+        fmap (withSomeRecord r') $ checkCanProject r' p
+  where
+    -- @r'@ is the row inferred for the 'DynRecord'
+    withSomeRecord :: forall (r' :: Row Type).
+         ( KnownFields r'
+         , AllFields r' (ToValue I)
+         )
+      => Record r'
+      -> Reflected (Project r' r)
+      -> (Record r, Record r -> DynRecord)
+    withSomeRecord r Reflected = (
+          getter
+        , DynRecord . A.toList . toValues . S.toAdvanced . setter
+        )
+      where
+        getter :: Record r
+        setter :: Record r -> Record r'
+        (getter, setter) = S.lens r
+
+toRecord :: forall (r :: Row Type) proxy.
+     ( KnownFields r
+     , Project r r
+     , AllFields r Typeable
+     )
+  => proxy r
+  -> DynRecord
+  -> Either CannotProject (Record r)
+toRecord p = fmap fst . toLens p

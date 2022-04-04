@@ -1,7 +1,6 @@
 {-# LANGUAGE ConstraintKinds  #-}
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE PolyKinds        #-}
 {-# LANGUAGE RankNTypes       #-}
@@ -232,7 +231,7 @@ applyPending = A.applyPending
 -- constraint remains unsolved in this example, because if @x == "b"@, the first
 -- field would shadow the second, and the result type should be @Maybe Bool@
 -- instead of @Maybe Int@.
-get :: HasField n (Record f r) (f a) => Field n -> Record f r -> f a
+get :: RowHasField n r a => Field n -> Record f r -> f a
 get = A.get
 
 -- | Update field in the record
@@ -249,9 +248,7 @@ get = A.get
 -- If using @record-dot-preprocessor@, can also write this example as
 --
 -- > example r = r{a = Just False}
-set ::
-     HasField n (Record f r) (f a)
-  => Field n -> f a -> Record f r -> Record f r
+set :: RowHasField n r a => Field n -> f a -> Record f r -> Record f r
 set = A.set
 
 {-------------------------------------------------------------------------------

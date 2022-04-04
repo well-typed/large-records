@@ -84,7 +84,7 @@ import qualified Data.Vector.Generic as Vector
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import Data.Record.Anonymous.Internal.Record (Field)
+import Data.Record.Anonymous.Internal.Record (Field(..))
 
 import qualified Data.Record.Anonymous.Advanced as Adv
 
@@ -163,18 +163,14 @@ instance HasField  n            (Adv.Record I r) (I a)
 -- | Get field from the record
 --
 -- This is just a wrapper around 'getField'.
-get :: forall n r a.
-     HasField n (Record r) a
-  => Field n -> Record r -> a
-get _ = getField @n @(Record r)
+get :: forall n r a. RowHasField n r a => Field n -> Record r -> a
+get (Field _) = getField @n @(Record r)
 
 -- | Update field in the record
 --
 -- This is just a wrapper around 'setField'.
-set :: forall n r a.
-     HasField n (Record r) a
-  => Field n -> a -> Record r -> Record r
-set _ = flip (setField @n @(Record r))
+set :: forall n r a. RowHasField n r a => Field n -> a -> Record r -> Record r
+set (Field _) = flip (setField @n @(Record r))
 
 {-------------------------------------------------------------------------------
   Constraints

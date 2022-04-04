@@ -1,8 +1,7 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE TypeOperators    #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes       #-}
 
 -- | Simple interface (without a functor argument)
 --
@@ -147,7 +146,7 @@ applyPending = S.applyPending
 -- > example r = r.a
 --
 -- See 'Data.Record.Anon.Advanced.get' for additional discussion.
-get :: HasField n (Record r) a => Field n -> Record r -> a
+get :: RowHasField n r a => Field n -> Record r -> a
 get = S.get
 
 -- | Update field in the record
@@ -164,7 +163,7 @@ get = S.get
 -- If using @record-dot-preprocessor@, can also write this example as
 --
 -- > example r = r{a = False}
-set :: HasField n (Record r) a => Field n -> a -> Record r -> Record r
+set :: RowHasField n r a => Field n -> a -> Record r -> Record r
 set = S.set
 
 {-------------------------------------------------------------------------------

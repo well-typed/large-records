@@ -166,14 +166,14 @@ insertA ::
 insertA f x r = insert f <$> x <*> r
 
 get :: forall n f r a.
-     HasField n (Record f r) a
-  => Field n -> Record f r -> a
-get _ = getField @n @(Record f r)
+     RowHasField n r a
+  => Field n -> Record f r -> f a
+get (Field _) = getField @n @(Record f r)
 
 set :: forall n f r a.
-     HasField n (Record f r) a
-  => Field n -> a -> Record f r -> Record f r
-set _ = flip (setField @n @(Record f r))
+     RowHasField n r a
+  => Field n -> f a -> Record f r -> Record f r
+set (Field _) = flip (setField @n @(Record f r))
 
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (toCanonical -> r) (toCanonical -> r') =

@@ -75,6 +75,17 @@ import qualified Experiment.SetEvens.Sized.R080
 import qualified Experiment.SetEvens.Sized.R090
 import qualified Experiment.SetEvens.Sized.R100
 
+import qualified Experiment.UpdateOne.Sized.R010
+import qualified Experiment.UpdateOne.Sized.R020
+import qualified Experiment.UpdateOne.Sized.R030
+import qualified Experiment.UpdateOne.Sized.R040
+import qualified Experiment.UpdateOne.Sized.R050
+import qualified Experiment.UpdateOne.Sized.R060
+import qualified Experiment.UpdateOne.Sized.R070
+import qualified Experiment.UpdateOne.Sized.R080
+import qualified Experiment.UpdateOne.Sized.R090
+import qualified Experiment.UpdateOne.Sized.R100
+
 import qualified Experiment.ToJSON.Sized.R010
 import qualified Experiment.ToJSON.Sized.R020
 import qualified Experiment.ToJSON.Sized.R030
@@ -222,6 +233,50 @@ main = defaultMain [
             bench "090" $ whnf (Experiment.SetEvens.Sized.R090.setEvens evens090) r
         , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R100.record 0) $ \r ->
             bench "100" $ whnf (Experiment.SetEvens.Sized.R100.setEvens evens100) r
+        ]
+    , bgroup "UpdateOneThenApply" [
+          envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R010.record 0) $ \r ->
+            bench "010" $ whnf (applyPending . Experiment.UpdateOne.Sized.R010.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R020.record 0) $ \r ->
+            bench "020" $ whnf (applyPending . Experiment.UpdateOne.Sized.R020.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R030.record 0) $ \r ->
+            bench "030" $ whnf (applyPending . Experiment.UpdateOne.Sized.R030.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R040.record 0) $ \r ->
+            bench "040" $ whnf (applyPending . Experiment.UpdateOne.Sized.R040.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R050.record 0) $ \r ->
+            bench "050" $ whnf (applyPending . Experiment.UpdateOne.Sized.R050.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R060.record 0) $ \r ->
+            bench "060" $ whnf (applyPending . Experiment.UpdateOne.Sized.R060.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R070.record 0) $ \r ->
+            bench "070" $ whnf (applyPending . Experiment.UpdateOne.Sized.R070.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R080.record 0) $ \r ->
+            bench "080" $ whnf (applyPending . Experiment.UpdateOne.Sized.R080.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R090.record 0) $ \r ->
+            bench "090" $ whnf (applyPending . Experiment.UpdateOne.Sized.R090.updateOne) r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R100.record 0) $ \r ->
+            bench "100" $ whnf (applyPending . Experiment.UpdateOne.Sized.R100.updateOne) r
+        ]
+    , bgroup "UpdateOneNoApply" [
+          envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R010.record 0) $ \r ->
+            bench "010" $ whnf Experiment.UpdateOne.Sized.R010.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R020.record 0) $ \r ->
+            bench "020" $ whnf Experiment.UpdateOne.Sized.R020.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R030.record 0) $ \r ->
+            bench "030" $ whnf Experiment.UpdateOne.Sized.R030.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R040.record 0) $ \r ->
+            bench "040" $ whnf Experiment.UpdateOne.Sized.R040.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R050.record 0) $ \r ->
+            bench "050" $ whnf Experiment.UpdateOne.Sized.R050.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R060.record 0) $ \r ->
+            bench "060" $ whnf Experiment.UpdateOne.Sized.R060.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R070.record 0) $ \r ->
+            bench "070" $ whnf Experiment.UpdateOne.Sized.R070.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R080.record 0) $ \r ->
+            bench "080" $ whnf Experiment.UpdateOne.Sized.R080.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R090.record 0) $ \r ->
+            bench "090" $ whnf Experiment.UpdateOne.Sized.R090.updateOne r
+        , envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R100.record 0) $ \r ->
+            bench "100" $ whnf Experiment.UpdateOne.Sized.R100.updateOne r
         ]
     , bgroup "ToJSON" [
           envPureWHNF (Experiment.ConstructNoTypeLet.Sized.R010.record 0) $ \r ->

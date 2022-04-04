@@ -297,7 +297,7 @@ set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-get-timing.png"
 plot "<(cat timing.csv | grep ^GetEvens)" using 2:3 with lines lt rgb "#22EEEE" title "Field access"
 
-## large-anon: field override
+## large-anon: field override (many fields)
 
 set xlabel "Record size"
 set xrange [0:100]
@@ -311,6 +311,21 @@ plot "<(cat coresize.csv | grep ^SetEvens | grep ds-preopt,)" using 2:7 with lin
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-set-timing.png"
 plot "<(cat timing.csv | grep ^SetEvens)" using 2:3 with lines lt rgb "#22EEEE" title "Field override"
+
+## large-anon: update single field
+
+set xlabel "Record size"
+set xrange [0:100]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/large-anon-updateone-coresize.png"
+plot "<(cat coresize.csv | grep ^UpdateOne | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "Update single field (ds-preopt)" \
+   , "<(cat coresize.csv | grep ^UpdateOne | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "Update single field (ds)" \
+   , "<(cat coresize.csv | grep ^UpdateOne | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "Update single field (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/large-anon-updateone-timing.png"
+plot "<(cat timing.csv | grep ^UpdateOne)" using 2:3 with lines lt rgb "#22EEEE" title "Update single field"
 
 ## large-anon: toJSON
 
@@ -415,7 +430,7 @@ plot "<(cat runtime.csv | grep SR_GetEvens        | tr / ,)" using 2:3 with line
    , "<(cat runtime.csv | grep GetEvensAfterApply | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (after applyDiff)" \
                                                         , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \
 
-## large-anon: field override, compared to superrecord
+## large-anon: field override (many fields), compared to superrecord
 
 set xrange [0:80]
 
@@ -436,6 +451,33 @@ plot "<(cat runtime.csv | grep SR_SetEvens       | tr / ,)" using 2:3 with lines
    , "<(cat runtime.csv | grep SetEvensNoApply   | tr / ,)" using 2:3 with lines lt rgb "#2222EE" title "large-anon (without applyDiff)" \
                                                        , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#2222EE' notitle \
    , "<(cat runtime.csv | grep SetEvensThenApply | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (followed by applyDiff)" \
+                                                       , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \
+
+## large-anon: update single field, compared to superrecord
+
+set xrange [0:80]
+
+set ylabel "Core size (terms + types + coercions)"
+set output "graphs/large-anon-vs-superrecord-updateone-coresize.png"
+plot "<(cat coresize.csv | grep SR_UpdateOne | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
+   , "<(cat coresize.csv | grep SR_UpdateOne | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds)" \
+   , "<(cat coresize.csv | grep SR_UpdateOne | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
+   , "<(cat coresize.csv | grep ^UpdateOne   | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
+   , "<(cat coresize.csv | grep ^UpdateOne   | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
+   , "<(cat coresize.csv | grep ^UpdateOne   | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+
+set ylabel "Compilation time (ms)"
+set output "graphs/large-anon-vs-superrecord-updateone-timing.png"
+plot "<(cat timing.csv | grep SR_UpdateOne)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+   , "<(cat timing.csv | grep ^UpdateOne)"   using 2:3 with lines lt rgb "#22EE22" title "large-anon"
+
+set ylabel "Runtime (s)"
+set output "graphs/large-anon-vs-superrecord-updateone-runtime.png"
+plot "<(cat runtime.csv | grep SR_UpdateOne       | tr / ,)" using 2:3 with lines lt rgb "#EE2222" title "superrecord" \
+                                                       , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#EE2222' notitle \
+   , "<(cat runtime.csv | grep UpdateOneNoApply   | tr / ,)" using 2:3 with lines lt rgb "#2222EE" title "large-anon (without applyDiff)" \
+                                                       , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#2222EE' notitle \
+   , "<(cat runtime.csv | grep UpdateOneThenApply | tr / ,)" using 2:3 with lines lt rgb "#22EE22" title "large-anon (followed by applyDiff)" \
                                                        , '' using 2:3:($3-$6):($3+$6) with yerrorbars lt rgb '#22EE22' notitle \
 
 ## large-anon: toJSON, compared to superrecord

@@ -167,7 +167,7 @@ This extracts half the record fields into a non-record datatype.
 Here is where we see the win from `applyDiff` (we paid for it during record
 construction).
 
-### Field override
+### Update many fields
 
 This overwrites half the record fields.
 
@@ -179,6 +179,22 @@ This overwrites half the record fields.
 ![](graphs/large-anon-vs-superrecord-set-coresize.png)
 ![](graphs/large-anon-vs-superrecord-set-timing.png)
 ![](graphs/large-anon-vs-superrecord-set-runtime.png)
+
+### Update single fields
+
+![](graphs/large-anon-updateone-coresize.png)
+![](graphs/large-anon-updateone-timing.png)
+
+#### Comparison with `superrecord`
+
+We show the core size for all phases here, because the coresze of `superrecord`
+is actually _constant_ for this example after the simplifier (presumably because
+it translates to unsafe functions and the type argument disappears). Compilation
+time is similar for both, however.
+
+![](graphs/large-anon-vs-superrecord-updateone-coresize.png)
+![](graphs/large-anon-vs-superrecord-updateone-timing.png)
+![](graphs/large-anon-vs-superrecord-updateone-runtime.png)
 
 ### ToJSON
 

@@ -111,6 +111,7 @@ unsafeFromCanonical = Wrap . Core.Record.fromCanonical
 instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: k).
        (KnownSymbol n, KnownHash n, RowHasField n r a)
     => HasField n (Record f r) (f a) where
+  {-# INLINE hasField #-}
   hasField (Wrap r) = (
         \x -> Wrap $ Core.Record.setField ix name x r
       , Core.Record.getField ix name r

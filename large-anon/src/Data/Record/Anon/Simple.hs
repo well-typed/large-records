@@ -24,10 +24,10 @@ module Data.Record.Anon.Simple (
   , get
   , set
     -- * Changing rows
-  , merge
   , project
   , inject
   , lens
+  , merge
     -- * Interop with the advanced API
   , toAdvanced
   , fromAdvanced
@@ -170,26 +170,6 @@ set = S.set
   Changing rows
 -------------------------------------------------------------------------------}
 
--- | Merge two records
---
--- The 'Merge' type family does not reduce:
---
--- >>> :{
--- example :: Record (Merge '[ "a" :=  Bool ] '[])
--- example = merge (insert #a True empty) empty
--- :}
---
--- If you want to flatten the row after merging, you can use 'project':
---
--- >>> :{
--- example :: Record '[ "a" :=  Bool ]
--- example = project $ merge (insert #a True empty) empty
--- :}
---
--- See 'Data.Record.Anon.Advanced.merge' for additional discussion.
-merge :: Record r -> Record r' -> Record (Merge r r')
-merge = S.merge
-
 -- | Project from one record to another
 --
 -- Both the source record and the target record must be fully known.
@@ -221,6 +201,26 @@ inject = S.inject
 -- setter).
 lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
 lens = S.lens
+
+-- | Merge two records
+--
+-- The 'Merge' type family does not reduce:
+--
+-- >>> :{
+-- example :: Record (Merge '[ "a" :=  Bool ] '[])
+-- example = merge (insert #a True empty) empty
+-- :}
+--
+-- If you want to flatten the row after merging, you can use 'project':
+--
+-- >>> :{
+-- example :: Record '[ "a" :=  Bool ]
+-- example = project $ merge (insert #a True empty) empty
+-- :}
+--
+-- See 'Data.Record.Anon.Advanced.merge' for additional discussion.
+merge :: Record r -> Record r' -> Record (Merge r r')
+merge = S.merge
 
 {-------------------------------------------------------------------------------
   Interop with the advanced API

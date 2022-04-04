@@ -28,10 +28,10 @@ module Data.Record.Anon.Advanced (
   , get
   , set
     -- * Changing rows
-  , merge
   , project
   , inject
   , lens
+  , merge
     -- * Combinators
     -- ** " Functor "
   , map
@@ -255,52 +255,6 @@ set = A.set
   Changing rows
 -------------------------------------------------------------------------------}
 
--- | Merge two records
---
--- The 'Merge' type family does not reduce:
---
--- >>> :{
--- example :: Record Maybe (Merge '[ "a" :=  Bool ] '[])
--- example = merge (insert #a (Just True) empty) empty
--- :}
---
--- If you want to flatten the row after merging, you can use 'project':
---
--- >>> :{
--- example :: Record Maybe '[ "a" :=  Bool ]
--- example = project $ merge (insert #a (Just True) empty) empty
--- :}
---
--- 'HasField' constraints can be resolved for merged records, subject to the
--- same condition discussed in 'get': all fields in the record must be known up
--- to the requested field (in case of shadowing). So the record /may/ be fully
--- known:
---
--- >>> :{
--- example :: Record f (Merge '[ "a" := Bool ] '[ "b" := Char ]) -> f Char
--- example r = get #b r
--- :}
---
--- but it doesn't have to be:
---
--- >>> :{
--- example :: Record I (Merge '[ "a" := Bool ] r) -> I Bool
--- example = get #a
--- :}
---
--- However, just like in the case of unknown fields (see example in 'get'),
--- if earlier parts in the record are unknown we get type error:
---
--- >>> :{
--- example :: Record I (Merge r '[ "b" := Char ]) -> I Char
--- example r = get #b r
--- :}
--- ...
--- ...No instance for (RowHasField "b"...
--- ...
-merge :: Record f r -> Record f r' -> Record f (Merge r r')
-merge = A.merge
-
 -- | Project from one record to another
 --
 -- Both the source record and the target record must be fully known.
@@ -358,6 +312,52 @@ lens ::
      Project r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = A.lens
+
+-- | Merge two records
+--
+-- The 'Merge' type family does not reduce:
+--
+-- >>> :{
+-- example :: Record Maybe (Merge '[ "a" :=  Bool ] '[])
+-- example = merge (insert #a (Just True) empty) empty
+-- :}
+--
+-- If you want to flatten the row after merging, you can use 'project':
+--
+-- >>> :{
+-- example :: Record Maybe '[ "a" :=  Bool ]
+-- example = project $ merge (insert #a (Just True) empty) empty
+-- :}
+--
+-- 'HasField' constraints can be resolved for merged records, subject to the
+-- same condition discussed in 'get': all fields in the record must be known up
+-- to the requested field (in case of shadowing). So the record /may/ be fully
+-- known:
+--
+-- >>> :{
+-- example :: Record f (Merge '[ "a" := Bool ] '[ "b" := Char ]) -> f Char
+-- example r = get #b r
+-- :}
+--
+-- but it doesn't have to be:
+--
+-- >>> :{
+-- example :: Record I (Merge '[ "a" := Bool ] r) -> I Bool
+-- example = get #a
+-- :}
+--
+-- However, just like in the case of unknown fields (see example in 'get'),
+-- if earlier parts in the record are unknown we get type error:
+--
+-- >>> :{
+-- example :: Record I (Merge r '[ "b" := Char ]) -> I Char
+-- example r = get #b r
+-- :}
+-- ...
+-- ...No instance for (RowHasField "b"...
+-- ...
+merge :: Record f r -> Record f r' -> Record f (Merge r r')
+merge = A.merge
 
 {-------------------------------------------------------------------------------
   Combinators

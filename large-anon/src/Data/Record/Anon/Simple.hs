@@ -31,6 +31,7 @@ module Data.Record.Anon.Simple (
     -- * Interop with the advanced API
   , toAdvanced
   , fromAdvanced
+  , sequenceA
     -- * Experimental integration with @typelet@
     --
     -- |
@@ -40,6 +41,8 @@ module Data.Record.Anon.Simple (
   , letRecordT
   , letInsertAs
   ) where
+
+import Prelude hiding (sequenceA)
 
 import TypeLet
 
@@ -237,6 +240,10 @@ toAdvanced = S.toAdvanced
 -- This is an @O(1)@ operation.
 fromAdvanced :: A.Record I r -> Record r
 fromAdvanced = S.fromAdvanced
+
+-- | Sequence all actions
+sequenceA :: Monad m => A.Record m r -> m (Record r)
+sequenceA = S.sequenceA
 
 {-------------------------------------------------------------------------------
   Experimental integration with @typelet@

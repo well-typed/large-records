@@ -64,10 +64,13 @@ module Data.Record.Anonymous.Simple (
     -- * Interop with the advanced interface
   , toAdvanced
   , fromAdvanced
+  , sequenceA
     -- * Support for @typelet@
   , letRecordT
   , letInsertAs
   ) where
+
+import Prelude hiding (sequenceA)
 
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Bifunctor
@@ -115,8 +118,15 @@ import qualified Data.Record.Anonymous.Advanced as Adv
 -- See "Data.Record.Anon.Advanced".
 newtype Record r = SimpleRecord { toAdvanced :: Adv.Record I r }
 
+{-------------------------------------------------------------------------------
+  Interop with advanced API
+-------------------------------------------------------------------------------}
+
 fromAdvanced :: Adv.Record I r -> Record r
 fromAdvanced = SimpleRecord
+
+sequenceA :: Monad m => Adv.Record m r -> m (Record r)
+sequenceA = fmap fromAdvanced . Adv.sequenceA'
 
 {-------------------------------------------------------------------------------
   Basic API

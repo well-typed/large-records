@@ -592,6 +592,18 @@ executable bench-large-anon
       Experiment.SetEvens.Sized.R090
       Experiment.SetEvens.Sized.R100
 
+      Experiment.UpdateOne.Sized.R000
+      Experiment.UpdateOne.Sized.R010
+      Experiment.UpdateOne.Sized.R020
+      Experiment.UpdateOne.Sized.R030
+      Experiment.UpdateOne.Sized.R040
+      Experiment.UpdateOne.Sized.R050
+      Experiment.UpdateOne.Sized.R060
+      Experiment.UpdateOne.Sized.R070
+      Experiment.UpdateOne.Sized.R080
+      Experiment.UpdateOne.Sized.R090
+      Experiment.UpdateOne.Sized.R100
+
       Experiment.ToJSON.Sized.R000
       Experiment.ToJSON.Sized.R010
       Experiment.ToJSON.Sized.R020
@@ -689,6 +701,16 @@ executable bench-superrecord
       Experiment.SR_SetEvens.Sized.R060
       Experiment.SR_SetEvens.Sized.R070
       Experiment.SR_SetEvens.Sized.R080
+
+      Experiment.SR_UpdateOne.Sized.R000
+      Experiment.SR_UpdateOne.Sized.R010
+      Experiment.SR_UpdateOne.Sized.R020
+      Experiment.SR_UpdateOne.Sized.R030
+      Experiment.SR_UpdateOne.Sized.R040
+      Experiment.SR_UpdateOne.Sized.R050
+      Experiment.SR_UpdateOne.Sized.R060
+      Experiment.SR_UpdateOne.Sized.R070
+      Experiment.SR_UpdateOne.Sized.R080
 
       Experiment.SR_ToJSON.Sized.R000
       Experiment.SR_ToJSON.Sized.R010

@@ -70,17 +70,19 @@ module Data.Record.Anonymous.Simple (
   ) where
 
 import Data.Aeson (ToJSON(..), FromJSON(..))
+import Data.Bifunctor
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
 import Data.Record.Generic.Show
 import GHC.Exts
+import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet
-import Data.Bifunctor
 
 import qualified Data.Vector.Generic as Vector
+import qualified Optics.Core         as Optics
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
@@ -159,6 +161,16 @@ instance HasField  n            (Adv.Record I r) (I a)
     where
       aux :: (I a -> Adv.Record I r, I a) -> (a -> Record r, a)
       aux (setX, x) = (fromAdvanced . setX . I, unI x)
+
+instance Optics.LabelOptic n Optics.A_Lens (Adv.Record I r) (Adv.Record I r) (I a) (I a)
+      => Optics.LabelOptic n Optics.A_Lens (    Record   r) (    Record   r)    a     a where
+  labelOptic = toAdvanced Optics.% fromLabel @n Optics.% fromI
+    where
+      toAdvanced :: Optics.Iso' (Record r) (Adv.Record I r)
+      toAdvanced = Optics.coerced
+
+      fromI :: Optics.Iso' (I a) a
+      fromI = Optics.coerced
 
 -- | Get field from the record
 --

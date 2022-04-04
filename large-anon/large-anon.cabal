@@ -87,6 +87,7 @@ library
     , hashable
     , large-generics
     , mtl
+    , optics-core
     , primitive
     , record-hasfield
     , sop-core

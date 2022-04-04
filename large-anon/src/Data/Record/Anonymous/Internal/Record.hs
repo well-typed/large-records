@@ -54,6 +54,8 @@ import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet.UserAPI
 
+import qualified Optics.Core as Optics
+
 import Data.Record.Anon.Core.Canonical (Canonical)
 import Data.Record.Anon.Core.Diff (Diff)
 import Data.Record.Anon.Core.FieldName (FieldName(..))
@@ -122,6 +124,13 @@ instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: k).
 
       ix :: Int
       ix = rowHasField (Proxy @n) (Proxy @r) (Proxy @a)
+
+instance (RowHasField n r a, KnownSymbol n, KnownHash n)
+      => Optics.LabelOptic n Optics.A_Lens (Record f r) (Record f r) (f a) (f a) where
+  labelOptic = aux (fromLabel @n)
+    where
+      aux :: Field n -> Optics.Lens' (Record f r) (f a)
+      aux n = Optics.lens (get n) (flip (set n))
 
 -- | Compile-time construction of a 'FieldName'
 mkFieldName :: (KnownSymbol n, KnownHash n) => Proxy n -> FieldName

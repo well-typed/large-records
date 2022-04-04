@@ -70,6 +70,7 @@ module Data.Record.Anonymous.Internal.Combinators.Constrained (
 import Data.Proxy
 import Data.Record.Generic (FieldMetadata(..))
 import Data.SOP.BasicFunctors
+import Data.SOP.Dict
 import GHC.TypeLits (symbolVal)
 
 import Data.Record.Anon.Plugin.Internal.Runtime
@@ -84,14 +85,11 @@ import qualified Data.Record.Anonymous.Internal.Combinators.Simple as Simple
 -------------------------------------------------------------------------------}
 
 cpure :: forall r f c.
-     (AllFields r c, KnownFields r)
+     AllFields r c
   => Proxy c
   -> (forall x. c x => f x)
   -> Record f r
-cpure p f = Simple.map aux (constrain p (Simple.pure (K ())))
-  where
-    aux :: Constrained c (K ()) x -> f x
-    aux (Constrained _) = f
+cpure p f = Simple.map (\Dict -> f) $ reifyAllFields p
 
 {-------------------------------------------------------------------------------
   Functor

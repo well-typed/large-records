@@ -36,7 +36,7 @@ module Data.Record.Anonymous.Internal.Record (
   , get
   , set
   , merge
-  , recordLens
+  , lens
   , project
   , inject
   , applyPending
@@ -53,6 +53,8 @@ import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet.UserAPI
+
+import qualified Optics.Core as Optics
 
 import Data.Record.Anon.Core.Canonical (Canonical)
 import Data.Record.Anon.Core.Diff (Diff)
@@ -123,6 +125,13 @@ instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: k).
       ix :: Int
       ix = rowHasField (Proxy @n) (Proxy @r) (Proxy @a)
 
+instance (RowHasField n r a, KnownSymbol n, KnownHash n)
+      => Optics.LabelOptic n Optics.A_Lens (Record f r) (Record f r) (f a) (f a) where
+  labelOptic = aux (fromLabel @n)
+    where
+      aux :: Field n -> Optics.Lens' (Record f r) (f a)
+      aux n = Optics.lens (get n) (flip (set n))
+
 -- | Compile-time construction of a 'FieldName'
 mkFieldName :: (KnownSymbol n, KnownHash n) => Proxy n -> FieldName
 mkFieldName p = FieldName (hashVal p) (symbolVal p)
@@ -166,23 +175,23 @@ insertA ::
 insertA f x r = insert f <$> x <*> r
 
 get :: forall n f r a.
-     HasField n (Record f r) a
-  => Field n -> Record f r -> a
-get _ = getField @n @(Record f r)
+     RowHasField n r a
+  => Field n -> Record f r -> f a
+get (Field _) = getField @n @(Record f r)
 
 set :: forall n f r a.
-     HasField n (Record f r) a
-  => Field n -> a -> Record f r -> Record f r
-set _ = flip (setField @n @(Record f r))
+     RowHasField n r a
+  => Field n -> f a -> Record f r -> Record f r
+set (Field _) = flip (setField @n @(Record f r))
 
 merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (toCanonical -> r) (toCanonical -> r') =
     unsafeFromCanonical $ r <> r'
 
-recordLens :: forall f r r'.
+lens :: forall f r r'.
      Project r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
-recordLens = \(toCanonical -> r) ->
+lens = \(toCanonical -> r) ->
     bimap getter setter $
       Canon.lens (projectIndices (Proxy @r) (Proxy @r')) r
   where
@@ -196,13 +205,13 @@ recordLens = \(toCanonical -> r) ->
 --
 -- This is just the 'lens' getter.
 project :: Project r r' => Record f r -> Record f r'
-project = fst . recordLens
+project = fst . lens
 
 -- | Inject subrecord
 --
--- This is just the 'recordLens' setter.
+-- This is just the 'lens' setter.
 inject :: Project r r' => Record f r' -> Record f r -> Record f r
-inject small = ($ small) . snd . recordLens
+inject small = ($ small) . snd . lens
 
 applyPending :: Record f r -> Record f r
 applyPending (toCanonical -> r) = unsafeFromCanonical r

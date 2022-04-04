@@ -1,8 +1,7 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE TypeOperators    #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes       #-}
 
 -- | Simple interface (without a functor argument)
 --
@@ -25,13 +24,14 @@ module Data.Record.Anon.Simple (
   , get
   , set
     -- * Changing rows
-  , merge
   , project
   , inject
   , lens
+  , merge
     -- * Interop with the advanced API
   , toAdvanced
   , fromAdvanced
+  , sequenceA
     -- * Experimental integration with @typelet@
     --
     -- |
@@ -41,6 +41,8 @@ module Data.Record.Anon.Simple (
   , letRecordT
   , letInsertAs
   ) where
+
+import Prelude hiding (sequenceA)
 
 import TypeLet
 
@@ -147,7 +149,7 @@ applyPending = S.applyPending
 -- > example r = r.a
 --
 -- See 'Data.Record.Anon.Advanced.get' for additional discussion.
-get :: HasField n (Record r) a => Field n -> Record r -> a
+get :: RowHasField n r a => Field n -> Record r -> a
 get = S.get
 
 -- | Update field in the record
@@ -164,32 +166,12 @@ get = S.get
 -- If using @record-dot-preprocessor@, can also write this example as
 --
 -- > example r = r{a = False}
-set :: HasField n (Record r) a => Field n -> a -> Record r -> Record r
+set :: RowHasField n r a => Field n -> a -> Record r -> Record r
 set = S.set
 
 {-------------------------------------------------------------------------------
   Changing rows
 -------------------------------------------------------------------------------}
-
--- | Merge two records
---
--- The 'Merge' type family does not reduce:
---
--- >>> :{
--- example :: Record (Merge '[ "a" :=  Bool ] '[])
--- example = merge (insert #a True empty) empty
--- :}
---
--- If you want to flatten the row after merging, you can use 'project':
---
--- >>> :{
--- example :: Record '[ "a" :=  Bool ]
--- example = project $ merge (insert #a True empty) empty
--- :}
---
--- See 'Data.Record.Anon.Advanced.merge' for additional discussion.
-merge :: Record r -> Record r' -> Record (Merge r r')
-merge = S.merge
 
 -- | Project from one record to another
 --
@@ -223,6 +205,26 @@ inject = S.inject
 lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
 lens = S.lens
 
+-- | Merge two records
+--
+-- The 'Merge' type family does not reduce:
+--
+-- >>> :{
+-- example :: Record (Merge '[ "a" :=  Bool ] '[])
+-- example = merge (insert #a True empty) empty
+-- :}
+--
+-- If you want to flatten the row after merging, you can use 'project':
+--
+-- >>> :{
+-- example :: Record '[ "a" :=  Bool ]
+-- example = project $ merge (insert #a True empty) empty
+-- :}
+--
+-- See 'Data.Record.Anon.Advanced.merge' for additional discussion.
+merge :: Record r -> Record r' -> Record (Merge r r')
+merge = S.merge
+
 {-------------------------------------------------------------------------------
   Interop with the advanced API
 -------------------------------------------------------------------------------}
@@ -238,6 +240,10 @@ toAdvanced = S.toAdvanced
 -- This is an @O(1)@ operation.
 fromAdvanced :: A.Record I r -> Record r
 fromAdvanced = S.fromAdvanced
+
+-- | Sequence all actions
+sequenceA :: Monad m => A.Record m r -> m (Record r)
+sequenceA = S.sequenceA
 
 {-------------------------------------------------------------------------------
   Experimental integration with @typelet@

@@ -49,12 +49,21 @@ parseKnownHash ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CKnownHash)
 parseKnownHash _ ResolvedNames{..} =
-    parseConstraint' clsKnownHash $ \[ty] -> do
-      label <- isStrLitTy ty
+    parseConstraint isRelevant $ \(ty, label) -> do
       return $ CKnownHash {
           knownHashLabel = label
         , knownHashType  = ty
         }
+  where
+    isRelevant :: Class -> [Type] -> Maybe (Type, FastString)
+    isRelevant cls args
+      | [ty] <- args
+      , cls == clsKnownHash
+      , Just label <- isStrLitTy ty
+      = Just (ty, label)
+
+      | otherwise
+      = Nothing
 
 evidenceKnownFieldLabel ::
      ResolvedNames

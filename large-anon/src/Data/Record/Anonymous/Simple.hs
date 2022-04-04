@@ -64,27 +64,32 @@ module Data.Record.Anonymous.Simple (
     -- * Interop with the advanced interface
   , toAdvanced
   , fromAdvanced
+  , sequenceA
     -- * Support for @typelet@
   , letRecordT
   , letInsertAs
   ) where
 
+import Prelude hiding (sequenceA)
+
 import Data.Aeson (ToJSON(..), FromJSON(..))
+import Data.Bifunctor
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
 import Data.Record.Generic.Show
 import GHC.Exts
+import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet
-import Data.Bifunctor
 
 import qualified Data.Vector.Generic as Vector
+import qualified Optics.Core         as Optics
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import Data.Record.Anonymous.Internal.Record (Field)
+import Data.Record.Anonymous.Internal.Record (Field(..))
 
 import qualified Data.Record.Anonymous.Advanced as Adv
 
@@ -113,8 +118,15 @@ import qualified Data.Record.Anonymous.Advanced as Adv
 -- See "Data.Record.Anon.Advanced".
 newtype Record r = SimpleRecord { toAdvanced :: Adv.Record I r }
 
+{-------------------------------------------------------------------------------
+  Interop with advanced API
+-------------------------------------------------------------------------------}
+
 fromAdvanced :: Adv.Record I r -> Record r
 fromAdvanced = SimpleRecord
+
+sequenceA :: Monad m => Adv.Record m r -> m (Record r)
+sequenceA = fmap fromAdvanced . Adv.sequenceA'
 
 {-------------------------------------------------------------------------------
   Basic API
@@ -137,7 +149,7 @@ merge r r' = fromAdvanced $ Adv.merge (toAdvanced r) (toAdvanced r')
 lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
 lens =
       bimap fromAdvanced (\f -> fromAdvanced . f . toAdvanced)
-    . Adv.recordLens
+    . Adv.lens
     . toAdvanced
 
 project :: Project r r' => Record r -> Record r'
@@ -160,21 +172,27 @@ instance HasField  n            (Adv.Record I r) (I a)
       aux :: (I a -> Adv.Record I r, I a) -> (a -> Record r, a)
       aux (setX, x) = (fromAdvanced . setX . I, unI x)
 
+instance Optics.LabelOptic n Optics.A_Lens (Adv.Record I r) (Adv.Record I r) (I a) (I a)
+      => Optics.LabelOptic n Optics.A_Lens (    Record   r) (    Record   r)    a     a where
+  labelOptic = toAdvanced Optics.% fromLabel @n Optics.% fromI
+    where
+      toAdvanced :: Optics.Iso' (Record r) (Adv.Record I r)
+      toAdvanced = Optics.coerced
+
+      fromI :: Optics.Iso' (I a) a
+      fromI = Optics.coerced
+
 -- | Get field from the record
 --
 -- This is just a wrapper around 'getField'.
-get :: forall n r a.
-     HasField n (Record r) a
-  => Field n -> Record r -> a
-get _ = getField @n @(Record r)
+get :: forall n r a. RowHasField n r a => Field n -> Record r -> a
+get (Field _) = getField @n @(Record r)
 
 -- | Update field in the record
 --
 -- This is just a wrapper around 'setField'.
-set :: forall n r a.
-     HasField n (Record r) a
-  => Field n -> a -> Record r -> Record r
-set _ = flip (setField @n @(Record r))
+set :: forall n r a. RowHasField n r a => Field n -> a -> Record r -> Record r
+set (Field _) = flip (setField @n @(Record r))
 
 {-------------------------------------------------------------------------------
   Constraints

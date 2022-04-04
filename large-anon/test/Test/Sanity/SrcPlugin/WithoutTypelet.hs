@@ -81,7 +81,6 @@ example_simple_reordered = S.project $ ANON {
     , b = 'a'
     }
 
--- TODO: If we write a := Int by mistake, this leads to a panic in the plugin
 example_advanced_I :: A.Record I '[ "a" := Int, "b" := Char, "c" := Bool ]
 example_advanced_I = ANON_F {
       a = I 1

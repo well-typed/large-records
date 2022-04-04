@@ -79,7 +79,7 @@ test_merge = assertEqual "" recordA $ Anon.project recordWithMerge
 
 test_lens :: Assertion
 test_lens = do
-    let (getter, setter) = Anon.recordLens recordA
+    let (getter, setter) = Anon.lens recordA
     assertEqual "get" recordB $
       getter
     assertEqual "set" (Anon.set #c (I 2) recordA) $

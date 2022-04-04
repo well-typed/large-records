@@ -1,7 +1,6 @@
 {-# LANGUAGE ConstraintKinds  #-}
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds   #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE PolyKinds        #-}
 {-# LANGUAGE RankNTypes       #-}
@@ -29,10 +28,10 @@ module Data.Record.Anon.Advanced (
   , get
   , set
     -- * Changing rows
-  , merge
   , project
   , inject
-  , recordLens
+  , lens
+  , merge
     -- * Combinators
     -- ** " Functor "
   , map
@@ -232,7 +231,7 @@ applyPending = A.applyPending
 -- constraint remains unsolved in this example, because if @x == "b"@, the first
 -- field would shadow the second, and the result type should be @Maybe Bool@
 -- instead of @Maybe Int@.
-get :: HasField n (Record f r) (f a) => Field n -> Record f r -> f a
+get :: RowHasField n r a => Field n -> Record f r -> f a
 get = A.get
 
 -- | Update field in the record
@@ -249,60 +248,12 @@ get = A.get
 -- If using @record-dot-preprocessor@, can also write this example as
 --
 -- > example r = r{a = Just False}
-set ::
-     HasField n (Record f r) (f a)
-  => Field n -> f a -> Record f r -> Record f r
+set :: RowHasField n r a => Field n -> f a -> Record f r -> Record f r
 set = A.set
 
 {-------------------------------------------------------------------------------
   Changing rows
 -------------------------------------------------------------------------------}
-
--- | Merge two records
---
--- The 'Merge' type family does not reduce:
---
--- >>> :{
--- example :: Record Maybe (Merge '[ "a" :=  Bool ] '[])
--- example = merge (insert #a (Just True) empty) empty
--- :}
---
--- If you want to flatten the row after merging, you can use 'project':
---
--- >>> :{
--- example :: Record Maybe '[ "a" :=  Bool ]
--- example = project $ merge (insert #a (Just True) empty) empty
--- :}
---
--- 'HasField' constraints can be resolved for merged records, subject to the
--- same condition discussed in 'get': all fields in the record must be known up
--- to the requested field (in case of shadowing). So the record /may/ be fully
--- known:
---
--- >>> :{
--- example :: Record f (Merge '[ "a" := Bool ] '[ "b" := Char ]) -> f Char
--- example r = get #b r
--- :}
---
--- but it doesn't have to be:
---
--- >>> :{
--- example :: Record I (Merge '[ "a" := Bool ] r) -> I Bool
--- example = get #a
--- :}
---
--- However, just like in the case of unknown fields (see example in 'get'),
--- if earlier parts in the record are unknown we get type error:
---
--- >>> :{
--- example :: Record I (Merge r '[ "b" := Char ]) -> I Char
--- example r = get #b r
--- :}
--- ...
--- ...No instance for (RowHasField "b"...
--- ...
-merge :: Record f r -> Record f r' -> Record f (Merge r r')
-merge = A.merge
 
 -- | Project from one record to another
 --
@@ -357,10 +308,56 @@ inject = A.inject
 --
 -- See 'project' for examples ('project' is just the lens getter, without the
 -- setter).
-recordLens ::
+lens ::
      Project r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
-recordLens = A.recordLens
+lens = A.lens
+
+-- | Merge two records
+--
+-- The 'Merge' type family does not reduce:
+--
+-- >>> :{
+-- example :: Record Maybe (Merge '[ "a" :=  Bool ] '[])
+-- example = merge (insert #a (Just True) empty) empty
+-- :}
+--
+-- If you want to flatten the row after merging, you can use 'project':
+--
+-- >>> :{
+-- example :: Record Maybe '[ "a" :=  Bool ]
+-- example = project $ merge (insert #a (Just True) empty) empty
+-- :}
+--
+-- 'HasField' constraints can be resolved for merged records, subject to the
+-- same condition discussed in 'get': all fields in the record must be known up
+-- to the requested field (in case of shadowing). So the record /may/ be fully
+-- known:
+--
+-- >>> :{
+-- example :: Record f (Merge '[ "a" := Bool ] '[ "b" := Char ]) -> f Char
+-- example r = get #b r
+-- :}
+--
+-- but it doesn't have to be:
+--
+-- >>> :{
+-- example :: Record I (Merge '[ "a" := Bool ] r) -> I Bool
+-- example = get #a
+-- :}
+--
+-- However, just like in the case of unknown fields (see example in 'get'),
+-- if earlier parts in the record are unknown we get type error:
+--
+-- >>> :{
+-- example :: Record I (Merge r '[ "b" := Char ]) -> I Char
+-- example r = get #b r
+-- :}
+-- ...
+-- ...No instance for (RowHasField "b"...
+-- ...
+merge :: Record f r -> Record f r' -> Record f (Merge r r')
+merge = A.merge
 
 {-------------------------------------------------------------------------------
   Combinators
@@ -393,9 +390,7 @@ pure :: KnownFields r => (forall x. f x) -> Record f r
 pure f = A.pure f
 
 -- | Constrained form of 'pure'
-cpure ::
-     (KnownFields r, AllFields r c)
-  => Proxy c -> (forall x. c x => f x) -> Record f r
+cpure :: AllFields r c => Proxy c -> (forall x. c x => f x) -> Record f r
 cpure p f = A.cpure p f
 
 -- | Analogue of '<*>'

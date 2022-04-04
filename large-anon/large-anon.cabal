@@ -87,6 +87,7 @@ library
     , hashable
     , large-generics
     , mtl
+    , optics-core
     , primitive
     , record-hasfield
     , sop-core
@@ -134,6 +135,7 @@ test-suite test-large-anon
       Test.Prop.Record.Model.Orphans
       Test.Sanity.AllFields
       Test.Sanity.Applicative
+      Test.Sanity.BlogPost
       Test.Sanity.CheckCanProject
       Test.Sanity.Discovery
       Test.Sanity.DuplicateFields
@@ -154,15 +156,21 @@ test-suite test-large-anon
       -- then cull this list.
       base
     , aeson
+    , aeson-pretty
+    , bytestring
     , large-anon
     , large-generics
     , mtl
+    , optics-core
+    , parsec
     , QuickCheck
+    , record-dot-preprocessor
     , record-hasfield
     , sop-core
     , tasty
     , tasty-hunit
     , tasty-quickcheck
+    , text
     , typelet
     , validation-selective
   ghc-options:

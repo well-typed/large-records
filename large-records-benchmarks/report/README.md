@@ -187,11 +187,6 @@ This overwrites half the record fields.
 
 #### Comparison with `superrecord`
 
-We show the core size for all phases here, because the coresze of `superrecord`
-is actually _constant_ for this example after the simplifier (presumably because
-it translates to unsafe functions and the type argument disappears). Compilation
-time is similar for both, however.
-
 ![](graphs/large-anon-vs-superrecord-updateone-coresize.png)
 ![](graphs/large-anon-vs-superrecord-updateone-timing.png)
 ![](graphs/large-anon-vs-superrecord-updateone-runtime.png)

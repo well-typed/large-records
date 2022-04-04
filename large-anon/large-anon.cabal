@@ -140,11 +140,11 @@ test-suite test-large-anon
       Test.Sanity.Generics
       Test.Sanity.HasField
       Test.Sanity.Intersection
-      Test.Sanity.Lens
       Test.Sanity.Merging
       Test.Sanity.Named.Record1
       Test.Sanity.Named.Record2
       Test.Sanity.PolyKinds
+      Test.Sanity.RecordLens
       Test.Sanity.Simple
       Test.Sanity.SrcPlugin.WithoutTypelet
       Test.Sanity.SrcPlugin.WithTypelet

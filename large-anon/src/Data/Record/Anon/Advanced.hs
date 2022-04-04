@@ -393,9 +393,7 @@ pure :: KnownFields r => (forall x. f x) -> Record f r
 pure f = A.pure f
 
 -- | Constrained form of 'pure'
-cpure ::
-     (KnownFields r, AllFields r c)
-  => Proxy c -> (forall x. c x => f x) -> Record f r
+cpure :: AllFields r c => Proxy c -> (forall x. c x => f x) -> Record f r
 cpure p f = A.cpure p f
 
 -- | Analogue of '<*>'

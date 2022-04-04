@@ -238,8 +238,8 @@ test_update = do
     assertEqual "diff" (upd interspersedDiffType) $
       setDiff new
   where
-    (_, setSame) = Anon.lens interspersedSameType
-    (_, setDiff) = Anon.lens interspersedDiffType
+    (_, setSame) = Anon.recordLens interspersedSameType
+    (_, setDiff) = Anon.recordLens interspersedDiffType
 
     upd :: HasField "d" (Record I r) (I [Double]) => Record I r -> Record I r
     upd r = Anon.set #d (I [1.618]) r

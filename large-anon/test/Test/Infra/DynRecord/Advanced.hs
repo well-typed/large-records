@@ -136,7 +136,7 @@ toLens p = \r ->
       where
         getter :: Record f r
         setter :: Record f r -> Record f r'
-        (getter, setter) = Anon.lens r
+        (getter, setter) = Anon.recordLens r
 
 toRecord :: forall k (r :: Row k) (f :: k -> *) proxy.
      ( IsValue f

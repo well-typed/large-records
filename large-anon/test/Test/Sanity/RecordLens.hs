@@ -4,7 +4,7 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
-module Test.Sanity.Lens (tests) where
+module Test.Sanity.RecordLens (tests) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -14,7 +14,7 @@ import Data.Record.Anon.Advanced (Record)
 import qualified Data.Record.Anon.Advanced as Anon
 
 tests :: TestTree
-tests = testGroup "Test.Sanity.Lens" [
+tests = testGroup "Test.Sanity.RecordLens" [
       testGroup "Isomorphic projections" [
           testCase "id"      test_id
         , testCase "reorder" test_reorder
@@ -79,7 +79,7 @@ test_merge = assertEqual "" recordA $ Anon.project recordWithMerge
 
 test_lens :: Assertion
 test_lens = do
-    let (getter, setter) = Anon.lens recordA
+    let (getter, setter) = Anon.recordLens recordA
     assertEqual "get" recordB $
       getter
     assertEqual "set" (Anon.set #c (I 2) recordA) $

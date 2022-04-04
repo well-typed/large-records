@@ -12,9 +12,9 @@ import qualified Test.Sanity.DuplicateFields
 import qualified Test.Sanity.Generics
 import qualified Test.Sanity.HasField
 import qualified Test.Sanity.Intersection
-import qualified Test.Sanity.Lens
 import qualified Test.Sanity.Merging
 import qualified Test.Sanity.PolyKinds
+import qualified Test.Sanity.RecordLens
 import qualified Test.Sanity.Simple
 import qualified Test.Sanity.SrcPlugin.WithoutTypelet
 import qualified Test.Sanity.SrcPlugin.WithTypelet
@@ -26,7 +26,7 @@ main = defaultMain $ testGroup "large-anon" [
           Test.Sanity.HasField.tests
         , Test.Sanity.Generics.tests
         , Test.Sanity.Merging.tests
-        , Test.Sanity.Lens.tests
+        , Test.Sanity.RecordLens.tests
         , Test.Sanity.DuplicateFields.tests
         , Test.Sanity.TypeLevelMetadata.tests
         , Test.Sanity.AllFields.tests

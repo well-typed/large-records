@@ -459,12 +459,8 @@ set xrange [0:80]
 
 set ylabel "Core size (terms + types + coercions)"
 set output "graphs/large-anon-vs-superrecord-updateone-coresize.png"
-plot "<(cat coresize.csv | grep SR_UpdateOne | grep ds-preopt,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds-preopt)" \
-   , "<(cat coresize.csv | grep SR_UpdateOne | grep ds,)"        using 2:7 with lines lt rgb "#EE2222" title "superrecord (ds)" \
-   , "<(cat coresize.csv | grep SR_UpdateOne | grep simpl,)"     using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
-   , "<(cat coresize.csv | grep ^UpdateOne   | grep ds-preopt,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds-preopt)" \
-   , "<(cat coresize.csv | grep ^UpdateOne   | grep ds,)"        using 2:7 with lines lt rgb "#22EE22" title "large-anon (ds)" \
-   , "<(cat coresize.csv | grep ^UpdateOne   | grep simpl,)"     using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
+plot "<(cat coresize.csv | grep SR_UpdateOne | grep simpl,)" using 2:7 with lines lt rgb "#EE2222" title "superrecord (simpl)" \
+   , "<(cat coresize.csv | grep ^UpdateOne   | grep simpl,)" using 2:7 with lines lt rgb "#22EE22" title "large-anon (simpl)"
 
 set ylabel "Compilation time (ms)"
 set output "graphs/large-anon-vs-superrecord-updateone-timing.png"

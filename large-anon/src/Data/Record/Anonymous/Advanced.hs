@@ -24,7 +24,7 @@ module Data.Record.Anonymous.Advanced (
   , Record.get
   , Record.set
   , Record.merge
-  , Record.recordLens
+  , Record.lens
   , Record.project
   , Record.inject
   , Record.applyPending

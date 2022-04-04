@@ -36,7 +36,7 @@ module Data.Record.Anonymous.Internal.Record (
   , get
   , set
   , merge
-  , recordLens
+  , lens
   , project
   , inject
   , applyPending
@@ -179,10 +179,10 @@ merge :: Record f r -> Record f r' -> Record f (Merge r r')
 merge (toCanonical -> r) (toCanonical -> r') =
     unsafeFromCanonical $ r <> r'
 
-recordLens :: forall f r r'.
+lens :: forall f r r'.
      Project r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
-recordLens = \(toCanonical -> r) ->
+lens = \(toCanonical -> r) ->
     bimap getter setter $
       Canon.lens (projectIndices (Proxy @r) (Proxy @r')) r
   where
@@ -196,13 +196,13 @@ recordLens = \(toCanonical -> r) ->
 --
 -- This is just the 'lens' getter.
 project :: Project r r' => Record f r -> Record f r'
-project = fst . recordLens
+project = fst . lens
 
 -- | Inject subrecord
 --
--- This is just the 'recordLens' setter.
+-- This is just the 'lens' setter.
 inject :: Project r r' => Record f r' -> Record f r -> Record f r
-inject small = ($ small) . snd . recordLens
+inject small = ($ small) . snd . lens
 
 applyPending :: Record f r -> Record f r
 applyPending (toCanonical -> r) = unsafeFromCanonical r

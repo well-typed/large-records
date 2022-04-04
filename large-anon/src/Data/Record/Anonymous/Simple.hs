@@ -137,7 +137,7 @@ merge r r' = fromAdvanced $ Adv.merge (toAdvanced r) (toAdvanced r')
 lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
 lens =
       bimap fromAdvanced (\f -> fromAdvanced . f . toAdvanced)
-    . Adv.recordLens
+    . Adv.lens
     . toAdvanced
 
 project :: Project r r' => Record r -> Record r'

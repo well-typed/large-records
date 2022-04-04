@@ -31,7 +31,7 @@ module Data.Record.Anon.Advanced (
   , merge
   , project
   , inject
-  , recordLens
+  , lens
     -- * Combinators
     -- ** " Functor "
   , map
@@ -354,10 +354,10 @@ inject = A.inject
 --
 -- See 'project' for examples ('project' is just the lens getter, without the
 -- setter).
-recordLens ::
+lens ::
      Project r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
-recordLens = A.recordLens
+lens = A.lens
 
 {-------------------------------------------------------------------------------
   Combinators

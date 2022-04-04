@@ -1,4 +1,6 @@
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE PatternSynonyms    #-}
+
 -- | Supporting definitions used by both the simple and the advanced interface
 --
 -- To use the anonymous records library, you will want to use either the simple
@@ -18,7 +20,7 @@
 -- > {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 module Data.Record.Anon (
     -- * Rows
-    Pair(..)
+    pattern (:=)
   , Row
   , Merge
 

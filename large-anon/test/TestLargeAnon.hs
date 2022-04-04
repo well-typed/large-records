@@ -6,6 +6,7 @@ import qualified Test.Prop.Record.Combinators.Constrained
 import qualified Test.Prop.Record.Combinators.Simple
 import qualified Test.Sanity.AllFields
 import qualified Test.Sanity.Applicative
+import qualified Test.Sanity.BlogPost
 import qualified Test.Sanity.CheckCanProject
 import qualified Test.Sanity.Discovery
 import qualified Test.Sanity.DuplicateFields
@@ -38,6 +39,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.SrcPlugin.WithoutTypelet.tests
         , Test.Sanity.SrcPlugin.WithTypelet.tests
         , Test.Sanity.Intersection.tests
+        , Test.Sanity.BlogPost.tests
         ]
     , testGroup "Prop" [
           Test.Prop.Record.Combinators.Simple.tests

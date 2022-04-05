@@ -48,10 +48,9 @@ import TypeLet
 
 import Data.Record.Anon
 
-import qualified Data.Record.Anon.Advanced as A
-
-import Data.Record.Anonymous.Simple (Record)
-import qualified Data.Record.Anonymous.Simple as S
+import Data.Record.Anon.Internal.Simple (Record)
+import qualified Data.Record.Anon.Internal.Simple   as S
+import qualified Data.Record.Anon.Internal.Advanced as A
 
 -- $setup
 -- >>> :set -XDataKinds

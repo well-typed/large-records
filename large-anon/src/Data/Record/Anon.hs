@@ -69,9 +69,8 @@ import GHC.Records.Compat (HasField(..))
 import GHC.TypeLits (KnownSymbol)
 
 import Data.Record.Anon.Plugin.Internal.Runtime
-import Data.Record.Anonymous.Internal.Record (Field)
-import Data.Record.Anonymous.Discovery (Some(Some))
-import Data.Record.Anonymous.Internal.Reflection (Reflected(Reflected))
+import Data.Record.Anon.Internal.Advanced (Field, Some(..))
+import Data.Record.Anon.Internal.Reflection (Reflected(Reflected))
 
 
 

@@ -15,7 +15,7 @@ module Data.Record.Anon.Internal.Core.FieldName (
 import Data.Hashable
 import Data.String
 
-import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
+import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 
 {-------------------------------------------------------------------------------
   Definition

@@ -23,9 +23,9 @@ import Prelude hiding (lookup)
 import Control.Monad (mzero)
 import Data.Foldable (asum)
 
-import Data.Record.Anon.Core.FieldName (FieldName)
+import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 
-import qualified Data.Record.Anon.Core.FieldName as FieldName
+import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
 
 import Data.Record.Anonymous.Internal.Row.KnownField (KnownField(..))
 import Data.Record.Anonymous.Internal.Row.KnownRow (KnownRow(..))

@@ -9,9 +9,9 @@
 --
 -- Intended for qualified import.
 --
--- > import Data.Record.Anon.Core.Record as Core (Record(..))
--- > import qualified Data.Record.Anon.Core.Record as Core.Record
-module Data.Record.Anon.Core.Record (
+-- > import Data.Record.Anon.Internal.Core.Record as Core (Record(..))
+-- > import qualified Data.Record.Anon.Internal.Core.Record as Core.Record
+module Data.Record.Anon.Internal.Core.Record (
     -- * Definition
     Record(..)
     -- * Conversion
@@ -26,12 +26,12 @@ import Data.Kind
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import GHC.Exts (Any)
 
-import Data.Record.Anon.Core.Canonical (Canonical)
-import Data.Record.Anon.Core.Diff (Diff)
-import Data.Record.Anon.Core.FieldName
+import Data.Record.Anon.Internal.Core.Canonical (Canonical)
+import Data.Record.Anon.Internal.Core.Diff (Diff)
+import Data.Record.Anon.Internal.Core.FieldName
 
-import qualified Data.Record.Anon.Core.Canonical as Canon
-import qualified Data.Record.Anon.Core.Diff      as Diff
+import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
+import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
 
 {-------------------------------------------------------------------------------
   Definition

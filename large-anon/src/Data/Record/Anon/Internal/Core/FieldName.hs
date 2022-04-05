@@ -2,9 +2,9 @@
 --
 -- Intended for qualified import.
 --
--- > import Data.Record.Anon.Core.FieldName (FieldName(..))
--- > import qualified Data.Record.Anon.Core.FieldName as FieldName
-module Data.Record.Anon.Core.FieldName (
+-- > import Data.Record.Anon.Internal.Core.FieldName (FieldName(..))
+-- > import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
+module Data.Record.Anon.Internal.Core.FieldName (
     -- * Definition
     FieldName(..)
     -- * Conversion

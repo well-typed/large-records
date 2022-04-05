@@ -47,12 +47,12 @@ library
       -- and cannot import from @.Runtime@. See detailed discussion in
       -- "Data.Record.Anon.Plugin.Internal.Runtime".
 
-      Data.Record.Anon.Core.Canonical
-      Data.Record.Anon.Core.Diff
-      Data.Record.Anon.Core.FieldName
-      Data.Record.Anon.Core.Record
-      Data.Record.Anon.Core.Util.SmallHashMap
-      Data.Record.Anon.Core.Util.StrictVector
+      Data.Record.Anon.Internal.Core.Canonical
+      Data.Record.Anon.Internal.Core.Diff
+      Data.Record.Anon.Internal.Core.FieldName
+      Data.Record.Anon.Internal.Core.Record
+      Data.Record.Anon.Internal.Core.Util.SmallHashMap
+      Data.Record.Anon.Internal.Core.Util.StrictVector
 
       --
       -- BELOW THIS LINE STILL NEEDS REORGANIZATION

@@ -3,7 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 
-module Data.Record.Anon.Core.Util.StrictVector (
+module Data.Record.Anon.Internal.Core.Util.StrictVector (
     Vector -- opaque
     -- * Reads
   , (!)

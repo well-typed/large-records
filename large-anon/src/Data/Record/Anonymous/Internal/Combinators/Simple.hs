@@ -37,10 +37,10 @@ import Data.Proxy
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->))
 
-import Data.Record.Anon.Core.Canonical (Canonical)
+import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anon.Core.Canonical as Canon
+import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
 
 import Data.Record.Anonymous.Internal.Record (Record)
 

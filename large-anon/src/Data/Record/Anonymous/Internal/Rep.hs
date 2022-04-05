@@ -26,7 +26,7 @@ import qualified Data.Vector as Lazy
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anon.Core.Canonical as Canon
+import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
 
 import Data.Record.Anonymous.Internal.Record (Record)
 

@@ -99,7 +99,7 @@ import qualified Data.Vector as Vector
   dependencies just bypasses the problem altogether.
 
   NOTE: In order to avoid headaches with cyclic module dependencies, we use the
-  convention that the runtime can only import from @Data.Record.Anon.Core.*@,
+  convention that the runtime can only import from @Data.Record.Anon.Internal.Core.*@,
   which in turn cannot import from the runtime (and can only import from other
   modules in the Core.*@). One important consequence of this split is that
   nothing in @Core.*@ is aware of the concept of rows, which is introduced here.

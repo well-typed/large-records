@@ -56,15 +56,15 @@ import TypeLet.UserAPI
 
 import qualified Optics.Core as Optics
 
-import Data.Record.Anon.Core.Canonical (Canonical)
-import Data.Record.Anon.Core.Diff (Diff)
-import Data.Record.Anon.Core.FieldName (FieldName(..))
+import Data.Record.Anon.Internal.Core.Canonical (Canonical)
+import Data.Record.Anon.Internal.Core.Diff (Diff)
+import Data.Record.Anon.Internal.Core.FieldName (FieldName(..))
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anon.Core.Canonical as Canon
-import qualified Data.Record.Anon.Core.Diff      as Diff
-import qualified Data.Record.Anon.Core.Record    as Core (Record(..))
-import qualified Data.Record.Anon.Core.Record    as Core.Record
+import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
+import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
+import qualified Data.Record.Anon.Internal.Core.Record    as Core (Record(..))
+import qualified Data.Record.Anon.Internal.Core.Record    as Core.Record
 
 {-------------------------------------------------------------------------------
   Definition

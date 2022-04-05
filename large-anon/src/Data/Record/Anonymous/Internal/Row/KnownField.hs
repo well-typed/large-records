@@ -20,8 +20,8 @@ module Data.Record.Anonymous.Internal.Row.KnownField (
   , toType
   ) where
 
-import Data.Record.Anon.Core.FieldName (FieldName(..))
-import qualified Data.Record.Anon.Core.FieldName as FieldName
+import Data.Record.Anon.Internal.Core.FieldName (FieldName(..))
+import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
 
 import Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
 

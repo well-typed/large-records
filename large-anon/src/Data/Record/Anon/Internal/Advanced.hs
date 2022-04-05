@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- | Full record representation
 --
@@ -115,16 +116,9 @@ import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
 -------------------------------------------------------------------------------}
 
 -- | Anonymous record
-data Record (f :: k -> Type) (r :: Row k) = Record {
-      -- | Pending changes
-      recordDiff :: !(Diff f)
-
-      -- | Number of pending changes
-    , recordDiffSize :: {-# UNPACK #-} !Int
-
-      -- | The original record
-    , recordCanon :: {-# UNPACK #-} !(Canonical f)
-    }
+data Record (f :: k -> Type) (r :: Row k) =
+    NoPending  {-# UNPACK #-} !(Canonical f)
+  | HasPending {-# UNPACK #-} !(Canonical f) !(Diff f)
 
 {-------------------------------------------------------------------------------
   Conversion
@@ -135,18 +129,15 @@ data Record (f :: k -> Type) (r :: Row k) = Record {
 -- This is @O(n)@, and should be done only for operations on records that are
 -- @O(n)@ /anyway/, so that the cost can be absorbed.
 toCanonical :: Record f r -> Canonical f
-toCanonical Record{..} = Diff.apply recordDiff recordCanon
+toCanonical (NoPending  c)   = c
+toCanonical (HasPending c d) = Diff.apply d c
 
 -- | Construct 'Record' from 'Canonical' representation (empty 'Diff')
 --
 -- This function is unsafe because we cannot verify whether the record matches
 -- it's row specification @r@.
 unsafeFromCanonical :: Canonical f -> Record f r
-unsafeFromCanonical canon = Record {
-      recordDiff     = Diff.empty
-    , recordDiffSize = 0
-    , recordCanon    = canon
-    }
+unsafeFromCanonical = NoPending
 
 {-------------------------------------------------------------------------------
   HasField
@@ -200,27 +191,28 @@ instance (RowHasField n r a, KnownSymbol n, KnownHash n)
 --
 -- It is the responsibility of the plugin to ensure that the field index and
 -- the field type match.
-unsafeGetField :: Int -> FieldName -> Record f r -> a
-unsafeGetField  i n Record{recordDiff, recordDiffSize, recordCanon}
-  | recordDiffSize == 0
-  = co $ Canon.getAtIndex recordCanon i
-
-  | otherwise
-  = co $ Diff.get (i, n) recordDiff recordCanon
+unsafeGetField :: forall k (f :: k -> Type) (r :: Row k) (a :: k).
+    Int -> FieldName -> Record f r -> f a
+unsafeGetField i n = co . \case
+    NoPending  c   -> Canon.getAtIndex c i
+    HasPending c d -> Diff.get (i, n) d c
   where
-    co  :: f Any -> a
+    co  :: f Any -> f a
     co = noInlineUnsafeCo
 
 -- | Low level field update
 --
 -- See comments in 'getField'.
-unsafeSetField :: Int -> FieldName -> a -> Record f r -> Record f r
-unsafeSetField i n x r@Record{recordDiff, recordDiffSize} =
-    r { recordDiff     = Diff.set (i, n) (co x) recordDiff
-      , recordDiffSize = recordDiffSize + 1
-      }
+unsafeSetField :: forall k (f :: k -> Type) (r :: Row k) (a :: k).
+    Int -> FieldName -> f a -> Record f r -> Record f r
+unsafeSetField i n x = \case
+    NoPending  c   -> HasPending c (go Diff.empty)
+    HasPending c d -> HasPending c (go d)
   where
-    co :: a -> f Any
+    go :: Diff f -> Diff f
+    go = Diff.set (i, n) (co x)
+
+    co :: f a -> f Any
     co = noInlineUnsafeCo
 
 get :: forall n f r a.
@@ -238,16 +230,17 @@ set (Field _) = flip (setField @n @(Record f r))
 -------------------------------------------------------------------------------}
 
 empty :: Record f '[]
-empty = Record Diff.empty 0 mempty
+empty = NoPending mempty
 
-insert :: Field n -> f a -> Record f r -> Record f (n := a : r)
-insert (Field n) x r@Record{ recordDiff     = diff
-                           , recordDiffSize = diffSize
-                           } = r {
-      recordDiff     = Diff.insert (mkFieldName n) (co x) diff
-    , recordDiffSize = diffSize + 1
-    }
+insert :: forall k (f :: k -> Type) (r :: Row k) (a :: k) (n :: Symbol).
+    Field n -> f a -> Record f r -> Record f (n := a : r)
+insert (Field n) x = \case
+    NoPending  c   -> HasPending c (go Diff.empty)
+    HasPending c d -> HasPending c (go d)
   where
+    go :: Diff f -> Diff f
+    go = Diff.insert (mkFieldName n) (co x)
+
     co :: f a -> f Any
     co = noInlineUnsafeCo
 

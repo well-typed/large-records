@@ -10,6 +10,6 @@
 -- "Data.Record.Anon.Simple" or "Data.Record.Anon.Advanced" instead.
 module Data.Record.Anon.Plugin (plugin) where
 
-import Data.Record.Anonymous.Plugin (plugin)
+import Data.Record.Anon.Internal.Plugin (plugin)
 
 

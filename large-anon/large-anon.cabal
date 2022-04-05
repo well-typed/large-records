@@ -22,59 +22,43 @@ library
       Data.Record.Anon.Plugin.Internal.Runtime
 
   other-modules:
-      Data.Record.Anonymous.Simple
-      Data.Record.Anonymous.Advanced
-      Data.Record.Anonymous.Plugin
-      Data.Record.Anonymous.Discovery
-
-      -- Exposed for the benefit of the plugin/docspec
-      -- TODO: Reconsider if we need to export all of this.
-      Data.Record.Anonymous.Internal.Combinators.Constrained
-      Data.Record.Anonymous.Internal.Combinators.Simple
-      Data.Record.Anonymous.Internal.Constraints
-      Data.Record.Anonymous.Internal.Generics
-      Data.Record.Anonymous.Internal.Record
-      Data.Record.Anonymous.Internal.Rep
-      Data.Record.Anonymous.Internal.Reflection
-      Data.Record.Anonymous.Internal.Row.KnownField
-      Data.Record.Anonymous.Internal.Row.KnownRow
-      Data.Record.Anonymous.Internal.Row.ParsedRow
-
-      -- Exposed for the benefit of cabal-docspec
-      Data.Record.Anonymous.TcPlugin.EquivClasses
-
       -- The modules in @Core.*@ can only import from other modules in @Core.*@,
       -- and cannot import from @.Runtime@. See detailed discussion in
       -- "Data.Record.Anon.Plugin.Internal.Runtime".
 
-      Data.Record.Anon.Core.Canonical
-      Data.Record.Anon.Core.Diff
-      Data.Record.Anon.Core.FieldName
-      Data.Record.Anon.Core.Record
-      Data.Record.Anon.Core.Util.SmallHashMap
-      Data.Record.Anon.Core.Util.StrictVector
+      Data.Record.Anon.Internal.Core.Canonical
+      Data.Record.Anon.Internal.Core.Diff
+      Data.Record.Anon.Internal.Core.FieldName
+      Data.Record.Anon.Internal.Core.Util.SmallHashMap
+      Data.Record.Anon.Internal.Core.Util.StrictVector
 
-      --
-      -- BELOW THIS LINE STILL NEEDS REORGANIZATION
-      --
+      Data.Record.Anon.Internal.Reflection
+      Data.Record.Anon.Internal.Advanced
+      Data.Record.Anon.Internal.Simple
 
-      Data.Record.Anonymous.SrcPlugin
-      Data.Record.Anonymous.SrcPlugin.GhcShim
-      Data.Record.Anonymous.SrcPlugin.Names
-      Data.Record.Anonymous.SrcPlugin.NamingT
-      Data.Record.Anonymous.SrcPlugin.Options
+      Data.Record.Anon.Internal.Plugin
 
-      Data.Record.Anonymous.TcPlugin.Constraints.AllFields
-      Data.Record.Anonymous.TcPlugin.Constraints.KnownFields
-      Data.Record.Anonymous.TcPlugin.Constraints.KnownHash
-      Data.Record.Anonymous.TcPlugin.Constraints.Project
-      Data.Record.Anonymous.TcPlugin.Constraints.RowHasField
-      Data.Record.Anonymous.TcPlugin.GhcTcPluginAPI
-      Data.Record.Anonymous.TcPlugin.NameResolution
-      Data.Record.Anonymous.TcPlugin.Parsing
-      Data.Record.Anonymous.TcPlugin.Rewriter
-      Data.Record.Anonymous.TcPlugin.Solver
-      Data.Record.Anonymous.TcPlugin.TyConSubst
+      Data.Record.Anon.Internal.Plugin.TC.Constraints.AllFields
+      Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownFields
+      Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownHash
+      Data.Record.Anon.Internal.Plugin.TC.Constraints.Project
+      Data.Record.Anon.Internal.Plugin.TC.Constraints.RowHasField
+      Data.Record.Anon.Internal.Plugin.TC.EquivClasses
+      Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
+      Data.Record.Anon.Internal.Plugin.TC.NameResolution
+      Data.Record.Anon.Internal.Plugin.TC.Parsing
+      Data.Record.Anon.Internal.Plugin.TC.Rewriter
+      Data.Record.Anon.Internal.Plugin.TC.Row.KnownField
+      Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow
+      Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow
+      Data.Record.Anon.Internal.Plugin.TC.Solver
+      Data.Record.Anon.Internal.Plugin.TC.TyConSubst
+
+      Data.Record.Anon.Internal.Plugin.Source
+      Data.Record.Anon.Internal.Plugin.Source.GhcShim
+      Data.Record.Anon.Internal.Plugin.Source.Names
+      Data.Record.Anon.Internal.Plugin.Source.NamingT
+      Data.Record.Anon.Internal.Plugin.Source.Options
 
   build-depends:
       base             >= 4.13  && < 4.18
@@ -92,6 +76,7 @@ library
     , record-hasfield
     , sop-core
     , syb
+    , tagged
     , typelet
     , vector
 

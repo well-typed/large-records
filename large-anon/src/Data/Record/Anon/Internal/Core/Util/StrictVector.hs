@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 
 module Data.Record.Anon.Internal.Core.Util.StrictVector (
-    Vector -- opaque
+    StrictVector -- opaque
     -- * Reads
   , (!)
     -- * Conversion
@@ -14,7 +14,8 @@ module Data.Record.Anon.Internal.Core.Util.StrictVector (
   , toLazy
     -- * Non-monadic combinators
   , (//)
-  , permute
+  , update
+  , backpermute
   , zipWith
     -- * Monadic combinators
   , mapM
@@ -22,13 +23,13 @@ module Data.Record.Anon.Internal.Core.Util.StrictVector (
   ) where
 
 import Prelude hiding (mapM, zipWith)
-import qualified Prelude
 
+import Control.Monad (forM_)
 import Data.Primitive.SmallArray
 
-import qualified Control.Monad as M
+import qualified Control.Monad as Monad
 import qualified Data.Foldable as Foldable
-import qualified Data.Vector   as V
+import qualified Data.Vector   as Lazy
 
 {-------------------------------------------------------------------------------
   Definition
@@ -55,80 +56,87 @@ import qualified Data.Vector   as V
 --
 -- This means that 'Record' will have /direct/ access (no pointers) to the
 -- 'SmallArray#'.
-newtype Vector a = WrapLazy { unwrapLazy :: SmallArray a }
+newtype StrictVector a = WrapLazy { unwrapLazy :: SmallArray a }
   deriving newtype (Show, Eq, Foldable, Semigroup, Monoid)
 
 {-------------------------------------------------------------------------------
   Reads
 -------------------------------------------------------------------------------}
 
-(!) :: Vector a -> Int -> a
+(!) :: StrictVector a -> Int -> a
 (!) = indexSmallArray . unwrapLazy
 
 {-------------------------------------------------------------------------------
   Conversion
 -------------------------------------------------------------------------------}
 
-fromList :: [a] -> Vector a
+fromList :: [a] -> StrictVector a
 fromList as = fromListN (length as) as
 
-fromListN :: Int -> [a] -> Vector a
+fromListN :: Int -> [a] -> StrictVector a
 fromListN n as = WrapLazy $
     createSmallArray n undefined $ \r ->
-      M.forM_ (zip [0..] as) $ \(i, !a) ->
+      forM_ (zip [0..] as) $ \(i, !a) ->
         writeSmallArray r i a
 
-fromLazy :: V.Vector a -> Vector a
-fromLazy v = fromListN (V.length v) (V.toList v)
+fromLazy :: Lazy.Vector a -> StrictVector a
+fromLazy v =
+    fromListN (Lazy.length v) (Lazy.toList v)
 
-toLazy :: Vector a -> V.Vector a
-toLazy (WrapLazy arr) = V.fromListN (sizeofSmallArray arr) (Foldable.toList arr)
+toLazy :: StrictVector a -> Lazy.Vector a
+toLazy (WrapLazy arr) =
+    Lazy.fromListN (sizeofSmallArray arr) (Foldable.toList arr)
 
 {-------------------------------------------------------------------------------
   Non-monadic combinators
 -------------------------------------------------------------------------------}
 
-instance Functor Vector where
+instance Functor StrictVector where
   fmap f (WrapLazy as) = WrapLazy $
       createSmallArray newSize undefined $ \r ->
-        M.forM_ [0 .. newSize - 1] $ \i -> do
-          let !b = f (indexSmallArray as i)
-          writeSmallArray r i b
+        forArrayM_ as $ \i a -> writeSmallArray r i $! f a
     where
       newSize :: Int
       newSize = sizeofSmallArray as
 
-(//) :: Vector a -> [(Int, a)] -> Vector a
+(//) :: StrictVector a -> [(Int, a)] -> StrictVector a
 (//) (WrapLazy as) as' = WrapLazy $ runSmallArray $ do
     r <- thawSmallArray as 0 newSize
-    M.forM_ as' $ \(i, !a) -> writeSmallArray r i a
+    forM_ as' $ \(i, !a) -> writeSmallArray r i a
     return r
   where
     newSize :: Int
     newSize = sizeofSmallArray as
 
-permute :: Vector a -> [Int] -> Vector a
-permute (WrapLazy as) is = WrapLazy $
+update :: StrictVector a -> StrictVector (Int, a) -> StrictVector a
+update (WrapLazy as) (WrapLazy as') = WrapLazy $ runSmallArray $ do
+    r <- thawSmallArray as 0 newSize
+    forArrayM_ as' $ \_i (j, !a) -> writeSmallArray r j a
+    return r
+  where
+    newSize :: Int
+    newSize = sizeofSmallArray as
+
+backpermute :: StrictVector a -> StrictVector Int -> StrictVector a
+backpermute (WrapLazy as) (WrapLazy is) = WrapLazy $
     createSmallArray newSize undefined $ \r ->
-      M.forM_ (zip [0..] is) $ \(i, j) -> do
-        let !a = indexSmallArray as j
-        writeSmallArray r i a
+      forArrayM_ is $ \i j -> writeSmallArray r i $! indexSmallArray as j
   where
     newSize :: Int
     newSize = length is
 
-zipWith :: (a -> b -> c) -> Vector a -> Vector b -> Vector c
+zipWith :: (a -> b -> c) -> StrictVector a -> StrictVector b -> StrictVector c
 zipWith f (WrapLazy as) (WrapLazy bs) = WrapLazy $
     createSmallArray newSize undefined $ \r ->
-       M.forM_ [0 .. newSize - 1] $ \i -> do
-         let !c = f (indexSmallArray as i) (indexSmallArray bs i)
-         writeSmallArray r i c
+      forM_ [0 .. newSize - 1] $ \i -> do
+        let !c = f (indexSmallArray as i) (indexSmallArray bs i)
+        writeSmallArray r i c
   where
     newSize :: Int
     newSize = min (sizeofSmallArray as) (sizeofSmallArray bs)
 
 {-------------------------------------------------------------------------------
-  Monadic combinators
+  Applicative combinators
 
   NOTE: The monadic combinators here do two traversals, first collecting all
   elements of the vector in memory, and then constructing the new vector. The
@@ -137,18 +145,38 @@ zipWith f (WrapLazy as) (WrapLazy bs) = WrapLazy $
   (through the monadic combinators on 'Record'), we prefer to avoid it.
 -------------------------------------------------------------------------------}
 
-mapM :: forall m a b. Monad m => (a -> m b) -> Vector a -> m (Vector b)
-mapM f (WrapLazy as) = do
-    bs <- Prelude.mapM f (Foldable.toList as)
-    return $ fromListN newSize bs
+mapM :: forall m a b.
+     Applicative m
+  => (a -> m b) -> StrictVector a -> m (StrictVector b)
+mapM f (WrapLazy as) =
+    fromListN newSize <$>
+      traverse f (Foldable.toList as)
   where
     newSize :: Int
     newSize = sizeofSmallArray as
 
-zipWithM :: Monad m => (a -> b -> m c) -> Vector a -> Vector b -> m (Vector c)
+zipWithM ::
+     Applicative m
+  => (a -> b -> m c) -> StrictVector a -> StrictVector b -> m (StrictVector c)
 zipWithM f (WrapLazy as) (WrapLazy bs) = do
-    cs <- M.zipWithM f (Foldable.toList as) (Foldable.toList bs)
-    return $ fromListN newSize cs
+    fromListN newSize <$>
+      Monad.zipWithM f (Foldable.toList as) (Foldable.toList bs)
   where
     newSize :: Int
     newSize = min (sizeofSmallArray as) (sizeofSmallArray bs)
+
+{-------------------------------------------------------------------------------
+  Internal auxiliary
+-------------------------------------------------------------------------------}
+
+forArrayM_ :: forall m a. Monad m => SmallArray a -> (Int -> a -> m ()) -> m ()
+forArrayM_ arr f = go 0
+  where
+    go :: Int -> m ()
+    go i
+      | i < sizeofSmallArray arr
+      = f i (indexSmallArray arr i) >> go (succ i)
+
+      | otherwise
+      = return ()
+

@@ -366,7 +366,7 @@ map :: (forall x. f x -> g x) -> Record f r -> Record g r
 map f = A.map f
 
 -- | Analogue to 'Prelude.mapM'
-mapM :: Monad m => (forall x. f x -> m (g x)) -> Record f r -> m (Record g r)
+mapM :: Applicative m => (forall x. f x -> m (g x)) -> Record f r -> m (Record g r)
 mapM f = A.mapM f
 
 -- | Constrained form of 'map'
@@ -377,7 +377,7 @@ cmap p f = A.cmap p f
 
 -- | Constrained form of 'cmap'
 cmapM ::
-     (Monad m, AllFields r c)
+     (Applicative m, AllFields r c)
   => Proxy c
   -> (forall x. c x => f x -> m (g x))
   -> Record f r -> m (Record g r)
@@ -404,11 +404,11 @@ toList :: KnownFields r => Record (K a) r -> [(String, a)]
 toList = A.toList
 
 -- | Analogue of 'Prelude.sequenceA'
-sequenceA :: Monad m => Record (m :.: f) r -> m (Record f r)
+sequenceA :: Applicative m => Record (m :.: f) r -> m (Record f r)
 sequenceA = A.sequenceA
 
 -- | Simplified form of 'sequenceA'
-sequenceA' :: Monad m => Record m r -> m (Record I r)
+sequenceA' :: Applicative m => Record m r -> m (Record I r)
 sequenceA' = A.sequenceA'
 
 -- | Analogue of 'Prelude.zip'
@@ -423,7 +423,7 @@ zipWith f = A.zipWith f
 
 -- | Analogue of 'Control.Monad.zipWithM'
 zipWithM ::
-     Monad m
+     Applicative m
   => (forall x. f x -> g x -> m (h x))
   -> Record f r -> Record g r -> m (Record h r)
 zipWithM f = A.zipWithM f
@@ -438,7 +438,7 @@ czipWith p f = A.czipWith p f
 
 -- | Constrained form of 'zipWithM'
 czipWithM ::
-     (Monad m, AllFields r c)
+     (Applicative m, AllFields r c)
   => Proxy c
   -> (forall x. c x => f x -> g x -> m (h x))
   -> Record f r -> Record g r -> m (Record h r)

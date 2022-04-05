@@ -59,6 +59,10 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Vector as Lazy
 import qualified Data.Vector as Vector
 
+import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
+
+import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
+
 {-------------------------------------------------------------------------------
   IMPLEMENTATION NOTE
 
@@ -265,11 +269,11 @@ class Project (r :: Row k) (r' :: Row k) where
 
 -- | In order of the fields in the /target/ record, the index in the /source/
 type DictProject k (r :: Row k) (r' :: Row k) =
-       Proxy r -> Proxy r' -> [Int]
+       Proxy r -> Proxy r' -> StrictVector Int
 
 evidenceProject :: forall k (r :: Row k) (r' :: Row k).
   [Int] -> DictProject k r r'
-evidenceProject x _ _ = x
+evidenceProject x _ _ = Strict.fromList x
 
 {-------------------------------------------------------------------------------
   Utility

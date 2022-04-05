@@ -110,6 +110,8 @@ import Data.Record.Anon.Plugin.Internal.Runtime
 import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
 import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
 import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
+import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
+import Data.Coerce (coerce)
 
 {-------------------------------------------------------------------------------
   Definition
@@ -290,7 +292,7 @@ map f (toCanonical -> r) = unsafeFromCanonical $
     Canon.map f r
 
 mapM ::
-     Monad m
+     Applicative m
   => (forall x. f x -> m (g x))
   -> Record f r -> m (Record g r)
 mapM f (toCanonical -> r) = fmap unsafeFromCanonical $
@@ -306,7 +308,7 @@ zipWith f (toCanonical -> r) (toCanonical -> r') = unsafeFromCanonical $
     Canon.zipWith f r r'
 
 zipWithM ::
-     Monad m
+     Applicative m
   => (forall x. f x -> g x -> m (h x))
   -> Record f r -> Record g r -> m (Record h r)
 zipWithM f (toCanonical -> r) (toCanonical -> r') = fmap unsafeFromCanonical $
@@ -316,11 +318,11 @@ collapse :: Record (K a) r -> [a]
 collapse (toCanonical -> r) =
     Canon.collapse r
 
-sequenceA :: Monad m => Record (m :.: f) r -> m (Record f r)
+sequenceA :: Applicative m => Record (m :.: f) r -> m (Record f r)
 sequenceA (toCanonical -> r) = fmap unsafeFromCanonical $
     Canon.sequenceA r
 
-sequenceA' :: Monad m => Record m r -> m (Record I r)
+sequenceA' :: Applicative m => Record m r -> m (Record I r)
 sequenceA' = sequenceA . co
   where
     co :: Record m r -> Record (m :.: I) r
@@ -401,7 +403,10 @@ reifyProject =
   where
     ixs :: Record (K Int) r'
     ixs = unsafeFromCanonical $
-            Canon.fromList $ Prelude.map K $ projectIndices (Proxy @r) (Proxy @r')
+            Canon.fromVector $ co $ projectIndices (Proxy @r) (Proxy @r')
+
+    co :: StrictVector Int -> StrictVector (K Int Any)
+    co = coerce
 
     aux :: forall x. K Int x -> K String x -> InRow r x
     aux (K i) (K name) =
@@ -411,12 +416,12 @@ reifyProject =
 reflectProject :: forall k (r :: Row k) (r' :: Row k).
      Record (InRow r) r'
   -> Reflected (Project r r')
-reflectProject ixs =
+reflectProject (toCanonical -> ixs) =
     Unsafe.reflectProject $ \_ _ ->
-      collapse $ map aux ixs
+      aux <$> Canon.toVector ixs
   where
-    aux :: forall x. InRow r x -> K Int x
-    aux (InRow p) = K $ rowHasField p (Proxy @r) (Proxy @x)
+    aux :: forall x. InRow r x -> Int
+    aux (InRow p) = rowHasField p (Proxy @r) (Proxy @x)
 
 unsafeInRow :: forall n r a. KnownSymbol n => Int -> Proxy n -> InRow r a
 unsafeInRow i p =
@@ -591,7 +596,7 @@ cmap :: forall r c f g.
 cmap p f = zipWith (\Dict -> f) (reifyAllFields p)
 
 cmapM ::
-     (Monad m, AllFields r c)
+     (Applicative m, AllFields r c)
   => Proxy c
   -> (forall x. c x => f x -> m (g x))
   -> Record f r -> m (Record g r)
@@ -604,7 +609,7 @@ toList = Prelude.zipWith aux (fieldMetadata (Proxy @r)) . collapse
     aux (FieldMetadata p _) a = (symbolVal p, a)
 
 czipWithM :: forall m r c f g h.
-     (Monad m, AllFields r c)
+     (Applicative m, AllFields r c)
   => Proxy c
   -> (forall x. c x => f x -> g x -> m (h x))
   -> Record f r -> Record g r -> m (Record h r)

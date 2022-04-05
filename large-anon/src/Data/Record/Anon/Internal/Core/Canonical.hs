@@ -26,6 +26,8 @@ module Data.Record.Anon.Internal.Core.Canonical (
     -- * Conversion
   , toList
   , fromList
+  , toVector
+  , fromVector
   , toLazyVector
   , fromLazyVector
     -- * Basic API
@@ -44,7 +46,6 @@ module Data.Record.Anon.Internal.Core.Canonical (
   ) where
 
 import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
-import qualified Prelude
 
 import Data.Coerce (coerce)
 import Data.Kind
@@ -56,7 +57,7 @@ import GHC.Exts (Any)
 import qualified Data.Foldable as Foldable
 import qualified Data.Vector   as Lazy
 
-import Data.Record.Anon.Internal.Core.Util.StrictVector (Vector)
+import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
 
 import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
 
@@ -66,8 +67,12 @@ import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
 
 -- | Canonical record representation
 --
--- Canonicity here refers to the fact that we have no @Diff@ to apply
--- (see "Data.Record.Anonymous.Internal.Diff").
+-- Canonicity here refers to the fact that we have no @Diff@ to apply (see
+-- "Data.Record.Anonymous.Internal.Diff"). In this case, the record is
+-- represented as a strict vector in row order (@large-anon@ is strict by
+-- default; lazy records can be achieved using boxing). This order is important:
+-- it makes it possible to define functions such as @mapM@ (for which ordering
+-- must be well-defined).
 --
 -- Type level shadowing is reflected at the term level: if a record has
 -- duplicate fields in its type, it will have multiple entries for that field
@@ -82,17 +87,7 @@ import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
-newtype Canonical (f :: k -> Type) = Canonical {
-      -- | All values in the record, in row order.
-      --
-      -- It is important that the vector is in row order: this is what makes
-      -- it possible to define functions such as @mapM@ (for which ordering
-      -- must be well-defined).
-      --
-      -- The default for @large-anon@ is strict fields, so we use a strict
-      -- vector here. Lazy fields can be achieved by boxing them.
-      canonValues :: Vector (f Any)
-    }
+newtype Canonical (f :: k -> Type) = Canonical (StrictVector (f Any))
   deriving newtype (Semigroup, Monoid)
 
 type role Canonical representational
@@ -107,7 +102,7 @@ deriving instance Show a => Show (Canonical (K a))
 --
 -- @O(1)@.
 getAtIndex :: Canonical f -> Int -> f Any
-getAtIndex Canonical{canonValues} ix = canonValues Strict.! ix
+getAtIndex (Canonical c) ix = c Strict.! ix
 
 -- | Set fields at the specified indices
 --
@@ -121,25 +116,33 @@ setAtIndex fs (Canonical v) = Canonical (v Strict.// fs)
   Conversion
 -------------------------------------------------------------------------------}
 
+-- | To strict vector
+toVector :: Canonical f -> StrictVector (f Any)
+toVector (Canonical v) = v
+
+-- | From strict vector
+fromVector :: StrictVector (f Any) -> Canonical f
+fromVector = Canonical
+
 -- | All fields in row order
 --
 -- @O(n)@
 toList :: Canonical f -> [f Any]
-toList (Canonical v) = Foldable.toList v
+toList = Foldable.toList . toVector
 
 -- | From list of fields in row order
 --
 -- @O(n)@.
 fromList :: [f Any] -> Canonical f
-fromList = Canonical . Strict.fromList
+fromList = fromVector . Strict.fromList
 
 -- | To lazy vector
 toLazyVector :: Canonical f -> Lazy.Vector (f Any)
-toLazyVector = Strict.toLazy . canonValues
+toLazyVector = Strict.toLazy . toVector
 
 -- | From already constructed vector
 fromLazyVector :: Lazy.Vector (f Any) -> Canonical f
-fromLazyVector = Canonical . Strict.fromLazy
+fromLazyVector = fromVector . Strict.fromLazy
 
 {-------------------------------------------------------------------------------
   Basic API
@@ -166,30 +169,23 @@ insert new = prepend
 -- order of the new record.
 --
 -- @O(n)@ (in both directions)
-lens :: [Int] -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
+lens :: StrictVector Int -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
 lens is (Canonical v) = (
       Canonical $
-        Strict.permute v is
+        Strict.backpermute v is
     , \(Canonical v') -> Canonical $
-        v Strict.// (Prelude.zip is (Foldable.toList v'))
+         Strict.update v (Strict.zipWith (,) is v')
     )
 
 {-------------------------------------------------------------------------------
   Simple (non-constrained) combinators
-
-  NOTE: Some of these have a 'Monad' constraint where one might expect an
-  'Applicative' only . The reason is that this allows for better implementations
-  in terms of the underlying vector (for example, 'zipWithM' in @base@ merely
-  requires an 'Applicative constraint, but on vectors has a 'Monad' constraint).
-  Should this turn out to be problematic, we could offer an alternative more
-  general but slower set of operators.
 -------------------------------------------------------------------------------}
 
 map :: (forall x. f x -> g x) -> Canonical f -> Canonical g
 map f (Canonical v) = Canonical $ fmap f v
 
 mapM ::
-     Monad m
+     Applicative m
   => (forall x. f x -> m (g x))
   -> Canonical f -> m (Canonical g)
 mapM f (Canonical v) = Canonical <$> Strict.mapM f v
@@ -202,11 +198,11 @@ zipWith ::
   -> Canonical f -> Canonical g -> Canonical h
 zipWith f (Canonical v) (Canonical v') = Canonical $ Strict.zipWith f v v'
 
--- | Monadic zip of two records
+-- | Applicative zip of two records
 --
 -- Precondition: the two records must have the same shape.
 zipWithM ::
-     Monad m
+     Applicative m
   => (forall x. f x -> g x -> m (h x))
   -> Canonical f -> Canonical g -> m (Canonical h)
 zipWithM f (Canonical v) (Canonical v') = Canonical <$> Strict.zipWithM f v v'
@@ -217,7 +213,7 @@ collapse (Canonical v) = co $ Foldable.toList v
     co :: [K a Any] -> [a]
     co = coerce
 
-sequenceA :: Monad m => Canonical (m :.: f) -> m (Canonical f)
+sequenceA :: Applicative m => Canonical (m :.: f) -> m (Canonical f)
 sequenceA (Canonical v) = Canonical <$> Strict.mapM unComp v
 
 ap :: Canonical (f -.-> g) -> Canonical f -> Canonical g

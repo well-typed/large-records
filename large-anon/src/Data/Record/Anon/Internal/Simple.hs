@@ -125,7 +125,7 @@ newtype Record r = SimpleRecord { toAdvanced :: A.Record I r }
 fromAdvanced :: A.Record I r -> Record r
 fromAdvanced = SimpleRecord
 
-sequenceA :: Monad m => A.Record m r -> m (Record r)
+sequenceA :: Applicative m => A.Record m r -> m (Record r)
 sequenceA = fmap fromAdvanced . A.sequenceA'
 
 {-------------------------------------------------------------------------------

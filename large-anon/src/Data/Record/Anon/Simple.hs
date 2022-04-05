@@ -241,7 +241,7 @@ fromAdvanced :: A.Record I r -> Record r
 fromAdvanced = S.fromAdvanced
 
 -- | Sequence all actions
-sequenceA :: Monad m => A.Record m r -> m (Record r)
+sequenceA :: Applicative m => A.Record m r -> m (Record r)
 sequenceA = S.sequenceA
 
 {-------------------------------------------------------------------------------

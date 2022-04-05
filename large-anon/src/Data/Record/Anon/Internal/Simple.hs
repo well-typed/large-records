@@ -78,6 +78,7 @@ import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
 import Data.Record.Generic.Show
+import Data.Tagged
 import GHC.Exts
 import GHC.OverloadedLabels
 import GHC.Records.Compat
@@ -213,7 +214,7 @@ recordConstraints :: forall r c.
      RecordConstraints r c
   => Proxy c -> Rep (Dict c) (Record r)
 recordConstraints _ = Rep $
-    Vector.map aux $ fieldDicts (Proxy @r) (Proxy @c)
+    Vector.map aux $ proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny c -> Dict c Any
     aux DictAny = Dict

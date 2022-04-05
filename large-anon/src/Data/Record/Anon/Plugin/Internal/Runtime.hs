@@ -52,6 +52,7 @@ module Data.Record.Anon.Plugin.Internal.Runtime (
 import Data.Kind
 import Data.Record.Generic hiding (FieldName)
 import Data.SOP.Constraint (Compose)
+import Data.Tagged
 import GHC.Exts (Any)
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
@@ -135,13 +136,10 @@ class RowHasField (n :: Symbol) (r :: Row k) (a :: k) | n r -> a where
   rowHasField = undefined
 
 type DictRowHasField k (n :: Symbol) (r :: Row k) (a :: k) =
-   Proxy n -> Proxy r -> Proxy a -> Int
+       Tagged '(n, r, a) Int
 
--- | Evidence for 'HasField'
---
--- The evidence is simply the index of the field.
-evidenceRowHasField :: Int -> DictRowHasField k n r a
-evidenceRowHasField i _ _ _ = i
+evidenceRowHasField :: forall k n r a. Int -> DictRowHasField k n r a
+evidenceRowHasField = Tagged
 
 {-------------------------------------------------------------------------------
   Term-level metadata
@@ -157,11 +155,10 @@ class KnownFields (r :: Row k) where
   fieldNames :: DictKnownFields k r
   fieldNames = undefined
 
-type DictKnownFields k (r :: Row k) = Proxy r -> [String]
+type DictKnownFields k (r :: Row k) = Tagged r [String]
 
-evidenceKnownFields :: forall k (r :: Row k).
-  [String] -> DictKnownFields k r
-evidenceKnownFields x _ = x
+evidenceKnownFields :: forall k r. [String] -> DictKnownFields k r
+evidenceKnownFields = Tagged
 
 {-------------------------------------------------------------------------------
   Type-level metadata
@@ -192,34 +189,36 @@ class AllFields (r :: Row k) (c :: k -> Constraint) where
   fieldDicts = undefined
 
 type DictAllFields k (r :: Row k) (c :: k -> Constraint) =
-       Proxy r -> Proxy c -> Lazy.Vector (DictAny c)
+       Tagged r (Lazy.Vector (DictAny c))
 
 data DictAny c where
   DictAny :: c Any => DictAny c
 
-evidenceAllFields :: forall k (r :: Row k) (c :: k -> Constraint).
-  [DictAny c] -> DictAllFields k r c
-evidenceAllFields x _ _ = Vector.fromList x
+evidenceAllFields :: forall k r c. [DictAny c] -> DictAllFields k r c
+evidenceAllFields = Tagged . Vector.fromList
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Show a)
       => AllFields r (Compose Show (K a)) where
-  fieldDicts pr _ = Lazy.fromList $ map (const DictAny) (fieldNames pr)
+  fieldDicts = Tagged $
+      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Eq a)
       => AllFields r (Compose Eq (K a)) where
-  fieldDicts pr _ = Lazy.fromList $ map (const DictAny) (fieldNames pr)
+  fieldDicts = Tagged $
+      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Ord a)
       => AllFields r (Compose Ord (K a)) where
-  fieldDicts pr _ = Lazy.fromList $ map (const DictAny) (fieldNames pr)
+  fieldDicts = Tagged $
+      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 fieldMetadata :: forall k (r :: Row k) proxy.
      KnownFields r
   => proxy r -> [FieldMetadata Any]
-fieldMetadata _ = map aux $ fieldNames (Proxy @r)
+fieldMetadata _ = map aux $ proxy fieldNames (Proxy @r)
   where
     -- @large-anon@ only supports records with strict fields.
     aux :: String -> FieldMetadata Any
@@ -269,11 +268,10 @@ class Project (r :: Row k) (r' :: Row k) where
 
 -- | In order of the fields in the /target/ record, the index in the /source/
 type DictProject k (r :: Row k) (r' :: Row k) =
-       Proxy r -> Proxy r' -> StrictVector Int
+       Tagged '(r, r') (StrictVector Int)
 
-evidenceProject :: forall k (r :: Row k) (r' :: Row k).
-  [Int] -> DictProject k r r'
-evidenceProject x _ _ = Strict.fromList x
+evidenceProject :: forall k r r'. [Int] -> DictProject k r r'
+evidenceProject = Tagged . Strict.fromList
 
 {-------------------------------------------------------------------------------
   Utility

@@ -76,6 +76,7 @@ library
     , record-hasfield
     , sop-core
     , syb
+    , tagged
     , typelet
     , vector
 

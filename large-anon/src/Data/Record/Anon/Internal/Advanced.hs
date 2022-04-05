@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE PolyKinds             #-}
@@ -14,7 +15,6 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# LANGUAGE ViewPatterns          #-}
-{-# LANGUAGE LambdaCase #-}
 
 -- | Full record representation
 --
@@ -81,12 +81,14 @@ import qualified Prelude
 
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Bifunctor
+import Data.Coerce (coerce)
 import Data.Functor.Product
 import Data.Kind
 import Data.Proxy
 import Data.Record.Generic hiding (FieldName)
 import Data.SOP.Classes (fn_2)
 import Data.SOP.Constraint
+import Data.Tagged
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
 import GHC.Records.Compat
@@ -104,14 +106,13 @@ import qualified Data.Record.Generic.Show as Generic
 import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Internal.Core.Diff (Diff)
 import Data.Record.Anon.Internal.Core.FieldName
+import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
 import Data.Record.Anon.Internal.Reflection (Reflected(..))
 import Data.Record.Anon.Plugin.Internal.Runtime
 
 import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
 import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
 import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
-import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
-import Data.Coerce (coerce)
 
 {-------------------------------------------------------------------------------
   Definition
@@ -176,7 +177,7 @@ instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: k).
       name = mkFieldName (Proxy @n)
 
       ix :: Int
-      ix = rowHasField (Proxy @n) (Proxy @r) (Proxy @a)
+      ix = proxy rowHasField (Proxy @'(n, r, a))
 
 -- | Compile-time construction of a 'FieldName'
 mkFieldName :: (KnownSymbol n, KnownHash n) => Proxy n -> FieldName
@@ -260,7 +261,7 @@ lens :: forall f r r'.
   => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = \(toCanonical -> r) ->
     bimap getter setter $
-      Canon.lens (projectIndices (Proxy @r) (Proxy @r')) r
+      Canon.lens (proxy projectIndices (Proxy @'(r, r'))) r
   where
     getter :: Canonical f -> Record f r'
     getter = unsafeFromCanonical
@@ -330,7 +331,7 @@ sequenceA' = sequenceA . co
 
 pure :: forall f r. KnownFields r => (forall x. f x) -> Record f r
 pure f = unsafeFromCanonical $
-    Canon.fromList $ Prelude.map (const f) (fieldNames (Proxy @r))
+    Canon.fromList $ Prelude.map (const f) (proxy fieldNames (Proxy @r))
 
 ap :: Record (f -.-> g) r -> Record f r -> Record g r
 ap (toCanonical -> r) (toCanonical -> r') = unsafeFromCanonical $
@@ -359,20 +360,23 @@ reifyKnownFields :: forall k (r :: Row k) proxy.
   => proxy r -> Record (K String) r
 reifyKnownFields _ =
     unsafeFromCanonical $
-      Canon.fromList $ Prelude.map K $ fieldNames (Proxy @r)
+      Canon.fromList $ co $ proxy fieldNames (Proxy @r)
+  where
+    co :: [String] -> [K String Any]
+    co = coerce
 
 reflectKnownFields :: forall k (r :: Row k).
      Record (K String) r
   -> Reflected (KnownFields r)
 reflectKnownFields names =
-    Unsafe.reflectKnownFields $ \_ -> collapse names
+    Unsafe.reflectKnownFields $ Tagged $ collapse names
 
 reifyAllFields :: forall k (r :: Row k) (c :: k -> Constraint) proxy.
      AllFields r c
   => proxy c -> Record (Dict c) r
 reifyAllFields _ = unsafeFromCanonical $
     Canon.fromLazyVector $
-      Lazy.Vector.map aux $ fieldDicts (Proxy @r) (Proxy @c)
+      Lazy.Vector.map aux $ proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny c -> Dict c Any
     aux DictAny = Dict
@@ -381,7 +385,7 @@ reflectAllFields :: forall k (c :: k -> Constraint) (r :: Row k).
      Record (Dict c) r
   -> Reflected (AllFields r c)
 reflectAllFields dicts =
-    Unsafe.reflectAllFields $ \_ _ ->
+    Unsafe.reflectAllFields $ Tagged $
       fmap aux $ Canon.toLazyVector $ toCanonical dicts
   where
     aux :: Dict c Any -> DictAny c
@@ -403,7 +407,7 @@ reifyProject =
   where
     ixs :: Record (K Int) r'
     ixs = unsafeFromCanonical $
-            Canon.fromVector $ co $ projectIndices (Proxy @r) (Proxy @r')
+            Canon.fromVector $ co $ proxy projectIndices (Proxy @'(r, r'))
 
     co :: StrictVector Int -> StrictVector (K Int Any)
     co = coerce
@@ -417,11 +421,11 @@ reflectProject :: forall k (r :: Row k) (r' :: Row k).
      Record (InRow r) r'
   -> Reflected (Project r r')
 reflectProject (toCanonical -> ixs) =
-    Unsafe.reflectProject $ \_ _ ->
-      aux <$> Canon.toVector ixs
+    Unsafe.reflectProject $ Tagged $
+      (\inRow@(InRow p) -> aux inRow p) <$> Canon.toVector ixs
   where
-    aux :: forall x. InRow r x -> Int
-    aux (InRow p) = rowHasField p (Proxy @r) (Proxy @x)
+    aux :: forall x n. RowHasField n r x => InRow r x -> Proxy n -> Int
+    aux _ _ = proxy rowHasField (Proxy @'(n, r, x))
 
 unsafeInRow :: forall n r a. KnownSymbol n => Int -> Proxy n -> InRow r a
 unsafeInRow i p =
@@ -429,7 +433,7 @@ unsafeInRow i p =
       Reflected -> InRow p
   where
     reflected :: Reflected (RowHasField n r a)
-    reflected = Unsafe.reflectRowHasField $ \_ _ _ -> i
+    reflected = Unsafe.reflectRowHasField $ Tagged i
 
 {-------------------------------------------------------------------------------
   Existential records
@@ -502,7 +506,7 @@ recordConstraints :: forall f r c.
      RecordConstraints f r c
   => Proxy c -> Rep (Dict c) (Record f r)
 recordConstraints _ = Rep $
-    Lazy.Vector.map (co . aux) $ fieldDicts (Proxy @r) (Proxy @(Compose c f))
+    Lazy.Vector.map (co . aux) $ proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny (Compose c f) -> Dict (Compose c f) Any
     aux DictAny = Dict

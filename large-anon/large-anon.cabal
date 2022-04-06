@@ -25,7 +25,7 @@ library
       -- Module organization:
       --
       -- o The modules in @Core.*@ can only import from other modules in
-      --   @Core.*@ and modules in @Util.*.
+      --   @Core.*@ and modules in @Util.*@.
       -- o The modules in the rest of @Internal.*@ can import from @Core.*@ and
       --   @Util.*@, as well "Data.Record.Anon.Plugin.Internal.Runtime".
       --
@@ -69,25 +69,21 @@ library
 
   build-depends:
       base             >= 4.13  && < 4.18
+    , aeson            >= 1.4.4 && < 2.1
+    , containers       >= 0.6.2 && < 0.7
+    , ghc-tcplugin-api >= 0.7.1 && < 0.8
+    , hashable         >= 1.3   && < 1.4
+    , mtl              >= 2.2.1 && < 2.3
+    , optics-core      >= 0.3   && < 0.5
+    , primitive        >= 0.7.1 && < 0.8
+    , record-hasfield  >= 1.0   && < 1.1
+    , sop-core         >= 0.5   && < 0.6
+    , syb              >= 0.7   && < 0.8
+    , tagged           >= 0.8.6 && < 0.9
+    , typelet          >= 0.1   && < 0.2
 
-      -- TODO: Bounds
-      -- TODO: Cull
-    , aeson
-    , containers
-    , ghc-tcplugin-api >= 0.7.1
-    , hashable
-    , large-generics
-    , mtl
-    , optics-core
-    , primitive
-    , record-hasfield
-    , sop-core
-    , syb
-    , tagged
-    , typelet
-
-      -- TODO: Make this dependency optional (DEBUG flag)
-    , recover-rtti >= 0.4.1
+      -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
+    , large-generics   >= 0.2   && < 0.3
 
       -- Whatever version is bundled with ghc
     , ghc
@@ -101,7 +97,14 @@ library
       -Wno-unticked-promoted-constructors
 
   if impl(ghc >= 8.10)
-    ghc-options: -Wunused-packages
+    ghc-options:
+      -Wunused-packages
+
+  if flag(debug)
+    build-depends:
+      recover-rtti >= 0.4.1
+    cpp-options:
+      -DDEBUG
 
 test-suite test-large-anon
   default-language:
@@ -143,8 +146,6 @@ test-suite test-large-anon
       Test.Sanity.SrcPlugin.WithTypelet
       Test.Sanity.TypeLevelMetadata
   build-depends:
-      -- TODO: Re-export some basic definitions from .Anon (e.g., HasField),
-      -- then cull this list.
       base
     , aeson
     , aeson-pretty
@@ -156,7 +157,6 @@ test-suite test-large-anon
     , parsec
     , QuickCheck
     , record-dot-preprocessor
-    , record-hasfield
     , sop-core
     , tasty
     , tasty-hunit
@@ -164,6 +164,9 @@ test-suite test-large-anon
     , text
     , typelet
     , validation-selective
+
+      -- required when using record-dot-preprocessor
+    , record-hasfield
   ghc-options:
       -Wall
       -Wredundant-constraints
@@ -176,3 +179,8 @@ test-suite test-large-anon
   if impl(ghc >= 9.0.1)
     -- Work out ghc problem. See more detailed discussion in large-records.
     ghc-options: -Wno-unused-imports
+
+Flag debug
+  Description: Enable internal debugging features
+  Default: False
+  Manual: True

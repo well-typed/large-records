@@ -12,7 +12,7 @@ module Data.Record.Anon.Internal.Reflection (
     Reflected(..)
   , reflectKnownFields
   , reflectAllFields
-  , reflectProject
+  , reflectSubRow
   , reflectRowHasField
   ) where
 
@@ -32,17 +32,17 @@ data Reflected c where
   Reflection
 -------------------------------------------------------------------------------}
 
-newtype WK r     = WK (KnownFields r     => Reflected (KnownFields r))
-newtype WA r c   = WA (AllFields r c     => Reflected (AllFields r c))
-newtype WP r r'  = WP (Project r r'      => Reflected (Project r r'))
-newtype WR n r a = WR (RowHasField n r a => Reflected (RowHasField n r a))
+newtype WK r     = MkWK (KnownFields r     => Reflected (KnownFields r))
+newtype WA r c   = MkWA (AllFields r c     => Reflected (AllFields r c))
+newtype WS r r'  = MkWS (SubRow r r'       => Reflected (SubRow r r'))
+newtype WR n r a = MkWR (RowHasField n r a => Reflected (RowHasField n r a))
 
 reflectKnownFields :: DictKnownFields k r     -> Reflected (KnownFields r)
 reflectAllFields   :: DictAllFields k r c     -> Reflected (AllFields r c)
-reflectProject     :: DictProject k r r'      -> Reflected (Project r r')
+reflectSubRow      :: DictSubRow k r r'       -> Reflected (SubRow r r')
 reflectRowHasField :: DictRowHasField k n r a -> Reflected (RowHasField n r a)
 
-reflectKnownFields f = noInlineUnsafeCo (WK Reflected) f
-reflectAllFields   f = noInlineUnsafeCo (WA Reflected) f
-reflectProject     f = noInlineUnsafeCo (WP Reflected) f
-reflectRowHasField f = noInlineUnsafeCo (WR Reflected) f
+reflectKnownFields f = noInlineUnsafeCo (MkWK Reflected) f
+reflectAllFields   f = noInlineUnsafeCo (MkWA Reflected) f
+reflectSubRow      f = noInlineUnsafeCo (MkWS Reflected) f
+reflectRowHasField f = noInlineUnsafeCo (MkWR Reflected) f

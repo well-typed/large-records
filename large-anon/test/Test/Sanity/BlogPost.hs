@@ -17,7 +17,7 @@
 module Test.Sanity.BlogPost (
     tests
     -- * Examples for the blog post
-  , checkCanProject
+  , checkIsSubRow
   , exampleRender
   , exampleRender'
   , magenta
@@ -176,7 +176,7 @@ reduceRed c = c{red = c.red * 0.9}
     Show the signature of `showRecord`, forward reference to discussion
     about `KnownFields` and `AllFields`.
   - Generics (example: ToJSON)
-  - Projection
+  - Subrows
 -------------------------------------------------------------------------------}
 
 purple :: Record [ "red" := Double, "green" := Double, "blue" := Double ]
@@ -214,7 +214,7 @@ render = undefined
 exampleRender :: ()
 exampleRender = render $ defaultConfig{margin = 2}
 
-render' :: Project Config overrides => Record overrides -> ()
+render' :: SubRow Config overrides => Record overrides -> ()
 render' overrides = render (S.inject overrides defaultConfig)
 
 exampleRender' :: ()
@@ -297,7 +297,7 @@ ordImpliesEq =
     aux Dict = Dict
 
 smallerSatisfies :: forall r r' c.
-     (Project r r', AllFields r c)
+     (SubRow r r', AllFields r c)
   => Proxy c -> Proxy r -> Reflected (AllFields r' c)
 smallerSatisfies pc _ =
     A.reflectAllFields $
@@ -325,17 +325,17 @@ sameType SupportedInt  SupportedInt  = Just Refl
 sameType SupportedBool SupportedBool = Just Refl
 sameType _             _             = Nothing
 
-checkCanProject :: forall (r :: Row Type) (r' :: Row Type) proxy proxy'.
+checkIsSubRow :: forall (r :: Row Type) (r' :: Row Type) proxy proxy'.
      ( KnownFields r
      , KnownFields r'
-     , Project r  r
-     , Project r' r'
+     , SubRow r  r
+     , SubRow r' r'
      , AllFields r  IsSupportedType
      , AllFields r' IsSupportedType
      )
-  => proxy r -> proxy' r' -> Maybe (Reflected (Project r r'))
-checkCanProject _ _ =
-    A.reflectProject <$> go A.reifyProject A.reifyProject
+  => proxy r -> proxy' r' -> Maybe (Reflected (SubRow r r'))
+checkIsSubRow _ _ =
+    A.reflectSubRow <$> go A.reifySubRow A.reifySubRow
   where
     go :: A.Record (InRow r ) r
        -> A.Record (InRow r') r'

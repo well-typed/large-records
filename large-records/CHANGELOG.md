@@ -1,5 +1,9 @@
 # Revision history for large-records
 
+## 0.2.1.0 -- Not yet released
+
+* Update for `large-generics` 0.2
+
 ## 0.2.0.0 -- 2022-03-23 
 
 * Avoid all quotes: no more Template Haskell (#63) or quasi-quotes (#43).

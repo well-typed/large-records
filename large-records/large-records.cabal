@@ -45,11 +45,11 @@ library
   build-depends:
       base             >= 4.13   && < 4.17
     , containers       >= 0.6.2  && < 0.7
+    , large-generics   >= 0.1    && < 0.2
     , mtl              >= 2.2.1  && < 2.3
+    , primitive        >= 0.7    && < 0.8
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
-    , vector           >= 0.12   && < 0.13
-    , large-generics   >= 0.1    && < 0.2
 
       -- transformers 0.5.6 introduces Writer.CPS
     , transformers     >= 0.5.6  && < 0.7

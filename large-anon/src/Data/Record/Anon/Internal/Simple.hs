@@ -53,14 +53,6 @@ module Data.Record.Anon.Internal.Simple (
   , applyPending
     -- * Constraints
   , RecordConstraints
-    -- * Working with rows
-  , Pair(..)
-  , Row
-  , Project
-  , Merge
-  , AllFields
-  , KnownFields
-  , SimpleFieldTypes
     -- * Interop with the advanced interface
   , toAdvanced
   , fromAdvanced
@@ -84,9 +76,9 @@ import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet
+import Data.Primitive.SmallArray
 
-import qualified Data.Vector.Generic as Vector
-import qualified Optics.Core         as Optics
+import qualified Optics.Core as Optics
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
@@ -147,16 +139,16 @@ insertA f x r = insert f <$> x <*> r
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge r r' = fromAdvanced $ A.merge (toAdvanced r) (toAdvanced r')
 
-lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
+lens :: SubRow r r' => Record r -> (Record r', Record r' -> Record r)
 lens =
       bimap fromAdvanced (\f -> fromAdvanced . f . toAdvanced)
     . A.lens
     . toAdvanced
 
-project :: Project r r' => Record r -> Record r'
+project :: SubRow r r' => Record r -> Record r'
 project = fst . lens
 
-inject :: Project r r' => Record r' -> Record r -> Record r
+inject :: SubRow r r' => Record r' -> Record r -> Record r
 inject small = ($ small) . snd . lens
 
 applyPending :: Record r -> Record r
@@ -214,7 +206,7 @@ recordConstraints :: forall r c.
      RecordConstraints r c
   => Proxy c -> Rep (Dict c) (Record r)
 recordConstraints _ = Rep $
-    Vector.map aux $ proxy fieldDicts (Proxy @r)
+    aux <$> proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny c -> Dict c Any
     aux DictAny = Dict
@@ -239,7 +231,7 @@ recordMetadata = Metadata {
       recordName          = "Record"
     , recordConstructor   = "Record"
     , recordSize          = length fields
-    , recordFieldMetadata = Rep $ Vector.fromList fields
+    , recordFieldMetadata = Rep $ smallArrayFromList fields
     }
   where
     fields :: [FieldMetadata Any]

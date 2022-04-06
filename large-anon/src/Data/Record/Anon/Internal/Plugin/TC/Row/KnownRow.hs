@@ -21,9 +21,9 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (
     -- * Combinators
   , traverse
   , indexed
-    -- * Check for projections
-  , CannotProject(..)
-  , canProject
+    -- * Check for subrows
+  , NotSubRow(..)
+  , isSubRow
   ) where
 
 import Prelude hiding (traverse)
@@ -31,17 +31,14 @@ import qualified Prelude
 
 import Control.Monad.State (State, evalState, state)
 import Data.Either (partitionEithers)
-import Data.Vector (Vector)
-
-import qualified Data.Vector  as V
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
-import Data.Record.Anon.Internal.Core.Util.SmallHashMap (HashMap)
+import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
 
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 
-import qualified Data.Record.Anon.Internal.Core.Util.SmallHashMap as HashMap
+import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition
@@ -55,7 +52,7 @@ data KnownRow a = KnownRow {
       -- order are not considered equal by the library (merely isomorphic).
       --
       -- May contain duplicates (if fields are shadowed).
-      knownRecordVector :: Vector (KnownField a)
+      knownRecordVector :: [KnownField a]
 
       -- | "Most recent" position of each field in the record
       --
@@ -65,7 +62,7 @@ data KnownRow a = KnownRow {
       --
       -- >     HashMap.lookup n knownRecordNames == Just i
       -- > ==> knownFieldName (knownRecordVector V.! i) == n
-    , knownRecordVisible :: HashMap FieldName Int
+    , knownRecordVisible :: SmallHashMap FieldName Int
 
       -- | Are all fields in this record visible?
       --
@@ -79,10 +76,10 @@ data KnownRow a = KnownRow {
 -------------------------------------------------------------------------------}
 
 toList :: KnownRow a -> [KnownField a]
-toList = V.toList . knownRecordVector
+toList = knownRecordVector
 
-visibleMap :: KnownRow a -> HashMap FieldName (KnownField a)
-visibleMap KnownRow{..} = (knownRecordVector V.!) <$> knownRecordVisible
+visibleMap :: KnownRow a -> SmallHashMap FieldName (KnownField a)
+visibleMap KnownRow{..} = (knownRecordVector !!) <$> knownRecordVisible
 
 {-------------------------------------------------------------------------------
   Construction
@@ -96,15 +93,15 @@ fromList :: forall a.
   -> KnownRow a
 fromList = go [] 0 HashMap.empty True
   where
-    go :: [KnownField a]        -- Acc fields, reverse order (includes shadowed)
-       -> Int                   -- Next index
-       -> HashMap FieldName Int -- Acc indices of visible fields
-       -> Bool                  -- Are all already processed fields visible?
-       -> [KnownField a]        -- To process
+    go :: [KnownField a]  -- Acc fields, reverse order (includes shadowed)
+       -> Int             -- Next index
+       -> SmallHashMap FieldName Int -- Acc indices of visible fields
+       -> Bool            -- Are all already processed fields visible?
+       -> [KnownField a]  -- To process
        -> KnownRow a
     go accFields !nextIndex !accVisible !accAllVisible = \case
         [] -> KnownRow {
-            knownRecordVector     = V.fromList $ reverse accFields
+            knownRecordVector     = reverse accFields
           , knownRecordVisible    = accVisible
           , knownRecordAllVisible = accAllVisible
           }
@@ -137,7 +134,7 @@ traverse :: forall m a b.
 traverse KnownRow{..} f =
     mkRow <$> Prelude.traverse f' knownRecordVector
   where
-    mkRow :: Vector (KnownField b) -> KnownRow b
+    mkRow :: [KnownField b] -> KnownRow b
     mkRow updated = KnownRow {
           knownRecordVector     = updated
         , knownRecordVisible    = knownRecordVisible
@@ -159,34 +156,33 @@ indexed r =
   Check for projections
 -------------------------------------------------------------------------------}
 
--- | Reason why we cannot project
-data CannotProject =
-    -- | We do not support projecting to records with shadowed fields
+-- | Reason why we cannot failed to prove 'SubRow'
+data NotSubRow =
+    -- | We do not support precords with shadowed fields
     --
     -- Since these fields can only come from the source record, and shadowed
     -- fields in the source record are invisible, shadowed fields in the target
     -- could only be duplicates of the same field in the source. This is not
     -- particularly useful, so we don't support it. Moreover, since we actually
-    -- create /lenses/ from these projections, it is important that every field
-    -- in the source record corresponds to at most /one/ field in the target.
+    -- create /lenses/ from these subrows, it is important that every field in
+    -- the source record corresponds to at most /one/ field in the target.
     TargetContainsShadowedFields
 
     -- | Some fields in the target are missing in the source
   | SourceMissesFields [FieldName]
   deriving (Show, Eq)
 
--- | Check if we can project from one record to another
+-- | Check if one row is a subrow of another
 --
--- If the projection is possible, returns the paired information from both
--- records in the order of the /target/ record along with the index into the
--- /source/ record.
+-- If it is, returns the paired information from both records in the order of
+-- the /target/ record along with the index into the /source/ record.
 --
--- See docstring of the  'Project' class for some discussion of shadowing.
-canProject :: forall a b.
+-- See 'NotSubRow' for some discussion of shadowing.
+isSubRow :: forall a b.
      KnownRow a
   -> KnownRow b
-  -> Either CannotProject [(Int, (a, b))]
-canProject recordA recordB =
+  -> Either NotSubRow [(Int, (a, b))]
+isSubRow recordA recordB =
     if not (knownRecordAllVisible recordB) then
       Left TargetContainsShadowedFields
     else
@@ -200,7 +196,7 @@ canProject recordA recordB =
           Nothing -> Left  $ knownFieldName b
           Just a  -> Right $ distrib (knownFieldInfo a, knownFieldInfo b)
 
-    checkMissing :: [FieldName] -> x -> Either CannotProject x
+    checkMissing :: [FieldName] -> x -> Either NotSubRow x
     checkMissing []      x = Right x
     checkMissing missing _ = Left $ SourceMissesFields missing
 

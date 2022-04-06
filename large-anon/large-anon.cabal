@@ -22,15 +22,22 @@ library
       Data.Record.Anon.Plugin.Internal.Runtime
 
   other-modules:
-      -- The modules in @Core.*@ can only import from other modules in @Core.*@,
-      -- and cannot import from @.Runtime@. See detailed discussion in
-      -- "Data.Record.Anon.Plugin.Internal.Runtime".
+      -- Module organization:
+      --
+      -- o The modules in @Core.*@ can only import from other modules in
+      --   @Core.*@ and modules in @Util.*.
+      -- o The modules in the rest of @Internal.*@ can import from @Core.*@ and
+      --   @Util.*@, as well "Data.Record.Anon.Plugin.Internal.Runtime".
+      --
+      -- See detailed discussion in the runtime module.
+      --
+
+      Data.Record.Anon.Internal.Util.SmallHashMap
+      Data.Record.Anon.Internal.Util.StrictArray
 
       Data.Record.Anon.Internal.Core.Canonical
       Data.Record.Anon.Internal.Core.Diff
       Data.Record.Anon.Internal.Core.FieldName
-      Data.Record.Anon.Internal.Core.Util.SmallHashMap
-      Data.Record.Anon.Internal.Core.Util.StrictVector
 
       Data.Record.Anon.Internal.Reflection
       Data.Record.Anon.Internal.Advanced
@@ -41,8 +48,8 @@ library
       Data.Record.Anon.Internal.Plugin.TC.Constraints.AllFields
       Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownFields
       Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownHash
-      Data.Record.Anon.Internal.Plugin.TC.Constraints.Project
       Data.Record.Anon.Internal.Plugin.TC.Constraints.RowHasField
+      Data.Record.Anon.Internal.Plugin.TC.Constraints.SubRow
       Data.Record.Anon.Internal.Plugin.TC.EquivClasses
       Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
       Data.Record.Anon.Internal.Plugin.TC.NameResolution
@@ -78,7 +85,6 @@ library
     , syb
     , tagged
     , typelet
-    , vector
 
       -- TODO: Make this dependency optional (DEBUG flag)
     , recover-rtti >= 0.4.1
@@ -121,7 +127,7 @@ test-suite test-large-anon
       Test.Sanity.AllFields
       Test.Sanity.Applicative
       Test.Sanity.BlogPost
-      Test.Sanity.CheckCanProject
+      Test.Sanity.CheckIsSubRow
       Test.Sanity.Discovery
       Test.Sanity.DuplicateFields
       Test.Sanity.Generics

@@ -25,14 +25,15 @@ module Data.Record.Generic.SOP (
   , glowerBound
   ) where
 
+import Data.Foldable (toList)
 import Data.Kind
+import Data.Primitive.SmallArray
 import Data.Proxy
 import Data.SOP.Dict (all_NP)
 import Generics.SOP (SOP(..), NS(..), NP(..), SListI, All, Code, Compose)
 import GHC.Exts (Any)
 import GHC.TypeLits (Symbol)
 
-import qualified Data.Vector  as V
 import qualified Generics.SOP as SOP
 
 import Data.Record.Generic
@@ -59,14 +60,14 @@ deriving instance Eq   (f x) => Eq   (Field f '(nm, x))
 
 fromSOP :: SListI (MetadataOf a) => NP (Field f) (MetadataOf a) -> Rep f a
 fromSOP =
-    Rep . V.fromList . SOP.hcollapse . SOP.hmap conv
+    Rep . smallArrayFromList . SOP.hcollapse . SOP.hmap conv
   where
     conv :: Field f field -> K (f Any) field
     conv (Field fx) = K $ noInlineUnsafeCo fx
 
 toSOP :: SListI (MetadataOf a) => Rep f a -> Maybe (NP (Field f) (MetadataOf a))
 toSOP (Rep v) =
-    SOP.hmap conv <$> SOP.fromList (V.toList v)
+    SOP.hmap conv <$> SOP.fromList (toList v)
   where
     conv :: K (f Any) field -> Field f field
     conv (K fx) = Field (noInlineUnsafeCo fx)

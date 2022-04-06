@@ -55,7 +55,7 @@ data ValidField x where
 data SomeRecord where
   SomeRecord :: forall (r :: Row Type).
        ( KnownFields r
-       , Project r r
+       , SubRow r r
        , AllFields r Typeable
        , AllFields r Show
        , AllFields r Eq
@@ -67,12 +67,12 @@ inferType :: DynRecord -> SomeRecord
 inferType (DynRecord r) =
     case A.someRecord $ map (second mkField) r of
       A.SomeRecord record ->
-        case A.reflectProject (A.map pairFst record) of
+        case A.reflectSubRow (A.map pairFst record) of
           Reflected -> withSomeRecord (A.map pairSnd record)
   where
     withSomeRecord ::
          ( KnownFields r
-         , Project r r
+         , SubRow r r
          )
       => A.Record ValidField r -> SomeRecord
     withSomeRecord record =
@@ -109,12 +109,12 @@ inferType (DynRecord r) =
 -- | Lens to record over some known row @r@
 toLens :: forall (r :: Row Type) proxy.
      ( KnownFields r
-     , Project r r
+     , SubRow r r
      , AllFields r Typeable
      )
   => proxy r
   -> DynRecord
-  -> Either CannotProject (Record r, Record r -> DynRecord)
+  -> Either NotSubRow (Record r, Record r -> DynRecord)
 toLens p = \r ->
     -- In order to be able to check if we can project to the known row @r@,
     -- we must first to type inference on the @DynRecord@. /If/ this succeeds,
@@ -122,7 +122,7 @@ toLens p = \r ->
     -- (there is no need for a separate parsing step).
     case inferType r of
       SomeRecord r' ->
-        fmap (withSomeRecord r') $ checkCanProject r' p
+        fmap (withSomeRecord r') $ checkIsSubRow r' p
   where
     -- @r'@ is the row inferred for the 'DynRecord'
     withSomeRecord :: forall (r' :: Row Type).
@@ -130,7 +130,7 @@ toLens p = \r ->
          , AllFields r' (ToValue I)
          )
       => Record r'
-      -> Reflected (Project r' r)
+      -> Reflected (SubRow r' r)
       -> (Record r, Record r -> DynRecord)
     withSomeRecord r Reflected = (
           getter
@@ -143,10 +143,10 @@ toLens p = \r ->
 
 toRecord :: forall (r :: Row Type) proxy.
      ( KnownFields r
-     , Project r r
+     , SubRow r r
      , AllFields r Typeable
      )
   => proxy r
   -> DynRecord
-  -> Either CannotProject (Record r)
+  -> Either NotSubRow (Record r)
 toRecord p = fmap fst . toLens p

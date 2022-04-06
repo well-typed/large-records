@@ -65,8 +65,8 @@ module Data.Record.Anon.Internal.Advanced (
   , reifyAllFields
   , reflectAllFields
   , InRow(..)
-  , reifyProject
-  , reflectProject
+  , reifySubRow
+  , reflectSubRow
     -- * Existential records
   , Some(..)
   , SomeRecord(..)
@@ -84,6 +84,7 @@ import Data.Bifunctor
 import Data.Coerce (coerce)
 import Data.Functor.Product
 import Data.Kind
+import Data.Primitive.SmallArray
 import Data.Proxy
 import Data.Record.Generic hiding (FieldName)
 import Data.SOP.Classes (fn_2)
@@ -96,8 +97,6 @@ import GHC.TypeLits
 import TypeLet.UserAPI
 
 import qualified Optics.Core as Optics
-import qualified Data.Vector as Lazy (Vector)
-import qualified Data.Vector as Lazy.Vector
 
 import qualified Data.Record.Generic.Eq   as Generic
 import qualified Data.Record.Generic.JSON as Generic
@@ -106,13 +105,15 @@ import qualified Data.Record.Generic.Show as Generic
 import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Internal.Core.Diff (Diff)
 import Data.Record.Anon.Internal.Core.FieldName
-import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
 import Data.Record.Anon.Internal.Reflection (Reflected(..))
+import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
+
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
-import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
-import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
+import qualified Data.Record.Anon.Internal.Core.Canonical   as Canon
+import qualified Data.Record.Anon.Internal.Core.Diff        as Diff
+import qualified Data.Record.Anon.Internal.Reflection       as Unsafe
+import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 
 {-------------------------------------------------------------------------------
   Definition
@@ -257,7 +258,7 @@ merge (toCanonical -> r) (toCanonical -> r') =
     unsafeFromCanonical $ r <> r'
 
 lens :: forall f r r'.
-     Project r r'
+     SubRow r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = \(toCanonical -> r) ->
     bimap getter setter $
@@ -272,13 +273,13 @@ lens = \(toCanonical -> r) ->
 -- | Project out subrecord
 --
 -- This is just the 'lens' getter.
-project :: Project r r' => Record f r -> Record f r'
+project :: SubRow r r' => Record f r -> Record f r'
 project = fst . lens
 
 -- | Inject subrecord
 --
 -- This is just the 'lens' setter.
-inject :: Project r r' => Record f r' -> Record f r -> Record f r
+inject :: SubRow r r' => Record f r' -> Record f r -> Record f r
 inject small = ($ small) . snd . lens
 
 applyPending :: Record f r -> Record f r
@@ -375,8 +376,8 @@ reifyAllFields :: forall k (r :: Row k) (c :: k -> Constraint) proxy.
      AllFields r c
   => proxy c -> Record (Dict c) r
 reifyAllFields _ = unsafeFromCanonical $
-    Canon.fromLazyVector $
-      Lazy.Vector.map aux $ proxy fieldDicts (Proxy @r)
+    Canon.fromVector . Strict.fromLazy $
+      fmap aux $ proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny c -> Dict c Any
     aux DictAny = Dict
@@ -386,7 +387,7 @@ reflectAllFields :: forall k (c :: k -> Constraint) (r :: Row k).
   -> Reflected (AllFields r c)
 reflectAllFields dicts =
     Unsafe.reflectAllFields $ Tagged $
-      fmap aux $ Canon.toLazyVector $ toCanonical dicts
+      fmap aux $ Strict.toLazy $ Canon.toVector $ toCanonical dicts
   where
     aux :: Dict c Any -> DictAny c
     aux Dict = DictAny
@@ -399,17 +400,17 @@ data InRow (r :: Row k) (a :: k) where
        )
     => Proxy n -> InRow r a
 
-reifyProject :: forall k (r :: Row k) (r' :: Row k).
-     (Project r r', KnownFields r')
+reifySubRow :: forall k (r :: Row k) (r' :: Row k).
+     (SubRow r r', KnownFields r')
   => Record (InRow r) r'
-reifyProject =
+reifySubRow =
     zipWith aux ixs (reifyKnownFields (Proxy @r'))
   where
     ixs :: Record (K Int) r'
     ixs = unsafeFromCanonical $
             Canon.fromVector $ co $ proxy projectIndices (Proxy @'(r, r'))
 
-    co :: StrictVector Int -> StrictVector (K Int Any)
+    co :: StrictArray Int -> StrictArray (K Int Any)
     co = coerce
 
     aux :: forall x. K Int x -> K String x -> InRow r x
@@ -417,11 +418,11 @@ reifyProject =
         case someSymbolVal name of
           SomeSymbol p -> unsafeInRow i p
 
-reflectProject :: forall k (r :: Row k) (r' :: Row k).
+reflectSubRow :: forall k (r :: Row k) (r' :: Row k).
      Record (InRow r) r'
-  -> Reflected (Project r r')
-reflectProject (toCanonical -> ixs) =
-    Unsafe.reflectProject $ Tagged $
+  -> Reflected (SubRow r r')
+reflectSubRow (toCanonical -> ixs) =
+    Unsafe.reflectSubRow $ Tagged $
       (\inRow@(InRow p) -> aux inRow p) <$> Canon.toVector ixs
   where
     aux :: forall x n. RowHasField n r x => InRow r x -> Proxy n -> Int
@@ -481,18 +482,18 @@ someRecord fields =
 
 recordToRep :: Record f r -> Rep I (Record f r)
 recordToRep (toCanonical -> r) =
-    Rep $ co . Canon.toLazyVector $ r
+    Rep $ co . Strict.toLazy . Canon.toVector $ r
   where
     -- Second @Any@ is really (f (Any))
-    co :: Lazy.Vector (f Any) -> Lazy.Vector (I Any)
+    co :: SmallArray (f Any) -> SmallArray (I Any)
     co = noInlineUnsafeCo
 
 repToRecord :: Rep I (Record f r) -> Record f r
 repToRecord (Rep r) =
-    unsafeFromCanonical $ Canon.fromLazyVector . co $ r
+    unsafeFromCanonical $ Canon.fromVector . Strict.fromLazy . co $ r
   where
     -- First @Any@ is really (f Any)@
-    co :: Lazy.Vector (I Any) -> Lazy.Vector (f Any)
+    co :: SmallArray (I Any) -> SmallArray (f Any)
     co = noInlineUnsafeCo
 
 {-------------------------------------------------------------------------------
@@ -506,7 +507,7 @@ recordConstraints :: forall f r c.
      RecordConstraints f r c
   => Proxy c -> Rep (Dict c) (Record f r)
 recordConstraints _ = Rep $
-    Lazy.Vector.map (co . aux) $ proxy fieldDicts (Proxy @r)
+    co . aux <$> proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny (Compose c f) -> Dict (Compose c f) Any
     aux DictAny = Dict
@@ -522,7 +523,7 @@ recordMetadata = Metadata {
       recordName          = "Record"
     , recordConstructor   = "Record"
     , recordSize          = length fields
-    , recordFieldMetadata = Rep $ Lazy.Vector.fromList fields
+    , recordFieldMetadata = Rep $ smallArrayFromList fields
     }
   where
     fields :: [FieldMetadata Any]

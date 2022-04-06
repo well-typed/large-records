@@ -12,8 +12,8 @@ import Data.Traversable (forM)
 import Data.Record.Anon.Internal.Plugin.TC.Constraints.AllFields
 import Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownFields
 import Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownHash
-import Data.Record.Anon.Internal.Plugin.TC.Constraints.Project
 import Data.Record.Anon.Internal.Plugin.TC.Constraints.RowHasField
+import Data.Record.Anon.Internal.Plugin.TC.Constraints.SubRow
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
@@ -31,8 +31,8 @@ solve rn given wanted =
            forM parsedAllFields   $ uncurry (solveAllFields   rn)
          , forM parsedKnownFields $ uncurry (solveKnownFields rn)
          , forM parsedKnownHash   $ uncurry (solveKnownHash   rn)
-         , forM parsedProject     $ uncurry (solveProject     rn)
          , forM parsedRowHasField $ uncurry (solveRowHasField rn)
+         , forM parsedSubRow      $ uncurry (solveSubRow      rn)
          ]
        return $ TcPluginOk solved new
   where
@@ -42,14 +42,14 @@ solve rn given wanted =
     parsedAllFields   :: [(Ct, GenLocated CtLoc CAllFields)]
     parsedKnownFields :: [(Ct, GenLocated CtLoc CKnownFields)]
     parsedKnownHash   :: [(Ct, GenLocated CtLoc CKnownHash)]
-    parsedProject     :: [(Ct, GenLocated CtLoc CProject)]
     parsedRowHasField :: [(Ct, GenLocated CtLoc CRowHasField)]
+    parsedSubRow      :: [(Ct, GenLocated CtLoc CSubRow)]
 
-    parsedAllFields   = parseAll' (withOrig (parseAllFields      tcs rn)) wanted
-    parsedKnownFields = parseAll' (withOrig (parseKnownFields    tcs rn)) wanted
-    parsedKnownHash   = parseAll' (withOrig (parseKnownHash      tcs rn)) wanted
-    parsedProject     = parseAll' (withOrig (parseProject        tcs rn)) wanted
+    parsedAllFields   = parseAll' (withOrig (parseAllFields   tcs rn)) wanted
+    parsedKnownFields = parseAll' (withOrig (parseKnownFields tcs rn)) wanted
+    parsedKnownHash   = parseAll' (withOrig (parseKnownHash   tcs rn)) wanted
     parsedRowHasField = parseAll' (withOrig (parseRowHasField tcs rn)) wanted
+    parsedSubRow      = parseAll' (withOrig (parseSubRow      tcs rn)) wanted
 
     _debugInput :: String
     _debugInput = unlines [
@@ -70,8 +70,8 @@ solve rn given wanted =
         , concat ["parsedAllFields:   ", showSDocUnsafe $ ppr parsedAllFields]
         , concat ["parsedKnownFields: ", showSDocUnsafe $ ppr parsedKnownFields]
         , concat ["parsedKnownHash:   ", showSDocUnsafe $ ppr parsedKnownFields]
-        , concat ["parsedProject:     ", showSDocUnsafe $ ppr parsedProject]
         , concat ["parsedRowHasField: ", showSDocUnsafe $ ppr parsedRowHasField]
+        , concat ["parsedSubRow:      ", showSDocUnsafe $ ppr parsedSubRow]
         , concat ["tcs (TyConSubst):  ", showSDocUnsafe $ ppr tcs]
         ]
 

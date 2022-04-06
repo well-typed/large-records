@@ -7,7 +7,7 @@ import qualified Test.Prop.Record.Combinators.Simple
 import qualified Test.Sanity.AllFields
 import qualified Test.Sanity.Applicative
 import qualified Test.Sanity.BlogPost
-import qualified Test.Sanity.CheckCanProject
+import qualified Test.Sanity.CheckIsSubRow
 import qualified Test.Sanity.Discovery
 import qualified Test.Sanity.DuplicateFields
 import qualified Test.Sanity.Generics
@@ -34,7 +34,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.Applicative.tests
         , Test.Sanity.Simple.tests
         , Test.Sanity.PolyKinds.tests
-        , Test.Sanity.CheckCanProject.tests
+        , Test.Sanity.CheckIsSubRow.tests
         , Test.Sanity.Discovery.tests
         , Test.Sanity.SrcPlugin.WithoutTypelet.tests
         , Test.Sanity.SrcPlugin.WithTypelet.tests

@@ -60,8 +60,8 @@ module Data.Record.Anon.Advanced (
   , reifyKnownFields
   , reflectKnownFields
   , A.InRow(..)
-  , reifyProject
-  , reflectProject
+  , reifySubRow
+  , reflectSubRow
     -- * Existential records
   , A.SomeRecord(..)
   , someRecord
@@ -276,7 +276,7 @@ set = A.set
 -- example = project
 -- :}
 -- ...
--- ...No instance for (Project...
+-- ...No instance for (SubRow...
 -- ...
 --
 -- Type inference will work through projections: field types are unified based
@@ -293,13 +293,13 @@ set = A.set
 -- ...
 --
 -- As we saw in 'merge', 'project' can also flatten 'Merge'd rows.
-project :: Project r r' => Record f r -> Record f r'
+project :: SubRow r r' => Record f r -> Record f r'
 project = A.project
 
 -- | Inject smaller record into larger record
 --
 -- This is just the 'lens' setter.
-inject :: Project r r' => Record f r' -> Record f r -> Record f r
+inject :: SubRow r r' => Record f r' -> Record f r -> Record f r
 inject = A.inject
 
 -- | Lens from one record to another
@@ -307,7 +307,7 @@ inject = A.inject
 -- See 'project' for examples ('project' is just the lens getter, without the
 -- setter).
 lens ::
-     Project r r'
+     SubRow r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = A.lens
 
@@ -478,17 +478,17 @@ reflectKnownFields = A.reflectKnownFields
 
 -- | Record over @r'@ with evidence that every field is in @r@.
 --
--- This reifies a 'Project' constraint.
+-- This reifies a 'SubRow' constraint.
 --
--- Inverse to 'reflectProject'.
-reifyProject :: (KnownFields r', Project r r') => Record (A.InRow r) r'
-reifyProject = A.reifyProject
+-- Inverse to 'reflectSubRow'.
+reifySubRow :: (KnownFields r', SubRow r r') => Record (A.InRow r) r'
+reifySubRow = A.reifySubRow
 
--- | Establish 'Project' from a record of evidence.
+-- | Establish 'SubRow' from a record of evidence.
 --
--- Inverse to 'reifyProject'.
-reflectProject :: Record (A.InRow r) r' -> Reflected (Project r r')
-reflectProject = A.reflectProject
+-- Inverse to 'reifySubRow'.
+reflectSubRow :: Record (A.InRow r) r' -> Reflected (SubRow r r')
+reflectSubRow = A.reflectSubRow
 
 {-------------------------------------------------------------------------------
   Existential records
@@ -516,7 +516,7 @@ reflectProject = A.reflectProject
 --
 -- > Record (InRow r) r'
 --
--- and then call 'reflectProject'. To construct this record of evidence you will
+-- and then call 'reflectSubRow'. To construct this record of evidence you will
 -- need to do a runtime type check to verify that the types of the fields in
 -- concrete row match the types of the corresponding fields in the inferred row
 -- (the inferred row may contain fields that are not present in the concrete

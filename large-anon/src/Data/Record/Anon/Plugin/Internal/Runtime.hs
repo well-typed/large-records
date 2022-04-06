@@ -42,14 +42,15 @@ module Data.Record.Anon.Plugin.Internal.Runtime (
     -- * Merging
   , Merge
     -- * Subrecords
-  , Project(..)
-  , DictProject
-  , evidenceProject
+  , SubRow(..)
+  , DictSubRow
+  , evidenceSubRow
     -- * Utility
   , noInlineUnsafeCo
   ) where
 
 import Data.Kind
+import Data.Primitive.SmallArray
 import Data.Record.Generic hiding (FieldName)
 import Data.SOP.Constraint (Compose)
 import Data.Tagged
@@ -57,12 +58,9 @@ import GHC.Exts (Any)
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.Vector as Lazy
-import qualified Data.Vector as Vector
+import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
 
-import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
-
-import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
+import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 
 {-------------------------------------------------------------------------------
   IMPLEMENTATION NOTE
@@ -183,37 +181,35 @@ type family SimpleFieldTypes (r :: Row Type) :: [(Symbol, Type)]
 -- | Require that @c x@ holds for every @(n := x)@ in @r@.
 class AllFields (r :: Row k) (c :: k -> Constraint) where
   -- | Vector of dictionaries, in row order
-  --
-  -- This returns a /lazy/ vector because it is used to build a 'Rep'.
   fieldDicts :: DictAllFields k r c
   fieldDicts = undefined
 
 type DictAllFields k (r :: Row k) (c :: k -> Constraint) =
-       Tagged r (Lazy.Vector (DictAny c))
+       Tagged r (SmallArray (DictAny c))
 
 data DictAny c where
   DictAny :: c Any => DictAny c
 
 evidenceAllFields :: forall k r c. [DictAny c] -> DictAllFields k r c
-evidenceAllFields = Tagged . Vector.fromList
+evidenceAllFields = Tagged . smallArrayFromList
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Show a)
       => AllFields r (Compose Show (K a)) where
   fieldDicts = Tagged $
-      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
+      smallArrayFromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Eq a)
       => AllFields r (Compose Eq (K a)) where
   fieldDicts = Tagged $
-      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
+      smallArrayFromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Ord a)
       => AllFields r (Compose Ord (K a)) where
   fieldDicts = Tagged $
-      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
+      smallArrayFromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 fieldMetadata :: forall k (r :: Row k) proxy.
      KnownFields r
@@ -260,18 +256,18 @@ evidenceKnownHash x _ = x
 
 -- | Subrecords
 --
--- If @Project r r'@ holds, we can project (or create a lens) @r@ to @r'@.
+-- If @SubRow r r'@ holds, we can project (or create a lens) @r@ to @r'@.
 -- See 'Data.Record.Anon.Advanced.project' for detailed discussion.
-class Project (r :: Row k) (r' :: Row k) where
-  projectIndices :: DictProject k r r'
+class SubRow (r :: Row k) (r' :: Row k) where
+  projectIndices :: DictSubRow k r r'
   projectIndices = undefined
 
 -- | In order of the fields in the /target/ record, the index in the /source/
-type DictProject k (r :: Row k) (r' :: Row k) =
-       Tagged '(r, r') (StrictVector Int)
+type DictSubRow k (r :: Row k) (r' :: Row k) =
+       Tagged '(r, r') (StrictArray Int)
 
-evidenceProject :: forall k r r'. [Int] -> DictProject k r r'
-evidenceProject = Tagged . Strict.fromList
+evidenceSubRow :: forall k r r'. [Int] -> DictSubRow k r r'
+evidenceSubRow = Tagged . Strict.fromList
 
 {-------------------------------------------------------------------------------
   Utility

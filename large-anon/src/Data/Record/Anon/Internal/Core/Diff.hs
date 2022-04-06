@@ -25,21 +25,23 @@ module Data.Record.Anon.Internal.Core.Diff (
   , toString
   ) where
 
+import Data.IntMap (IntMap)
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty(..), (<|))
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
 import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
+import qualified Data.IntMap.Strict as IntMap
 
 import qualified Data.List.NonEmpty as NE
 
 import Data.Record.Anon.Internal.Core.Canonical (Canonical(..))
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
-import Data.Record.Anon.Internal.Core.Util.SmallHashMap (HashMap)
+import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
 
-import qualified Data.Record.Anon.Internal.Core.Canonical         as Canon
-import qualified Data.Record.Anon.Internal.Core.Util.SmallHashMap as HashMap
+import qualified Data.Record.Anon.Internal.Core.Canonical    as Canon
+import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition
@@ -68,7 +70,7 @@ data Diff (f :: k -> Type) = Diff {
       -- | New values of existing fields
       --
       -- Indices refer to the original record.
-      diffUpd :: !(HashMap Int (f Any))
+      diffUpd :: !(IntMap (f Any))
 
       -- | List of new fields, most recently inserted first
       --
@@ -80,7 +82,7 @@ data Diff (f :: k -> Type) = Diff {
       -- If the field is shadowed, the list will have multiple entries. Entries
       -- in the lists are from new to old, so the head of the list is the
       -- "currently visible" entry.
-    , diffNew :: !(HashMap FieldName (NonEmpty (f Any)))
+    , diffNew :: !(SmallHashMap FieldName (NonEmpty (f Any)))
     }
 
 type role Diff representational
@@ -100,7 +102,7 @@ deriving instance Show a => Show (Diff (K a))
 -- > apply empty c == c
 empty :: Diff f
 empty = Diff {
-      diffUpd = HashMap.empty
+      diffUpd = IntMap.empty
     , diffIns = []
     , diffNew = HashMap.empty
     }
@@ -117,7 +119,7 @@ get :: (Int, FieldName) -> Diff f -> Canonical f -> f Any
 get (i, f) Diff{..} c =
     case HashMap.lookup f diffNew of
       Just xs -> NE.head xs                          -- inserted  in the diff
-      Nothing -> case HashMap.lookup i diffUpd of
+      Nothing -> case IntMap.lookup i diffUpd of
                    Just x  -> x                      -- updated   in the diff
                    Nothing -> Canon.getAtIndex c i   -- unchanged in the diff
 
@@ -146,7 +148,7 @@ set :: forall f. (Int, FieldName) -> f Any -> Diff f -> Diff f
 set (i, f) x d@Diff{..} =
     case HashMap.alterExisting f updateInserted diffNew of
       Just ((), diffNew') -> d { diffNew = diffNew' }
-      Nothing             -> d { diffUpd = HashMap.insert i x diffUpd }
+      Nothing             -> d { diffUpd = IntMap.insert i x diffUpd }
   where
     updateInserted :: NonEmpty (f Any) -> ((), Maybe (NonEmpty (f Any)))
     updateInserted (_ :| prev) = ((), Just (x :| prev))
@@ -179,7 +181,7 @@ insert f x d@Diff{..} = d {
 allNewFields :: Diff f -> [f Any]
 allNewFields = \Diff{..} -> go diffNew diffIns
   where
-    go :: HashMap FieldName (NonEmpty (f Any)) -> [FieldName] -> [f Any]
+    go :: SmallHashMap FieldName (NonEmpty (f Any)) -> [FieldName] -> [f Any]
     go _  []     = []
     go vs (x:xs) = case HashMap.alterExisting x NE.uncons vs of
                      Nothing       -> error "allNewFields: invariant violation"
@@ -192,7 +194,7 @@ allNewFields = \Diff{..} -> go diffNew diffIns
 apply :: forall f. Diff f -> Canonical f -> Canonical f
 apply d =
       Canon.insert     (allNewFields d)
-    . Canon.setAtIndex (HashMap.toList (diffUpd d))
+    . Canon.setAtIndex (IntMap.toList (diffUpd d))
 
 {-------------------------------------------------------------------------------
   Debugging support

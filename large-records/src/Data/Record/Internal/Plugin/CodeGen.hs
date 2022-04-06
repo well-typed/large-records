@@ -115,7 +115,7 @@ genDatatype Record{..} = pure $
         ]
 
     optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
-    optionalBang bang = noLoc . HsBangTy noExtField bang
+    optionalBang bang = noLoc . HsBangTy defExt bang
 
     fieldContext :: LRdrName -> Field -> LHsType GhcPs
     fieldContext var fld = equalP (VarT var) (fieldType fld)

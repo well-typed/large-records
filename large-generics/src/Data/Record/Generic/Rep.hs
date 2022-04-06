@@ -98,9 +98,11 @@ updateAtIndex ::
 updateAtIndex ix f a = (\x -> putAtIndex ix x a) <$> f (getAtIndex ix a)
 
 allIndices :: forall a. Generic a => Rep (Index a) a
-allIndices = Rep $ createSmallArray size undefined $ \v -> do
+allIndices = Rep $ runSmallArray $ do
+    v <- newSmallArray size undefined
     forM_ [0 .. size - 1] $ \i ->
       writeSmallArray v i (UnsafeIndex i)
+    return v
   where
     size :: Int
     size = recordSize (metadata (Proxy @a))
@@ -124,7 +126,7 @@ mapWithIndex f as = map' f' allIndices
 -------------------------------------------------------------------------------}
 
 pure :: forall f a. Generic a => (forall x. f x) -> Rep f a
-pure f = Rep $ createSmallArray size f $ \_v -> return ()
+pure f = Rep $ runSmallArray $ newSmallArray size f
   where
     size :: Int
     size = recordSize (metadata (Proxy @a))

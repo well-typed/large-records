@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-records
-version:            0.2.0.0
+version:            0.2.1.0
 synopsis:           Efficient compilation for large records, linear in the size of the record
 description:        For many reasons, the internal code generated for modules
                     that contain records is quadratic in the number of record
@@ -45,11 +45,13 @@ library
   build-depends:
       base             >= 4.13   && < 4.17
     , containers       >= 0.6.2  && < 0.7
-    , large-generics   >= 0.1    && < 0.2
     , mtl              >= 2.2.1  && < 2.3
     , primitive        >= 0.7    && < 0.8
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
+
+      -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
+    , large-generics   >= 0.2    && < 0.3
 
       -- transformers 0.5.6 introduces Writer.CPS
     , transformers     >= 0.5.6  && < 0.7

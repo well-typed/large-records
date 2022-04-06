@@ -73,10 +73,11 @@ fromList :: [a] -> StrictArray a
 fromList as = fromListN (length as) as
 
 fromListN :: Int -> [a] -> StrictArray a
-fromListN n as = WrapLazy $
-    createSmallArray n undefined $ \r ->
-      forM_ (zip [0..] as) $ \(i, !a) ->
-        writeSmallArray r i a
+fromListN n as = WrapLazy $ runSmallArray $ do
+    r <- newSmallArray n undefined
+    forM_ (zip [0..] as) $ \(i, !a) ->
+      writeSmallArray r i a
+    return r
 
 fromLazy :: forall a. SmallArray a -> StrictArray a
 fromLazy v = go 0
@@ -97,9 +98,10 @@ toLazy = unwrapLazy
 -------------------------------------------------------------------------------}
 
 instance Functor StrictArray where
-  fmap f (WrapLazy as) = WrapLazy $
-      createSmallArray newSize undefined $ \r ->
-        forArrayM_ as $ \i a -> writeSmallArray r i $! f a
+  fmap f (WrapLazy as) = WrapLazy $ runSmallArray $ do
+      r <- newSmallArray newSize undefined
+      forArrayM_ as $ \i a -> writeSmallArray r i $! f a
+      return r
     where
       newSize :: Int
       newSize = sizeofSmallArray as
@@ -123,19 +125,21 @@ update (WrapLazy as) (WrapLazy as') = WrapLazy $ runSmallArray $ do
     newSize = sizeofSmallArray as
 
 backpermute :: StrictArray a -> StrictArray Int -> StrictArray a
-backpermute (WrapLazy as) (WrapLazy is) = WrapLazy $
-    createSmallArray newSize undefined $ \r ->
-      forArrayM_ is $ \i j -> writeSmallArray r i $! indexSmallArray as j
+backpermute (WrapLazy as) (WrapLazy is) = WrapLazy $ runSmallArray $ do
+    r <- newSmallArray newSize undefined
+    forArrayM_ is $ \i j -> writeSmallArray r i $! indexSmallArray as j
+    return r
   where
     newSize :: Int
     newSize = length is
 
 zipWith :: (a -> b -> c) -> StrictArray a -> StrictArray b -> StrictArray c
-zipWith f (WrapLazy as) (WrapLazy bs) = WrapLazy $
-    createSmallArray newSize undefined $ \r ->
-      forM_ [0 .. newSize - 1] $ \i -> do
-        let !c = f (indexSmallArray as i) (indexSmallArray bs i)
-        writeSmallArray r i c
+zipWith f (WrapLazy as) (WrapLazy bs) = WrapLazy $ runSmallArray $ do
+    r <- newSmallArray newSize undefined
+    forM_ [0 .. newSize - 1] $ \i -> do
+      let !c = f (indexSmallArray as i) (indexSmallArray bs i)
+      writeSmallArray r i c
+    return r
   where
     newSize :: Int
     newSize = min (sizeofSmallArray as) (sizeofSmallArray bs)

@@ -15,8 +15,6 @@ import qualified Data.Record.Anon.Simple as Anon
 import Test.Tasty
 import Test.Tasty.HUnit
 
--- TODO: Example using the source plugin and 'sequence'
-
 tests :: TestTree
 tests = testGroup "Test.Sanity.Applicative" [
       testCase "insertA" test_insertA

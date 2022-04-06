@@ -127,8 +127,6 @@ type Row k = [Pair Symbol k]
 -- | Specialized form of 'HasField'
 --
 -- @RowHasField n r a@ holds if there is an @(n := a)@ in @r@.
---
--- TODO: Record now no longer needs to live in Core?
 class RowHasField (n :: Symbol) (r :: Row k) (a :: k) | n r -> a where
   rowHasField :: DictRowHasField k n r a
   rowHasField = undefined
@@ -273,8 +271,6 @@ evidenceSubRow = Tagged . Strict.fromList
   Utility
 -------------------------------------------------------------------------------}
 
--- TODO: It might be nice if we could use this throughout, and avoid using the
--- one from LR.
 noInlineUnsafeCo :: a -> b
 {-# NOINLINE noInlineUnsafeCo #-}
 noInlineUnsafeCo = unsafeCoerce

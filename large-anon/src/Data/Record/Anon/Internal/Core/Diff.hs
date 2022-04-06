@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
@@ -22,17 +23,22 @@ module Data.Record.Anon.Internal.Core.Diff (
     -- * Batch operations
   , apply
     -- * Debugging support
+#if DEBUG
   , toString
+#endif
   ) where
 
 import Data.IntMap (IntMap)
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty(..), (<|))
-import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 import Data.SOP.BasicFunctors
-import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
 import qualified Data.IntMap.Strict as IntMap
+
+#if DEBUG
+import Debug.RecoverRTTI (AnythingToString(..))
+import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
+#endif
 
 import qualified Data.List.NonEmpty as NE
 
@@ -200,6 +206,7 @@ apply d =
   Debugging support
 -------------------------------------------------------------------------------}
 
+#if DEBUG
 toString :: forall k (f :: k -> Type). Diff f -> String
 toString = show . mapDiff (K . AnythingToString . co)
   where
@@ -212,10 +219,4 @@ toString = show . mapDiff (K . AnythingToString . co)
 
     co :: f x -> f Any
     co = noInlineUnsafeCo
-
-{-
-    -- This definition should work, but doesn't. Not sure why:
-    aux :: forall. Diff f -> Diff ((K (AnythingToString (f Any))) :: k -> Type)
-    aux = coerce
--}
-
+#endif

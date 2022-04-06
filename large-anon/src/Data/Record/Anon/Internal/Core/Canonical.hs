@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -40,7 +41,9 @@ module Data.Record.Anon.Internal.Core.Canonical (
   , sequenceA
   , ap
     -- * Debugging support
+#if DEBUG
   , toString
+#endif
   ) where
 
 import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
@@ -49,8 +52,11 @@ import Data.Coerce (coerce)
 import Data.Kind
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->)(apFn))
-import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
+
+#if DEBUG
+import Debug.RecoverRTTI (AnythingToString(..))
+#endif
 
 import qualified Data.Foldable as Foldable
 
@@ -212,8 +218,10 @@ ap = zipWith apFn
   Debugging support
 -------------------------------------------------------------------------------}
 
+#if DEBUG
 toString :: forall k (f :: k -> Type). Canonical f -> String
 toString = show . aux
   where
     aux :: Canonical f -> Canonical (K (AnythingToString (f Any)))
     aux = coerce
+#endif

@@ -48,8 +48,8 @@ library
       Data.Record.Anon.Internal.Plugin.TC.Constraints.AllFields
       Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownFields
       Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownHash
-      Data.Record.Anon.Internal.Plugin.TC.Constraints.Project
       Data.Record.Anon.Internal.Plugin.TC.Constraints.RowHasField
+      Data.Record.Anon.Internal.Plugin.TC.Constraints.SubRow
       Data.Record.Anon.Internal.Plugin.TC.EquivClasses
       Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
       Data.Record.Anon.Internal.Plugin.TC.NameResolution
@@ -127,7 +127,7 @@ test-suite test-large-anon
       Test.Sanity.AllFields
       Test.Sanity.Applicative
       Test.Sanity.BlogPost
-      Test.Sanity.CheckCanProject
+      Test.Sanity.CheckIsSubRow
       Test.Sanity.Discovery
       Test.Sanity.DuplicateFields
       Test.Sanity.Generics

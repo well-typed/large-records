@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Record.Anon.Internal.Plugin.TC.Constraints.Project (
-    CProject(..)
-  , parseProject
-  , solveProject
+module Data.Record.Anon.Internal.Plugin.TC.Constraints.SubRow (
+    CSubRow(..)
+  , parseSubRow
+  , solveSubRow
   ) where
 
 import Control.Monad (forM)
@@ -23,76 +23,76 @@ import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
   Definition
 -------------------------------------------------------------------------------}
 
--- | Parsed form of @Project@
+-- | Parsed form of @SubRow@
 --
--- > Project (r :: [(Symbol, k)]) (r' :: [(Symbol, k)])
-data CProject = CProject {
+-- > SubRow (r :: [(Symbol, k)]) (r' :: [(Symbol, k)])
+data CSubRow = CSubRow {
       -- | Fields on the LHS
-      projectParsedLHS :: Fields
+      subrowParsedLHS :: Fields
 
       -- | Fields on the RHS
-    , projectParsedRHS :: Fields
+    , subrowParsedRHS :: Fields
 
-      -- | Left-hand side of the projection (@r@)
-    , projectTypeLHS :: Type
+      -- | Left-hand side (@r@)
+    , subrowTypeLHS :: Type
 
-      -- | Right-hand side of the projection (@r'@)
-    , projectTypeRHS :: Type
+      -- | Right-hand side (@r'@)
+    , subrowTypeRHS :: Type
 
       -- | Functor argument kind (@k@)
-    , projectTypeKind :: Type
+    , subrowTypeKind :: Type
     }
 
 {-------------------------------------------------------------------------------
   Outputable
 -------------------------------------------------------------------------------}
 
-instance Outputable CProject where
-  ppr (CProject parsedLHS parsedRHS typeLHS typeRHS typeKind) = parens $
-      text "CProject" <+> braces (vcat [
-          text "projectParsedLHS"   <+> text "=" <+> ppr parsedLHS
-        , text "projectParsedRHS"   <+> text "=" <+> ppr parsedRHS
-        , text "projectTypeLHS"     <+> text "=" <+> ppr typeLHS
-        , text "projectTypeRHS"     <+> text "=" <+> ppr typeRHS
-        , text "projectTypeKind"    <+> text "=" <+> ppr typeKind
+instance Outputable CSubRow where
+  ppr (CSubRow parsedLHS parsedRHS typeLHS typeRHS typeKind) = parens $
+      text "CSubRow" <+> braces (vcat [
+          text "subrowParsedLHS"   <+> text "=" <+> ppr parsedLHS
+        , text "subrowParsedRHS"   <+> text "=" <+> ppr parsedRHS
+        , text "subrowTypeLHS"     <+> text "=" <+> ppr typeLHS
+        , text "subrowTypeRHS"     <+> text "=" <+> ppr typeRHS
+        , text "subrowTypeKind"    <+> text "=" <+> ppr typeKind
         ])
 
 {-------------------------------------------------------------------------------
   Parser
 -------------------------------------------------------------------------------}
 
-parseProject ::
+parseSubRow ::
      TyConSubst
   -> ResolvedNames
   -> Ct
-  -> ParseResult Void (GenLocated CtLoc CProject)
-parseProject tcs rn@ResolvedNames{..} =
-    parseConstraint' clsProject $ \[typeKind, typeLHS, typeRHS] -> do
+  -> ParseResult Void (GenLocated CtLoc CSubRow)
+parseSubRow tcs rn@ResolvedNames{..} =
+    parseConstraint' clsSubRow $ \[typeKind, typeLHS, typeRHS] -> do
       fieldsLHS <- ParsedRow.parseFields tcs rn typeLHS
       fieldsRHS <- ParsedRow.parseFields tcs rn typeRHS
-      return $ CProject {
-            projectParsedLHS = fieldsLHS
-          , projectParsedRHS = fieldsRHS
-          , projectTypeLHS   = typeLHS
-          , projectTypeRHS   = typeRHS
-          , projectTypeKind  = typeKind
+      return $ CSubRow {
+            subrowParsedLHS = fieldsLHS
+          , subrowParsedRHS = fieldsRHS
+          , subrowTypeLHS   = typeLHS
+          , subrowTypeRHS   = typeRHS
+          , subrowTypeKind  = typeKind
           }
 
 {-------------------------------------------------------------------------------
   Evidence
 -------------------------------------------------------------------------------}
 
-evidenceProject ::
+evidenceSubRow ::
      ResolvedNames
-  -> CProject
+  -> CSubRow
   -> [Int]
   -> TcPluginM 'Solve EvTerm
-evidenceProject ResolvedNames{..} CProject{..} fields = do
+evidenceSubRow ResolvedNames{..} CSubRow{..} fields = do
     return $
       evDataConApp
-        (classDataCon clsProject)
+        (classDataCon clsSubRow)
         typeArgsEvidence
-        [ mkCoreApps (Var idEvidenceProject) $ concat [
+        [ mkCoreApps (Var idEvidenceSubRow) $ concat [
               map Type typeArgsEvidence
             , [ mkListExpr intTy $
                   map (mkUncheckedIntExpr . fromIntegral) fields ]
@@ -101,30 +101,30 @@ evidenceProject ResolvedNames{..} CProject{..} fields = do
   where
     typeArgsEvidence :: [Type]
     typeArgsEvidence = [
-          projectTypeKind
-        , projectTypeLHS
-        , projectTypeRHS
+          subrowTypeKind
+        , subrowTypeLHS
+        , subrowTypeRHS
         ]
 
 {-------------------------------------------------------------------------------
   Solver
 -------------------------------------------------------------------------------}
 
-solveProject ::
+solveSubRow ::
      ResolvedNames
   -> Ct
-  -> GenLocated CtLoc CProject
+  -> GenLocated CtLoc CSubRow
   -> TcPluginM 'Solve (Maybe (EvTerm, Ct), [Ct])
-solveProject rn orig (L loc proj@CProject{..}) =
-    case ( ParsedRow.allKnown projectParsedLHS
-         , ParsedRow.allKnown projectParsedRHS
+solveSubRow rn orig (L loc proj@CSubRow{..}) =
+    case ( ParsedRow.allKnown subrowParsedLHS
+         , ParsedRow.allKnown subrowParsedRHS
          ) of
       (Just lhs, Just rhs) ->
-        case KnownRow.canProject lhs rhs of
+        case KnownRow.isSubRow lhs rhs of
           Right inBoth -> do
             eqs <- forM inBoth $ \(_i, (l, r)) ->
                      newWanted loc $ mkPrimEqPredRole Nominal l r
-            ev  <- evidenceProject rn proj (map fst inBoth)
+            ev  <- evidenceSubRow rn proj (map fst inBoth)
             return (Just (ev, orig), map mkNonCanonical eqs)
           Left _err ->
             -- TODO: Return a custom error message

@@ -65,8 +65,8 @@ module Data.Record.Anon.Internal.Advanced (
   , reifyAllFields
   , reflectAllFields
   , InRow(..)
-  , reifyProject
-  , reflectProject
+  , reifySubRow
+  , reflectSubRow
     -- * Existential records
   , Some(..)
   , SomeRecord(..)
@@ -258,7 +258,7 @@ merge (toCanonical -> r) (toCanonical -> r') =
     unsafeFromCanonical $ r <> r'
 
 lens :: forall f r r'.
-     Project r r'
+     SubRow r r'
   => Record f r -> (Record f r', Record f r' -> Record f r)
 lens = \(toCanonical -> r) ->
     bimap getter setter $
@@ -273,13 +273,13 @@ lens = \(toCanonical -> r) ->
 -- | Project out subrecord
 --
 -- This is just the 'lens' getter.
-project :: Project r r' => Record f r -> Record f r'
+project :: SubRow r r' => Record f r -> Record f r'
 project = fst . lens
 
 -- | Inject subrecord
 --
 -- This is just the 'lens' setter.
-inject :: Project r r' => Record f r' -> Record f r -> Record f r
+inject :: SubRow r r' => Record f r' -> Record f r -> Record f r
 inject small = ($ small) . snd . lens
 
 applyPending :: Record f r -> Record f r
@@ -400,10 +400,10 @@ data InRow (r :: Row k) (a :: k) where
        )
     => Proxy n -> InRow r a
 
-reifyProject :: forall k (r :: Row k) (r' :: Row k).
-     (Project r r', KnownFields r')
+reifySubRow :: forall k (r :: Row k) (r' :: Row k).
+     (SubRow r r', KnownFields r')
   => Record (InRow r) r'
-reifyProject =
+reifySubRow =
     zipWith aux ixs (reifyKnownFields (Proxy @r'))
   where
     ixs :: Record (K Int) r'
@@ -418,11 +418,11 @@ reifyProject =
         case someSymbolVal name of
           SomeSymbol p -> unsafeInRow i p
 
-reflectProject :: forall k (r :: Row k) (r' :: Row k).
+reflectSubRow :: forall k (r :: Row k) (r' :: Row k).
      Record (InRow r) r'
-  -> Reflected (Project r r')
-reflectProject (toCanonical -> ixs) =
-    Unsafe.reflectProject $ Tagged $
+  -> Reflected (SubRow r r')
+reflectSubRow (toCanonical -> ixs) =
+    Unsafe.reflectSubRow $ Tagged $
       (\inRow@(InRow p) -> aux inRow p) <$> Canon.toVector ixs
   where
     aux :: forall x n. RowHasField n r x => InRow r x -> Proxy n -> Int

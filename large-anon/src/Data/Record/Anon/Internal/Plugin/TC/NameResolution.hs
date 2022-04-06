@@ -15,14 +15,14 @@ data ResolvedNames = ResolvedNames {
       clsAllFields          :: Class
     , clsKnownFields        :: Class
     , clsKnownHash          :: Class
-    , clsProject            :: Class
     , clsRowHasField        :: Class
+    , clsSubRow             :: Class
     , dataConDictAny        :: DataCon
     , idEvidenceAllFields   :: Id
     , idEvidenceKnownFields :: Id
     , idEvidenceKnownHash   :: Id
-    , idEvidenceProject     :: Id
     , idEvidenceRowHasField :: Id
+    , idEvidenceSubRow      :: Id
     , idUnsafeCoerce        :: Id
     , tyConDictAny          :: TyCon
     , tyConMerge            :: TyCon
@@ -50,16 +50,16 @@ nameResolution = do
     clsAllFields          <- getClass "AllFields"
     clsKnownFields        <- getClass "KnownFields"
     clsKnownHash          <- getClass "KnownHash"
-    clsProject            <- getClass "Project"
     clsRowHasField        <- getClass "RowHasField"
+    clsSubRow             <- getClass "SubRow"
 
     dataConDictAny        <- getDataCon "DictAny"
 
     idEvidenceAllFields   <- getVar "evidenceAllFields"
     idEvidenceKnownFields <- getVar "evidenceKnownFields"
     idEvidenceKnownHash   <- getVar "evidenceKnownHash"
-    idEvidenceProject     <- getVar "evidenceProject"
     idEvidenceRowHasField <- getVar "evidenceRowHasField"
+    idEvidenceSubRow      <- getVar "evidenceSubRow"
     idUnsafeCoerce        <- getVar "noInlineUnsafeCo"
 
     tyConDictAny          <- getTyCon       "DictAny"

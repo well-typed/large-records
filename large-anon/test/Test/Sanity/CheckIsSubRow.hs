@@ -4,7 +4,7 @@
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
-module Test.Sanity.CheckCanProject (tests) where
+module Test.Sanity.CheckIsSubRow (tests) where
 
 import Data.Typeable
 
@@ -17,12 +17,12 @@ import Test.Tasty.HUnit
 import Test.Infra.Discovery
 
 tests :: TestTree
-tests = testGroup "Test.Sanity.CheckCanProject" [
-      testCase "checkCanProject" test_checkCanProject
+tests = testGroup "Test.Sanity.CheckIsSubRow" [
+      testCase "maybeProject" test_maybeProject
     ]
 
-test_checkCanProject :: Assertion
-test_checkCanProject = do
+test_maybeProject :: Assertion
+test_maybeProject = do
     case maybeProject example1 (Proxy @Row2) of
       Left  _  -> assertFailure "Should be able to project to Row2"
       Right r1 -> assertEqual "Should be equal" r1 example2

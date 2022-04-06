@@ -21,9 +21,9 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (
     -- * Combinators
   , traverse
   , indexed
-    -- * Check for projections
-  , CannotProject(..)
-  , canProject
+    -- * Check for subrows
+  , NotSubRow(..)
+  , isSubRow
   ) where
 
 import Prelude hiding (traverse)
@@ -156,34 +156,33 @@ indexed r =
   Check for projections
 -------------------------------------------------------------------------------}
 
--- | Reason why we cannot project
-data CannotProject =
-    -- | We do not support projecting to records with shadowed fields
+-- | Reason why we cannot failed to prove 'SubRow'
+data NotSubRow =
+    -- | We do not support precords with shadowed fields
     --
     -- Since these fields can only come from the source record, and shadowed
     -- fields in the source record are invisible, shadowed fields in the target
     -- could only be duplicates of the same field in the source. This is not
     -- particularly useful, so we don't support it. Moreover, since we actually
-    -- create /lenses/ from these projections, it is important that every field
-    -- in the source record corresponds to at most /one/ field in the target.
+    -- create /lenses/ from these subrows, it is important that every field in
+    -- the source record corresponds to at most /one/ field in the target.
     TargetContainsShadowedFields
 
     -- | Some fields in the target are missing in the source
   | SourceMissesFields [FieldName]
   deriving (Show, Eq)
 
--- | Check if we can project from one record to another
+-- | Check if one row is a subrow of another
 --
--- If the projection is possible, returns the paired information from both
--- records in the order of the /target/ record along with the index into the
--- /source/ record.
+-- If it is, returns the paired information from both records in the order of
+-- the /target/ record along with the index into the /source/ record.
 --
--- See docstring of the  'Project' class for some discussion of shadowing.
-canProject :: forall a b.
+-- See 'NotSubRow' for some discussion of shadowing.
+isSubRow :: forall a b.
      KnownRow a
   -> KnownRow b
-  -> Either CannotProject [(Int, (a, b))]
-canProject recordA recordB =
+  -> Either NotSubRow [(Int, (a, b))]
+isSubRow recordA recordB =
     if not (knownRecordAllVisible recordB) then
       Left TargetContainsShadowedFields
     else
@@ -197,7 +196,7 @@ canProject recordA recordB =
           Nothing -> Left  $ knownFieldName b
           Just a  -> Right $ distrib (knownFieldInfo a, knownFieldInfo b)
 
-    checkMissing :: [FieldName] -> x -> Either CannotProject x
+    checkMissing :: [FieldName] -> x -> Either NotSubRow x
     checkMissing []      x = Right x
     checkMissing missing _ = Left $ SourceMissesFields missing
 

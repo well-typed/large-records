@@ -42,9 +42,9 @@ module Data.Record.Anon.Plugin.Internal.Runtime (
     -- * Merging
   , Merge
     -- * Subrecords
-  , Project(..)
-  , DictProject
-  , evidenceProject
+  , SubRow(..)
+  , DictSubRow
+  , evidenceSubRow
     -- * Utility
   , noInlineUnsafeCo
   ) where
@@ -256,18 +256,18 @@ evidenceKnownHash x _ = x
 
 -- | Subrecords
 --
--- If @Project r r'@ holds, we can project (or create a lens) @r@ to @r'@.
+-- If @SubRow r r'@ holds, we can project (or create a lens) @r@ to @r'@.
 -- See 'Data.Record.Anon.Advanced.project' for detailed discussion.
-class Project (r :: Row k) (r' :: Row k) where
-  projectIndices :: DictProject k r r'
+class SubRow (r :: Row k) (r' :: Row k) where
+  projectIndices :: DictSubRow k r r'
   projectIndices = undefined
 
 -- | In order of the fields in the /target/ record, the index in the /source/
-type DictProject k (r :: Row k) (r' :: Row k) =
+type DictSubRow k (r :: Row k) (r' :: Row k) =
        Tagged '(r, r') (StrictArray Int)
 
-evidenceProject :: forall k r r'. [Int] -> DictProject k r r'
-evidenceProject = Tagged . Strict.fromList
+evidenceSubRow :: forall k r r'. [Int] -> DictSubRow k r r'
+evidenceSubRow = Tagged . Strict.fromList
 
 {-------------------------------------------------------------------------------
   Utility

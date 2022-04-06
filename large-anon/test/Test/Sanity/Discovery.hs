@@ -83,18 +83,18 @@ test_simple_toLens = do
     expectedGet :: String
     expectedGet = "Record {a = 1, c = 'a'}"
 
-    expectedMissingField :: Either CannotProject ()
+    expectedMissingField :: Either NotSubRow ()
     expectedMissingField = Left ["c"]
 
     -- TODO: For now we don't get more information in case of a type error
-    expectedWrongType :: Either CannotProject ()
+    expectedWrongType :: Either NotSubRow ()
     expectedWrongType = Left ["c"]
 
 {-------------------------------------------------------------------------------
   Tests for the advanced API (kind other than Type)
 
   These follow the same structure as the tests for the simple API. We don't
-  explicitly test the error cases again here ('CannotProject'), since the
+  explicitly test the error cases again here ('NotSubRow'), since the
   projection and parsing machinery is the same for the simple and the advanced
   case.
 -------------------------------------------------------------------------------}

@@ -53,14 +53,6 @@ module Data.Record.Anon.Internal.Simple (
   , applyPending
     -- * Constraints
   , RecordConstraints
-    -- * Working with rows
-  , Pair(..)
-  , Row
-  , Project
-  , Merge
-  , AllFields
-  , KnownFields
-  , SimpleFieldTypes
     -- * Interop with the advanced interface
   , toAdvanced
   , fromAdvanced
@@ -147,16 +139,16 @@ insertA f x r = insert f <$> x <*> r
 merge :: Record r -> Record r' -> Record (Merge r r')
 merge r r' = fromAdvanced $ A.merge (toAdvanced r) (toAdvanced r')
 
-lens :: Project r r' => Record r -> (Record r', Record r' -> Record r)
+lens :: SubRow r r' => Record r -> (Record r', Record r' -> Record r)
 lens =
       bimap fromAdvanced (\f -> fromAdvanced . f . toAdvanced)
     . A.lens
     . toAdvanced
 
-project :: Project r r' => Record r -> Record r'
+project :: SubRow r r' => Record r -> Record r'
 project = fst . lens
 
-inject :: Project r r' => Record r' -> Record r -> Record r
+inject :: SubRow r r' => Record r' -> Record r -> Record r
 inject small = ($ small) . snd . lens
 
 applyPending :: Record r -> Record r

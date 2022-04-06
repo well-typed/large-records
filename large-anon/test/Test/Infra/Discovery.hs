@@ -14,8 +14,8 @@ module Test.Infra.Discovery (
    , inRightRow
    , intersectRows
      -- * Check for projection
-   , CannotProject
-   , checkCanProject
+   , NotSubRow
+   , checkIsSubRow
    , maybeProject
      -- * Compute intersection
    , Intersection(..)
@@ -39,7 +39,7 @@ import Control.Monad.State
 {-------------------------------------------------------------------------------
   Intersect rows
 
-  NOTE: A constraint @Project r r@ is not completely trivial: it means that
+  NOTE: A constraint @SubRow r r@ is not completely trivial: it means that
   there are no shadowed fields.
 -------------------------------------------------------------------------------}
 
@@ -60,14 +60,14 @@ inRightRow (InBothRows n) = InRow n
 intersectRows :: forall k (r1 :: Row k) (r2 :: Row k) proxy proxy'.
      ( KnownFields r1
      , KnownFields r2
-     , Project r1 r1
-     , Project r2 r2
+     , SubRow r1 r1
+     , SubRow r2 r2
      , AllFields r1 Typeable
      , AllFields r2 Typeable
      )
   => proxy r1 -> proxy' r2 -> Record (Maybe :.: InBothRows r1 r2) r2
 intersectRows _ _ =
-    go Anon.reifyProject Anon.reifyProject
+    go Anon.reifySubRow Anon.reifySubRow
   where
     go :: Record (InRow r1) r1
        -> Record (InRow r2) r2
@@ -92,25 +92,27 @@ intersectRows _ _ =
     findMatch :: [a] -> Maybe a
     findMatch []  = Nothing
     findMatch [a] = Just a
-    findMatch _   = error "checkCanProject: error: multiple matches"
+    findMatch _   = error "intersectRows: error: multiple matches"
 
 {-------------------------------------------------------------------------------
   Check for projection
 -------------------------------------------------------------------------------}
 
--- | If we cannot project, report the missing fields
-type CannotProject = [String]
+-- | Fields that are missing or have the wrong type
+--
+-- TODO: Ideally we should distinguish between type errors and missing fields.
+type NotSubRow = [String]
 
-checkCanProject :: forall k (r1 :: Row k) (r2 :: Row k) proxy proxy'.
+checkIsSubRow :: forall k (r1 :: Row k) (r2 :: Row k) proxy proxy'.
      ( KnownFields r1
      , KnownFields r2
-     , Project r1 r1
-     , Project r2 r2
+     , SubRow r1 r1
+     , SubRow r2 r2
      , AllFields r1 Typeable
      , AllFields r2 Typeable
      )
-  => proxy r1 -> proxy' r2 -> Either CannotProject (Reflected (Project r1 r2))
-checkCanProject p1 p2 =
+  => proxy r1 -> proxy' r2 -> Either NotSubRow (Reflected (SubRow r1 r2))
+checkIsSubRow p1 p2 =
      uncurry postprocess . flip runState [] . Anon.sequenceA $
        Anon.zipWith
          checkInLeft
@@ -129,23 +131,23 @@ checkCanProject p1 p2 =
     postprocess ::
          Record (Maybe :.: InRow r1) r2
       -> [String]
-      -> Either CannotProject (Reflected (Project r1 r2))
+      -> Either NotSubRow (Reflected (SubRow r1 r2))
     postprocess matched missing =
-        maybe (Left missing) (Right . Anon.reflectProject) $
+        maybe (Left missing) (Right . Anon.reflectSubRow) $
           Anon.sequenceA matched
 
 maybeProject :: forall k (f :: k -> Type) (r1 :: Row k) (r2 :: Row k) proxy.
      ( KnownFields r1
      , KnownFields r2
-     , Project r1  r1
-     , Project r2 r2
+     , SubRow r1  r1
+     , SubRow r2 r2
      , AllFields r1  Typeable
      , AllFields r2 Typeable
      )
-  => Record f r1 -> proxy r2 -> Either CannotProject (Record f r2)
-maybeProject r1 p = aux <$> checkCanProject r1 p
+  => Record f r1 -> proxy r2 -> Either NotSubRow (Record f r2)
+maybeProject r1 p = aux <$> checkIsSubRow r1 p
   where
-    aux :: Reflected (Project r1 r2) -> Record f r2
+    aux :: Reflected (SubRow r1 r2) -> Record f r2
     aux Reflected = Anon.project r1
 
 {-------------------------------------------------------------------------------
@@ -155,16 +157,16 @@ maybeProject r1 p = aux <$> checkCanProject r1 p
 data Intersection (r1 :: Row k) (r2 :: Row k) where
     Intersection :: forall k (r1 :: Row k) (r2 :: Row k) (ri :: Row k).
          ( KnownFields ri
-         , Project r1 ri
-         , Project r2 ri
+         , SubRow r1 ri
+         , SubRow r2 ri
          )
       => Proxy ri -> Intersection r1 r2
 
 intersect :: forall k (r1 :: Row k) (r2 :: Row k) proxy proxy'.
      ( KnownFields r1
      , KnownFields r2
-     , Project r1 r1
-     , Project r2 r2
+     , SubRow r1 r1
+     , SubRow r2 r2
      , AllFields r1 Typeable
      , AllFields r2 Typeable
      )
@@ -180,11 +182,11 @@ intersect p1 p2 =
         case (project1, project2) of
           (Reflected, Reflected) -> Intersection (Proxy @ri)
       where
-        project1 :: Reflected (Project r1 ri)
-        project1 = Anon.reflectProject $ Anon.map inLeftRow r
+        project1 :: Reflected (SubRow r1 ri)
+        project1 = Anon.reflectSubRow $ Anon.map inLeftRow r
 
-        project2 :: Reflected (Project r2 ri)
-        project2 = Anon.reflectProject $ Anon.map inRightRow r
+        project2 :: Reflected (SubRow r2 ri)
+        project2 = Anon.reflectSubRow $ Anon.map inRightRow r
 
 {-------------------------------------------------------------------------------
   Auxiliary

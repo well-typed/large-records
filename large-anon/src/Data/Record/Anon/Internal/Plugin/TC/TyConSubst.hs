@@ -22,6 +22,9 @@ import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI hiding ((<>))
 
 {-------------------------------------------------------------------------------
   The main type
+
+  TODO: maybe this could be sped up with
+  <https://hackage.haskell.org/package/union-find>?
 -------------------------------------------------------------------------------}
 
 -- | Substitution for recognizing 'TyCon' applications modulo equalities

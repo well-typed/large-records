@@ -29,7 +29,7 @@ test_intersection =
       Intersection p -> go p
   where
     go :: forall ri.
-         (Project Row1 ri, Project Row2 ri)
+         (SubRow Row1 ri, SubRow Row2 ri)
       => Proxy ri -> Assertion
     go _ = do
         assertEqual "1" example1' $

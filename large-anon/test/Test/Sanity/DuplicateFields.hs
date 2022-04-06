@@ -230,7 +230,6 @@ test_project = do
         $ Anon.insert #d (I [3.14])
         $ Anon.empty
 
--- TODO: Could we use the simple interface here?
 test_update :: Assertion
 test_update = do
     assertEqual "same" (upd interspersedSameType) $

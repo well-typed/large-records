@@ -85,7 +85,6 @@ library
     , syb
     , tagged
     , typelet
-    , vector
 
       -- TODO: Make this dependency optional (DEBUG flag)
     , recover-rtti >= 0.4.1

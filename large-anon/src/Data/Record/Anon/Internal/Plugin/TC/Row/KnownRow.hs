@@ -31,9 +31,6 @@ import qualified Prelude
 
 import Control.Monad.State (State, evalState, state)
 import Data.Either (partitionEithers)
-import Data.Vector (Vector)
-
-import qualified Data.Vector  as V
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
@@ -55,7 +52,7 @@ data KnownRow a = KnownRow {
       -- order are not considered equal by the library (merely isomorphic).
       --
       -- May contain duplicates (if fields are shadowed).
-      knownRecordVector :: Vector (KnownField a)
+      knownRecordVector :: [KnownField a]
 
       -- | "Most recent" position of each field in the record
       --
@@ -79,10 +76,10 @@ data KnownRow a = KnownRow {
 -------------------------------------------------------------------------------}
 
 toList :: KnownRow a -> [KnownField a]
-toList = V.toList . knownRecordVector
+toList = knownRecordVector
 
 visibleMap :: KnownRow a -> SmallHashMap FieldName (KnownField a)
-visibleMap KnownRow{..} = (knownRecordVector V.!) <$> knownRecordVisible
+visibleMap KnownRow{..} = (knownRecordVector !!) <$> knownRecordVisible
 
 {-------------------------------------------------------------------------------
   Construction
@@ -104,7 +101,7 @@ fromList = go [] 0 HashMap.empty True
        -> KnownRow a
     go accFields !nextIndex !accVisible !accAllVisible = \case
         [] -> KnownRow {
-            knownRecordVector     = V.fromList $ reverse accFields
+            knownRecordVector     = reverse accFields
           , knownRecordVisible    = accVisible
           , knownRecordAllVisible = accAllVisible
           }
@@ -137,7 +134,7 @@ traverse :: forall m a b.
 traverse KnownRow{..} f =
     mkRow <$> Prelude.traverse f' knownRecordVector
   where
-    mkRow :: Vector (KnownField b) -> KnownRow b
+    mkRow :: [KnownField b] -> KnownRow b
     mkRow updated = KnownRow {
           knownRecordVector     = updated
         , knownRecordVisible    = knownRecordVisible

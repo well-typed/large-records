@@ -33,7 +33,7 @@ class C1 (a :: Type) where
 
 -- Type of kind @Type@
 
-{-# ANN type LA1 largeRecordStrict #-}
+{-# ANN type LA1 largeRecord #-}
 data LA1 = MkLA1 { la1_f1 :: Int }
   deriving anyclass C1
 
@@ -42,7 +42,7 @@ data LA1 = MkLA1 { la1_f1 :: Int }
 data RA2 a = MkRA1 { ra2_f1 :: a }
   deriving anyclass C1
 
-{-# ANN type LA2 largeRecordStrict #-}
+{-# ANN type LA2 largeRecord #-}
 data LA2 a = MkLA2 { la2_f1 :: a }
   deriving anyclass C1
 
@@ -59,7 +59,7 @@ data LA2 a = MkLA2 { la2_f1 :: a }
   really is a newtype around a record).
 -------------------------------------------------------------------------------}
 
-{-# ANN type LB largeRecordStrict #-}
+{-# ANN type LB largeRecord #-}
 data LB = MkLB { lb1 :: Int, lb2 :: Int }
     deriving anyclass (Newtype LB)
 
@@ -80,7 +80,7 @@ class C3 (f :: Type -> Type) where
 data RC a = MkRC { rc1 :: a, rc2 :: Int }
   deriving anyclass C3
 
-{-# ANN type LC largeRecordStrict #-}
+{-# ANN type LC largeRecord #-}
 data LC (a :: Type) = MkLC { lc1 :: a, lc2 :: Int }
   deriving anyclass C3
 
@@ -96,7 +96,7 @@ class C4 (f :: (Type -> Type) -> Type) where
 data RD f = MkRD { rd1 :: f Int, rd2 :: Int }
   deriving anyclass C4
 
-{-# ANN type LD largeRecordStrict #-}
+{-# ANN type LD largeRecord #-}
 data LD (f :: Type -> Type) = MkLD { ld1 :: f Int, ld2 :: Int }
   deriving anyclass C4
 
@@ -113,7 +113,7 @@ data RE = MkRE { re1 :: Int, re2 :: Bool }
   deriving stock Show
   deriving anyclass C5
 
-{-# ANN type LE largeRecordStrict #-}
+{-# ANN type LE largeRecord #-}
 data LE = MkLE { le1 :: Int, le2 :: Bool }
   deriving stock Show
   deriving anyclass C5

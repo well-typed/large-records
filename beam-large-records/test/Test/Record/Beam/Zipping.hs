@@ -28,7 +28,7 @@ import qualified GHC.Generics as GHC
 
 import Data.Record.Beam ()
 
-{-# ANN type TableA largeRecordStrict #-}
+{-# ANN type TableA largeRecord #-}
 data TableA (f :: Type -> Type) = TableA {
       taPrim  :: PrimaryKey TableA f
     , taField :: Columnar f Bool
@@ -37,7 +37,7 @@ data TableA (f :: Type -> Type) = TableA {
   deriving (Show, Eq)
   deriving anyclass (Beamable)
 
-{-# ANN type TableB largeRecordStrict #-}
+{-# ANN type TableB largeRecord #-}
 data TableB (f :: Type -> Type) = TableB {
       tbField :: Columnar f Char
     }

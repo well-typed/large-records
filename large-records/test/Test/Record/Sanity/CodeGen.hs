@@ -24,7 +24,7 @@ import Test.Tasty.HUnit
   This is the example record we use throughout the comments in TH codegen.
 -------------------------------------------------------------------------------}
 
-{-# ANN type T largeRecordStrict #-}
+{-# ANN type T largeRecord #-}
 data T a b = MkT {
       tInt   :: Word
     , tBool  :: Bool

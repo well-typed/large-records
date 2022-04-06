@@ -35,7 +35,7 @@ deriving instance Show (T n I)
 
 -- We need an explicit kind annotation on @f@ for @large-records@ to generate
 -- correct code (either that, or use @PolyKinds@).
-{-# ANN type MyRecord largeRecordStrict #-}
+{-# ANN type MyRecord largeRecord #-}
 data MyRecord (f :: Type -> Type) = MyRecord {
       field0 :: T 0 f
     , field1 :: T 1 f

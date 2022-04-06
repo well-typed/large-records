@@ -29,7 +29,7 @@ type family HKD f a where
   HKD (Const b) a = b
 
 -- | Test record with fields whose types are given by type families
-{-# ANN type T largeRecordStrict #-}
+{-# ANN type T largeRecord #-}
 data T (f :: Type -> Type) = MkT {
       field1 :: HKD f Int
     , field2 :: HKD f Bool

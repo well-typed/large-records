@@ -53,7 +53,7 @@ import Test.Record.Beam.Util.SQLite
   This does not introduce a new beam features.
 -------------------------------------------------------------------------------}
 
-{-# ANN type ProductT largeRecordStrict #-}
+{-# ANN type ProductT largeRecord #-}
 data ProductT (f :: Type -> Type) = Product {
      productId          :: C f Int32
    , productTitle       :: C f Text
@@ -91,7 +91,7 @@ instance HasSqlValueSyntax be String => HasSqlValueSyntax be ShippingCarrier whe
 instance FromBackendRow Sqlite ShippingCarrier where
   fromBackendRow = read . T.unpack <$> fromBackendRow
 
-{-# ANN type OrderT largeRecordStrict #-}
+{-# ANN type OrderT largeRecord #-}
 data OrderT (f :: Type -> Type) = Order {
       orderId            :: Columnar f Int32
     , orderDate          :: Columnar f LocalTime
@@ -102,7 +102,7 @@ data OrderT (f :: Type -> Type) = Order {
   deriving (Show, Eq)
   deriving anyclass (Beamable)
 
-{-# ANN type ShippingInfoT largeRecordStrict #-}
+{-# ANN type ShippingInfoT largeRecord #-}
 data ShippingInfoT (f :: Type -> Type) = ShippingInfo {
       shippingInfoId             :: Columnar f Int32
     , shippingInfoCarrier        :: Columnar f ShippingCarrier
@@ -138,7 +138,7 @@ type ShippingInfo = ShippingInfoT Identity
   New table: 'LineItem' (many-to-many relation)
 -------------------------------------------------------------------------------}
 
-{-# ANN type LineItemT largeRecordStrict #-}
+{-# ANN type LineItemT largeRecord #-}
 data LineItemT (f :: Type -> Type) = LineItem {
       lineItemInOrder    :: PrimaryKey OrderT f
     , lineItemForProduct :: PrimaryKey ProductT f
@@ -161,7 +161,7 @@ instance Table LineItemT where
   Version 3 of the DB
 -------------------------------------------------------------------------------}
 
-{-# ANN type ShoppingCart3Db largeRecordStrict #-}
+{-# ANN type ShoppingCart3Db largeRecord #-}
 data ShoppingCart3Db (f :: Type -> Type) = ShoppingCart3Db {
       shoppingCart3Users         :: f (TableEntity UserT)
     , shoppingCart3UserAddresses :: f (TableEntity AddressT)

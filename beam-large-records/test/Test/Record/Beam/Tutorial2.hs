@@ -53,7 +53,7 @@ import Test.Record.Beam.Util.SQLite
   New table: with a foreign key
 -------------------------------------------------------------------------------}
 
-{-# ANN type AddressT largeRecordStrict #-}
+{-# ANN type AddressT largeRecord #-}
 data AddressT (f :: Type -> Type) = Address {
       addressId      :: C f Int32
     , addressLine1   :: C f Text
@@ -94,7 +94,7 @@ exampleAddress = Address {
   Version 2 of the DB
 -------------------------------------------------------------------------------}
 
-{-# ANN type ShoppingCart2Db largeRecordStrict #-}
+{-# ANN type ShoppingCart2Db largeRecord #-}
 data ShoppingCart2Db (f :: Type -> Type) = ShoppingCart2Db {
      shoppingCart2Users         :: f (TableEntity UserT)
    , shoppingCart2UserAddresses :: f (TableEntity AddressT)

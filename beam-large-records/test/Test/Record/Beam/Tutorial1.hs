@@ -51,7 +51,7 @@ import Test.Record.Beam.Util.Orphans ()
   See <https://haskell-beam.github.io/beam/>
 -------------------------------------------------------------------------------}
 
-{-# ANN type UserT largeRecordStrict #-}
+{-# ANN type UserT largeRecord #-}
 data UserT (f :: Type -> Type) = User {
       userEmail     :: Columnar f Text
     , userFirstName :: Columnar f Text
@@ -90,7 +90,7 @@ deriving instance Eq   (Columnar f Text) => Eq   (PrimaryKey UserT f)
   Example DB
 -------------------------------------------------------------------------------}
 
-{-# ANN type ShoppingCartDb largeRecordStrict #-}
+{-# ANN type ShoppingCartDb largeRecord #-}
 data ShoppingCartDb (f :: Type -> Type) = ShoppingCartDb {
       shoppingCartUsers :: f (TableEntity UserT)
     }

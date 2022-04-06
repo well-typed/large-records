@@ -25,7 +25,7 @@ import Data.Record.Generic.JSON
 
 import Bench.Types
 
-{-# ANN type R largeRecordStrict #-}
+{-# ANN type R largeRecord #-}
 data R = MkR {
       -- 1 .. 10
       field1  :: T 1

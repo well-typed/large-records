@@ -14,5 +14,5 @@ module Test.Record.Sanity.QualifiedImports.B (T(..)) where
 
 import qualified Test.Record.Sanity.QualifiedImports.A as A
 
-{-# ANN type T largeRecordStrict #-}
+{-# ANN type T largeRecord #-}
 data T a = MkT { x :: Char, y :: A.T a }

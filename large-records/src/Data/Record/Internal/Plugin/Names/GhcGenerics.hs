@@ -7,6 +7,15 @@ module Data.Record.Internal.Plugin.Names.GhcGenerics (
   , unq_type_Rep
   , unq_from
   , unq_to
+  , con_NoSourceUnpackedness
+  , con_SourceNoUnpack
+  , con_SourceUnpack
+  , con_NoSourceStrictness
+  , con_SourceLazy
+  , con_SourceStrict
+  , con_DecidedLazy
+  , con_DecidedStrict
+  , con_DecidedUnpack
   ) where
 
 import Data.Record.Internal.GHC.Shim
@@ -25,6 +34,26 @@ unq_from, unq_to :: LRdrName
 unq_from = nameUV "from"
 unq_to   = nameUV "to"
 
+con_NoSourceUnpackedness :: LRdrName
+con_SourceNoUnpack       :: LRdrName
+con_SourceUnpack         :: LRdrName
+con_NoSourceStrictness   :: LRdrName
+con_SourceLazy           :: LRdrName
+con_SourceStrict         :: LRdrName
+con_DecidedLazy          :: LRdrName
+con_DecidedStrict        :: LRdrName
+con_DecidedUnpack        :: LRdrName
+
+con_NoSourceUnpackedness  = nameQC "NoSourceUnpackedness"
+con_SourceNoUnpack        = nameQC "SourceNoUnpack"
+con_SourceUnpack          = nameQC "SourceUnpack"
+con_NoSourceStrictness    = nameQC "NoSourceStrictness"
+con_SourceLazy            = nameQC "SourceLazy"
+con_SourceStrict          = nameQC "SourceStrict"
+con_DecidedLazy           = nameQC "DecidedLazy"
+con_DecidedStrict         = nameQC "DecidedStrict"
+con_DecidedUnpack         = nameQC "DecidedUnpack"
+
 {-------------------------------------------------------------------------------
   Internal auxiliary
 
@@ -34,8 +63,9 @@ unq_to   = nameUV "to"
 ghcGenerics :: ModuleName
 ghcGenerics = mkModuleName "GHC.Generics"
 
-nameQT :: String -> LRdrName
+nameQT, nameQC :: String -> LRdrName
 nameQT var = noLoc $ mkRdrQual ghcGenerics $ mkTcOcc   var
+nameQC var = noLoc $ mkRdrQual ghcGenerics $ mkDataOcc var
 
 nameUV, nameUT :: String -> LRdrName
 nameUV var = noLoc $ mkRdrUnqual $ mkVarOcc var

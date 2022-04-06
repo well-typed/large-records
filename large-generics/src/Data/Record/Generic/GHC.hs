@@ -6,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE FlexibleContexts    #-}
 
 -- | Interop with standard GHC generics
 module Data.Record.Generic.GHC (
@@ -91,13 +92,39 @@ data GhcFieldMetadata :: Type -> Type where
 withFieldMetadata :: forall (s :: Symbol) (r :: Type).
      KnownSymbol s
   => Proxy s
-  -> FieldStrictness
+  -> SourceUnpackedness
+  -> SourceStrictness
+  -> DecidedStrictness
   -> (forall (f :: Meta). Selector f => Proxy f -> r)
   -> r
-withFieldMetadata _ s k =
-    case s of
-      FieldLazy   -> k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy))
-      FieldStrict -> k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedStrict))
+-- Uff, why the hell SignI is not exported from GHC.Generics???
+withFieldMetadata _ NoSourceUnpackedness NoSourceStrictness DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedLazy  ))
+withFieldMetadata _ NoSourceUnpackedness NoSourceStrictness DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedStrict))
+withFieldMetadata _ NoSourceUnpackedness NoSourceStrictness DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'NoSourceStrictness 'DecidedUnpack))
+withFieldMetadata _ NoSourceUnpackedness SourceLazy         DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'SourceLazy         'DecidedLazy  ))
+withFieldMetadata _ NoSourceUnpackedness SourceLazy         DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'SourceLazy         'DecidedStrict))
+withFieldMetadata _ NoSourceUnpackedness SourceLazy         DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'SourceLazy         'DecidedUnpack))
+withFieldMetadata _ NoSourceUnpackedness SourceStrict       DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'SourceStrict       'DecidedLazy  ))
+withFieldMetadata _ NoSourceUnpackedness SourceStrict       DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'SourceStrict       'DecidedStrict))
+withFieldMetadata _ NoSourceUnpackedness SourceStrict       DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'NoSourceUnpackedness 'SourceStrict       'DecidedUnpack))
+withFieldMetadata _ SourceNoUnpack       NoSourceStrictness DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'NoSourceStrictness 'DecidedLazy  ))
+withFieldMetadata _ SourceNoUnpack       NoSourceStrictness DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'NoSourceStrictness 'DecidedStrict))
+withFieldMetadata _ SourceNoUnpack       NoSourceStrictness DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'NoSourceStrictness 'DecidedUnpack))
+withFieldMetadata _ SourceNoUnpack       SourceLazy         DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'SourceLazy         'DecidedLazy  ))
+withFieldMetadata _ SourceNoUnpack       SourceLazy         DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'SourceLazy         'DecidedStrict))
+withFieldMetadata _ SourceNoUnpack       SourceLazy         DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'SourceLazy         'DecidedUnpack))
+withFieldMetadata _ SourceNoUnpack       SourceStrict       DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'SourceStrict       'DecidedLazy  ))
+withFieldMetadata _ SourceNoUnpack       SourceStrict       DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'SourceStrict       'DecidedStrict))
+withFieldMetadata _ SourceNoUnpack       SourceStrict       DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'SourceNoUnpack       'SourceStrict       'DecidedUnpack))
+withFieldMetadata _ SourceUnpack         NoSourceStrictness DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'NoSourceStrictness 'DecidedLazy  ))
+withFieldMetadata _ SourceUnpack         NoSourceStrictness DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'NoSourceStrictness 'DecidedStrict))
+withFieldMetadata _ SourceUnpack         NoSourceStrictness DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'NoSourceStrictness 'DecidedUnpack))
+withFieldMetadata _ SourceUnpack         SourceLazy         DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'SourceLazy         'DecidedLazy  ))
+withFieldMetadata _ SourceUnpack         SourceLazy         DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'SourceLazy         'DecidedStrict))
+withFieldMetadata _ SourceUnpack         SourceLazy         DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'SourceLazy         'DecidedUnpack))
+withFieldMetadata _ SourceUnpack         SourceStrict       DecidedLazy   k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'SourceStrict       'DecidedLazy  ))
+withFieldMetadata _ SourceUnpack         SourceStrict       DecidedStrict k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'SourceStrict       'DecidedStrict))
+withFieldMetadata _ SourceUnpack         SourceStrict       DecidedUnpack k = k (Proxy @('MetaSel ('Just s) 'SourceUnpack         'SourceStrict       'DecidedUnpack))
 
 ghcMetadata :: Generic a => proxy a -> GhcMetadata a
 ghcMetadata pa = GhcMetadata {
@@ -107,5 +134,5 @@ ghcMetadata pa = GhcMetadata {
     Metadata{..} = metadata pa
 
     ghcFieldMetadata :: FieldMetadata x -> GhcFieldMetadata x
-    ghcFieldMetadata (FieldMetadata pName s) =
-        withFieldMetadata pName s $ GhcFieldMetadata
+    ghcFieldMetadata (FieldMetadata pName su ss ds) =
+        withFieldMetadata pName su ss ds $ GhcFieldMetadata

@@ -13,7 +13,9 @@ module Data.Record.Generic (
   , Rep(..) -- TODO: Make opaque?
     -- * Metadata
   , Metadata(..)
-  , FieldStrictness(..)
+  , SourceUnpackedness(..)
+  , SourceStrictness(..)
+  , DecidedStrictness(..)
   , recordFieldNames
   , FieldMetadata(..)
     -- * Working with type-level metadata
@@ -28,6 +30,7 @@ module Data.Record.Generic (
 import Data.Kind
 import Data.Proxy
 import GHC.TypeLits
+import GHC.Generics (SourceStrictness(..), SourceUnpackedness(..), DecidedStrictness(..))
 
 -- To reduce overlap between the two libraries and improve interoperability,
 -- we import as much from sop-core as possible.
@@ -85,21 +88,20 @@ data Metadata a = Metadata {
     , recordSize          :: Int
     , recordFieldMetadata :: Rep FieldMetadata a
     }
-
-data FieldStrictness = FieldStrict | FieldLazy
-
 data FieldMetadata x where
   FieldMetadata ::
        KnownSymbol name
     => Proxy name
-    -> FieldStrictness
+    -> SourceUnpackedness
+    -> SourceStrictness
+    -> DecidedStrictness
     -> FieldMetadata x
 
 recordFieldNames :: Metadata a -> Rep (K String) a
 recordFieldNames = Rep.map' aux . recordFieldMetadata
   where
     aux :: FieldMetadata x -> K String x
-    aux (FieldMetadata p _) = K $ symbolVal p
+    aux (FieldMetadata p _ _ _) = K $ symbolVal p
 
 {-------------------------------------------------------------------------------
   Working with the type-level metadata

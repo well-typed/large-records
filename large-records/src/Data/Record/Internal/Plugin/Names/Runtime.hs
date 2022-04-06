@@ -33,9 +33,7 @@ module Data.Record.Internal.Plugin.Names.Runtime (
   , type_ThroughLRGenerics
   , unq_type_Constraints
   , unq_type_MetadataOf
-  , con_FieldLazy
   , con_FieldMetadata
-  , con_FieldStrict
   , con_Metadata
   , con_Rep
   , con_WrapThroughLRGenerics
@@ -148,16 +146,12 @@ unq_type_Constraints :: LRdrName
 unq_type_Constraints = nameUT "Constraints"
 unq_type_MetadataOf  = nameUT "MetadataOf"
 
-con_FieldLazy             :: LRdrName
 con_FieldMetadata         :: LRdrName
-con_FieldStrict           :: LRdrName
 con_Metadata              :: LRdrName
 con_Rep                   :: LRdrName
 con_WrapThroughLRGenerics :: LRdrName
 
-con_FieldLazy             = nameQC "FieldLazy"
 con_FieldMetadata         = nameQC "FieldMetadata"
-con_FieldStrict           = nameQC "FieldStrict"
 con_Metadata              = nameQC "Metadata"
 con_Rep                   = nameQC "Rep"
 con_WrapThroughLRGenerics = nameQC "WrapThroughLRGenerics"

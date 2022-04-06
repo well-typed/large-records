@@ -43,9 +43,10 @@ data Record = Record {
     }
 
 data Field = Field {
-      fieldName  :: LRdrName
-    , fieldType  :: LHsType GhcPs
-    , fieldIndex :: Int
+      fieldName       :: LRdrName
+    , fieldType       :: LHsType GhcPs
+    , fieldStrictness :: HsSrcBang
+    , fieldIndex      :: Int
     }
 
 -- | Derived classes that we can support.
@@ -97,8 +98,9 @@ viewRecord annLoc options decl =
 
 viewField ::
      MonadError Exception m
-  => (LRdrName, LHsType GhcPs) -> m (Int -> Field)
-viewField (name, typ) = return $ Field name typ
+  => (LRdrName, LHsType GhcPs) -> m (Int -> Field)  
+viewField (name, typ) =
+  return $ Field name (getBangType typ) (getBangStrictness typ)
 
 viewRecordDerivings ::
      MonadError Exception m

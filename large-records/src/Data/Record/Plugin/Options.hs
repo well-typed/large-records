@@ -3,8 +3,7 @@
 -- This module is added as an export to user code by the plugin.
 module Data.Record.Plugin.Options (
     LargeRecordOptions(..)
-  , largeRecordStrict
-  , largeRecordLazy
+  , largeRecord
   ) where
 
 import Data.Record.Internal.Plugin.Options

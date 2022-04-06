@@ -84,9 +84,9 @@ import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet
+import Data.Primitive.SmallArray
 
-import qualified Data.Vector.Generic as Vector
-import qualified Optics.Core         as Optics
+import qualified Optics.Core as Optics
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
@@ -214,7 +214,7 @@ recordConstraints :: forall r c.
      RecordConstraints r c
   => Proxy c -> Rep (Dict c) (Record r)
 recordConstraints _ = Rep $
-    Vector.map aux $ proxy fieldDicts (Proxy @r)
+    aux <$> proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny c -> Dict c Any
     aux DictAny = Dict
@@ -239,7 +239,7 @@ recordMetadata = Metadata {
       recordName          = "Record"
     , recordConstructor   = "Record"
     , recordSize          = length fields
-    , recordFieldMetadata = Rep $ Vector.fromList fields
+    , recordFieldMetadata = Rep $ smallArrayFromList fields
     }
   where
     fields :: [FieldMetadata Any]

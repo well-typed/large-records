@@ -55,13 +55,13 @@ import Prelude hiding (
   , zipWith
   )
 
-import Data.Proxy
+import Control.Monad (forM_)
 import Data.Functor.Identity
 import Data.Functor.Product
+import Data.Primitive.SmallArray
+import Data.Proxy
 import Data.SOP.Classes (fn_2)
 import Unsafe.Coerce (unsafeCoerce)
-
-import qualified Data.Vector as V
 
 import Data.Record.Generic
 import Data.Record.Generic.Rep.Internal
@@ -82,11 +82,13 @@ indexToInt (UnsafeIndex ix) = ix
 
 getAtIndex :: Index a x -> Rep f a -> f x
 getAtIndex (UnsafeIndex ix) (Rep v) =
-    unsafeCoerce $ V.unsafeIndex v ix
+    unsafeCoerce $ indexSmallArray v ix
 
 putAtIndex :: Index a x -> f x -> Rep f a -> Rep f a
-putAtIndex (UnsafeIndex ix) x (Rep v) = Rep $
-    V.unsafeUpd v [(ix, unsafeCoerce x)]
+putAtIndex (UnsafeIndex ix) x (Rep v) = Rep $ runSmallArray $ do
+    v' <- thawSmallArray v 0 (sizeofSmallArray v)
+    writeSmallArray v' ix (noInlineUnsafeCo x)
+    return v'
 
 updateAtIndex ::
      Functor m
@@ -96,7 +98,12 @@ updateAtIndex ::
 updateAtIndex ix f a = (\x -> putAtIndex ix x a) <$> f (getAtIndex ix a)
 
 allIndices :: forall a. Generic a => Rep (Index a) a
-allIndices = Rep $ V.generate (recordSize (metadata (Proxy @a))) UnsafeIndex
+allIndices = Rep $ createSmallArray size undefined $ \v -> do
+    forM_ [0 .. size - 1] $ \i ->
+      writeSmallArray v i (UnsafeIndex i)
+  where
+    size :: Int
+    size = recordSize (metadata (Proxy @a))
 
 -- | Map with index
 --
@@ -117,7 +124,10 @@ mapWithIndex f as = map' f' allIndices
 -------------------------------------------------------------------------------}
 
 pure :: forall f a. Generic a => (forall x. f x) -> Rep f a
-pure f = Rep (V.replicate (recordSize (metadata (Proxy @a))) f)
+pure f = Rep $ createSmallArray size f $ \_v -> return ()
+  where
+    size :: Int
+    size = recordSize (metadata (Proxy @a))
 
 cpure ::
      (Generic a, Constraints a c)

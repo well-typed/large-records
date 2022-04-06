@@ -29,7 +29,6 @@ import Data.Primitive.SmallArray
 
 import qualified Control.Monad as Monad
 import qualified Data.Foldable as Foldable
-import qualified Data.Vector   as Lazy
 
 {-------------------------------------------------------------------------------
   Definition
@@ -79,13 +78,19 @@ fromListN n as = WrapLazy $
       forM_ (zip [0..] as) $ \(i, !a) ->
         writeSmallArray r i a
 
-fromLazy :: Lazy.Vector a -> StrictVector a
-fromLazy v =
-    fromListN (Lazy.length v) (Lazy.toList v)
+fromLazy :: forall a. SmallArray a -> StrictVector a
+fromLazy v = go 0
+  where
+    go :: Int -> StrictVector a
+    go i
+      | i < sizeofSmallArray v
+      = let !_a = indexSmallArray v i in go (succ i)
 
-toLazy :: StrictVector a -> Lazy.Vector a
-toLazy (WrapLazy arr) =
-    Lazy.fromListN (sizeofSmallArray arr) (Foldable.toList arr)
+      | otherwise
+      = WrapLazy v
+
+toLazy :: StrictVector a -> SmallArray a
+toLazy = unwrapLazy
 
 {-------------------------------------------------------------------------------
   Non-monadic combinators

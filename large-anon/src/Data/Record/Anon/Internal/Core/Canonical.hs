@@ -28,8 +28,6 @@ module Data.Record.Anon.Internal.Core.Canonical (
   , fromList
   , toVector
   , fromVector
-  , toLazyVector
-  , fromLazyVector
     -- * Basic API
   , insert
   , lens
@@ -55,7 +53,6 @@ import Debug.RecoverRTTI (AnythingToString(..))
 import GHC.Exts (Any)
 
 import qualified Data.Foldable as Foldable
-import qualified Data.Vector   as Lazy
 
 import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
 
@@ -135,14 +132,6 @@ toList = Foldable.toList . toVector
 -- @O(n)@.
 fromList :: [f Any] -> Canonical f
 fromList = fromVector . Strict.fromList
-
--- | To lazy vector
-toLazyVector :: Canonical f -> Lazy.Vector (f Any)
-toLazyVector = Strict.toLazy . toVector
-
--- | From already constructed vector
-fromLazyVector :: Lazy.Vector (f Any) -> Canonical f
-fromLazyVector = fromVector . Strict.fromLazy
 
 {-------------------------------------------------------------------------------
   Basic API

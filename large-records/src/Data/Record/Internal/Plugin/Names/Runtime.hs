@@ -17,12 +17,12 @@ module Data.Record.Internal.Plugin.Names.Runtime (
   , unq_showsPrec
   , error
   , unsafeCoerce
-    -- * vector
-  , type_Vector
-  , fromList
-  , toList
-  , unsafeIndex
-  , unsafeUpd
+    -- * primitive
+  , type_SmallArray
+  , smallArrayFromList
+  , smallArrayToList
+  , indexSmallArray
+  , updateSmallArray
     -- * record-hasfield
   , type_HasField
   , unq_hasField
@@ -105,18 +105,18 @@ unq_showsPrec = nameUV "showsPrec"
   vector
 -------------------------------------------------------------------------------}
 
-type_Vector :: LRdrName
-type_Vector = nameQT "Vector"
+type_SmallArray :: LRdrName
+type_SmallArray = nameQT "SmallArray"
 
-fromList    :: LRdrName
-toList      :: LRdrName
-unsafeIndex :: LRdrName
-unsafeUpd   :: LRdrName
+smallArrayFromList :: LRdrName
+smallArrayToList   :: LRdrName
+indexSmallArray    :: LRdrName
+updateSmallArray   :: LRdrName
 
-fromList    = nameQV "fromList"
-toList      = nameQV "toList"
-unsafeIndex = nameQV "unsafeIndex"
-unsafeUpd   = nameQV "unsafeUpd"
+smallArrayFromList = nameQV "smallArrayFromList"
+smallArrayToList   = nameQV "smallArrayToList"
+indexSmallArray    = nameQV "indexSmallArray"
+updateSmallArray   = nameQV "updateSmallArray"
 
 {-------------------------------------------------------------------------------
   record-hasfield

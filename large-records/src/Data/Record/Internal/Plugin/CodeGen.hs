@@ -85,7 +85,7 @@ genLargeRecord r@Record{..} = concatM [
 --
 -- TODO: From ghc 9.2 and up, we should generate
 --
--- > newtype T a b = TFromVector {vectorFromT :: Vector Any}
+-- > newtype T a b = TFromVector {vectorFromT :: SmallArray Any}
 -- >   deriving anyclass C -- where applicable
 --
 -- instead, along with a pattern synonym.
@@ -122,14 +122,14 @@ genDatatype Record{..} = pure $
     fieldExistentialType :: LRdrName -> Field -> (LRdrName, LHsType GhcPs)
     fieldExistentialType var fld = (fieldName fld, optionalBang $ VarT var)
 
--- | Generate conversion to and from vector
+-- | Generate conversion to and from an array
 --
 -- Generates something like
 --
--- > vectorFromT :: T a b -> Vector Any
+-- > vectorFromT :: T a b -> SmallArray Any
 -- > vectorFromT = \x ->
 -- >     case x of
--- >       MkT f0 f1 f2 f3 f4 -> V.fromList [
+-- >       MkT f0 f1 f2 f3 f4 -> smallArrayFromList [
 -- >           unsafeCoerce f0
 -- >         , unsafeCoerce f1
 -- >         , unsafeCoerce f2
@@ -137,9 +137,9 @@ genDatatype Record{..} = pure $
 -- >         , unsafeCoerce f4
 -- >         ]
 -- >
--- > vectorToT :: Vector Any -> T a b
+-- > vectorToT :: SmallArray Any -> T a b
 -- > vectorToT = \x ->
--- >     case V.toList x of
+-- >     case smallArrayToList x of
 -- >       [f0, f1, f2, f3, f4] ->
 -- >         MkT (unsafeCoerce f0)
 -- >             (unsafeCoerce f1)
@@ -163,11 +163,11 @@ genVectorConversions r@Record{..} = concatM [
             sigD name $
               funT
                 (recordTypeT r)
-                (ConT RT.type_Vector `appT` ConT RT.type_Any)
+                (ConT RT.type_SmallArray `appT` ConT RT.type_Any)
           , valD name $
               lamE1 (conP recordConName (map varP args)) $
                 appE
-                  (VarE RT.fromList)
+                  (VarE RT.smallArrayFromList)
                   (listE [ VarE RT.unsafeCoerce `appE` VarE arg
                          | arg <- args
                          ]
@@ -184,12 +184,12 @@ genVectorConversions r@Record{..} = concatM [
         return $ [
             sigD name $
               funT
-                (ConT RT.type_Vector `appT` ConT RT.type_Any)
+                (ConT RT.type_SmallArray `appT` ConT RT.type_Any)
                 (recordTypeT r)
           , valD name $
               lamE1 (varP x) $
                 caseE
-                  (VarE RT.toList `appE` VarE x)
+                  (VarE RT.smallArrayToList `appE` VarE x)
                   [ ( listP (map varP args)
                     , appsE
                         (ConE recordConName)
@@ -244,7 +244,7 @@ genIndexedAccessor r@Record{..} = do
             appE
               (VarE RT.noInlineUnsafeCo)
               (appsE
-                 (VarE RT.unsafeIndex)
+                 (VarE RT.indexSmallArray)
                  [ VarE (nameVectorFrom r) `appE` VarE t
                  , VarE n
                  ]
@@ -281,7 +281,7 @@ genUnsafeSetIndex r@Record{..} = do
             appE
               (VarE (nameVectorTo r))
               (appsE
-                 (VarE RT.unsafeUpd)
+                 (VarE RT.updateSmallArray)
                  [ VarE (nameVectorFrom r) `appE` VarE t
                  , listE [
                        tupE $
@@ -419,7 +419,10 @@ genDict Record{..} = do
       lamE1 (varP p) $
         appE
           (ConE RT.con_Rep)
-          (VarE RT.fromList `appE` listE (map (dictForField p) recordFields))
+          (appE
+             (VarE RT.smallArrayFromList)
+             (listE (map (dictForField p) recordFields))
+          )
   where
     dictForField :: LRdrName -> Field -> LHsExpr GhcPs
     dictForField p Field{..} =
@@ -483,7 +486,10 @@ genMetadata r@Record{..} = do
             , ( RT.recordFieldMetadata
               , appE
                   (ConE RT.con_Rep)
-                  (VarE RT.fromList `appE` listE (map auxField recordFields))
+                  (appE
+                     (VarE RT.smallArrayFromList)
+                     (listE (map auxField recordFields))
+                  )
               )
             ]
   where

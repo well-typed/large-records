@@ -19,11 +19,11 @@ module Data.Record.Plugin.Runtime (
   , unsafeCoerce
   , error
     -- * vector
-  , Vector
-  , Vector.fromList
-  , Vector.toList
-  , Vector.unsafeIndex
-  , Vector.unsafeUpd
+  , SmallArray
+  , smallArrayFromList
+  , smallArrayToList
+  , indexSmallArray
+  , updateSmallArray
     -- * record-hasfield
   , GRC.HasField(hasField)
     -- * large-generics
@@ -44,19 +44,20 @@ module Data.Record.Plugin.Runtime (
   , repToVector
   ) where
 
+import Control.Monad (forM_)
 import Data.Coerce (coerce)
 import Data.Kind (Constraint, Type)
+import Data.Primitive.SmallArray
 import Data.Proxy (Proxy(Proxy))
-import Data.Vector (Vector)
 import GHC.Exts (Any)
 import Unsafe.Coerce (unsafeCoerce)
 
+import qualified Data.Foldable                    as Foldable
 import qualified Data.Record.Generic              as LR
 import qualified Data.Record.Generic.Eq           as LR
 import qualified Data.Record.Generic.GHC          as LR
 import qualified Data.Record.Generic.Rep.Internal as LR
 import qualified Data.Record.Generic.Show         as LR
-import qualified Data.Vector                      as Vector
 import qualified GHC.Records.Compat               as GRC
 
 {-------------------------------------------------------------------------------
@@ -66,10 +67,18 @@ import qualified GHC.Records.Compat               as GRC
 dictFor :: c x => Proxy c -> Proxy x -> LR.Dict c x
 dictFor _ _ = LR.Dict
 
-repFromVector :: Vector Any -> LR.Rep LR.I a
+repFromVector :: SmallArray Any -> LR.Rep LR.I a
 repFromVector = coerce
 
-repToVector :: LR.Rep LR.I a -> Vector Any
+repToVector :: LR.Rep LR.I a -> SmallArray Any
 repToVector = coerce
 
+smallArrayToList :: SmallArray a -> [a]
+smallArrayToList = Foldable.toList
 
+updateSmallArray :: SmallArray a -> [(Int, a)] -> SmallArray a
+updateSmallArray v updates = runSmallArray $ do
+    v' <- thawSmallArray v 0 (sizeofSmallArray v)
+    forM_ updates $ \(i, a) -> do
+      writeSmallArray v' i a
+    return v'

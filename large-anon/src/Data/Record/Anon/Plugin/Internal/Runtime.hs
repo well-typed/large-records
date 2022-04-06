@@ -50,15 +50,13 @@ module Data.Record.Anon.Plugin.Internal.Runtime (
   ) where
 
 import Data.Kind
+import Data.Primitive.SmallArray
 import Data.Record.Generic hiding (FieldName)
 import Data.SOP.Constraint (Compose)
 import Data.Tagged
 import GHC.Exts (Any)
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
-
-import qualified Data.Vector as Lazy
-import qualified Data.Vector as Vector
 
 import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
 
@@ -183,37 +181,35 @@ type family SimpleFieldTypes (r :: Row Type) :: [(Symbol, Type)]
 -- | Require that @c x@ holds for every @(n := x)@ in @r@.
 class AllFields (r :: Row k) (c :: k -> Constraint) where
   -- | Vector of dictionaries, in row order
-  --
-  -- This returns a /lazy/ vector because it is used to build a 'Rep'.
   fieldDicts :: DictAllFields k r c
   fieldDicts = undefined
 
 type DictAllFields k (r :: Row k) (c :: k -> Constraint) =
-       Tagged r (Lazy.Vector (DictAny c))
+       Tagged r (SmallArray (DictAny c))
 
 data DictAny c where
   DictAny :: c Any => DictAny c
 
 evidenceAllFields :: forall k r c. [DictAny c] -> DictAllFields k r c
-evidenceAllFields = Tagged . Vector.fromList
+evidenceAllFields = Tagged . smallArrayFromList
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Show a)
       => AllFields r (Compose Show (K a)) where
   fieldDicts = Tagged $
-      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
+      smallArrayFromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Eq a)
       => AllFields r (Compose Eq (K a)) where
   fieldDicts = Tagged $
-      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
+      smallArrayFromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 instance {-# OVERLAPPING #-}
          (KnownFields r, Ord a)
       => AllFields r (Compose Ord (K a)) where
   fieldDicts = Tagged $
-      Lazy.fromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
+      smallArrayFromList $ map (const DictAny) $ proxy fieldNames (Proxy @r)
 
 fieldMetadata :: forall k (r :: Row k) proxy.
      KnownFields r

@@ -84,6 +84,7 @@ import Data.Bifunctor
 import Data.Coerce (coerce)
 import Data.Functor.Product
 import Data.Kind
+import Data.Primitive.SmallArray
 import Data.Proxy
 import Data.Record.Generic hiding (FieldName)
 import Data.SOP.Classes (fn_2)
@@ -96,8 +97,6 @@ import GHC.TypeLits
 import TypeLet.UserAPI
 
 import qualified Optics.Core as Optics
-import qualified Data.Vector as Lazy (Vector)
-import qualified Data.Vector as Lazy.Vector
 
 import qualified Data.Record.Generic.Eq   as Generic
 import qualified Data.Record.Generic.JSON as Generic
@@ -113,6 +112,7 @@ import Data.Record.Anon.Plugin.Internal.Runtime
 import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
 import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
 import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
+import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
 
 {-------------------------------------------------------------------------------
   Definition
@@ -375,8 +375,8 @@ reifyAllFields :: forall k (r :: Row k) (c :: k -> Constraint) proxy.
      AllFields r c
   => proxy c -> Record (Dict c) r
 reifyAllFields _ = unsafeFromCanonical $
-    Canon.fromLazyVector $
-      Lazy.Vector.map aux $ proxy fieldDicts (Proxy @r)
+    Canon.fromVector . Strict.fromLazy $
+      fmap aux $ proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny c -> Dict c Any
     aux DictAny = Dict
@@ -386,7 +386,7 @@ reflectAllFields :: forall k (c :: k -> Constraint) (r :: Row k).
   -> Reflected (AllFields r c)
 reflectAllFields dicts =
     Unsafe.reflectAllFields $ Tagged $
-      fmap aux $ Canon.toLazyVector $ toCanonical dicts
+      fmap aux $ Strict.toLazy $ Canon.toVector $ toCanonical dicts
   where
     aux :: Dict c Any -> DictAny c
     aux Dict = DictAny
@@ -481,18 +481,18 @@ someRecord fields =
 
 recordToRep :: Record f r -> Rep I (Record f r)
 recordToRep (toCanonical -> r) =
-    Rep $ co . Canon.toLazyVector $ r
+    Rep $ co . Strict.toLazy . Canon.toVector $ r
   where
     -- Second @Any@ is really (f (Any))
-    co :: Lazy.Vector (f Any) -> Lazy.Vector (I Any)
+    co :: SmallArray (f Any) -> SmallArray (I Any)
     co = noInlineUnsafeCo
 
 repToRecord :: Rep I (Record f r) -> Record f r
 repToRecord (Rep r) =
-    unsafeFromCanonical $ Canon.fromLazyVector . co $ r
+    unsafeFromCanonical $ Canon.fromVector . Strict.fromLazy . co $ r
   where
     -- First @Any@ is really (f Any)@
-    co :: Lazy.Vector (I Any) -> Lazy.Vector (f Any)
+    co :: SmallArray (I Any) -> SmallArray (f Any)
     co = noInlineUnsafeCo
 
 {-------------------------------------------------------------------------------
@@ -506,7 +506,7 @@ recordConstraints :: forall f r c.
      RecordConstraints f r c
   => Proxy c -> Rep (Dict c) (Record f r)
 recordConstraints _ = Rep $
-    Lazy.Vector.map (co . aux) $ proxy fieldDicts (Proxy @r)
+    co . aux <$> proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny (Compose c f) -> Dict (Compose c f) Any
     aux DictAny = Dict
@@ -522,7 +522,7 @@ recordMetadata = Metadata {
       recordName          = "Record"
     , recordConstructor   = "Record"
     , recordSize          = length fields
-    , recordFieldMetadata = Rep $ Lazy.Vector.fromList fields
+    , recordFieldMetadata = Rep $ smallArrayFromList fields
     }
   where
     fields :: [FieldMetadata Any]

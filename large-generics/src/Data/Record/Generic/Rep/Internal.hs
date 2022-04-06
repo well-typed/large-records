@@ -24,12 +24,11 @@ import Prelude hiding (sequenceA)
 import qualified Prelude
 
 import Data.Coerce (coerce)
+import Data.Foldable (toList)
+import Data.Primitive.SmallArray
 import Data.SOP.BasicFunctors
-import Data.Vector (Vector)
 import GHC.Exts (Any)
 import Unsafe.Coerce (unsafeCoerce)
-
-import qualified Data.Vector as V
 
 {-------------------------------------------------------------------------------
   Representation
@@ -39,7 +38,7 @@ import qualified Data.Vector as V
 --
 -- The @f@ parameter describes which functor has been applied to all fields of
 -- the record; in other words @Rep I@ is isomorphic to the record itself.
-newtype Rep f a = Rep (Vector (f Any))
+newtype Rep f a = Rep (SmallArray (f Any))
 
 type role Rep representational nominal
 
@@ -62,24 +61,24 @@ sequenceA (Rep v) = Rep <$> Prelude.sequenceA (fmap unComp v)
 -------------------------------------------------------------------------------}
 
 collapse :: Rep (K a) b -> [a]
-collapse (Rep v) = coerce (V.toList v)
+collapse (Rep v) = coerce (toList v)
 
 -- | Convert 'Rep' to list
 toListAny :: Rep f a -> [f Any]
-toListAny (Rep v) = V.toList v
+toListAny (Rep v) = toList v
 
 -- | Convert list to 'Rep'
 --
 -- Does not check that the list has the right number of elements.
 unsafeFromList :: [b] -> Rep (K b) a
-unsafeFromList = Rep . V.fromList . Prelude.map K
+unsafeFromList = Rep . smallArrayFromList . Prelude.map K
 
 -- | Convert list to 'Rep'
 --
 -- Does not check that the list has the right number of elements, nor the
 -- types of those elements.
 unsafeFromListAny :: [f Any] -> Rep f a
-unsafeFromListAny = Rep . V.fromList
+unsafeFromListAny = Rep . smallArrayFromList
 
 {-------------------------------------------------------------------------------
   Some specialised instances for 'Rep
@@ -87,12 +86,12 @@ unsafeFromListAny = Rep . V.fromList
 
 instance Show x => Show (Rep (K x) a) where
   show (Rep v) =
-      show $ Prelude.map unK (V.toList v)
+      show $ Prelude.map unK (toList v)
 
 instance Eq x => Eq (Rep (K x) a) where
   Rep v == Rep v' =
-         Prelude.map unK (V.toList v)
-      == Prelude.map unK (V.toList v')
+         Prelude.map unK (toList v)
+      == Prelude.map unK (toList v')
 
 {-------------------------------------------------------------------------------
   Auxiliary

@@ -13,10 +13,10 @@
 --
 -- Intended for qualified import.
 --
--- > import Data.Record.Anonymous.Internal.SmallHashMap (HashMap)
+-- > import Data.Record.Anonymous.Internal.SmallHashMap (SmallHashMap)
 -- > import qualified Data.Record.Anonymous.Internal.SmallHashMap as HashMap
 module Data.Record.Anon.Internal.Core.Util.SmallHashMap (
-    HashMap
+    SmallHashMap
     -- * Standard operations
   , null
   , empty
@@ -63,41 +63,41 @@ instance (Hashable k, Ord k) => Ord (Hashed k) where
   Definition of the HashMap proper
 -------------------------------------------------------------------------------}
 
-newtype HashMap k a = Wrap { unwrap :: Map (Hashed k) a }
+newtype SmallHashMap k a = Wrap { unwrap :: Map (Hashed k) a }
   deriving (Show)
 
 -- | Cannot derive 'Functor' because the 'Functor' instance for 'Map' is wrong
 -- (not strict)
-instance Functor (HashMap k) where
+instance Functor (SmallHashMap k) where
   fmap f = Wrap . Map.map f . unwrap
 
 {-------------------------------------------------------------------------------
   Standard operations
 -------------------------------------------------------------------------------}
 
-null :: forall k a. HashMap k a -> Bool
+null :: forall k a. SmallHashMap k a -> Bool
 null = coerce $ Map.null @(Hashed k) @a
 
-empty :: forall k a. HashMap k a
+empty :: forall k a. SmallHashMap k a
 empty = coerce $ Map.empty @(Hashed k) @a
 
-lookup :: forall k a. (Hashable k, Ord k) => k -> HashMap k a -> Maybe a
+lookup :: forall k a. (Hashable k, Ord k) => k -> SmallHashMap k a -> Maybe a
 lookup = coerce $ Map.lookup @(Hashed k) @a
 
-member :: forall k a. (Hashable k, Ord k) => k -> HashMap k a -> Bool
+member :: forall k a. (Hashable k, Ord k) => k -> SmallHashMap k a -> Bool
 member = coerce $ Map.member @(Hashed k) @a
 
 insert :: forall k a.
      (Hashable k, Ord k)
-  => k -> a -> HashMap k a -> HashMap k a
+  => k -> a -> SmallHashMap k a -> SmallHashMap k a
 insert = coerce $ Map.insert @(Hashed k) @a
 
-toList :: forall k a. HashMap k a -> [(k, a)]
+toList :: forall k a. SmallHashMap k a -> [(k, a)]
 toList = coerce $ Map.toList @(Hashed k) @a
 
 alter :: forall k a.
      (Hashable k, Ord k)
-  => (Maybe a -> Maybe a) -> k -> HashMap k a -> HashMap k a
+  => (Maybe a -> Maybe a) -> k -> SmallHashMap k a -> SmallHashMap k a
 alter = coerce $ Map.alter @(Hashed k) @a
 
 {-------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ alter = coerce $ Map.alter @(Hashed k) @a
 -- @O(1)@.
 alterExisting :: forall k a b.
      (Hashable k, Ord k)
-  => k -> (a -> (b, Maybe a)) -> HashMap k a -> Maybe (b, HashMap k a)
+  => k -> (a -> (b, Maybe a)) -> SmallHashMap k a -> Maybe (b, SmallHashMap k a)
 alterExisting k f m
   | null m    = Nothing
   | otherwise =

@@ -36,7 +36,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector  as V
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
-import Data.Record.Anon.Internal.Core.Util.SmallHashMap (HashMap)
+import Data.Record.Anon.Internal.Core.Util.SmallHashMap (SmallHashMap)
 
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
@@ -65,7 +65,7 @@ data KnownRow a = KnownRow {
       --
       -- >     HashMap.lookup n knownRecordNames == Just i
       -- > ==> knownFieldName (knownRecordVector V.! i) == n
-    , knownRecordVisible :: HashMap FieldName Int
+    , knownRecordVisible :: SmallHashMap FieldName Int
 
       -- | Are all fields in this record visible?
       --
@@ -81,7 +81,7 @@ data KnownRow a = KnownRow {
 toList :: KnownRow a -> [KnownField a]
 toList = V.toList . knownRecordVector
 
-visibleMap :: KnownRow a -> HashMap FieldName (KnownField a)
+visibleMap :: KnownRow a -> SmallHashMap FieldName (KnownField a)
 visibleMap KnownRow{..} = (knownRecordVector V.!) <$> knownRecordVisible
 
 {-------------------------------------------------------------------------------
@@ -96,11 +96,11 @@ fromList :: forall a.
   -> KnownRow a
 fromList = go [] 0 HashMap.empty True
   where
-    go :: [KnownField a]        -- Acc fields, reverse order (includes shadowed)
-       -> Int                   -- Next index
-       -> HashMap FieldName Int -- Acc indices of visible fields
-       -> Bool                  -- Are all already processed fields visible?
-       -> [KnownField a]        -- To process
+    go :: [KnownField a]  -- Acc fields, reverse order (includes shadowed)
+       -> Int             -- Next index
+       -> SmallHashMap FieldName Int -- Acc indices of visible fields
+       -> Bool            -- Are all already processed fields visible?
+       -> [KnownField a]  -- To process
        -> KnownRow a
     go accFields !nextIndex !accVisible !accAllVisible = \case
         [] -> KnownRow {

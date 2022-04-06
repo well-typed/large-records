@@ -54,9 +54,9 @@ import GHC.Exts (Any)
 
 import qualified Data.Foldable as Foldable
 
-import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
+import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
 
-import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
+import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 
 {-------------------------------------------------------------------------------
   Definition
@@ -84,7 +84,7 @@ import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
-newtype Canonical (f :: k -> Type) = Canonical (StrictVector (f Any))
+newtype Canonical (f :: k -> Type) = Canonical (StrictArray (f Any))
   deriving newtype (Semigroup, Monoid)
 
 type role Canonical representational
@@ -114,11 +114,11 @@ setAtIndex fs (Canonical v) = Canonical (v Strict.// fs)
 -------------------------------------------------------------------------------}
 
 -- | To strict vector
-toVector :: Canonical f -> StrictVector (f Any)
+toVector :: Canonical f -> StrictArray (f Any)
 toVector (Canonical v) = v
 
 -- | From strict vector
-fromVector :: StrictVector (f Any) -> Canonical f
+fromVector :: StrictArray (f Any) -> Canonical f
 fromVector = Canonical
 
 -- | All fields in row order
@@ -158,7 +158,7 @@ insert new = prepend
 -- order of the new record.
 --
 -- @O(n)@ (in both directions)
-lens :: StrictVector Int -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
+lens :: StrictArray Int -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
 lens is (Canonical v) = (
       Canonical $
         Strict.backpermute v is

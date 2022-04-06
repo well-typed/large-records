@@ -105,14 +105,15 @@ import qualified Data.Record.Generic.Show as Generic
 import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Internal.Core.Diff (Diff)
 import Data.Record.Anon.Internal.Core.FieldName
-import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
 import Data.Record.Anon.Internal.Reflection (Reflected(..))
+import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
+
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
-import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
-import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
-import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
+import qualified Data.Record.Anon.Internal.Core.Canonical   as Canon
+import qualified Data.Record.Anon.Internal.Core.Diff        as Diff
+import qualified Data.Record.Anon.Internal.Reflection       as Unsafe
+import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 
 {-------------------------------------------------------------------------------
   Definition
@@ -409,7 +410,7 @@ reifyProject =
     ixs = unsafeFromCanonical $
             Canon.fromVector $ co $ proxy projectIndices (Proxy @'(r, r'))
 
-    co :: StrictVector Int -> StrictVector (K Int Any)
+    co :: StrictArray Int -> StrictArray (K Int Any)
     co = coerce
 
     aux :: forall x. K Int x -> K String x -> InRow r x

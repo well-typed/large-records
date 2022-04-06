@@ -38,10 +38,10 @@ import qualified Data.List.NonEmpty as NE
 
 import Data.Record.Anon.Internal.Core.Canonical (Canonical(..))
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
-import Data.Record.Anon.Internal.Core.Util.SmallHashMap (SmallHashMap)
+import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
 
-import qualified Data.Record.Anon.Internal.Core.Canonical         as Canon
-import qualified Data.Record.Anon.Internal.Core.Util.SmallHashMap as HashMap
+import qualified Data.Record.Anon.Internal.Core.Canonical    as Canon
+import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition

@@ -58,9 +58,9 @@ import GHC.Exts (Any)
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
 
-import Data.Record.Anon.Internal.Core.Util.StrictVector (StrictVector)
+import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
 
-import qualified Data.Record.Anon.Internal.Core.Util.StrictVector as Strict
+import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 
 {-------------------------------------------------------------------------------
   IMPLEMENTATION NOTE
@@ -264,7 +264,7 @@ class Project (r :: Row k) (r' :: Row k) where
 
 -- | In order of the fields in the /target/ record, the index in the /source/
 type DictProject k (r :: Row k) (r' :: Row k) =
-       Tagged '(r, r') (StrictVector Int)
+       Tagged '(r, r') (StrictArray Int)
 
 evidenceProject :: forall k r r'. [Int] -> DictProject k r r'
 evidenceProject = Tagged . Strict.fromList

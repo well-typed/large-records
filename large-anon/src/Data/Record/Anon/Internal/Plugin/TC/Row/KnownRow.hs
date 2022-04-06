@@ -36,12 +36,12 @@ import Data.Vector (Vector)
 import qualified Data.Vector  as V
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
-import Data.Record.Anon.Internal.Core.Util.SmallHashMap (SmallHashMap)
+import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
 
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 
-import qualified Data.Record.Anon.Internal.Core.Util.SmallHashMap as HashMap
+import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition

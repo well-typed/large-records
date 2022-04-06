@@ -29,6 +29,7 @@ module Data.Record.Plugin.Runtime (
     -- * large-generics
   , LR.Dict
   , LR.FieldMetadata(FieldMetadata)
+  , LR.FieldStrictness(FieldLazy, FieldStrict)
   , LR.Generic(Constraints, MetadataOf, dict, from, metadata, to)
   , LR.Metadata(Metadata, recordConstructor, recordFieldMetadata, recordName, recordSize)
   , LR.Rep(Rep)

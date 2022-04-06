@@ -499,23 +499,13 @@ genMetadata r@Record{..} dynFlags = do
         appsE
           (ConE RT.con_FieldMetadata)
           [ proxyE (stringT (nameBase fieldName))
-          , ConE $ case fieldStrictness of
-              HsSrcBang _ SrcUnpack   _ -> GHC.con_SourceUnpack
-              HsSrcBang _ SrcNoUnpack _ -> GHC.con_SourceNoUnpack
-              HsSrcBang _ NoSrcUnpack _ -> GHC.con_NoSourceUnpackedness
-          , ConE $ case fieldStrictness of
-              HsSrcBang _ _ SrcLazy     -> GHC.con_SourceLazy
-              HsSrcBang _ _ SrcStrict   -> GHC.con_SourceStrict
-              HsSrcBang _ _ NoSrcStrict -> GHC.con_NoSourceStrictness
           , ConE $ case decideStrictness dynFlags fieldStrictness of
-              HsStrict                  -> GHC.con_DecidedStrict
-              HsLazy                    -> GHC.con_DecidedLazy
-              HsUnpack _                -> GHC.con_DecidedUnpack
+              HsStrict                  -> RT.con_FieldStrict
+              HsLazy                    -> RT.con_FieldLazy
+              HsUnpack _                -> RT.con_FieldStrict
           ]
 
 -- | Implementation of https://hackage.haskell.org/package/base-4.16.1.0/docs/GHC-Generics.html#t:DecidedStrictness
---
--- But it is incorrect, real algorithm will unpack @!Int@ with @-O1@ (and will not unpack @!Integer@).
 decideStrictness :: DynFlags -> HsSrcBang -> HsImplBang
 decideStrictness dynFlags (HsSrcBang _ unpackedness strictness) =
   case (unpackedness, srcToImpl strictness) of

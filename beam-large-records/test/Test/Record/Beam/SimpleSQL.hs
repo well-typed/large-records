@@ -42,7 +42,7 @@ import Test.Record.Beam.Util.SQLite
   Large record example
 -------------------------------------------------------------------------------}
 
-{-# ANN type LargeTable largeRecordStrict #-}
+{-# ANN type LargeTable largeRecord #-}
 data LargeTable (f :: Type -> Type) = MkLargeTable {
       largeTableId    :: Columnar f Int32
     , largeTableField :: Columnar f Text
@@ -65,7 +65,7 @@ instance Table LargeTable where
   The full database
 -------------------------------------------------------------------------------}
 
-{-# ANN type ExampleDb largeRecordStrict #-}
+{-# ANN type ExampleDb largeRecord #-}
 data ExampleDb (f :: Type -> Type) = MkExampleDb {
       exampleDbLargeTable  :: f (TableEntity LargeTable)
     }

@@ -99,6 +99,7 @@ test-suite test-large-records
       Test.Record.Sanity.RDP.SplitModule.RecordDef
       Test.Record.Sanity.RecordConstruction
       Test.Record.Sanity.Strictness
+      Test.Record.Sanity.StrictnessStrictData
       Test.Record.Sanity.GhcGenerics
       Test.Record.Util
 

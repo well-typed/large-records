@@ -29,10 +29,10 @@ import Test.Tasty.HUnit
   through DRF.
 --------------------------------------s-----------------------------------------}
 
-{-# ANN type X largeRecordStrict #-}
+{-# ANN type X largeRecord #-}
 data X = MkX { a :: Int }
 
-{-# ANN type Y largeRecordStrict #-}
+{-# ANN type Y largeRecord #-}
 data Y = MkY { a :: String }
 
 testOverloading :: Assertion

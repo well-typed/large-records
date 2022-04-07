@@ -44,7 +44,7 @@ import Test.Record.Beam.Util.Orphans ()
   Table A
 -------------------------------------------------------------------------------}
 
-{-# ANN type LRTableA largeRecordLazy #-}
+{-# ANN type LRTableA largeRecord #-}
 data LRTableA (f :: Type -> Type) = MkLRTableA {
      fldA1 :: Columnar f Int
    , fldA2 :: Columnar f Int
@@ -66,7 +66,7 @@ deriving instance Eq   (Columnar f Int) => Eq   (PrimaryKey LRTableA f)
   Table B: has mixin (reference to table A), as well as nullable fields
 -------------------------------------------------------------------------------}
 
-{-# ANN type LRTableB largeRecordLazy #-}
+{-# ANN type LRTableB largeRecord #-}
 data LRTableB (f :: Type -> Type) = MkLRTableB {
      fldB1 :: Columnar f Int
    , fldB2 :: Columnar f Int
@@ -97,7 +97,7 @@ instance Table LRTableB where
 -- <https://haskell-beam.github.io/beam/user-guide/databases/#domain-types>
 newtype EvenInt = EvenInt Int
 
-{-# ANN type LRDB largeRecordLazy #-}
+{-# ANN type LRDB largeRecord #-}
 data LRDB (f :: Type -> Type) = MkLRDB {
      tblA   :: f (TableEntity LRTableA)
    , tblB   :: f (TableEntity LRTableB)

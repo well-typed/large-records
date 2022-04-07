@@ -27,10 +27,10 @@ import Test.Tasty.HUnit
 -- Test both the case where the name of the type and the name of the constructor
 -- are the same and where they are different.
 
-{-# ANN type R largeRecordLazy #-}
+{-# ANN type R largeRecord #-}
 data R a = MkR { x :: Int, y :: [a] } deriving (Eq, Show)
 
-{-# ANN type S largeRecordLazy #-}
+{-# ANN type S largeRecord #-}
 data S a = S { x :: Int, y :: [a] } deriving (Eq, Show)
 
 inOrder :: R Bool
@@ -56,7 +56,7 @@ valueOfS = S { x = 1234, y = [True] }
 data RegularRecord = RR { a :: Int }
   deriving (Show, Eq)
 
-{-# ANN type T largeRecordStrict #-}
+{-# ANN type T largeRecord #-}
 data T = T { x :: Int, y :: S Bool, z :: RegularRecord }
 
 valueOfT :: T

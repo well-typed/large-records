@@ -11,10 +11,11 @@
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE StrictData                #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
-module Test.Record.Sanity.Strictness (tests) where
+module Test.Record.Sanity.StrictnessStrictData (tests) where
 
 import Control.Exception
 import GHC.Records.Compat
@@ -28,10 +29,10 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 {-# ANN type Lazy largeRecord #-}
-data Lazy = MkLazy { lazyField :: Word }
+data Lazy = MkLazy { lazyField :: ~Word }
 
 {-# ANN type Strict largeRecord #-}
-data Strict = MkStrict { strictField :: !Word }
+data Strict = MkStrict { strictField :: Word }
 
 _silenceWarnings :: Lazy -> Strict -> ()
 _silenceWarnings MkLazy{..} MkStrict{..} = const () $ (

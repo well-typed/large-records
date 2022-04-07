@@ -8,12 +8,13 @@ module Data.Record.Internal.Plugin.CodeGen (genLargeRecord) where
 import Data.List (nubBy)
 import Data.List.NonEmpty (NonEmpty(..))
 
+import Language.Haskell.TH (Extension(StrictData))
+
 import qualified Data.Generics as SYB
 
 import Data.Record.Internal.GHC.Fresh
 import Data.Record.Internal.GHC.Shim hiding (mkTyVar)
 import Data.Record.Internal.GHC.TemplateHaskellStyle
-import Data.Record.Internal.Plugin.Options
 import Data.Record.Internal.Plugin.Record
 
 import qualified Data.Record.Internal.Plugin.Names.GhcGenerics as GHC
@@ -24,8 +25,8 @@ import qualified Data.Record.Internal.Plugin.Names.Runtime     as RT
 -------------------------------------------------------------------------------}
 
 -- | Generate all large-records definitions for a record.
-genLargeRecord :: MonadFresh m => Record -> m [LHsDecl GhcPs]
-genLargeRecord r@Record{..} = concatM [
+genLargeRecord :: MonadFresh m => Record -> DynFlags -> m [LHsDecl GhcPs]
+genLargeRecord r@Record{..} dynFlags = concatM [
       (:[]) <$> genDatatype r
     , genVectorConversions  r
     , genIndexedAccessor    r
@@ -35,7 +36,7 @@ genLargeRecord r@Record{..} = concatM [
     , sequence [
           genConstraintsClass    r
         , genConstraintsInstance r
-        , genGenericInstance     r
+        , genGenericInstance     r dynFlags
         , genGHCGeneric          r
       ]
     ]
@@ -113,14 +114,14 @@ genDatatype Record{..} = pure $
         | (i, _) <- zip [1 :: Int ..] recordFields
         ]
 
-    optionalBang :: LHsType GhcPs -> LHsType GhcPs
-    optionalBang = if allFieldsStrict recordOptions then bangType else id
+    optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
+    optionalBang bang = noLoc . HsBangTy defExt bang
 
     fieldContext :: LRdrName -> Field -> LHsType GhcPs
     fieldContext var fld = equalP (VarT var) (fieldType fld)
 
     fieldExistentialType :: LRdrName -> Field -> (LRdrName, LHsType GhcPs)
-    fieldExistentialType var fld = (fieldName fld, optionalBang $ VarT var)
+    fieldExistentialType var fld = (fieldName fld, optionalBang (fieldStrictness fld) $ VarT var)
 
 -- | Generate conversion to and from an array
 --
@@ -467,8 +468,8 @@ genConstraintsInstance r@Record{..} = do
 -- >       , FieldMetadata (Proxy :: Proxy "tListB")) FieldLazy
 -- >       ]
 -- >   }
-genMetadata :: MonadFresh m => Record -> m (LHsExpr GhcPs)
-genMetadata r@Record{..} = do
+genMetadata :: MonadFresh m => Record -> DynFlags -> m (LHsExpr GhcPs)
+genMetadata r@Record{..} dynFlags = do
     p <- freshName $ mkExpVar recordAnnLoc "p"
     return $
       lamE1 (varP p) $
@@ -498,10 +499,25 @@ genMetadata r@Record{..} = do
         appsE
           (ConE RT.con_FieldMetadata)
           [ proxyE (stringT (nameBase fieldName))
-          , ConE $ if allFieldsStrict recordOptions
-                     then RT.con_FieldStrict
-                     else RT.con_FieldLazy
+          , ConE $ case decideStrictness dynFlags fieldStrictness of
+              HsStrict                  -> RT.con_FieldStrict
+              HsLazy                    -> RT.con_FieldLazy
+              HsUnpack _                -> RT.con_FieldStrict
           ]
+
+-- | Implementation of https://hackage.haskell.org/package/base-4.16.1.0/docs/GHC-Generics.html#t:DecidedStrictness
+decideStrictness :: DynFlags -> HsSrcBang -> HsImplBang
+decideStrictness dynFlags (HsSrcBang _ unpackedness strictness) =
+  case (unpackedness, srcToImpl strictness) of
+    (SrcUnpack, HsStrict) | optimizations -> HsUnpack Nothing
+    (_, strictness') -> strictness'
+  where
+    strictData = xopt StrictData dynFlags
+    optimizations = optLevel dynFlags >= 1
+    srcToImpl = \case
+      SrcStrict -> HsStrict
+      SrcLazy -> HsLazy
+      NoSrcStrict -> if strictData then HsStrict else HsLazy
 
 -- | Generate definition for `from` in the `Generic` instance
 --
@@ -545,9 +561,9 @@ genTo r@Record{..} = do
 -- >   to       = ..
 -- >   dict     = dictConstraints_T
 -- >   metadata = ..
-genGenericInstance :: MonadFresh m => Record -> m (LHsDecl GhcPs)
-genGenericInstance r@Record{..} = do
-    metadata <- genMetadata r
+genGenericInstance :: MonadFresh m => Record -> DynFlags -> m (LHsDecl GhcPs)
+genGenericInstance r@Record{..} dynFlags  = do
+    metadata <- genMetadata r dynFlags
     from     <- genFrom     r
     to       <- genTo       r
     return $

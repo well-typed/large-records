@@ -28,10 +28,10 @@ import Test.Record.Util
   Basic pattern matching tests
 -------------------------------------------------------------------------------}
 
-{-# ANN type T largeRecordStrict #-}
+{-# ANN type T largeRecord #-}
 data T a = MkT { x :: Int,  y :: [a], z :: Double }
 
-{-# ANN type S largeRecordStrict #-}
+{-# ANN type S largeRecord #-}
 data S a = MkS { x :: Char, y :: T a }
 
 projectOne :: T Bool -> Int
@@ -75,7 +75,7 @@ matchEmptyUndefined = matchEmpty (error "boom")
   type errors iff 'noSigEmpty' and 'noSigNonEmpty' are suffciently monomorphic.
 -------------------------------------------------------------------------------}
 
-{-# ANN type T2 largeRecordStrict #-}
+{-# ANN type T2 largeRecord #-}
 data T2 = MkT2 { x :: Int }
 
 noSigEmpty MkT {} = ()

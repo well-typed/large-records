@@ -14,6 +14,7 @@ import qualified Test.Record.Sanity.RDP.SplitModule
 import qualified Test.Record.Sanity.RDP.SingleModule
 import qualified Test.Record.Sanity.RecordConstruction
 import qualified Test.Record.Sanity.Strictness
+import qualified Test.Record.Sanity.StrictnessStrictData
 import qualified Test.Record.Sanity.GhcGenerics
 
 main :: IO ()
@@ -34,6 +35,7 @@ tests = testGroup "Tests" [
         , Test.Record.Sanity.RDP.SingleModule.tests
         , Test.Record.Sanity.RecordConstruction.tests
         , Test.Record.Sanity.Strictness.tests
+        , Test.Record.Sanity.StrictnessStrictData.tests
         , Test.Record.Sanity.GhcGenerics.tests
         ]
     ]

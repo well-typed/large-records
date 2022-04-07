@@ -22,7 +22,7 @@ module HigherKinded.Sized.R060 where
 
 import Bench.Types
 
-{-# ANN type R largeRecordStrict #-}
+{-# ANN type R largeRecord #-}
 data R f = MkR {
       -- 1 .. 10
       field1  :: HK 1  f

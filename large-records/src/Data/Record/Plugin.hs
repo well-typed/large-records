@@ -7,7 +7,7 @@
 --
 -- > {-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 -- >
--- > {-# ANN type B LargeRecordStrict #-}
+-- > {-# ANN type B largeRecord #-}
 -- > data B a = B {a :: a, b :: String}
 -- >   deriving stock (Show, Eq, Ord)
 --
@@ -121,7 +121,8 @@ transformDecl largeRecords decl@(L l _) =
                 -- Return the declaration unchanged if we cannot parse it
                 return [decl]
               Right r -> do
-                newDecls <- lift $ runFreshHsc $ genLargeRecord r
+                dynFlags <- lift getDynFlags
+                newDecls <- lift $ runFreshHsc $ genLargeRecord r dynFlags
                 when (debugLargeRecords opts) $
                   lift $ issueWarning l (debugMsg newDecls)
                 pure newDecls

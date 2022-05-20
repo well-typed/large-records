@@ -50,7 +50,7 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
 import Data.List (foldl')
 
 import Bag (listToBag)
-import BasicTypes (Origin(Generated), PromotionFlag(NotPromoted))
+import BasicTypes (Origin(Generated), PromotionFlag(NotPromoted), Boxity(Boxed))
 import ErrUtils (mkWarnMsg)
 import FastString (FastString)
 import GHC

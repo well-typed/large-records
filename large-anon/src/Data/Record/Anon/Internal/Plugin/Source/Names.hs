@@ -22,6 +22,8 @@ import Data.Record.Anon.Internal.Plugin.Source.Options (Mode(..))
 data LargeAnonNames = LargeAnonNames {
       largeAnon_empty        :: RdrName
     , largeAnon_insert       :: RdrName
+    , largeAnon_get          :: RdrName
+    , largeAnon_assert       :: RdrName
     , largeAnon_applyPending :: RdrName
     , largeAnon_letRecordT   :: RdrName
     , largeAnon_letInsertAs  :: RdrName
@@ -31,6 +33,8 @@ largeAnonNames :: Mode -> LargeAnonNames
 largeAnonNames mode = LargeAnonNames {
       largeAnon_empty        = mkRdrQual modl $ mkVarOcc "empty"
     , largeAnon_insert       = mkRdrQual modl $ mkVarOcc "insert"
+    , largeAnon_get          = mkRdrQual modl $ mkVarOcc "get"
+    , largeAnon_assert       = mkRdrQual modl $ mkVarOcc "assert"
     , largeAnon_applyPending = mkRdrQual modl $ mkVarOcc "applyPending"
     , largeAnon_letRecordT   = mkRdrQual modl $ mkVarOcc "letRecordT"
     , largeAnon_letInsertAs  = mkRdrQual modl $ mkVarOcc "letInsertAs"

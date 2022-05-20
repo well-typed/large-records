@@ -37,6 +37,7 @@ module Data.Record.Anon.Internal.Advanced (
   , project
   , inject
   , applyPending
+  , assert
     -- * Combinators
     -- ** " Foldable "
   , map
@@ -284,6 +285,10 @@ inject small = ($ small) . snd . lens
 
 applyPending :: Record f r -> Record f r
 applyPending (toCanonical -> r) = unsafeFromCanonical r
+
+{-# INLINE assert #-}
+assert :: Record f r -> ()
+assert _ = ()
 
 {-------------------------------------------------------------------------------
   Unconstrained combinators

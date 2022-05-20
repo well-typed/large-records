@@ -40,6 +40,8 @@ module Data.Record.Anon.Simple (
     -- linear in size.
   , letRecordT
   , letInsertAs
+    -- * For plugin
+  , assert
   ) where
 
 import Prelude hiding (sequenceA)
@@ -276,3 +278,12 @@ letInsertAs :: forall r r' n a.
   -> Record r
 letInsertAs p n x r f = S.letInsertAs p n x r f
 
+{-------------------------------------------------------------------------------
+  For plugin
+-------------------------------------------------------------------------------}
+
+-- TODO: add doc
+-- | Used only for type inference of empty record pattern
+{-# INLINE assert #-}
+assert :: Record r -> ()
+assert = S.assert

@@ -25,9 +25,10 @@ sourcePlugin opts
                    , hsmodImports = imports
                    }
                } = do
+    let opts' = parseOpts opts
     (decls', modls) <- runNamingHsc $
                          everywhereM
-                           (mkM $ transformExpr $ parseOpts opts)
+                           (mkM (transformExpr opts') <=< mkM (transformPat opts'))
                            decls
     return $ parsed {
         hpm_module = L l $ modl {
@@ -35,6 +36,16 @@ sourcePlugin opts
           , hsmodImports = imports ++ map (importDecl True) modls
           }
       }
+
+getField :: LHsRecField GhcPs e -> Maybe (FastString, e)
+getField (L _ (HsRecField (L _ fieldOcc) arg pun))
+  | FieldOcc _ (L _ nm) <- fieldOcc
+  , Unqual nm' <- nm
+  , not pun
+  = Just (occNameFS nm', arg)
+
+  | otherwise
+  = Nothing
 
 transformExpr :: Options -> LHsExpr GhcPs -> NamingT Hsc (LHsExpr GhcPs)
 transformExpr options@Options{debug} e@(L l expr)
@@ -49,28 +60,55 @@ transformExpr options@Options{debug} e@(L l expr)
 
   | otherwise
   = return e
-  where
-    getField ::
-         LHsRecField GhcPs (LHsExpr GhcPs)
-      -> Maybe (FastString, LHsExpr GhcPs)
-    getField (L _ (HsRecField (L _ fieldOcc) arg pun))
-      | FieldOcc _ (L _ nm) <- fieldOcc
-      , Unqual nm' <- nm
-      , not pun
-      = Just (occNameFS nm', arg)
 
-      | otherwise
-      = Nothing
+transformPat :: Options -> Pat GhcPs -> NamingT Hsc (Pat GhcPs)
+transformPat Options{debug} p
+  | ConPatIn (L l nm) (RecCon (HsRecFields flds dotdot)) <- p
+  , Unqual nm' <- nm
+  , Nothing    <- dotdot
+  , Just mode  <- parseMode (occNameString nm')
+  , Just flds' <- mapM getField flds
+  = do p' <- anonRecPat mode l flds'
+       when debug $ lift $ issueWarning l (debugMsg p')
+       return p'
 
-debugMsg :: LHsExpr GhcPs -> SDoc
+  | otherwise
+  = return p
+
+debugMsg :: Outputable e => e -> SDoc
 debugMsg expr = pprSetDepth AllTheWay $ vcat [
-      text "large-records: splicing in the following expression:"
+      text "large-records: splicing in the following term:"
     , ppr expr
     ]
 
 {-------------------------------------------------------------------------------
   Main translation
 -------------------------------------------------------------------------------}
+
+anonRecPat ::
+     Mode
+  -> SrcSpan
+  -> [(FastString, LPat GhcPs)]
+  -> NamingT Hsc (LPat GhcPs)
+anonRecPat mode l fields
+  | null fields = do
+      useName largeAnon_assert
+      return (ViewPat defExt (mkVar l largeAnon_assert) (WildPat defExt))
+  | otherwise = do
+      useName largeAnon_get
+      x <- freshVar l "x" 
+      let getFieldsTuple = simpleLam x (mkTuple [mkGetField f x | (f, _) <- fields])
+      let patsTuple = TuplePat defExt [p | (_, p) <- fields] Boxed
+      return (ViewPat defExt getFieldsTuple patsTuple)
+  where
+    LargeAnonNames{..} = largeAnonNames mode
+
+    mkGetField :: FastString -> RdrName -> LHsExpr GhcPs
+    mkGetField fieldName recName =
+      mkVar l largeAnon_get `mkHsApps` [L l (HsOverLabel defExt Nothing fieldName), mkVar l recName]
+
+    mkTuple :: [LHsExpr GhcPs] -> LHsExpr GhcPs
+    mkTuple xs = L l (ExplicitTuple defExt [L l (Present defExt x) | x <- xs] Boxed)
 
 anonRec ::
      Options

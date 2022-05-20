@@ -13,6 +13,7 @@ import qualified Test.Sanity.DuplicateFields
 import qualified Test.Sanity.Generics
 import qualified Test.Sanity.HasField
 import qualified Test.Sanity.Intersection
+import qualified Test.Sanity.Matching
 import qualified Test.Sanity.Merging
 import qualified Test.Sanity.PolyKinds
 import qualified Test.Sanity.RecordLens
@@ -27,6 +28,7 @@ main = defaultMain $ testGroup "large-anon" [
           Test.Sanity.HasField.tests
         , Test.Sanity.Generics.tests
         , Test.Sanity.Merging.tests
+        , Test.Sanity.Matching.tests
         , Test.Sanity.RecordLens.tests
         , Test.Sanity.DuplicateFields.tests
         , Test.Sanity.TypeLevelMetadata.tests

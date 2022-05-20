@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns  #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections   #-}
+{-# LANGUAGE LambdaCase      #-}
 
 module Data.Record.Anon.Internal.Plugin.Source (sourcePlugin) where
 
@@ -90,22 +91,25 @@ anonRecPat ::
   -> SrcSpan
   -> [(FastString, LPat GhcPs)]
   -> NamingT Hsc (LPat GhcPs)
-anonRecPat mode l fields
-  | null fields = do
-      useName largeAnon_assert
-      return (patLoc l (ViewPat defExt (mkVar l largeAnon_assert) (patLoc l (WildPat defExt))))
-  | otherwise = do
-      useName largeAnon_get
-      x <- freshVar l "x" 
-      let getFieldsTuple = simpleLam x (mkTuple [mkGetField f x | (f, _) <- fields])
-      let patsTuple = TuplePat defExt [p | (_, p) <- fields] Boxed
-      return (patLoc l (ViewPat defExt getFieldsTuple (patLoc l patsTuple)))
+anonRecPat mode l = \case
+  [] -> do
+    useName largeAnon_assert
+    return (patLoc l (ViewPat defExt (mkVar l largeAnon_assert) (patLoc l (WildPat defExt))))
+  [(f, p)] -> do
+    useName largeAnon_get
+    return (patLoc l (ViewPat defExt (mkGetField f) p))
+  fields -> do
+    useName largeAnon_get
+    x <- freshVar l "x" 
+    let getFieldsTuple = simpleLam x (mkTuple [mkGetField f `mkHsApp` mkVar l x | (f, _) <- fields])
+    let patsTuple = TuplePat defExt [p | (_, p) <- fields] Boxed
+    return (patLoc l (ViewPat defExt getFieldsTuple (patLoc l patsTuple)))
   where
     LargeAnonNames{..} = largeAnonNames mode
 
-    mkGetField :: FastString -> RdrName -> LHsExpr GhcPs
-    mkGetField fieldName recName =
-      mkVar l largeAnon_get `mkHsApps` [L l (HsOverLabel defExt Nothing fieldName), mkVar l recName]
+    mkGetField :: FastString -> LHsExpr GhcPs
+    mkGetField fieldName =
+      mkVar l largeAnon_get `mkHsApp` L l (HsOverLabel defExt Nothing fieldName)
 
     mkTuple :: [LHsExpr GhcPs] -> LHsExpr GhcPs
     mkTuple xs = L l (ExplicitTuple defExt [L l (Present defExt x) | x <- xs] Boxed)

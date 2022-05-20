@@ -136,6 +136,7 @@ test-suite test-large-anon
       Test.Sanity.Generics
       Test.Sanity.HasField
       Test.Sanity.Intersection
+      Test.Sanity.Matching
       Test.Sanity.Merging
       Test.Sanity.Named.Record1
       Test.Sanity.Named.Record2

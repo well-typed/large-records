@@ -286,4 +286,4 @@ letInsertAs p n x r f = S.letInsertAs p n x r f
 -- | Used only for type inference of empty record pattern
 {-# INLINE assert #-}
 assert :: Record r -> ()
-assert = S.assert
+assert _ = ()

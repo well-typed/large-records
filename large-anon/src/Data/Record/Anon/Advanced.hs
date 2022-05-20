@@ -574,4 +574,4 @@ letInsertAs p n x r f = A.letInsertAs p n x r f
 -- | Used only for type inference of empty record pattern
 {-# INLINE assert #-}
 assert :: Record f r -> ()
-assert = A.assert
+assert _ = ()

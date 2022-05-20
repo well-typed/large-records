@@ -51,7 +51,6 @@ module Data.Record.Anon.Internal.Simple (
   , project
   , inject
   , applyPending
-  , assert
     -- * Constraints
   , RecordConstraints
     -- * Interop with the advanced interface
@@ -154,10 +153,6 @@ inject small = ($ small) . snd . lens
 
 applyPending :: Record r -> Record r
 applyPending = fromAdvanced . A.applyPending . toAdvanced
-
-{-# INLINE assert #-}
-assert :: Record r -> ()
-assert _ = ()
 
 {-------------------------------------------------------------------------------
   HasField

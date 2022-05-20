@@ -61,9 +61,9 @@ transformExpr options@Options{debug} e@(L l expr)
   | otherwise
   = return e
 
-transformPat :: Options -> Pat GhcPs -> NamingT Hsc (Pat GhcPs)
+transformPat :: Options -> LPat GhcPs -> NamingT Hsc (LPat GhcPs)
 transformPat Options{debug} p
-  | ConPatIn (L l nm) (RecCon (HsRecFields flds dotdot)) <- p
+  | Just (L l nm, RecCon (HsRecFields flds dotdot)) <- viewConPat p
   , Unqual nm' <- nm
   , Nothing    <- dotdot
   , Just mode  <- parseMode (occNameString nm')
@@ -93,13 +93,13 @@ anonRecPat ::
 anonRecPat mode l fields
   | null fields = do
       useName largeAnon_assert
-      return (ViewPat defExt (mkVar l largeAnon_assert) (WildPat defExt))
+      return (patLoc l (ViewPat defExt (mkVar l largeAnon_assert) (patLoc l (WildPat defExt))))
   | otherwise = do
       useName largeAnon_get
       x <- freshVar l "x" 
       let getFieldsTuple = simpleLam x (mkTuple [mkGetField f x | (f, _) <- fields])
       let patsTuple = TuplePat defExt [p | (_, p) <- fields] Boxed
-      return (ViewPat defExt getFieldsTuple patsTuple)
+      return (patLoc l (ViewPat defExt getFieldsTuple (patLoc l patsTuple)))
   where
     LargeAnonNames{..} = largeAnonNames mode
 

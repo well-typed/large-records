@@ -17,6 +17,8 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
 #if __GLASGOW_HASKELL__ < 900
   , mkHsApps
 #endif
+  , patLoc
+  , viewConPat
 
     -- * Re-exports
 #if __GLASGOW_HASKELL__ < 900
@@ -36,6 +38,7 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
   , module GHC.Data.FastString
   , module GHC.Driver.Main
   , module GHC.Driver.Types
+  , module GHC.Types.Basic
   , module GHC.Types.Name
   , module GHC.Types.Name.Cache
   , module GHC.Types.Name.Occurrence
@@ -72,6 +75,7 @@ import GHC.Data.FastString (FastString)
 import GHC.Driver.Main (getHscEnv)
 import GHC.Driver.Types
 import GHC.Plugins
+import GHC.Types.Basic (Origin(Generated), PromotionFlag(NotPromoted), Boxity(Boxed))
 import GHC.Types.Name (mkInternalName)
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
 import GHC.Types.Name.Occurrence
@@ -122,6 +126,26 @@ mkHsApps ::
   -> LHsExpr (GhcPass id)
 mkHsApps = foldl' mkHsApp
 #endif
+
+patLoc :: SrcSpan -> Pat (GhcPass id) -> LPat (GhcPass id)
+#if __GLASGOW_HASKELL__ >= 810 && __GLASGOW_HASKELL__ <= 920
+patLoc l p = L l p
+#else
+patLoc _ p = p
+#endif
+
+
+#if __GLASGOW_HASKELL__ < 810
+viewConPat :: LPat (GhcPass id) -> Maybe (Located (IdP (GhcPass id)), HsConPatDetails (GhcPass id))
+viewConPat (ConPatIn a b) = Just (a, b)
+#elif __GLASGOW_HASKELL__ >= 810 && __GLASGOW_HASKELL__ < 900
+viewConPat :: LPat (GhcPass id) -> Maybe (Located (IdP (GhcPass id)), HsConPatDetails (GhcPass id))
+viewConPat (L _ (ConPatIn a b)) = Just (a, b)
+#elif __GLASGOW_HASKELL__ >= 900
+viewConPat :: LPat (GhcPass id) -> Maybe (Located (ConLikeP (GhcPass id)), HsConPatDetails (GhcPass id))
+viewConPat (L _ (ConPat _ext a b)) = Just (a, b)
+#endif
+viewConPat _ = Nothing
 
 {-------------------------------------------------------------------------------
   Extensions

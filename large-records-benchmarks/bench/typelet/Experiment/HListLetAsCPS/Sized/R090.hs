@@ -16,7 +16,7 @@ import Bench.Types
 import Common.HListOfSize.HL090
 
 hlist :: HList Fields
-hlist = letT' Proxy $ \(_ :: Proxy r) -> castEqual @(HList r) $
+hlist = constructLet $ \_ ->
     -- 89 .. 80
     letAs' (MkT 89 :* Nil)  $ \xs89 ->
     letAs' (MkT 88 :* xs89) $ \xs88 ->

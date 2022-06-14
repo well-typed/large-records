@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeApplications #-}
+
 module TypeLet.UserAPI (
     -- * Main classes
     Let
@@ -7,6 +9,7 @@ module TypeLet.UserAPI (
   , LetT(..)
   , letT
   , letT'
+  , constructLet
   , LetAs(..)
   , letAs
   , letAs'
@@ -98,10 +101,10 @@ letT p = LetT p
 -- | CPS form of 'letT'
 --
 -- While this is more convenient to use, the @r@ parameter itself requires
--- careful thought.
+-- careful thought; see also 'constructLet'.
 letT' :: forall r a. Proxy a -> (forall b. Let b a => Proxy b -> r) -> r
 {-# NOINLINE letT' #-}
-letT' pa k = case letT pa of LetT pb -> k pb
+letT' = letAs'
 
 -- | Used together with 'letAs' to pair a type-level let binding with a cast
 --
@@ -128,4 +131,69 @@ letAs x = LetAs x
 -- See also comments for 'letT''.
 letAs' :: forall r f a. f a -> (forall b. Let b a => f b -> r) -> r
 {-# NOINLINE letAs' #-}
-letAs' fa k = case letAs fa of LetAs fb -> k fb
+letAs' fa k = k fa
+
+-- | Dual to 'letAs''
+--
+-- Where 'letAs'' /takes/ an existing value and then /introduces/ a type
+-- variable, 'constructLet' is used to /produce/ a value and then /eliminate/ a
+-- type variable.
+--
+-- Consider constructing a heterogenous list @[x, y, z]@. Without the @typelet@
+-- library this might look something like
+--
+-- > hlist :: HList '[X, Y, Z]
+-- > hlist =
+-- >     HCons @X @'[Y, Z] x
+-- >   $ HCons @Y @'[   Z] y
+-- >   $ HCons @Z @'[    ] z
+-- >   $ HNil
+--
+-- The problem here is that tail list argument to @HCons@, and causes this
+-- example to be quadratic in size. With @letAs'@ we could write this as
+--
+-- > hlist :: HList '[X, Y, Z]
+-- > hlist =
+-- >   letAs' (HCons @Z @'[] z Nil) $ \(xs2 :: HList ts2) ->
+-- >   letAs' (HCons @Y @ts2 y xs2) $ \(xs1 :: HList ts1) ->
+-- >   letAs' (HCons @X @ts1 x xs1) $ (\xs0 :: HList ts0) ->
+-- >   castEqual xs0
+--
+-- Here we are using @letAs'@ to introduce a type variable for each partial
+-- list, thereby avoiding the repeated lists in the type arguments. However,
+-- if we write it like this, there is an additional repeated list in the
+-- implicit continuation type argument @r@ to @letAs'@; making that argument
+-- explicit, the above code is really this:
+--
+-- > hlist :: HList '[X, Y, Z]
+-- > hlist =
+-- >   letAs' @(HList '[X, Y, Z]) (HCons @Z @'[] z Nil) $ \(xs2 :: HList ts2) ->
+-- >   letAs' @(HList '[X, Y, Z]) (HCons @Y @ts2 y xs2) $ \(xs1 :: HList ts1) ->
+-- >   letAs' @(HList '[X, Y, Z]) (HCons @X @ts1 x xs1) $ (\xs0 :: HList ts0) ->
+-- >   castEqual xs0
+--
+-- The solution is to introduce one more type variable for the whole list, and
+-- use that as the top-level:
+--
+-- > hlist :: HList '[X, Y, Z]
+-- > hlist = constructLet $ \(_ :: Proxy ts) ->
+-- >   letAs' @(HList ts) (HCons @Z @'[] z Nil) $ \(xs2 :: HList ts2) ->
+-- >   letAs' @(HList ts) (HCons @Y @ts2 y xs2) $ \(xs1 :: HList ts1) ->
+-- >   letAs' @(HList ts) (HCons @X @ts1 x xs1) $ (\xs0 :: HList ts0) ->
+-- >   castEqual xs0
+--
+-- Note that none of these type arguments are necessary; we merely showed them
+-- to illustrate what is going on. The final example can be written as shown
+-- below, and will be linear in size:
+--
+-- > hlist :: HList '[X, Y, Z]
+-- > hlist = constructLet $
+-- >   letAs' (HCons z Nil) $ \xs2 ->
+-- >   letAs' (HCons y xs2) $ \xs1 ->
+-- >   letAs' (HCons x xs1) $ (xs0 ->
+-- >   castEqual xs0
+constructLet :: forall f a. (forall b. Let b a => Proxy b -> f b) -> f a
+constructLet f = f Proxy
+
+
+

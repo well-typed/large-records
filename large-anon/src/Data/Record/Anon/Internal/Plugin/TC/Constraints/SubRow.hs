@@ -67,16 +67,20 @@ parseSubRow ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CSubRow)
 parseSubRow tcs rn@ResolvedNames{..} =
-    parseConstraint' clsSubRow $ \[typeKind, typeLHS, typeRHS] -> do
-      fieldsLHS <- ParsedRow.parseFields tcs rn typeLHS
-      fieldsRHS <- ParsedRow.parseFields tcs rn typeRHS
-      return $ CSubRow {
-            subrowParsedLHS = fieldsLHS
-          , subrowParsedRHS = fieldsRHS
-          , subrowTypeLHS   = typeLHS
-          , subrowTypeRHS   = typeRHS
-          , subrowTypeKind  = typeKind
-          }
+    parseConstraint' clsSubRow $ \ args ->
+      case args of
+        [typeKind, typeLHS, typeRHS] -> do
+          fieldsLHS <- ParsedRow.parseFields tcs rn typeLHS
+          fieldsRHS <- ParsedRow.parseFields tcs rn typeRHS
+          return $ CSubRow {
+                subrowParsedLHS = fieldsLHS
+              , subrowParsedRHS = fieldsRHS
+              , subrowTypeLHS   = typeLHS
+              , subrowTypeRHS   = typeRHS
+              , subrowTypeKind  = typeKind
+              }
+        _ -> pprPanic "parseSubRow: expected 3 arguments" $
+               text "args" <+> ppr args
 
 {-------------------------------------------------------------------------------
   Evidence

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeApplications    #-}
@@ -47,7 +48,11 @@ import qualified Data.Map.Strict as Map
 newtype Hashed k = Hashed k
   deriving (Show)
 
+#if MIN_VERSION_hashable(1,4,0)
+instance Hashable k => Eq (Hashed k) where
+#else
 instance (Hashable k, Eq k) => Eq (Hashed k) where
+#endif
   Hashed a == Hashed b = and [
       hash a == hash b
     ,      a ==      b

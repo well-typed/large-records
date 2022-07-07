@@ -11,9 +11,15 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
     -- * Extensions
     HasDefaultExt(..)
 
+#if __GLASGOW_HASKELL__ < 902
+    -- * Exact-print annotations
+  , reLoc, reLocA
+#endif
+
     -- * Miscellaneous
   , importDecl
   , issueWarning
+  , mkLabel
 #if __GLASGOW_HASKELL__ < 900
   , mkHsApps
 #endif
@@ -35,13 +41,20 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
   , module GHC
   , module GHC.Data.FastString
   , module GHC.Driver.Main
-  , module GHC.Driver.Types
   , module GHC.Types.Name
   , module GHC.Types.Name.Cache
   , module GHC.Types.Name.Occurrence
   , module GHC.Types.Name.Reader
   , module GHC.Types.Unique.Supply
   , module GHC.Utils.Outputable
+
+#if __GLASGOW_HASKELL__ < 902
+  , module GHC.Driver.Types
+#else
+  , module GHC.Driver.Errors
+  , module GHC.Driver.Env.Types
+  , module GHC.Types.SourceText
+#endif
 #endif
   ) where
 
@@ -70,7 +83,14 @@ import GHC
 import GHC.Data.Bag (listToBag)
 import GHC.Data.FastString (FastString)
 import GHC.Driver.Main (getHscEnv)
+
+#if __GLASGOW_HASKELL__ >= 902
+import GHC.Driver.Errors
+import GHC.Driver.Env.Types
+import GHC.Types.SourceText
+#else
 import GHC.Driver.Types
+#endif
 import GHC.Plugins
 import GHC.Types.Name (mkInternalName)
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
@@ -88,10 +108,10 @@ import GHC.Utils.Outputable
 
 -- | Optionally @qualified@ import declaration
 importDecl :: Bool -> ModuleName -> LImportDecl GhcPs
-importDecl qualified name = noLoc $ ImportDecl {
+importDecl qualified name = reLocA $ noLoc $ ImportDecl {
       ideclExt       = defExt
     , ideclSourceSrc = NoSourceText
-    , ideclName      = noLoc name
+    , ideclName      = reLocA $ noLoc name
     , ideclPkgQual   = Nothing
     , ideclSafe      = False
     , ideclImplicit  = False
@@ -112,8 +132,14 @@ importDecl qualified name = noLoc $ ImportDecl {
 issueWarning :: SrcSpan -> SDoc -> Hsc ()
 issueWarning l errMsg = do
     dynFlags <- getDynFlags
+#if __GLASGOW_HASKELL__ >= 902
+    logger <- getLogger
+    liftIO $ printOrThrowWarnings logger dynFlags . listToBag . (:[]) $
+      mkWarnMsg l neverQualify errMsg
+#else
     liftIO $ printOrThrowWarnings dynFlags . listToBag . (:[]) $
       mkWarnMsg dynFlags l neverQualify errMsg
+#endif
 
 #if __GLASGOW_HASKELL__ < 900
 mkHsApps ::
@@ -143,3 +169,32 @@ instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
 #endif
 
+#if __GLASGOW_HASKELL__ >= 902
+instance HasDefaultExt (EpAnn ann) where
+  defExt = noAnn
+#endif
+
+{-------------------------------------------------------------------------------
+  Exact-print annotations
+-------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ < 902
+reLoc :: Located a -> Located a
+reLoc = id
+
+reLocA :: Located a -> Located a
+reLocA = id
+#endif
+
+
+{-------------------------------------------------------------------------------
+  mkLabel
+-------------------------------------------------------------------------------}
+
+mkLabel :: SrcSpan -> FastString -> LHsExpr GhcPs
+mkLabel l n = reLocA $ L l
+            $ HsOverLabel defExt
+#if __GLASGOW_HASKELL__ < 902
+                 Nothing
+#endif
+                 n

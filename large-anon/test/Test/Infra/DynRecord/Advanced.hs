@@ -138,7 +138,7 @@ toLens p = \r ->
         setter :: Record f r -> Record f r'
         (getter, setter) = Anon.lens r
 
-toRecord :: forall k (r :: Row k) (f :: k -> *) proxy.
+toRecord :: forall k (r :: Row k) (f :: k -> Type) proxy.
      ( IsValue f
      , KnownFields r
      , SubRow r r

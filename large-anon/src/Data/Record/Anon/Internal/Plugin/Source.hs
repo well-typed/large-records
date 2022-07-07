@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns  #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections   #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 module Data.Record.Anon.Internal.Plugin.Source (sourcePlugin) where
 
@@ -37,7 +38,7 @@ sourcePlugin opts
       }
 
 transformExpr :: Options -> LHsExpr GhcPs -> NamingT Hsc (LHsExpr GhcPs)
-transformExpr options@Options{debug} e@(L l expr)
+transformExpr options@Options{debug} e@(reLoc -> L l expr)
   | RecordCon _ext (L _ nm) (HsRecFields flds dotdot) <- expr
   , Unqual nm' <- nm
   , Nothing    <- dotdot
@@ -53,7 +54,10 @@ transformExpr options@Options{debug} e@(L l expr)
     getField ::
          LHsRecField GhcPs (LHsExpr GhcPs)
       -> Maybe (FastString, LHsExpr GhcPs)
-    getField (L _ (HsRecField (L _ fieldOcc) arg pun))
+    getField (L _ (HsRecField
+                    { hsRecFieldLbl = L _ fieldOcc
+                    , hsRecFieldArg = arg
+                    , hsRecPun = pun }))
       | FieldOcc _ (L _ nm) <- fieldOcc
       , Unqual nm' <- nm
       , not pun
@@ -160,10 +164,7 @@ recordWithTypelet mode l p = \fields -> do
 -------------------------------------------------------------------------------}
 
 mkVar :: SrcSpan -> RdrName -> LHsExpr GhcPs
-mkVar l name = L l $ HsVar defExt (L l name)
-
-mkLabel :: SrcSpan -> FastString -> LHsExpr GhcPs
-mkLabel l n = L l $ HsOverLabel defExt Nothing n
+mkVar l name = reLocA $ L l $ HsVar defExt (reLocA $ L l name)
 
 -- | Construct simple lambda
 --

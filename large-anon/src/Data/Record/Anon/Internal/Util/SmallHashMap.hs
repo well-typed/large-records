@@ -47,7 +47,7 @@ import qualified Data.Map.Strict as Map
 newtype Hashed k = Hashed k
   deriving (Show)
 
-instance (Hashable k, Eq k) => Eq (Hashed k) where
+instance Hashable k => Eq (Hashed k) where
   Hashed a == Hashed b = and [
       hash a == hash b
     ,      a ==      b

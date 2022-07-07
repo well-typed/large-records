@@ -156,7 +156,6 @@ test-suite test-large-anon
     , optics-core
     , parsec
     , QuickCheck
-    , record-dot-preprocessor
     , sop-core
     , tasty
     , tasty-hunit
@@ -165,8 +164,12 @@ test-suite test-large-anon
     , typelet
     , validation-selective
 
-      -- required when using record-dot-preprocessor
-    , record-hasfield
+  if impl(ghc < 9.2.0)
+    build-depends:
+        record-dot-preprocessor
+        -- required when using record-dot-preprocessor
+      , record-hasfield
+
   ghc-options:
       -Wall
       -Wredundant-constraints

@@ -642,9 +642,7 @@ executable bench-superrecord
       bench/superrecord
   build-depends:
       superrecord
-
-      -- superrecord does not like aeson >= 2
-    , aeson < 2
+    , aeson
   other-modules:
 
       --

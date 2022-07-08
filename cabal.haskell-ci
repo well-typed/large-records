@@ -67,7 +67,7 @@ test-output-direct: True
 cabal-check: False
 
 -- Enable builds only for specific branches
-branches:
+branches: main
 
 -- Enable IRC notifications to given channel (e.g. 'irc.libera.chat#haskell-lens')
 irc-channels:
@@ -152,7 +152,8 @@ doctest-filter-packages:
 doctest-skip:
 
 -- Enable Docspec job
-docspec: True 
+-- For now only with GHC-9.2
+docspec: >=9.2
 
 -- Additional Docspec options
 docspec-options:

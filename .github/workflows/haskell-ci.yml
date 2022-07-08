@@ -14,8 +14,12 @@
 #
 name: Haskell-CI
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   linux:
     name: Haskell-CI - Linux - ${{ matrix.compiler }}
@@ -171,6 +175,7 @@ jobs:
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
           echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/typelet-doctests" >> cabal.project
           cat cabal.project
       - name: sdist
         run: |
@@ -194,6 +199,8 @@ jobs:
           echo "PKGDIR_beam_large_records=${PKGDIR_beam_large_records}" >> "$GITHUB_ENV"
           PKGDIR_typelet="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/typelet-[0-9.]*')"
           echo "PKGDIR_typelet=${PKGDIR_typelet}" >> "$GITHUB_ENV"
+          PKGDIR_typelet_doctests="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/typelet-doctests-[0-9.]*')"
+          echo "PKGDIR_typelet_doctests=${PKGDIR_typelet_doctests}" >> "$GITHUB_ENV"
           rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
@@ -203,6 +210,7 @@ jobs:
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_anon}" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
           echo "packages: ${PKGDIR_typelet}" >> cabal.project
+          echo "packages: ${PKGDIR_typelet_doctests}" >> cabal.project
           echo "package large-generics" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
@@ -214,6 +222,8 @@ jobs:
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
           echo "package typelet" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package typelet-doctests" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
           allow-newer: beam-core-0.9.2.1:aeson
@@ -239,7 +249,7 @@ jobs:
             tag:      bdafa58bd3ced2f8f9efef3443cdcdeee507fa1f
             subdir:   beam-sqlite
           EOF
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks|typelet)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks|typelet|typelet-doctests)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
@@ -267,8 +277,8 @@ jobs:
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
       - name: docspec
         run: |
-          $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all
-          cabal-docspec $ARG_COMPILER
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then cabal-docspec $ARG_COMPILER ; fi
       - name: haddock
         run: |
           $CABAL v2-haddock --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all

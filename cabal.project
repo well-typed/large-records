@@ -4,6 +4,7 @@ packages: large-generics
         , large-anon
         , beam-large-records
         , typelet
+        , typelet-doctests
 
 allow-newer: beam-core-0.9.2.1:aeson
 allow-newer: beam-sqlite-0.5.1.2:aeson

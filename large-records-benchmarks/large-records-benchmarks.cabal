@@ -25,10 +25,6 @@ common defaults
   ghc-options:
       -Wall
 
-      -- The primary goal of this work is to improve the development cycle, so
-      -- we compile with -O0 for the benchmarks.
-      -O0
-
 --
 -- LIBRARY
 --
@@ -628,10 +624,6 @@ executable bench-large-anon
       Experiment.ParseJSON.Sized.R090
       Experiment.ParseJSON.Sized.R100
 
-  if flag(profile-runtime)
-    ghc-options:
-      -O1
-
 executable bench-superrecord
   import:
       defaults
@@ -642,9 +634,7 @@ executable bench-superrecord
       bench/superrecord
   build-depends:
       superrecord
-
-      -- superrecord does not like aeson >= 2
-    , aeson < 2
+    , aeson
   other-modules:
 
       --
@@ -731,10 +721,6 @@ executable bench-superrecord
       Experiment.SR_ParseJSON.Sized.R060
       Experiment.SR_ParseJSON.Sized.R070
       Experiment.SR_ParseJSON.Sized.R080
-
-  if flag(profile-runtime)
-    ghc-options:
-      -O1
 
 --
 -- TEST SUITE

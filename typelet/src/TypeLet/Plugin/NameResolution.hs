@@ -22,7 +22,7 @@ instance Outputable ResolvedNames where
 
 resolveNames :: TcPluginM 'Init ResolvedNames
 resolveNames = do
-    m <- do r <- findImportedModule typeletMod (Just typeletPkg)
+    m <- do r <- findImportedModule typeletMod (OtherPkg typeletUnitId)
             case r of
               Found _ m  -> return m
               _otherwise -> panic $ "Could not find "
@@ -38,6 +38,5 @@ resolveNames = do
     typeletMod :: ModuleName
     typeletMod = mkModuleName "TypeLet.UserAPI"
 
-    typeletPkg :: FastString
-    typeletPkg = fsLit "typelet"
-
+    typeletUnitId :: UnitId
+    typeletUnitId = stringToUnitId "typelet"

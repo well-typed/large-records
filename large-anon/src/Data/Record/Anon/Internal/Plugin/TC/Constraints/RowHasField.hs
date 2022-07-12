@@ -76,18 +76,21 @@ parseRowHasField ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CRowHasField)
 parseRowHasField tcs rn@ResolvedNames{..} =
-    parseConstraint' clsRowHasField $ \[k, n, r, a] -> do
-      label  <- ParsedRow.parseFieldLabel n
-      fields <- ParsedRow.parseFields tcs rn r
-
-      return $ CRowHasField {
-          hasFieldLabel     = label
-        , hasFieldRecord    = fields
-        , hasFieldTypeKind  = k
-        , hasFieldTypeLabel = n
-        , hasFieldTypeRow   = r
-        , hasFieldTypeField = a
-        }
+    parseConstraint' clsRowHasField $ \ args ->
+      case args of
+        [k, n, r, a] -> do
+          label  <- ParsedRow.parseFieldLabel n
+          fields <- ParsedRow.parseFields tcs rn r
+          return $ CRowHasField {
+              hasFieldLabel     = label
+            , hasFieldRecord    = fields
+            , hasFieldTypeKind  = k
+            , hasFieldTypeLabel = n
+            , hasFieldTypeRow   = r
+            , hasFieldTypeField = a
+            }
+        _ -> pprPanic "parseRowHasField: expected 4 arguments" $
+               ( text "args:" <+> ppr args )
 
 {-------------------------------------------------------------------------------
   Evidence

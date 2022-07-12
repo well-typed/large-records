@@ -18,10 +18,6 @@ module Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI (
   , module GHC.Core.Make
   , module GHC.Utils.Outputable
 
-    -- * Additional exports
-  , splitAppTys
-  , unpackFS
-
     -- * New functonality
   , isCanonicalVarEq
   ) where
@@ -38,26 +34,18 @@ import GHC.Core.Make
 import GHC.Utils.Outputable
 
 #if __GLASGOW_HASKELL__ >= 808 &&  __GLASGOW_HASKELL__ < 810
-import FastString (unpackFS)
 import TcRnTypes (Ct(..))
-import Type (splitAppTys)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 810 &&  __GLASGOW_HASKELL__ < 900
 import Constraint (Ct(..))
-import FastString (unpackFS)
-import Type (splitAppTys)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 900 &&  __GLASGOW_HASKELL__ < 902
-import GHC.Core.Type (splitAppTys)
-import GHC.Data.FastString (unpackFS)
 import GHC.Tc.Types.Constraint (Ct(..))
 #endif
 
 #if __GLASGOW_HASKELL__ >= 902
-import GHC.Core.Type (splitAppTys)
-import GHC.Data.FastString (unpackFS)
 import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..))
 #endif
 

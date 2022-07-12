@@ -1,6 +1,6 @@
 packages: large-generics
         , large-records
-        , large-records-benchmarks
+--        , large-records-benchmarks
         , large-anon
         , beam-large-records
         , typelet
@@ -32,7 +32,7 @@ package large-generics
 
 package large-records
   tests: True
-  ghc-options: -Werror
+--  ghc-options: -Werror
 
 package large-records-benchmarks
   tests: True

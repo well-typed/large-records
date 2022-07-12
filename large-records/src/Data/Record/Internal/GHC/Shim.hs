@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE TypeApplications       #-}
 {-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE ViewPatterns           #-}
 
 -- | Thin compatibility layer around GHC
 --
@@ -21,10 +22,17 @@ module Data.Record.Internal.GHC.Shim (
   , LHsModule
   , LRdrName
   , pattern GHC.HsModule
-  , putLogMsg
+
+    -- * Annotations
+#if __GLASGOW_HASKELL__ < 902
+  , reLoc
+  , reLocA
+  , noLocA
+#endif
 
     -- * Extensions
   , HasDefaultExt(..)
+  , withDefExt
 
     -- * Generalized @forall@
 #if __GLASGOW_HASKELL__ >= 900
@@ -40,6 +48,7 @@ module Data.Record.Internal.GHC.Shim (
     -- * New functionality
   , compareHs
   , inheritLoc
+  , inheritLoc'
   , inheritLocPat
 
     -- * Re-exports
@@ -61,9 +70,12 @@ module Data.Record.Internal.GHC.Shim (
   , module GHC.Hs
   , module GHC.Plugins
   , module GHC.Tc.Types.Evidence
-  , module GHC.Types.Basic
   , module GHC.Types.Name.Cache
   , module GHC.Utils.Error
+#if __GLASGOW_HASKELL__ >= 902
+  , module GHC.Types.SourceText
+  , module GHC.Types.Fixity
+#endif
 #endif
   ) where
 
@@ -74,12 +86,12 @@ import qualified Data.List.NonEmpty as NE
 
 #if __GLASGOW_HASKELL__ < 900
 
+import BasicTypes (SourceText (NoSourceText))
 import Bag (listToBag, emptyBag)
-import BasicTypes (SourceText(NoSourceText))
 import ConLike (ConLike)
 import ErrUtils (mkErrMsg, mkWarnMsg)
 import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind, mkFunBind)
-import GhcPlugins hiding ((<>), getHscEnv, putLogMsg)
+import GhcPlugins hiding ((<>), getHscEnv,)
 import HscMain (getHscEnv)
 import NameCache (NameCache(nsUniqs))
 import PatSyn (PatSyn)
@@ -90,21 +102,33 @@ import qualified GhcPlugins as GHC
 
 #else
 
+import GHC.Hs hiding (LHsTyVarBndr, HsTyVarBndr, HsModule, mkFunBind)
+
 import GHC.Core.Class (Class)
 import GHC.Core.ConLike (ConLike)
 import GHC.Core.PatSyn (PatSyn)
 import GHC.Data.Bag (listToBag, emptyBag)
 import GHC.Driver.Main (getHscEnv)
-import GHC.Hs hiding (LHsTyVarBndr, HsTyVarBndr, HsModule, mkFunBind)
-import GHC.Parser.Annotation (IsUnicodeSyntax(NormalSyntax))
-import GHC.Plugins hiding ((<>), getHscEnv, putLogMsg)
 import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
-import GHC.Types.Basic (SourceText(NoSourceText))
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
-import GHC.Utils.Error (Severity(SevError, SevWarning), mkErrMsg, mkWarnMsg)
+import GHC.Utils.Error (Severity(SevError, SevWarning))
+
+import GHC.Plugins hiding ((<>), getHscEnv
+#if __GLASGOW_HASKELL__ >=902
+    , AnnType, AnnLet, AnnRec, AnnLam, AnnCase
+    , Exception
+#endif
+    )
+
+#if __GLASGOW_HASKELL__ < 902
+import GHC.Utils.Error (mkErrMsg, mkWarnMsg)
+import GHC.Parser.Annotation (IsUnicodeSyntax(NormalSyntax))
+#else
+import GHC.Types.SourceText (SourceText(NoSourceText), mkIntegralLit)
+import GHC.Types.Fixity
+#endif
 
 import qualified GHC.Hs      as GHC
-import qualified GHC.Plugins as GHC
 
 #endif
 
@@ -114,10 +138,10 @@ import qualified GHC.Plugins as GHC
 
 -- | Optionally @qualified@ import declaration
 importDecl :: ModuleName -> Bool -> LImportDecl GhcPs
-importDecl name qualified = noLoc $ ImportDecl {
+importDecl name qualified = noLocA $ ImportDecl {
       ideclExt       = defExt
     , ideclSourceSrc = NoSourceText
-    , ideclName      = noLoc name
+    , ideclName      = noLocA name
     , ideclPkgQual   = Nothing
     , ideclSafe      = False
     , ideclImplicit  = False
@@ -139,14 +163,14 @@ conPat :: Located RdrName -> HsConPatDetails GhcPs -> Pat GhcPs
 #if __GLASGOW_HASKELL__ < 900
 conPat x y = ConPatIn x y
 #else
-conPat x y = ConPat noExtField x y
+conPat x y = ConPat defExt (reLocA x) y
 #endif
 
 mkFunBind :: Located RdrName -> [LMatch GhcPs (LHsExpr GhcPs)] -> HsBind GhcPs
 #if __GLASGOW_HASKELL__ < 810
 mkFunBind = GHC.mkFunBind
 #else
-mkFunBind = GHC.mkFunBind Generated
+mkFunBind (reLocA -> n) = GHC.mkFunBind Generated n
 #endif
 
 #if __GLASGOW_HASKELL__ < 900
@@ -158,12 +182,24 @@ type HsModule = GHC.HsModule
 type LHsModule = Located HsModule
 type LRdrName  = Located RdrName
 
-putLogMsg :: DynFlags -> WarnReason -> Severity -> SrcSpan -> SDoc -> IO ()
-#if __GLASGOW_HASKELL__ < 900
-putLogMsg flags reason sev srcspan =
-    GHC.putLogMsg flags reason sev srcspan (defaultErrStyle flags)
-#else
-putLogMsg = GHC.putLogMsg
+{-------------------------------------------------------------------------------
+  Exact-print annotations
+-------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ < 902
+reLoc :: Located a -> Located a
+reLoc = id
+
+reLocA :: Located a -> Located a
+reLocA = id
+
+noLocA :: e -> Located e
+noLocA = noLoc
+
+#if __GLASGOW_HASKELL__ >= 900
+mapXRec :: forall pass f g l. (f pass -> g pass) -> GenLocated l (f pass) -> GenLocated l (g pass)
+mapXRec = fmap
+#endif
 #endif
 
 {-------------------------------------------------------------------------------
@@ -186,6 +222,32 @@ instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
 #endif
 
+instance (HasDefaultExt a, HasDefaultExt b) => HasDefaultExt (a, b) where
+  defExt = (defExt, defExt)
+
+instance (HasDefaultExt a, HasDefaultExt b, HasDefaultExt c) => HasDefaultExt (a, b, c) where
+  defExt = (defExt, defExt, defExt)
+
+#if __GLASGOW_HASKELL__ >= 902
+instance HasDefaultExt (EpAnn ann) where
+  defExt = noAnn
+
+instance HasDefaultExt AnnSortKey where
+  defExt = NoAnnSortKey
+
+instance HasDefaultExt EpAnnComments where
+  defExt = epAnnComments noAnn
+#endif
+
+-- In GHC-9.2 some things have extension fields.
+#if __GLASGOW_HASKELL__ >= 902
+withDefExt :: HasDefaultExt a => (a -> b) -> b
+withDefExt f = f defExt 
+#else
+withDefExt :: a -> a
+withDefExt a = a
+#endif
+
 {-------------------------------------------------------------------------------
   Generalized @forall@ in 9.0
 -------------------------------------------------------------------------------}
@@ -203,24 +265,24 @@ hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow NormalSyntax)
 #endif
 
 userTyVar ::
-     XUserTyVar pass
-  -> Located (IdP pass)
-  -> HsTyVarBndr pass
+     XUserTyVar GhcPs
+  -> Located (IdP GhcPs)
+  -> HsTyVarBndr GhcPs
 #if __GLASGOW_HASKELL__ < 900
 userTyVar = UserTyVar
 #else
-userTyVar ext = UserTyVar ext ()
+userTyVar ext x = UserTyVar ext () (reLocA x)
 #endif
 
 kindedTyVar ::
-     XKindedTyVar pass
-  -> Located (IdP pass)
-  -> LHsKind pass
-  -> HsTyVarBndr pass
+     XKindedTyVar GhcPs
+  -> Located (IdP GhcPs)
+  -> LHsKind GhcPs
+  -> HsTyVarBndr GhcPs
 #if __GLASGOW_HASKELL__ < 900
 kindedTyVar = KindedTyVar
 #else
-kindedTyVar ext = KindedTyVar ext ()
+kindedTyVar ext k = KindedTyVar ext () (reLocA k)
 #endif
 
 -- | Like 'hsTyVarName', but don't throw away the location information
@@ -230,19 +292,21 @@ hsTyVarLName (UserTyVar   _ n  ) = n
 hsTyVarLName (KindedTyVar _ n _) = n
 hsTyVarLName _ = panic "hsTyVarLName"
 #else
-hsTyVarLName (UserTyVar   _ _ n  ) = n
-hsTyVarLName (KindedTyVar _ _ n _) = n
+hsTyVarLName (UserTyVar   _ _ n  ) = reLoc n
+hsTyVarLName (KindedTyVar _ _ n _) = reLoc n
 #endif
 
 #if __GLASGOW_HASKELL__ < 900
 setDefaultSpecificity :: LHsTyVarBndr pass -> GHC.LHsTyVarBndr pass
 setDefaultSpecificity = id
 #else
-setDefaultSpecificity :: LHsTyVarBndr pass -> GHC.LHsTyVarBndr Specificity pass
-setDefaultSpecificity (L l v) = L l $ case v of
+setDefaultSpecificity :: LHsTyVarBndr GhcPs -> GHC.LHsTyVarBndr Specificity GhcPs
+setDefaultSpecificity = mapXRec @GhcPs $ \v -> case v of
     UserTyVar   ext () name      -> UserTyVar   ext SpecifiedSpec name
     KindedTyVar ext () name kind -> KindedTyVar ext SpecifiedSpec name kind
+#if __GLASGOW_HASKELL__ < 900
     XTyVarBndr  ext              -> XTyVarBndr  ext
+#endif
 #endif
 
 {-------------------------------------------------------------------------------
@@ -295,8 +359,28 @@ compareHs x y = compareHs' x y
   Working with locations
 -------------------------------------------------------------------------------}
 
+class FromSrcSpan l where
+  fromSrcSpan :: SrcSpan -> l
+
+instance FromSrcSpan SrcSpan where
+  fromSrcSpan = id
+
+#if __GLASGOW_HASKELL__ >= 902
+instance HasDefaultExt ann => FromSrcSpan (SrcSpanAnn' ann) where
+  fromSrcSpan = SrcSpanAnn defExt
+#endif
+
 class InheritLoc a where
-  inheritLoc :: a -> b -> Located b
+  inheritLoc :: FromSrcSpan l => a -> b -> GenLocated l b
+
+#if __GLASGOW_HASKELL__ >= 902
+-- GHC-9.2 may not require annotation
+inheritLoc' :: a -> b -> b
+inheritLoc' _ = id
+#else
+inheritLoc' :: InheritLoc a => a -> b -> Located b
+inheritLoc' = inheritLoc
+#endif
 
 instance InheritLoc a => InheritLoc (NonEmpty a) where
   inheritLoc = inheritLoc . NE.head
@@ -305,7 +389,12 @@ instance InheritLoc l => InheritLoc (GenLocated l a) where
   inheritLoc (L l _) = inheritLoc l
 
 instance InheritLoc SrcSpan where
-  inheritLoc l x = L l x
+  inheritLoc l x = L (fromSrcSpan l) x
+
+#if __GLASGOW_HASKELL__ >= 902
+instance InheritLoc (SrcSpanAnn' ann) where
+  inheritLoc (SrcSpanAnn _ l) = inheritLoc l
+#endif
 
 --
 -- -- | The instance for @[]@ is not ideal: we use 'noLoc' if the list is empty
@@ -315,12 +404,12 @@ instance InheritLoc SrcSpan where
 -- -- messages for highly unusual "empty large" records is fine.
 instance InheritLoc a => InheritLoc [a] where
    inheritLoc (a:_) = inheritLoc a
-   inheritLoc []    = noLoc
+   inheritLoc []    = inheritLoc noSrcSpan
 
 #if __GLASGOW_HASKELL__ < 810
 inheritLocPat :: a -> Pat p -> LPat p
 inheritLocPat _ = id -- In 8.8, 'LPat' is a synonym for 'Pat'
 #else
-inheritLocPat :: InheritLoc a => a -> Pat GhcPs -> LPat GhcPs
+inheritLocPat :: InheritLoc a => a -> Pat (GhcPass p) -> LPat (GhcPass p)
 inheritLocPat = inheritLoc
 #endif

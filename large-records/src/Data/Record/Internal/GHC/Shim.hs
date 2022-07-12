@@ -39,7 +39,8 @@ module Data.Record.Internal.GHC.Shim (
 
     -- * New functionality
   , compareHs
-  , InheritLoc(..)
+  , inheritLoc
+  , inheritLocPat
 
     -- * Re-exports
 
@@ -294,26 +295,32 @@ compareHs x y = compareHs' x y
   Working with locations
 -------------------------------------------------------------------------------}
 
-class InheritLoc a b lb | lb -> b where
-  inheritLoc :: a -> b -> lb
+class InheritLoc a where
+  inheritLoc :: a -> b -> Located b
 
-instance InheritLoc (Located a) b (Located b) where
-  inheritLoc (L l _) = L l
-
-instance InheritLoc a b lb => InheritLoc (NonEmpty a) b lb where
+instance InheritLoc a => InheritLoc (NonEmpty a) where
   inheritLoc = inheritLoc . NE.head
 
--- | The instance for @[]@ is not ideal: we use 'noLoc' if the list is empty
+instance InheritLoc l => InheritLoc (GenLocated l a) where
+  inheritLoc (L l _) = inheritLoc l
+
+instance InheritLoc SrcSpan where
+  inheritLoc l x = L l x
+
 --
--- For the use cases in this library, this is acceptable: typically these are
--- lists with elements for the record fields, and having slightly poorer error
--- messages for highly unusual "empty large" records is fine.
-instance InheritLoc a b (Located b) => InheritLoc [a] b (Located b) where
-  inheritLoc (a:_) = inheritLoc a
-  inheritLoc []    = noLoc
+-- -- | The instance for @[]@ is not ideal: we use 'noLoc' if the list is empty
+-- --
+-- -- For the use cases in this library, this is acceptable: typically these are
+-- -- lists with elements for the record fields, and having slightly poorer error
+-- -- messages for highly unusual "empty large" records is fine.
+instance InheritLoc a => InheritLoc [a] where
+   inheritLoc (a:_) = inheritLoc a
+   inheritLoc []    = noLoc
 
 #if __GLASGOW_HASKELL__ < 810
--- In 8.8, 'LPat' is a synonym for 'Pat'
-instance InheritLoc a (Pat p) (LPat p) where
-  inheritLoc _ = id
+inheritLocPat :: a -> Pat p -> LPat p
+inheritLocPat _ = id -- In 8.8, 'LPat' is a synonym for 'Pat'
+#else
+inheritLocPat :: InheritLoc a => a -> Pat GhcPs -> LPat GhcPs
+inheritLocPat = inheritLoc
 #endif

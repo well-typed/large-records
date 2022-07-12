@@ -394,19 +394,19 @@ tupT ts = inheritLoc ts $ HsExplicitTupleTy defExt (NE.toList ts)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varP'
 varP :: LRdrName -> LPat GhcPs
-varP name = inheritLoc name (VarPat defExt name)
+varP name = inheritLocPat name (VarPat defExt name)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.conP'
 conP :: LRdrName -> [LPat GhcPs] -> LPat GhcPs
-conP con args = inheritLoc con (conPat con (PrefixCon args))
+conP con args = inheritLocPat con (conPat con (PrefixCon args))
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.bangP'
 bangP :: LPat GhcPs -> LPat GhcPs
-bangP p = inheritLoc p $ BangPat defExt p
+bangP p = inheritLocPat p $ BangPat defExt p
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.listP'
 listP :: [LPat GhcPs] -> LPat GhcPs
-listP xs = inheritLoc xs $ ListPat defExt xs
+listP xs = inheritLocPat xs $ ListPat defExt xs
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.wildP'
 wildP :: LPat GhcPs

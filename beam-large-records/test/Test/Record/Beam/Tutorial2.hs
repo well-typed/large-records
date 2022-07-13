@@ -16,7 +16,7 @@
 {-# LANGUAGE UndecidableInstances      #-}
 
 -- For lens derivation
-{-# LANGUAGE ImpredicativeTypes #-}
+-- {-# LANGUAGE ImpredicativeTypes #-}
 
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 
@@ -129,27 +129,46 @@ lensesUserT    = tableLenses
 lensesShoppingCart2 :: ShoppingCart2Db (TableLens f ShoppingCart2Db)
 lensesShoppingCart2 = dbLenses
 
-Address {
-      addressId      = LensFor xaddressId
-    , addressLine1   = LensFor xaddressLine1
-    , addressLine2   = LensFor xaddressLine2
-    , addressCity    = LensFor xaddressCity
-    , addressState   = LensFor xaddressState
-    , addressZip     = LensFor xaddressZip
-    , addressForUser = UserId (LensFor xaddressForUserId)
-    } = lensesAddressT
+xaddressId        :: Lens' (AddressT f) (Columnar f Int32)
+xaddressId        = case lensesAddressT.addressId      of LensFor x -> x
 
-User {
-      userEmail     = LensFor xuserEmail
-    , userFirstName = LensFor xuserFirstName
-    , userLastName  = LensFor xuserLastName
-    , userPassword  = LensFor xuserPassword
-    } = lensesUserT
+xaddressLine1     :: Lens' (AddressT f) (Columnar f Text)
+xaddressLine1     = case lensesAddressT.addressLine1   of LensFor x -> x
 
-ShoppingCart2Db {
-      shoppingCart2Users         = TableLens xshoppingCart2Users
-    , shoppingCart2UserAddresses = TableLens xshoppingCart2UserAddresses
-    } = lensesShoppingCart2
+xaddressLine2     :: Lens' (AddressT f) (Columnar f (Maybe Text))
+xaddressLine2     = case lensesAddressT.addressLine2   of LensFor x -> x
+
+xaddressCity      :: Lens' (AddressT f) (Columnar f Text)
+xaddressCity      = case lensesAddressT.addressCity    of LensFor x -> x
+
+xaddressState     :: Lens' (AddressT f) (Columnar f Text)
+xaddressState     = case lensesAddressT.addressState   of LensFor x -> x
+
+xaddressZip       :: Lens' (AddressT f) (Columnar f Text)
+xaddressZip       = case lensesAddressT.addressZip     of LensFor x -> x
+
+xaddressForUserId :: Lens' (AddressT f) (Columnar f Text)
+xaddressForUserId = case lensesAddressT.addressForUser of UserId (LensFor x) -> x
+
+
+xuserEmail     :: Lens' (UserT f) (Columnar f Text)
+xuserEmail     = case lensesUserT.userEmail of LensFor x -> x
+
+xuserFirstName :: Lens' (UserT f) (Columnar f Text)
+xuserFirstName = case lensesUserT.userFirstName of LensFor x -> x
+
+xuserLastName  :: Lens' (UserT f) (Columnar f Text)
+xuserLastName  = case lensesUserT.userLastName of LensFor x -> x
+
+xuserPassword  :: Lens' (UserT f) (Columnar f Text)
+xuserPassword  = case lensesUserT.userPassword of LensFor x -> x
+
+
+xshoppingCart2Users         :: Lens' (ShoppingCart2Db f) (f (TableEntity UserT))
+xshoppingCart2Users         = case lensesShoppingCart2.shoppingCart2Users of TableLens x -> x
+
+xshoppingCart2UserAddresses :: Lens' (ShoppingCart2Db f) (f (TableEntity AddressT))
+xshoppingCart2UserAddresses = case lensesShoppingCart2.shoppingCart2UserAddresses of TableLens x -> x
 
 {-------------------------------------------------------------------------------
   Tests proper

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP            #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ViewPatterns   #-}
 
@@ -42,6 +43,14 @@ import Data.Record.Internal.GHC.TemplateHaskellStyle
 import Data.Record.Internal.Plugin.Exception
 import Data.Record.Internal.Plugin.Options
 import Data.Record.Internal.Plugin.Record
+
+#if __GLASGOW_HASKELL__ >= 902
+import GHC.Driver.Errors
+import GHC.Types.Error (mkWarnMsg, mkErr, mkDecorated)
+import GHC.Utils.Logger (getLogger)
+#elif __GLASGOW_HASKELL__ >= 900
+import GHC.Driver.Types
+#endif
 
 {-------------------------------------------------------------------------------
   Top-level: the plugin proper
@@ -103,7 +112,7 @@ transformDecl ::
      Map String [(SrcSpan, LargeRecordOptions)]
   -> LHsDecl GhcPs
   -> WriterT (Set String) Hsc [LHsDecl GhcPs]
-transformDecl largeRecords decl@(L l _) =
+transformDecl largeRecords decl@(reLoc -> L l _) =
     case decl of
       DataD (nameBase -> name) _ _ _  ->
         case Map.findWithDefault [] name largeRecords of
@@ -186,12 +195,23 @@ isEnabled dynflags (RequiredExtension exts) = any (`xopt` dynflags) exts
 
 issueError :: SrcSpan -> SDoc -> Hsc ()
 issueError l errMsg = do
+#if __GLASGOW_HASKELL__ >= 902
+    throwOneError $
+      mkErr l neverQualify (mkDecorated [errMsg])
+#else
     dynFlags <- getDynFlags
     throwOneError $
       mkErrMsg dynFlags l neverQualify errMsg
+#endif
 
 issueWarning :: SrcSpan -> SDoc -> Hsc ()
 issueWarning l errMsg = do
     dynFlags <- getDynFlags
+#if __GLASGOW_HASKELL__ >= 902
+    logger <- getLogger
+    liftIO $ printOrThrowWarnings logger dynFlags . listToBag . (:[]) $
+      mkWarnMsg l neverQualify errMsg
+#else
     liftIO $ printOrThrowWarnings dynFlags . listToBag . (:[]) $
       mkWarnMsg dynFlags l neverQualify errMsg
+#endif

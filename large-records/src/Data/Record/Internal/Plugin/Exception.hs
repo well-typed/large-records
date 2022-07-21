@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 -- | Exceptions that may be thrown by the large-records plugin.
 module Data.Record.Internal.Plugin.Exception (
@@ -17,9 +18,9 @@ data Exception =
 
 exceptionLoc :: Exception -> SrcSpan
 exceptionLoc = \case
-    UnsupportedStockDeriving (L l _) -> l
-    UnsupportedStrategy      (L l _) -> l
-    InvalidDeclaration       (L l _) -> l
+    UnsupportedStockDeriving (reLoc -> L l _) -> l
+    UnsupportedStrategy      (id    -> L l _) -> l
+    InvalidDeclaration       (reLoc -> L l _) -> l
 
 exceptionToSDoc :: Exception -> SDoc
 exceptionToSDoc = hsep . \case

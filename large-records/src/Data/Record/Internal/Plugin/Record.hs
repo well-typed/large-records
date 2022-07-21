@@ -113,9 +113,9 @@ viewRecordDeriving :: forall m.
 viewRecordDeriving = \case
     DerivClause Nothing tys ->
       goStock tys
-    DerivClause (Just (L _ StockStrategy)) tys ->
+    DerivClause (Just (L _ StockStrategy {})) tys ->
       goStock tys
-    DerivClause (Just (L _ AnyclassStrategy)) tys ->
+    DerivClause (Just (L _ AnyclassStrategy {})) tys ->
       pure $ fmap DeriveAnyClass (NE.toList tys)
     DerivClause (Just strategy) _ ->
       throwError (UnsupportedStrategy strategy)

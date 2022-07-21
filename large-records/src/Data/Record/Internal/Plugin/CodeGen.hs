@@ -102,7 +102,7 @@ genDatatype Record{..} = pure $
           (zipWith fieldExistentialType vars recordFields)
 
       ]
-      [ DerivClause (Just (noLoc AnyclassStrategy)) (c :| [])
+      [ DerivClause (Just (noLoc (withDefExt AnyclassStrategy))) (c :| [])
       | DeriveAnyClass c <- recordDerivings
       ]
   where
@@ -115,7 +115,7 @@ genDatatype Record{..} = pure $
         ]
 
     optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
-    optionalBang bang = noLoc . HsBangTy defExt bang
+    optionalBang bang = noLocA . HsBangTy defExt bang
 
     fieldContext :: LRdrName -> Field -> LHsType GhcPs
     fieldContext var fld = equalP (VarT var) (fieldType fld)

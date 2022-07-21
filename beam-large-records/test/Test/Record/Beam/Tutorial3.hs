@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE KindSignatures            #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
@@ -17,7 +18,7 @@
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 
 -- For lens derivation
-{-# LANGUAGE ImpredicativeTypes #-}
+-- {-# LANGUAGE ImpredicativeTypes #-}
 {-# OPTIONS_GHC -Wno-missing-signatures -Wno-unused-top-binds #-}
 
 module Test.Record.Beam.Tutorial3 (tests) where
@@ -214,35 +215,63 @@ lensesOrderT    = tableLenses
 lensesShoppingCart3 :: ShoppingCart3Db (TableLens f ShoppingCart3Db)
 lensesShoppingCart3 = dbLenses
 
-LineItem {
-    lineItemInOrder    = OrderId   (LensFor xlineItemInOrder)
-  , lineItemForProduct = ProductId (LensFor xlineItemForProduct)
-  , lineItemQuantity   = LensFor xlineItemQuantity
-  } = lensesLineItemT
 
-Product {
-    productId          = LensFor xproductId
-  , productTitle       = LensFor xproductTitle
-  , productDescription = LensFor xproductDescription
-  , productPrice       = LensFor xproductPrice
-  } = lensesProductT
+xlineItemInOrder :: Lens' (LineItemT f) (C f Int32)
+xlineItemInOrder = case lensesLineItemT.lineItemInOrder of OrderId (LensFor l) -> l
 
-Order {
-    orderId            = LensFor xorderId
-  , orderDate          = LensFor xorderDate
-  , orderForUser       = UserId         (LensFor xorderForUser)
-  , orderShipToAddress = AddressId      (LensFor xorderShipToAddress)
-  , orderShippingInfo  = ShippingInfoId (LensFor xorderShippingInfo)
-  } = lensesOrderT
+xlineItemForProduct :: Lens' (LineItemT f) (C f Int32)
+xlineItemForProduct = case lensesLineItemT.lineItemForProduct of ProductId (LensFor l) -> l
 
-ShoppingCart3Db {
-    shoppingCart3Users         = TableLens xshoppingCart3Users
-  , shoppingCart3UserAddresses = TableLens xshoppingCart3UserAddresses
-  , shoppingCart3Products      = TableLens xshoppingCart3Products
-  , shoppingCart3Orders        = TableLens xshoppingCart3Orders
-  , shoppingCart3ShippingInfos = TableLens xshoppingCart3ShippingInfos
-  , shoppingCart3LineItems     = TableLens xshoppingCart3LineItems
-  } = lensesShoppingCart3
+xlineItemQuantity :: Lens' (LineItemT f) (C f Int32)
+xlineItemQuantity = case lensesLineItemT.lineItemQuantity of LensFor l -> l
+
+
+xproductId :: Lens' (ProductT f) (C f Int32)
+xproductId = case lensesProductT.productId of LensFor l -> l
+
+xproductTitle :: Lens' (ProductT f) (C f Text)
+xproductTitle = case lensesProductT.productTitle of LensFor l -> l
+
+xproductDescription :: Lens' (ProductT f) (C f Text)
+xproductDescription = case lensesProductT.productDescription of LensFor l -> l
+
+xproductPrice :: Lens' (ProductT f) (C f Int32)
+xproductPrice = case lensesProductT.productPrice of LensFor l -> l
+
+
+xorderId :: Lens' (OrderT f) (C f Int32)
+xorderId = case lensesOrderT.orderId of LensFor l -> l
+
+xorderDate :: Lens' (OrderT f) (C f LocalTime)
+xorderDate = case lensesOrderT.orderDate of LensFor l -> l
+
+xorderForUser :: Lens' (OrderT f) (C f Text)
+xorderForUser = case lensesOrderT.orderForUser of UserId (LensFor l) -> l
+
+xorderShipToAddress :: Lens' (OrderT f) (C f Int32)
+xorderShipToAddress = case lensesOrderT.orderShipToAddress of AddressId (LensFor l) -> l
+
+xorderShippingInfo :: Lens' (OrderT f) (C f (Maybe Int32))
+xorderShippingInfo = case lensesOrderT.orderShippingInfo of ShippingInfoId (LensFor l) -> l
+
+
+xshoppingCart3Users :: Lens' (ShoppingCart3Db f) (f (TableEntity UserT))
+xshoppingCart3Users = case lensesShoppingCart3.shoppingCart3Users of TableLens x -> x
+
+xshoppingCart3UserAddresses :: Lens' (ShoppingCart3Db f) (f (TableEntity AddressT))
+xshoppingCart3UserAddresses = case lensesShoppingCart3.shoppingCart3UserAddresses of TableLens x -> x
+
+xshoppingCart3Products :: Lens' (ShoppingCart3Db f) (f (TableEntity ProductT))
+xshoppingCart3Products = case lensesShoppingCart3.shoppingCart3Products of TableLens x -> x
+
+xshoppingCart3Orders :: Lens' (ShoppingCart3Db f) (f (TableEntity OrderT))
+xshoppingCart3Orders = case lensesShoppingCart3.shoppingCart3Orders of TableLens x -> x
+
+xshoppingCart3ShippingInfos :: Lens' (ShoppingCart3Db f) (f (TableEntity ShippingInfoT))
+xshoppingCart3ShippingInfos = case lensesShoppingCart3.shoppingCart3ShippingInfos of TableLens x -> x
+
+xshoppingCart3LineItems :: Lens' (ShoppingCart3Db f) (f (TableEntity LineItemT))
+xshoppingCart3LineItems = case lensesShoppingCart3.shoppingCart3LineItems of TableLens x -> x
 
 -- | Lens from 'Order' to the primary key of the shipping info
 --

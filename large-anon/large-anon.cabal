@@ -173,11 +173,13 @@ test-suite test-large-anon
       -Wno-unticked-promoted-constructors
       -fno-show-valid-hole-fits
 
-  if impl(ghc >= 8.10)
-    ghc-options: -Wunused-packages
+  -- Not sure why, but ghc warns about record-hasfield being unused,
+  -- despite it actually being required. So for now we just disable this check.
+  -- if impl(ghc >= 8.10)
+  --   ghc-options: -Wunused-packages
 
   if impl(ghc >= 9.0.1)
-    -- Work out ghc problem. See more detailed discussion in large-records.
+    -- Work around ghc problem. See more detailed discussion in large-records.
     ghc-options: -Wno-unused-imports
 
 Flag debug

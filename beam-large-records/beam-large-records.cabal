@@ -88,3 +88,7 @@ test-suite test-beam-large-records
       -Wall
       -Wredundant-constraints
       -fmax-refinement-hole-fits=0
+
+  if impl(ghc >= 9.0.1)
+    -- Work around ghc problem. See more detailed discussion in large-records.
+    ghc-options: -Wno-unused-imports

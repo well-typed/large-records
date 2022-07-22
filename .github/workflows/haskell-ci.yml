@@ -245,6 +245,27 @@ jobs:
             location: https://github.com/well-typed/beam
             tag:      c07ecfe95a4d92b84e440bac1d5f1e2714f58780
             subdir:   beam-sqlite
+
+          package large-generics
+            ghc-options: -Werror
+
+          package large-records
+            ghc-options: -Werror
+
+          package large-records-benchmarks
+            ghc-options: -Werror
+
+          package large-anon
+            ghc-options: -Werror
+
+          package beam-large-records
+            ghc-options: -Werror
+
+          package typelet
+            ghc-options: -Werror
+
+          package typelet-doctests
+            ghc-options: -Werror
           EOF
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks|typelet|typelet-doctests)$/; }' >> cabal.project.local
           cat cabal.project
@@ -276,22 +297,6 @@ jobs:
         run: |
           if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all ; fi
           if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then cabal-docspec $ARG_COMPILER ; fi
-      - name: cabal check
-        run: |
-          cd ${PKGDIR_large_generics} || false
-          ${CABAL} -vnormal check
-          cd ${PKGDIR_large_records} || false
-          ${CABAL} -vnormal check
-          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then cd ${PKGDIR_large_records_benchmarks} || false ; fi
-          if [ $((HCNUMVER < 81000)) -ne 0 ] ; then ${CABAL} -vnormal check ; fi
-          cd ${PKGDIR_large_anon} || false
-          ${CABAL} -vnormal check
-          cd ${PKGDIR_beam_large_records} || false
-          ${CABAL} -vnormal check
-          cd ${PKGDIR_typelet} || false
-          ${CABAL} -vnormal check
-          cd ${PKGDIR_typelet_doctests} || false
-          ${CABAL} -vnormal check
       - name: haddock
         run: |
           $CABAL v2-haddock --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all

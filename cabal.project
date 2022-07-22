@@ -1,6 +1,6 @@
 packages: large-generics
         , large-records
---        , large-records-benchmarks
+        , large-records-benchmarks
         , large-anon
         , beam-large-records
         , typelet
@@ -28,25 +28,19 @@ source-repository-package
 
 package large-generics
   tests: True
-  ghc-options: -Werror
 
 package large-records
   tests: True
---  ghc-options: -Werror
 
 package large-records-benchmarks
   tests: True
-  ghc-options: -Werror
 
 package beam-large-records
   tests: True
-  -- ghc-options: -Werror
 
 package large-anon
   tests: True
-  -- ghc-options: -Werror
   ghc-options: -dcore-lint
 
 package typelet
   tests: True
-  ghc-options: -Werror

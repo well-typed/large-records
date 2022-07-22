@@ -1,5 +1,7 @@
 jobs-selection: any
 branches: main
+local-ghc-options: -Werror
+cabal-check: False
 
 -- For now only with GHC-9.2
 docspec: >=9.2

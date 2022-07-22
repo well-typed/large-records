@@ -48,8 +48,6 @@ import Data.Record.Internal.Plugin.Record
 import GHC.Driver.Errors
 import GHC.Types.Error (mkWarnMsg, mkErr, mkDecorated)
 import GHC.Utils.Logger (getLogger)
-#elif __GLASGOW_HASKELL__ >= 900
-import GHC.Driver.Types
 #endif
 
 {-------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-anon
-version:            0.1.0.0
+version:            0.1.1
 synopsis:           Scalable anonymous records
 description:        The @large-anon@ package provides support for anonymous
                     records in Haskell, with a focus on compile-time (and

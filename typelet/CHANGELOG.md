@@ -1,5 +1,9 @@
 # Revision history for typelet
 
+## 0.1.2 -- 2022-07-22
+
+* Add `constructLet` (#112)
+
 ## 0.1.1.0 -- 2022-03-24
 
 * Move to `ghc-tcplugin-api` 0.7

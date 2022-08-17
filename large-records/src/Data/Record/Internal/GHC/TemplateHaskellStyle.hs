@@ -38,6 +38,7 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
     -- ** Without direct equivalent
   , intE
     -- * Types
+  , parensT
   , litT
   , pattern VarT
   , pattern ConT
@@ -336,6 +337,10 @@ intE = litE . HsInt defExt . mkIntegralLit
 {-------------------------------------------------------------------------------
   Types
 -------------------------------------------------------------------------------}
+
+-- | Equivalent of 'Language.Haskell.TH.Lib.parensT'
+parensT :: LHsType GhcPs -> LHsType GhcPs
+parensT = noLocA . HsParTy defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.litT'
 litT :: HsTyLit -> LHsType GhcPs

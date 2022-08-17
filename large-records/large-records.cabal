@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-records
-version:            0.2.1.0
+version:            0.2.2.0
 synopsis:           Efficient compilation for large records, linear in the size of the record
 description:        For many reasons, the internal code generated for modules
                     that contain records is quadratic in the number of record
@@ -101,6 +101,7 @@ test-suite test-large-records
       Test.Record.Sanity.Strictness
       Test.Record.Sanity.StrictnessStrictData
       Test.Record.Sanity.GhcGenerics
+      Test.Record.Sanity.Operators
       Test.Record.Sanity.NamedWildCards
       Test.Record.Util
 

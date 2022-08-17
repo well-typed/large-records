@@ -100,7 +100,7 @@ viewField ::
      MonadError Exception m
   => (LRdrName, LHsType GhcPs) -> m (Int -> Field)  
 viewField (name, typ) =
-  return $ Field name (getBangType typ) (getBangStrictness typ)
+  return $ Field name (parensT (getBangType typ)) (getBangStrictness typ)
 
 viewRecordDerivings ::
      MonadError Exception m

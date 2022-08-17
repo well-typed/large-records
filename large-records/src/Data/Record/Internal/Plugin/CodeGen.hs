@@ -236,7 +236,7 @@ genIndexedAccessor r@Record{..} = do
     n <- freshName $ mkExpVar recordAnnLoc "n"
     t <- freshName $ mkExpVar recordAnnLoc "t"
     return [
-        sigD name $
+        sigD' name (userTyVar defExt x : map unLoc recordTyVars) $
           funT
             (ConT RT.type_Int)
             (recordTypeT r `funT` VarT x)
@@ -274,7 +274,8 @@ genUnsafeSetIndex r@Record{..} = do
     t   <- freshName $ mkExpVar recordAnnLoc "t"
     val <- freshName $ mkExpVar recordAnnLoc "val"
     return [
-      sigD name $
+      sigD' name (userTyVar defExt x : map unLoc recordTyVars) $
+      -- sigD name $
                ConT RT.type_Int
         `funT` (recordTypeT r `funT` (VarT x `funT` recordTypeT r))
       , valD name $

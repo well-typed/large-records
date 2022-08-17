@@ -17,10 +17,10 @@
 module Test.Record.Sanity.NamedWildCards () where
 
 {-# ANN type X largeRecord #-}
-data X = MkX {}
+data X = MkX { _x :: Int }
 
 {-# ANN type Y largeRecord #-}
-data Y a = MkY {}
+data Y a = MkY { _y :: a }
 
 {-# ANN type Z largeRecord #-}
-data Z a (b :: a) = MkZ {}
+data Z a (b :: a) = MkZ { _z :: a }

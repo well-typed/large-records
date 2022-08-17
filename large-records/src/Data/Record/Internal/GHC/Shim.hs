@@ -38,7 +38,9 @@ module Data.Record.Internal.GHC.Shim (
 #if __GLASGOW_HASKELL__ >= 900
   , HsTyVarBndr
   , LHsTyVarBndr
+  , mapLHsTyVarBndrSpec
 #endif
+  , hsForAllTy
   , hsFunTy
   , userTyVar
   , kindedTyVar
@@ -262,6 +264,25 @@ hsFunTy :: XFunTy pass -> LHsType pass -> LHsType pass -> HsType pass
 hsFunTy = HsFunTy
 #else
 hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow NormalSyntax)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 900
+mapLHsTyVarBndrSpec :: (a -> b) -> GHC.LHsTyVarBndr a GhcPs -> GHC.LHsTyVarBndr b GhcPs
+mapLHsTyVarBndrSpec f (L l bndr) = L l $ case bndr of
+  UserTyVar ext flag name -> UserTyVar ext (f flag) name
+  KindedTyVar ext flag name kind -> KindedTyVar ext (f flag) name kind
+  XTyVarBndr ext -> XTyVarBndr ext
+#endif
+
+hsForAllTy ::  XForAllTy GhcPs -> [LHsTyVarBndr GhcPs] -> LHsType GhcPs -> HsType GhcPs
+#if __GLASGOW_HASKELL__ < 810
+hsForAllTy = HsForAllTy
+#elif __GLASGOW_HASKELL__ < 900
+hsForAllTy ext = HsForAllTy ext ForallInvis
+#elif __GLASGOW_HASKELL__ < 902
+hsForAllTy ext vars = HsForAllTy ext (HsForAllInvis NoExtField [mapLHsTyVarBndrSpec (\_ -> SpecifiedSpec) v | v <- vars])
+#else
+hsForAllTy ext vars = HsForAllTy ext (HsForAllInvis EpAnnNotUsed [mapLHsTyVarBndrSpec (\_ -> SpecifiedSpec) v | v <- vars])
 #endif
 
 userTyVar ::

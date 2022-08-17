@@ -68,6 +68,7 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   , tyVarBndrName
     -- * Top-level declarations
   , sigD
+  , sigD'
   , valD
   , pattern DataD
   , pattern DerivClause
@@ -565,6 +566,13 @@ sigD name ty = inheritLoc name $ SigD defExt sig
     sig :: Sig GhcPs
     sig = TypeSig defExt [reLocA name] $ HsWC defExt (implicitBndrs ty)
 
+-- | 'sigD' but with explicit "forall"
+sigD' :: LRdrName -> [HsTyVarBndr GhcPs] -> LHsType GhcPs -> LHsDecl GhcPs
+sigD' name vars ty = inheritLoc name $ SigD defExt sig
+  where
+    sig :: Sig GhcPs
+    sig = TypeSig defExt [reLocA name] $ HsWC defExt (explicitBndrs vars ty)
+
 -- | Equivalent of 'Language.Haskell.TH.Lib.valD'
 --
 -- Currently this offers a simplified API only.
@@ -822,6 +830,20 @@ pattern PragAnnD prov value <- (viewPragAnnD -> (prov, value))
 {-------------------------------------------------------------------------------
   Internal auxiliary
 -------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ >= 902
+explicitBndrs :: [HsTyVarBndr GhcPs] -> LHsType GhcPs -> LHsSigType GhcPs
+explicitBndrs bs t = inheritLoc t (HsSig defExt (HsOuterExplicit defExt [mapLHsTyVarBndrSpec (\_ -> SpecifiedSpec) (inheritLoc t b) | b <- bs]) t)
+#elif __GLASGOW_HASKELL__ >= 900
+explicitBndrs :: [HsTyVarBndr GhcPs] -> LHsType GhcPs -> LHsSigType GhcPs
+explicitBndrs bs t = HsIB defExt (inheritLoc t (hsForAllTy defExt [inheritLoc t b | b <- bs] t))
+#elif __GLASGOW_HASKELL__ >= 810
+explicitBndrs :: [HsTyVarBndr GhcPs] -> LHsType GhcPs -> HsImplicitBndrs GhcPs (LHsType GhcPs)
+explicitBndrs bs t = HsIB defExt (inheritLoc t (hsForAllTy defExt [inheritLoc t b | b <- bs] t))
+#else
+explicitBndrs :: [HsTyVarBndr GhcPs] -> LHsType GhcPs -> HsImplicitBndrs GhcPs (LHsType GhcPs)
+explicitBndrs bs t = HsIB defExt (inheritLoc t (hsForAllTy defExt [inheritLoc t b | b <- bs] t))
+#endif
 
 #if __GLASGOW_HASKELL__ >= 902
 implicitBndrs :: LHsType GhcPs -> LHsSigType GhcPs

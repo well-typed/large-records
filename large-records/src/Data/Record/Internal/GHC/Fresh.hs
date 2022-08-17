@@ -39,10 +39,13 @@ instance MonadFresh Fresh where
 
       -- Even when we generate fresh names, ghc can still complain about name
       -- shadowing, because this check only considers the 'OccName', not the
-      -- unique. We therefore prefix the name with an underscore to avoid the
+      -- unique. We therefore prefix the name with an "lr_" to avoid the
       -- warning.
+      --
+      -- Note: we can't just use underscores for prefixes because ghc will
+      -- treat such names as PartialTypeSignatures holes.
       newOccName :: OccName -> OccName
-      newOccName n = mkOccName (occNameSpace n) . ("_" ++) $ occNameString n
+      newOccName n = mkOccName (occNameSpace n) . ("lr_" ++) $ occNameString n
 
 runFresh :: Fresh a -> IORef NameCache -> IO a
 runFresh = runReaderT . unwrapFresh

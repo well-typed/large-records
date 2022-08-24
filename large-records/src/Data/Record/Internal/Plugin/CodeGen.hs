@@ -232,7 +232,7 @@ genVectorConversions r@Record{..} = concatM [
 -- > unsafeGetIndexT = \ n t -> noInlineUnsafeCo (V.unsafeIndex (vectorFromT t) n)
 genIndexedAccessor :: MonadFresh m => Record -> m [LHsDecl GhcPs]
 genIndexedAccessor r@Record{..} = do
-    x <- freshName $ mkTyVar  recordAnnLoc "x"
+    x <- freshName' False $ mkTyVar  recordAnnLoc "x"
     n <- freshName $ mkExpVar recordAnnLoc "n"
     t <- freshName $ mkExpVar recordAnnLoc "t"
     return [
@@ -269,7 +269,7 @@ genIndexedAccessor r@Record{..} = do
 -- again. See 'genTo' for further discussion.
 genUnsafeSetIndex :: MonadFresh m => Record -> m [LHsDecl GhcPs]
 genUnsafeSetIndex r@Record{..} = do
-    x   <- freshName $ mkTyVar  recordAnnLoc "x"
+    x   <- freshName' False $ mkTyVar  recordAnnLoc "x"
     n   <- freshName $ mkExpVar recordAnnLoc "n"
     t   <- freshName $ mkExpVar recordAnnLoc "t"
     val <- freshName $ mkExpVar recordAnnLoc "val"
@@ -304,7 +304,7 @@ genUnsafeSetIndex r@Record{..} = do
 -- >   hasField = \t -> (unsafeSetIndexT 0 t, unsafeGetIndexT 0 t)
 genHasFieldInstance :: MonadFresh m => Record -> Field -> m (LHsDecl GhcPs)
 genHasFieldInstance r@Record{..} Field{..} = do
-    x <- freshName $ mkTyVar  recordAnnLoc "x"
+    x <- freshName' False $ mkTyVar  recordAnnLoc "x"
     t <- freshName $ mkExpVar recordAnnLoc "t"
     return $
       instanceD
@@ -348,7 +348,7 @@ genHasFieldInstance r@Record{..} Field{..} = do
 -- @case f of { T x1 x2 x3 .. -> xn@ function, but now at the dictionary level).
 genConstraintsClass :: MonadFresh m => Record -> m (LHsDecl GhcPs)
 genConstraintsClass r@Record{..} = do
-    c <- freshName $ mkTyVar recordAnnLoc "c"
+    c <- freshName' False $ mkTyVar recordAnnLoc "c"
     return $ classD
       []
       (nameConstraints r)
@@ -442,7 +442,7 @@ genDict Record{..} = do
 genConstraintsInstance :: MonadFresh m => Record -> m (LHsDecl GhcPs)
 genConstraintsInstance r@Record{..} = do
     body <- genDict r
-    c    <- freshName $ mkTyVar recordAnnLoc "c"
+    c    <- freshName' False $ mkTyVar recordAnnLoc "c"
     return $
       instanceD
         (genRequiredConstraints r (VarT c))

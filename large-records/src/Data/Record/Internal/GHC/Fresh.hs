@@ -16,16 +16,21 @@ class Monad m => MonadFresh m where
   --
   -- NOTES:
   --
-  -- o These names should be used for module exports.
-  -- o These names should be used for exactly /one/ binder.
-  -- o The resulting name has the same 'NameSpace' as the argument.
+  -- * These names should be used for module exports.
+  -- * These names should be used for exactly /one/ binder.
+  -- * The resulting name has the same 'NameSpace' as the argument.
   freshName :: LRdrName -> m LRdrName
+  freshName = freshName' True
+
+  -- variant which doesn't rename the variable.
+  -- The 'False' variant can be used in types.
+  freshName' :: Bool -> LRdrName -> m LRdrName
 
 newtype Fresh a = WrapFresh { unwrapFresh :: ReaderT (IORef NameCache) IO a }
   deriving newtype (Functor, Applicative, Monad)
 
 instance MonadFresh Fresh where
-  freshName (L l name) = WrapFresh $ ReaderT $ \nc_var ->
+  freshName' pfx (L l name) = WrapFresh $ ReaderT $ \nc_var ->
       atomicModifyIORef nc_var aux
     where
       aux :: NameCache -> (NameCache, LRdrName)
@@ -42,7 +47,10 @@ instance MonadFresh Fresh where
       -- unique. We therefore prefix the name with an underscore to avoid the
       -- warning.
       newOccName :: OccName -> OccName
-      newOccName n = mkOccName (occNameSpace n) . ("_" ++) $ occNameString n
+      newOccName n = mkOccName (occNameSpace n) $ addPrefix $ occNameString n
+
+      addPrefix :: String -> String
+      addPrefix = if pfx then ("_" ++) else id
 
 runFresh :: Fresh a -> IORef NameCache -> IO a
 runFresh = runReaderT . unwrapFresh

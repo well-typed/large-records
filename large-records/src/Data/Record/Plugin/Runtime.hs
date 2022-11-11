@@ -36,6 +36,7 @@ module Data.Record.Plugin.Runtime (
   , LR.ThroughLRGenerics(WrapThroughLRGenerics, unwrapThroughLRGenerics)
   , LR.gcompare
   , LR.geq
+  , LR.grnf
   , LR.gshowsPrec
   , LR.noInlineUnsafeCo
     -- * Auxiliary
@@ -56,6 +57,7 @@ import qualified Data.Foldable                    as Foldable
 import qualified Data.Record.Generic              as LR
 import qualified Data.Record.Generic.Eq           as LR
 import qualified Data.Record.Generic.GHC          as LR
+import qualified Data.Record.Generic.NFData       as LR
 import qualified Data.Record.Generic.Rep.Internal as LR
 import qualified Data.Record.Generic.Show         as LR
 import qualified GHC.Records.Compat               as GRC

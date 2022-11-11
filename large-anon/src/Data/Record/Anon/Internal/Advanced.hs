@@ -79,6 +79,7 @@ module Data.Record.Anon.Internal.Advanced (
 import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 import qualified Prelude
 
+import Control.DeepSeq (NFData (..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Bifunctor
 import Data.Coerce (coerce)
@@ -98,9 +99,10 @@ import TypeLet.UserAPI
 
 import qualified Optics.Core as Optics
 
-import qualified Data.Record.Generic.Eq   as Generic
-import qualified Data.Record.Generic.JSON as Generic
-import qualified Data.Record.Generic.Show as Generic
+import qualified Data.Record.Generic.Eq     as Generic
+import qualified Data.Record.Generic.JSON   as Generic
+import qualified Data.Record.Generic.NFData as Generic
+import qualified Data.Record.Generic.Show   as Generic
 
 import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Internal.Core.Diff (Diff)
@@ -554,6 +556,9 @@ instance ( RecordConstraints f r Eq
          , RecordConstraints f r Ord
          ) => Ord (Record f r) where
   compare = Generic.gcompare
+
+instance RecordConstraints f r NFData => NFData (Record f r) where
+  rnf = Generic.grnf
 
 instance RecordConstraints f r ToJSON => ToJSON (Record f r) where
   toJSON = Generic.gtoJSON

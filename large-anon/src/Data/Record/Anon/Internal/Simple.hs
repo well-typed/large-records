@@ -64,11 +64,13 @@ module Data.Record.Anon.Internal.Simple (
 
 import Prelude hiding (sequenceA)
 
+import Control.DeepSeq (NFData(..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Bifunctor
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
+import Data.Record.Generic.NFData
 import Data.Record.Generic.Show
 import Data.Tagged
 import GHC.Exts
@@ -254,6 +256,9 @@ instance ( RecordConstraints r Eq
          , RecordConstraints r Ord
          ) => Ord (Record r) where
   compare = gcompare
+
+instance RecordConstraints r NFData => NFData (Record r) where
+  rnf = grnf
 
 instance RecordConstraints r ToJSON => ToJSON (Record r) where
   toJSON = gtoJSON

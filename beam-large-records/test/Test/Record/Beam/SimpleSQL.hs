@@ -26,6 +26,7 @@ module Test.Record.Beam.SimpleSQL (
 
 import Data.Int
 import Data.Kind
+import Data.Record.Plugin
 import Data.Text (Text)
 import Database.Beam
 

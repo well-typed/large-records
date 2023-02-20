@@ -16,6 +16,8 @@ module Test.Record.Sanity.Operators () where
 
 import Data.Kind (Type)
 
+import Data.Record.Plugin
+
 -- Some type family (e.g. servant record-style API def).
 type family tag :- route :: Type
 

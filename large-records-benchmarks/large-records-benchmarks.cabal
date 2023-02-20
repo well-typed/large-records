@@ -162,6 +162,7 @@ executable bench-after
       aeson
     , large-generics
     , large-records
+    , record-hasfield
   other-modules:
       After.Sized.R000
       After.Sized.R010
@@ -733,6 +734,10 @@ executable bench-superrecord
   if flag(profile-runtime)
     ghc-options:
       -O1
+
+  if impl(ghc >= 9.0)
+    -- superrecord is not yet (2023-02-20) supported for ghc >= 9
+    buildable: False
 
 --
 -- TEST SUITE

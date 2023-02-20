@@ -17,15 +17,15 @@
 module Test.Record.Sanity.Strictness (tests) where
 
 import Control.Exception
-import GHC.Records.Compat
-
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound
+import GHC.Records.Compat
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import qualified Data.Record.Generic.Rep as Rep
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import Data.Record.Plugin
 
 {-# ANN type Lazy largeRecord #-}
 data Lazy = MkLazy { lazyField :: Word }

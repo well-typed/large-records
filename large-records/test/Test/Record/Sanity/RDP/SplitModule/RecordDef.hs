@@ -22,6 +22,8 @@ module Test.Record.Sanity.RDP.SplitModule.RecordDef (
   , R5_WithLR(..)
   ) where
 
+import Data.Record.Plugin
+
 {-# ANN type R1 largeRecord #-}
 data R1 = MkR1 { r1_x :: Int, r1_y :: Bool }
   deriving (Show, Eq)

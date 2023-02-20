@@ -11,5 +11,7 @@
 
 module Test.Record.Sanity.QualifiedImports.A (T(..)) where
 
+import Data.Record.Plugin
+
 {-# ANN type T largeRecord #-}
 data T a = MkT { x :: Int, y :: [a] }

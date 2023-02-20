@@ -22,6 +22,7 @@ module After.Sized.R090 where
 
 import Data.Aeson (ToJSON(..))
 import Data.Record.Generic.JSON
+import Data.Record.Plugin
 
 import Bench.Types
 

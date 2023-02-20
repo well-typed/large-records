@@ -18,6 +18,8 @@ module Test.Record.Sanity.RDP.SingleModule (tests) where
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import Data.Record.Plugin
+
 {-------------------------------------------------------------------------------
   Simple field selection and override
 -------------------------------------------------------------------------------}

@@ -31,6 +31,7 @@ import Data.Functor.Identity
 import Data.Int
 import Data.Kind
 import Data.Record.Beam ()
+import Data.Record.Plugin
 import Data.Text (Text)
 import Database.Beam hiding (Generic, countAll_)
 import Database.Beam.Schema.Tables

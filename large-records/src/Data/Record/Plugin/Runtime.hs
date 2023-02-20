@@ -1,86 +1,161 @@
-{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ConstraintKinds          #-}
+{-# LANGUAGE DataKinds                #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE KindSignatures           #-}
+{-# LANGUAGE PolyKinds                #-}
+{-# LANGUAGE ScopedTypeVariables      #-}
+{-# LANGUAGE TypeApplications         #-}
 
 -- | Re-exports of types and functions used by generated code
 --
 -- This exports all functionality required by the generated code, with the
 -- exception of GHC generics (name clash with @large-records@ generics).
---
--- This follows the structure of "Data.Record.Internal.Plugin.RuntimeNames".
 module Data.Record.Plugin.Runtime (
-    -- * base
-    Any
-  , Constraint
-  , Eq((==))
-  , Int
-  , Ord(compare)
-  , Proxy(Proxy)
-  , Show(showsPrec)
+    -- * Base
+    Constraint
+  , Proxy
   , Type
-  , unsafeCoerce
-  , error
-    -- * vector
-  , SmallArray
-  , smallArrayFromList
-  , smallArrayToList
-  , indexSmallArray
-  , updateSmallArray
-    -- * record-hasfield
-  , GRC.HasField(hasField)
+  , proxy
+    -- * AnyArray
+  , AnyArray
+  , anyArrayFromList
+  , anyArrayToList
+  , anyArrayIndex
+  , anyArrayUpdate
     -- * large-generics
-  , LR.Dict
-  , LR.FieldMetadata(FieldMetadata)
-  , LR.FieldStrictness(FieldLazy, FieldStrict)
-  , LR.Generic(Constraints, MetadataOf, dict, from, metadata, to)
-  , LR.Metadata(Metadata, recordConstructor, recordFieldMetadata, recordName, recordSize)
-  , LR.Rep(Rep)
-  , LR.ThroughLRGenerics(WrapThroughLRGenerics, unwrapThroughLRGenerics)
-  , LR.gcompare
-  , LR.geq
-  , LR.grnf
-  , LR.gshowsPrec
-  , LR.noInlineUnsafeCo
-    -- * Auxiliary
-  , dictFor
-  , repFromVector
-  , repToVector
+  , Rep
+  , Dict
+  , anyArrayToRep
+  , anyArrayFromRep
+  , mkDicts
+  , mkDict
+  , mkStrictField
+  , mkLazyField
+  , mkMetadata
+    -- ** wrappers
+  , gcompare
+  , geq
+  , gshowsPrec
+  , noInlineUnsafeCo
+    -- ** ThroughLRGenerics
+  , ThroughLRGenerics
+  , wrapThroughLRGenerics
+  , unwrapThroughLRGenerics
   ) where
 
 import Control.Monad (forM_)
 import Data.Coerce (coerce)
-import Data.Kind (Constraint, Type)
 import Data.Primitive.SmallArray
-import Data.Proxy (Proxy(Proxy))
 import GHC.Exts (Any)
-import Unsafe.Coerce (unsafeCoerce)
+import GHC.TypeLits
 
 import qualified Data.Foldable                    as Foldable
+import qualified Data.Kind                        as Base
+import qualified Data.Proxy                       as Base
 import qualified Data.Record.Generic              as LR
 import qualified Data.Record.Generic.Eq           as LR
 import qualified Data.Record.Generic.GHC          as LR
-import qualified Data.Record.Generic.NFData       as LR
 import qualified Data.Record.Generic.Rep.Internal as LR
 import qualified Data.Record.Generic.Show         as LR
-import qualified GHC.Records.Compat               as GRC
 
 {-------------------------------------------------------------------------------
-  Auxiliary
+  base
 -------------------------------------------------------------------------------}
 
-dictFor :: c x => Proxy c -> Proxy x -> LR.Dict c x
-dictFor _ _ = LR.Dict
+type Constraint = Base.Constraint
+type Proxy      = Base.Proxy
+type Type       = Base.Type
 
-repFromVector :: SmallArray Any -> LR.Rep LR.I a
-repFromVector = coerce
+proxy :: forall k (a :: k). Proxy a
+proxy = Base.Proxy
 
-repToVector :: LR.Rep LR.I a -> SmallArray Any
-repToVector = coerce
+{-------------------------------------------------------------------------------
+  AnyArray
+-------------------------------------------------------------------------------}
 
-smallArrayToList :: SmallArray a -> [a]
-smallArrayToList = Foldable.toList
+type AnyArray = SmallArray Any
 
-updateSmallArray :: SmallArray a -> [(Int, a)] -> SmallArray a
-updateSmallArray v updates = runSmallArray $ do
+anyArrayFromList :: [Any] -> AnyArray
+anyArrayFromList = smallArrayFromList
+
+anyArrayToList :: AnyArray -> [Any]
+anyArrayToList = Foldable.toList
+
+anyArrayIndex :: AnyArray -> Int -> Any
+anyArrayIndex = indexSmallArray
+
+anyArrayUpdate :: AnyArray -> [(Int, Any)] -> AnyArray
+anyArrayUpdate v updates = runSmallArray $ do
     v' <- thawSmallArray v 0 (sizeofSmallArray v)
     forM_ updates $ \(i, a) -> do
       writeSmallArray v' i a
     return v'
+
+{-------------------------------------------------------------------------------
+  large-generics: utilities
+-------------------------------------------------------------------------------}
+
+anyArrayToRep :: AnyArray -> Rep LR.I a
+anyArrayToRep = coerce
+
+anyArrayFromRep :: Rep LR.I a -> AnyArray
+anyArrayFromRep = coerce
+
+mkDicts :: [Dict c Any] -> Rep (Dict c) a
+mkDicts = LR.Rep . smallArrayFromList
+
+mkDict :: c x => Proxy c -> Proxy x -> Dict c x
+mkDict _ _ = LR.Dict
+
+mkStrictField :: forall name a.
+     KnownSymbol name
+  => Proxy name -> LR.FieldMetadata a
+mkStrictField _ = LR.FieldMetadata (Base.Proxy @name) LR.FieldStrict
+
+mkLazyField :: forall name a.
+     KnownSymbol name
+  => Proxy name -> LR.FieldMetadata a
+mkLazyField _ = LR.FieldMetadata (Base.Proxy @name) LR.FieldLazy
+
+mkMetadata ::
+     String  -- ^ Record name
+  -> String  -- ^ Constructor name
+  -> [LR.FieldMetadata Any]
+  -> LR.Metadata a
+mkMetadata name constr fields = LR.Metadata {
+      recordName          = name
+    , recordConstructor   = constr
+    , recordSize          = length fields
+    , recordFieldMetadata = LR.Rep $ smallArrayFromList fields
+    }
+
+{-------------------------------------------------------------------------------
+  large-generics: wrappers
+-------------------------------------------------------------------------------}
+
+type Rep  = LR.Rep
+type Dict = LR.Dict
+
+gcompare :: (LR.Generic a, LR.Constraints a Ord) => a -> a -> Ordering
+gcompare = LR.gcompare
+
+geq :: (LR.Generic a, LR.Constraints a Eq) => a -> a -> Bool
+geq = LR.geq
+
+gshowsPrec :: (LR.Generic a, LR.Constraints a Show) => Int -> a -> ShowS
+gshowsPrec = LR.gshowsPrec
+
+noInlineUnsafeCo :: a -> b
+noInlineUnsafeCo = LR.noInlineUnsafeCo
+
+{-------------------------------------------------------------------------------
+  large-generics: ThroughLRGenerics
+-------------------------------------------------------------------------------}
+
+type ThroughLRGenerics = LR.ThroughLRGenerics
+
+wrapThroughLRGenerics :: a -> ThroughLRGenerics a p
+wrapThroughLRGenerics = LR.WrapThroughLRGenerics
+
+unwrapThroughLRGenerics :: ThroughLRGenerics a p -> a
+unwrapThroughLRGenerics = LR.unwrapThroughLRGenerics

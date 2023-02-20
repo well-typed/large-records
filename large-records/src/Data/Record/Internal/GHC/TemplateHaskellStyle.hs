@@ -33,6 +33,7 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   , lamE1
   , caseE
   , appsE
+  , appTypeE
   , tupE
   , sigE
     -- ** Without direct equivalent
@@ -312,6 +313,18 @@ caseE x alts = inheritLoc x $
 -- | Equivalent of 'Language.Haskell.TH.Lib.appsE'
 appsE :: LHsExpr GhcPs -> [LHsExpr GhcPs] -> LHsExpr GhcPs
 appsE = foldl' appE
+
+-- | Equivalent of 'Language.Haskell.TH.Lib.appT'
+appTypeE :: LHsExpr GhcPs -> LHsType GhcPs -> LHsExpr GhcPs
+appTypeE expr typ = inheritLoc expr $
+    HsAppType
+#if __GLASGOW_HASKELL__ >= 902
+      (getLoc $ reLoc expr)
+#else
+      defExt
+#endif
+      expr
+      (HsWC defExt typ)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.tupE'
 tupE :: NonEmpty (LHsExpr GhcPs) -> LHsExpr GhcPs

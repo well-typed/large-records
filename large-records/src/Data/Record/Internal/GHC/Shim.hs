@@ -14,8 +14,12 @@
 -- This should be the only module with GHC-specific CPP directives, and the
 -- rest of the plugin should not import from any GHC modules directly.
 module Data.Record.Internal.GHC.Shim (
+    -- * Names
+    lookupVarName
+  , lookupTcName
+
     -- * Miscellaneous
-    importDecl
+  , importDecl
   , conPat
   , mkFunBind
   , HsModule
@@ -86,13 +90,15 @@ import qualified Data.List.NonEmpty as NE
 
 #if __GLASGOW_HASKELL__ < 900
 
-import BasicTypes (SourceText (NoSourceText))
 import Bag (listToBag, emptyBag)
+import BasicTypes (SourceText (NoSourceText))
 import ConLike (ConLike)
 import ErrUtils (mkErrMsg, mkWarnMsg)
+import Finder (findImportedModule)
 import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind, mkFunBind)
 import GhcPlugins hiding ((<>), getHscEnv,)
 import HscMain (getHscEnv)
+import IfaceEnv (lookupOrigIO)
 import NameCache (NameCache(nsUniqs))
 import PatSyn (PatSyn)
 import TcEvidence (HsWrapper(WpHole))
@@ -103,12 +109,14 @@ import qualified GhcPlugins as GHC
 #else
 
 import GHC.Hs hiding (LHsTyVarBndr, HsTyVarBndr, HsModule, mkFunBind)
+import qualified GHC.Hs as GHC
 
 import GHC.Core.Class (Class)
 import GHC.Core.ConLike (ConLike)
 import GHC.Core.PatSyn (PatSyn)
 import GHC.Data.Bag (listToBag, emptyBag)
 import GHC.Driver.Main (getHscEnv)
+import GHC.Iface.Env (lookupOrigIO)
 import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
 import GHC.Utils.Error (Severity(SevError, SevWarning))
@@ -121,16 +129,56 @@ import GHC.Plugins hiding ((<>), getHscEnv
     )
 
 #if __GLASGOW_HASKELL__ < 902
-import GHC.Utils.Error (mkErrMsg, mkWarnMsg)
+import GHC.Driver.Finder (findImportedModule)
 import GHC.Parser.Annotation (IsUnicodeSyntax(NormalSyntax))
+import GHC.Utils.Error (mkErrMsg, mkWarnMsg)
 #else
-import GHC.Types.SourceText (SourceText(NoSourceText), mkIntegralLit)
 import GHC.Types.Fixity
+import GHC.Types.SourceText (SourceText(NoSourceText), mkIntegralLit)
+import GHC.Unit.Finder (findImportedModule, FindResult(Found))
 #endif
 
-import qualified GHC.Hs      as GHC
-
 #endif
+
+{-------------------------------------------------------------------------------
+  Names
+-------------------------------------------------------------------------------}
+
+lookupVarName ::
+     HasCallStack
+  => ModuleName
+  -> Maybe FastString -- ^ Optional package name
+  -> String -> Hsc Name
+lookupVarName modl pkg = lookupOccName modl pkg . mkVarOcc
+
+lookupTcName ::
+     HasCallStack
+  => ModuleName
+  -> Maybe FastString -- ^ Optional package name
+  -> String -> Hsc Name
+lookupTcName modl pkg = lookupOccName modl pkg . mkTcOcc
+
+lookupOccName ::
+     HasCallStack
+  => ModuleName
+  -> Maybe FastString -- ^ Optional package name
+  -> OccName -> Hsc Name
+lookupOccName modlName mPkgName name = do
+    env   <- getHscEnv
+    mModl <- liftIO $ findImportedModule env modlName mPkgName
+    case mModl of
+      Found _ modl -> liftIO $ lookupOrigIO env modl name
+      _otherwise   -> error $ concat [
+          "lookupName: could not find "
+        , occNameString name
+        , " in module "
+        , moduleNameString modlName
+        , ". This might be due to an undeclared package dependency"
+        , case mPkgName of
+            Nothing  -> ""
+            Just pkg -> " on " ++ unpackFS pkg
+        , "."
+        ]
 
 {-------------------------------------------------------------------------------
   Miscellaneous
@@ -242,7 +290,7 @@ instance HasDefaultExt EpAnnComments where
 -- In GHC-9.2 some things have extension fields.
 #if __GLASGOW_HASKELL__ >= 902
 withDefExt :: HasDefaultExt a => (a -> b) -> b
-withDefExt f = f defExt 
+withDefExt f = f defExt
 #else
 withDefExt :: a -> a
 withDefExt a = a

@@ -15,29 +15,29 @@ import qualified Data.Generics as SYB
 import Data.Record.Internal.GHC.Fresh
 import Data.Record.Internal.GHC.Shim hiding (mkTyVar)
 import Data.Record.Internal.GHC.TemplateHaskellStyle
+import Data.Record.Internal.Plugin.Names
 import Data.Record.Internal.Plugin.Record
-
-import qualified Data.Record.Internal.Plugin.Names.GhcGenerics as GHC
-import qualified Data.Record.Internal.Plugin.Names.Runtime     as RT
 
 {-------------------------------------------------------------------------------
   Top-level
 -------------------------------------------------------------------------------}
 
 -- | Generate all large-records definitions for a record.
-genLargeRecord :: MonadFresh m => Record -> DynFlags -> m [LHsDecl GhcPs]
-genLargeRecord r@Record{..} dynFlags = concatM [
-      (:[]) <$> genDatatype r
-    , genVectorConversions  r
-    , genIndexedAccessor    r
-    , genUnsafeSetIndex     r
-    , genStockInstances     r
-    , mapM (genHasFieldInstance r) recordFields
+genLargeRecord :: MonadFresh m
+  => QualifiedNames
+  -> Record -> DynFlags -> m [LHsDecl GhcPs]
+genLargeRecord names r@Record{..} dynFlags = concatM [
+      (:[]) <$> genDatatype           r
+    , genVectorConversions      names r
+    , genIndexedAccessor        names r
+    , genUnsafeSetIndex         names r
+    , genStockInstances         names r
+    , mapM (genHasFieldInstance names r) recordFields
     , sequence [
-          genConstraintsClass    r
-        , genConstraintsInstance r
-        , genGenericInstance     r dynFlags
-        , genGHCGeneric          r
+          genConstraintsClass    names r
+        , genConstraintsInstance names r
+        , genGenericInstance     names r dynFlags
+        , genGHCGeneric          names r
       ]
     ]
 
@@ -151,12 +151,16 @@ genDatatype Record{..} = pure $
 --
 -- TODO: From ghc 9.2, these could be identity functions. See 'genDatatype'
 -- for details.
-genVectorConversions :: forall m. MonadFresh m => Record -> m [LHsDecl GhcPs]
-genVectorConversions r@Record{..} = concatM [
+genVectorConversions :: forall m.
+     MonadFresh m
+  => QualifiedNames -> Record -> m [LHsDecl GhcPs]
+genVectorConversions QualifiedNames{..} r@Record{..} = concatM [
       fromVector
     , toVector
     ]
   where
+    UnqualifiedNames{..} = getUnqualifiedNames
+
     fromVector :: m [LHsDecl GhcPs]
     fromVector = do
         args <- mapM (freshName . fieldName) recordFields
@@ -164,12 +168,12 @@ genVectorConversions r@Record{..} = concatM [
             sigD name $
               funT
                 (recordTypeT r)
-                (ConT RT.type_SmallArray `appT` ConT RT.type_Any)
+                (ConT type_AnyArray)
           , valD name $
               lamE1 (conP recordConName (map varP args)) $
                 appE
-                  (VarE RT.smallArrayFromList)
-                  (listE [ VarE RT.unsafeCoerce `appE` VarE arg
+                  (VarE anyArrayFromList)
+                  (listE [ VarE noInlineUnsafeCo `appE` VarE arg
                          | arg <- args
                          ]
                   )
@@ -185,21 +189,21 @@ genVectorConversions r@Record{..} = concatM [
         return $ [
             sigD name $
               funT
-                (ConT RT.type_SmallArray `appT` ConT RT.type_Any)
+                (ConT type_AnyArray)
                 (recordTypeT r)
           , valD name $
               lamE1 (varP x) $
                 caseE
-                  (VarE RT.smallArrayToList `appE` VarE x)
+                  (VarE anyArrayToList `appE` VarE x)
                   [ ( listP (map varP args)
                     , appsE
                         (ConE recordConName)
-                        [ VarE RT.unsafeCoerce `appE` VarE arg
+                        [ VarE noInlineUnsafeCo `appE` VarE arg
                         | arg <- args
                         ]
                     )
                   , ( wildP
-                    , VarE RT.error `appE` stringE matchErr
+                    , VarE unq_error `appE` stringE matchErr
                     )
                   ]
           ]
@@ -230,28 +234,33 @@ genVectorConversions r@Record{..} = concatM [
 --
 -- > unsafeGetIndexT :: forall x a b. Int -> T a b -> x
 -- > unsafeGetIndexT = \ n t -> noInlineUnsafeCo (V.unsafeIndex (vectorFromT t) n)
-genIndexedAccessor :: MonadFresh m => Record -> m [LHsDecl GhcPs]
-genIndexedAccessor r@Record{..} = do
+genIndexedAccessor ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> m [LHsDecl GhcPs]
+genIndexedAccessor QualifiedNames{..} r@Record{..} = do
     x <- freshName' False $ mkTyVar  recordAnnLoc "x"
     n <- freshName $ mkExpVar recordAnnLoc "n"
     t <- freshName $ mkExpVar recordAnnLoc "t"
     return [
         sigD name $
           funT
-            (ConT RT.type_Int)
+            (ConT unq_type_Int)
             (recordTypeT r `funT` VarT x)
       , valD name $
           lamE (varP n :| [varP t]) $
             appE
-              (VarE RT.noInlineUnsafeCo)
+              (VarE noInlineUnsafeCo)
               (appsE
-                 (VarE RT.indexSmallArray)
+                 (VarE anyArrayIndex)
                  [ VarE (nameVectorFrom r) `appE` VarE t
                  , VarE n
                  ]
               )
       ]
   where
+    UnqualifiedNames{..} = getUnqualifiedNames
+
     name :: LRdrName
     name = nameUnsafeGetIndex r
 
@@ -267,32 +276,37 @@ genIndexedAccessor r@Record{..} = do
 -- would need to take the strictness of the fields into account. If we change
 -- our internal representation, we might need to be more careful with that
 -- again. See 'genTo' for further discussion.
-genUnsafeSetIndex :: MonadFresh m => Record -> m [LHsDecl GhcPs]
-genUnsafeSetIndex r@Record{..} = do
+genUnsafeSetIndex ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> m [LHsDecl GhcPs]
+genUnsafeSetIndex QualifiedNames{..} r@Record{..} = do
     x   <- freshName' False $ mkTyVar  recordAnnLoc "x"
     n   <- freshName $ mkExpVar recordAnnLoc "n"
     t   <- freshName $ mkExpVar recordAnnLoc "t"
     val <- freshName $ mkExpVar recordAnnLoc "val"
     return [
       sigD name $
-               ConT RT.type_Int
+               ConT unq_type_Int
         `funT` (recordTypeT r `funT` (VarT x `funT` recordTypeT r))
       , valD name $
           lamE (varP n :| [varP t, (varP val)]) $
             appE
               (VarE (nameVectorTo r))
               (appsE
-                 (VarE RT.updateSmallArray)
+                 (VarE anyArrayUpdate)
                  [ VarE (nameVectorFrom r) `appE` VarE t
                  , listE [
                        tupE $
                              VarE n
-                         :| [VarE RT.noInlineUnsafeCo `appE` VarE val]
+                         :| [VarE noInlineUnsafeCo `appE` VarE val]
                      ]
                  ]
               )
       ]
   where
+    UnqualifiedNames{..} = getUnqualifiedNames
+
     name :: LRdrName
     name = nameUnsafeSetIndex r
 
@@ -302,21 +316,23 @@ genUnsafeSetIndex r@Record{..} = do
 --
 -- > instance x ~ Word => HasField "tInt" (T a b) x where
 -- >   hasField = \t -> (unsafeSetIndexT 0 t, unsafeGetIndexT 0 t)
-genHasFieldInstance :: MonadFresh m => Record -> Field -> m (LHsDecl GhcPs)
-genHasFieldInstance r@Record{..} Field{..} = do
+genHasFieldInstance :: MonadFresh m
+  => QualifiedNames
+  -> Record -> Field -> m (LHsDecl GhcPs)
+genHasFieldInstance QualifiedNames{..} r@Record{..} Field{..} = do
     x <- freshName' False $ mkTyVar  recordAnnLoc "x"
     t <- freshName $ mkExpVar recordAnnLoc "t"
     return $
       instanceD
         [equalP (VarT x) fieldType]
         (appsT
-           (ConT RT.type_HasField)
+           (ConT type_HasField)
            [ stringT (nameBase fieldName)
            , recordTypeT r
            , VarT x
            ]
         )
-        [ ( RT.unq_hasField
+        [ ( hasField
           , lamE1 (varP t) $
               tupE $
                     appsE (VarE (nameUnsafeSetIndex r)) [intE fieldIndex, VarE t]
@@ -346,8 +362,10 @@ genHasFieldInstance r@Record{..} Field{..} = do
 -- and use lots of "tuple constraint extractor" functions, each of which have
 -- the same size as the number of constraints (another example of a
 -- @case f of { T x1 x2 x3 .. -> xn@ function, but now at the dictionary level).
-genConstraintsClass :: MonadFresh m => Record -> m (LHsDecl GhcPs)
-genConstraintsClass r@Record{..} = do
+genConstraintsClass ::
+     MonadFresh m
+  => QualifiedNames -> Record -> m (LHsDecl GhcPs)
+genConstraintsClass QualifiedNames{..} r@Record{..} = do
     c <- freshName' False $ mkTyVar recordAnnLoc "c"
     return $ classD
       []
@@ -355,10 +373,10 @@ genConstraintsClass r@Record{..} = do
       (recordTyVars ++ [kindedTV c cKind])
       [ ( nameDictConstraints r
         , funT
-            (ConT RT.type_Proxy `appT` VarT c)
+            (ConT type_Proxy `appT` VarT c)
             (appsT
-               (ConT RT.type_Rep)
-               [ ConT RT.type_Dict `appT` VarT c
+               (ConT type_Rep)
+               [ ConT type_Dict `appT` VarT c
                , recordTypeT r
                ]
             )
@@ -366,7 +384,7 @@ genConstraintsClass r@Record{..} = do
       ]
   where
     cKind :: LHsType GhcPs
-    cKind = ConT RT.type_Type `funT` ConT RT.type_Constraint
+    cKind = ConT type_Type `funT` ConT type_Constraint
 
 -- | Superclass constraints required by the constraints class instance
 --
@@ -413,23 +431,23 @@ genRequiredConstraints Record{..} c =
 -- >   , noInlineUnsafeCo (dictFor p (Proxy :: Proxy a))
 -- >   , noInlineUnsafeCo (dictFor p (Proxy :: Proxy [b]))
 -- >   ])
-genDict :: MonadFresh m => Record -> m (LHsExpr GhcPs)
-genDict Record{..} = do
+genDict ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> m (LHsExpr GhcPs)
+genDict names@QualifiedNames{..} Record{..} = do
     p <- freshName $ mkExpVar recordAnnLoc "p"
     return $
       lamE1 (varP p) $
         appE
-          (ConE RT.con_Rep)
-          (appE
-             (VarE RT.smallArrayFromList)
-             (listE (map (dictForField p) recordFields))
-          )
+          (VarE mkDicts)
+          (listE (map (dictForField p) recordFields))
   where
     dictForField :: LRdrName -> Field -> LHsExpr GhcPs
     dictForField p Field{..} =
         appE
-          (VarE RT.noInlineUnsafeCo)
-          (VarE RT.dictFor `appsE` [VarE p, proxyE fieldType])
+          (VarE noInlineUnsafeCo)
+          (VarE mkDict `appsE` [VarE p, proxyE names fieldType])
 
 -- | Generate (one and only) instance of the constraints class
 --
@@ -439,9 +457,11 @@ genDict Record{..} = do
 -- >   dictConstraints_T = ..
 --
 -- where the body of @dictConstraints_T@ is generated by 'genDict'.
-genConstraintsInstance :: MonadFresh m => Record -> m (LHsDecl GhcPs)
-genConstraintsInstance r@Record{..} = do
-    body <- genDict r
+genConstraintsInstance ::
+     MonadFresh m
+  => QualifiedNames -> Record -> m (LHsDecl GhcPs)
+genConstraintsInstance names r@Record{..} = do
+    body <- genDict names r
     c    <- freshName' False $ mkTyVar recordAnnLoc "c"
     return $
       instanceD
@@ -468,42 +488,32 @@ genConstraintsInstance r@Record{..} = do
 -- >       , FieldMetadata (Proxy :: Proxy "tListB")) FieldLazy
 -- >       ]
 -- >   }
-genMetadata :: MonadFresh m => Record -> DynFlags -> m (LHsExpr GhcPs)
-genMetadata r@Record{..} dynFlags = do
+genMetadata ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> DynFlags -> m (LHsExpr GhcPs)
+genMetadata names@QualifiedNames{..} r@Record{..} dynFlags = do
     p <- freshName $ mkExpVar recordAnnLoc "p"
     return $
       lamE1 (varP p) $
-        recConE
-          RT.con_Metadata [
-              ( RT.recordName
-              , stringE (nameRecord r)
-              )
-            , ( RT.recordConstructor
-              , stringE (nameBase recordConName)
-              )
-            , ( RT.recordSize
-              , intE (length recordFields)
-              )
-            , ( RT.recordFieldMetadata
-              , appE
-                  (ConE RT.con_Rep)
-                  (appE
-                     (VarE RT.smallArrayFromList)
-                     (listE (map auxField recordFields))
-                  )
-              )
-            ]
+        appsE (VarE mkMetadata) [
+            stringE (nameRecord r)
+          , stringE (nameBase recordConName)
+          , listE (map auxField recordFields)
+          ]
   where
     auxField :: Field -> LHsExpr GhcPs
     auxField Field{..} =
-        appsE
-          (ConE RT.con_FieldMetadata)
-          [ proxyE (stringT (nameBase fieldName))
-          , ConE $ case decideStrictness dynFlags fieldStrictness of
-              HsStrict                  -> RT.con_FieldStrict
-              HsLazy                    -> RT.con_FieldLazy
-              HsUnpack _                -> RT.con_FieldStrict
-          ]
+        case decideStrictness dynFlags fieldStrictness of
+          HsStrict ->
+            appE (VarE mkStrictField) $
+              proxyE names $ stringT (nameBase fieldName)
+          HsLazy ->
+            appE (VarE mkLazyField) $
+              proxyE names $ stringT (nameBase fieldName)
+          HsUnpack _ ->
+            appE (VarE mkStrictField) $
+              proxyE names $ stringT (nameBase fieldName)
 
 -- | Implementation of https://hackage.haskell.org/package/base-4.16.1.0/docs/GHC-Generics.html#t:DecidedStrictness
 decideStrictness :: DynFlags -> HsSrcBang -> HsImplBang
@@ -524,12 +534,15 @@ decideStrictness dynFlags (HsSrcBang _ unpackedness strictness) =
 -- Generates something like
 --
 -- > repFromVectorStrict . vectorFromT
-genFrom :: MonadFresh m => Record -> m (LHsExpr GhcPs)
-genFrom r@Record{..} = do
+genFrom ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> m (LHsExpr GhcPs)
+genFrom QualifiedNames{..} r@Record{..} = do
     x <- freshName $ mkExpVar recordAnnLoc "x"
     return $
       lamE1 (varP x) $
-        VarE RT.repFromVector `appE` (VarE (nameVectorFrom r) `appE` VarE x)
+        VarE anyArrayToRep `appE` (VarE (nameVectorFrom r) `appE` VarE x)
 
 -- | Generate definition for `to` in the `Generic` instance
 --
@@ -541,12 +554,15 @@ genFrom r@Record{..} = do
 -- " normal " record as our internal representation (albeit with strange types),
 -- and the fields of that record have their own strictness annotation, we don't
 -- have to worry about strictness here.
-genTo :: MonadFresh m => Record -> m (LHsExpr GhcPs)
-genTo r@Record{..} = do
+genTo ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> m (LHsExpr GhcPs)
+genTo QualifiedNames{..} r@Record{..} = do
     x <- freshName $ mkExpVar recordAnnLoc "x"
     return $
       lamE1 (varP x) $
-        VarE (nameVectorTo r) `appE` (VarE RT.repToVector `appE` VarE x)
+        VarE (nameVectorTo r) `appE` (VarE anyArrayFromRep `appE` VarE x)
 
 -- | Generate an instance of large-records 'Data.Record.Generic'.
 --
@@ -561,40 +577,45 @@ genTo r@Record{..} = do
 -- >   to       = ..
 -- >   dict     = dictConstraints_T
 -- >   metadata = ..
-genGenericInstance :: MonadFresh m => Record -> DynFlags -> m (LHsDecl GhcPs)
-genGenericInstance r@Record{..} dynFlags  = do
-    metadata <- genMetadata r dynFlags
-    from     <- genFrom     r
-    to       <- genTo       r
+genGenericInstance ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> DynFlags -> m (LHsDecl GhcPs)
+genGenericInstance names@QualifiedNames{..} r@Record{..} dynFlags  = do
+    metadata <- genMetadata names r dynFlags
+    from     <- genFrom     names r
+    to       <- genTo       names r
     return $
       instanceD
         []
-        (ConT RT.type_Generic `appT` recordTypeT r)
-        [ ( RT.unq_from     , from                         )
-        , ( RT.unq_to       , to                           )
-        , ( RT.unq_dict     , VarE (nameDictConstraints r) )
-        , ( RT.unq_metadata , metadata                     )
+        (ConT type_LR_Generic `appT` recordTypeT r)
+        [ ( lr_from     , from                         )
+        , ( lr_to       , to                           )
+        , ( lr_dict     , VarE (nameDictConstraints r) )
+        , ( lr_metadata , metadata                     )
         ]
-        [ tySynEqn RT.unq_type_Constraints [recordTypeT r] $
+        [ tySynEqn type_LR_Constraints [recordTypeT r] $
             appsT
               (ConT (nameConstraints r))
               [VarT (tyVarBndrName v) | v <- recordTyVars]
-        , tySynEqn RT.unq_type_MetadataOf [recordTypeT r] $
+        , tySynEqn type_LR_MetadataOf [recordTypeT r] $
             listT [
                 tupT $ stringT (nameBase fieldName) :| [fieldType]
               | Field{..} <- recordFields
               ]
         ]
-  where
 
 {-------------------------------------------------------------------------------
   "Stock" instances
 -------------------------------------------------------------------------------}
 
 -- | Generate stock instances
-genStockInstances :: MonadFresh m => Record -> m [LHsDecl GhcPs]
-genStockInstances r@Record{..} = concatM [
-      genStockInstance r d
+genStockInstances ::
+     MonadFresh m
+  => QualifiedNames
+  -> Record -> m [LHsDecl GhcPs]
+genStockInstances names r@Record{..} = concatM [
+      genStockInstance names r d
     | DeriveStock d <- recordDerivings
     ]
 
@@ -609,13 +630,17 @@ genStockInstances r@Record{..} = concatM [
 -- TODO: For 'Generic' we currently don't do anything. We could change this so
 -- that we generate the 'GHC.Generics' instance only when the user asks for a
 -- 'Generics' instance?
-genStockInstance :: MonadFresh m => Record -> StockDeriving -> m [LHsDecl GhcPs]
-genStockInstance r = pure . \case
-    Show    -> [mkInstance RT.type_Show RT.unq_showsPrec RT.gshowsPrec]
-    Eq      -> [mkInstance RT.type_Eq   RT.unq_eq        RT.geq       ]
-    Ord     -> [mkInstance RT.type_Ord  RT.unq_compare   RT.gcompare  ]
+genStockInstance :: MonadFresh m
+  => QualifiedNames
+  -> Record -> StockDeriving -> m [LHsDecl GhcPs]
+genStockInstance QualifiedNames{..} r = pure . \case
+    Show    -> [mkInstance unq_type_Show unq_showsPrec gshowsPrec]
+    Eq      -> [mkInstance unq_type_Eq   unq_eq        geq       ]
+    Ord     -> [mkInstance unq_type_Ord  unq_compare   gcompare  ]
     Generic -> []
   where
+    UnqualifiedNames{..} = getUnqualifiedNames
+
     mkInstance :: LRdrName -> LRdrName -> LRdrName -> LHsDecl GhcPs
     mkInstance cls mthd gen =
         instanceD
@@ -639,16 +664,18 @@ genStockInstance r = pure . \case
 -- >   to   = unwrapThroughLRGenerics
 --
 -- See 'ThroughLRGenerics' for documentation.
-genGHCGeneric :: MonadFresh m => Record -> m (LHsDecl GhcPs)
-genGHCGeneric r = pure $
+genGHCGeneric ::
+     MonadFresh m
+  => QualifiedNames -> Record -> m (LHsDecl GhcPs)
+genGHCGeneric QualifiedNames{..} r = pure $
     instanceD
       []
-      (ConT GHC.type_Generic `appT` recordTypeT r)
-      [ ( GHC.unq_from , ConE RT.con_WrapThroughLRGenerics )
-      , ( GHC.unq_to   , VarE RT.unwrapThroughLRGenerics   )
+      (ConT type_GHC_Generic `appT` recordTypeT r)
+      [ ( ghc_from , VarE wrapThroughLRGenerics   )
+      , ( ghc_to   , VarE unwrapThroughLRGenerics )
       ]
-      [ tySynEqn GHC.unq_type_Rep [recordTypeT r] $
-          ConT RT.type_ThroughLRGenerics `appT` recordTypeT r
+      [ tySynEqn type_GHC_Rep [recordTypeT r] $
+          ConT type_ThroughLRGenerics `appT` recordTypeT r
       ]
 
 {-------------------------------------------------------------------------------
@@ -692,8 +719,9 @@ nameDictConstraints = mkDerived mkExpVar "dictConstraints_"
 -- | Generate a Proxy expression for the given type.
 --
 -- @proxyE [t|ty|]@ will result in a @Proxy :: Proxy ty@.
-proxyE :: LHsType GhcPs -> LHsExpr GhcPs
-proxyE ty = sigE (ConE RT.con_Proxy) (ConT RT.type_Proxy `appT` ty)
+proxyE :: QualifiedNames -> LHsType GhcPs -> LHsExpr GhcPs
+proxyE QualifiedNames{..} ty =
+    sigE (VarE proxy) (ConT type_Proxy `appT` ty)
 
 concatM :: Applicative m => [m [a]] -> m [a]
 concatM = fmap concat . sequenceA

@@ -15,11 +15,12 @@ module Test.Record.Sanity.GhcGenerics (tests) where
 
 import Data.Record.Generic.GHC
 import Generics.Deriving.Show (gshowsPrecdefault, GShow'(..))
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import qualified GHC.Generics as GHC
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import Data.Record.Plugin
 
 {-# ANN type R largeRecord #-}
 data R = MkR { a :: Int }

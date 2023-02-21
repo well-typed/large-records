@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-anon
-version:            0.1.0.0
+version:            0.1.1
 synopsis:           Scalable anonymous records
 description:        The @large-anon@ package provides support for anonymous
                     records in Haskell, with a focus on compile-time (and
@@ -11,7 +11,7 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Records
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.2
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.5
 
 library
   exposed-modules:
@@ -62,9 +62,9 @@ library
       Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
       Data.Record.Anon.Internal.Plugin.Source
+      Data.Record.Anon.Internal.Plugin.Source.FreshT
       Data.Record.Anon.Internal.Plugin.Source.GhcShim
       Data.Record.Anon.Internal.Plugin.Source.Names
-      Data.Record.Anon.Internal.Plugin.Source.NamingT
       Data.Record.Anon.Internal.Plugin.Source.Options
 
   build-depends:
@@ -178,10 +178,6 @@ test-suite test-large-anon
   -- despite it actually being required. So for now we just disable this check.
   -- if impl(ghc >= 8.10)
   --   ghc-options: -Wunused-packages
-
-  if impl(ghc >= 9.0.1)
-    -- Work around ghc problem. See more detailed discussion in large-records.
-    ghc-options: -Wno-unused-imports
 
 Flag debug
   Description: Enable internal debugging features

@@ -19,13 +19,13 @@ module Test.Record.Sanity.HigherKinded (
   ) where
 
 import Data.Kind
-import GHC.TypeLits
-
 import Data.Record.Generic
 import Data.Record.Generic.LowerBound
-
+import GHC.TypeLits
 import Test.Tasty
 import Test.Tasty.HUnit
+
+import Data.Record.Plugin
 
 newtype T (n :: Nat) (f :: Type -> Type) = MkT (f Word)
 

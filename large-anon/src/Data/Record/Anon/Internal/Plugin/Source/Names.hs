@@ -1,12 +1,12 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -- | Names used in code generation
 --
 -- Intended for unqualified.
 module Data.Record.Anon.Internal.Plugin.Source.Names (
     -- * large-anon
     LargeAnonNames(..)
-  , largeAnonNames
-    -- * typelet
-  , typelet_castEqual
+  , getLargeAnonNames
   ) where
 
 import Data.Record.Anon.Internal.Plugin.Source.GhcShim
@@ -18,35 +18,29 @@ import Data.Record.Anon.Internal.Plugin.Source.Options (Mode(..))
 
 -- | Named required for code generation
 --
--- All names are expected to be qualified with the full module name
+-- All names are expected to be exact.
 data LargeAnonNames = LargeAnonNames {
       largeAnon_empty        :: RdrName
     , largeAnon_insert       :: RdrName
     , largeAnon_applyPending :: RdrName
     , largeAnon_letRecordT   :: RdrName
     , largeAnon_letInsertAs  :: RdrName
+    , typelet_castEqual      :: RdrName
     }
 
-largeAnonNames :: Mode -> LargeAnonNames
-largeAnonNames mode = LargeAnonNames {
-      largeAnon_empty        = mkRdrQual modl $ mkVarOcc "empty"
-    , largeAnon_insert       = mkRdrQual modl $ mkVarOcc "insert"
-    , largeAnon_applyPending = mkRdrQual modl $ mkVarOcc "applyPending"
-    , largeAnon_letRecordT   = mkRdrQual modl $ mkVarOcc "letRecordT"
-    , largeAnon_letInsertAs  = mkRdrQual modl $ mkVarOcc "letInsertAs"
-    }
+getLargeAnonNames :: Mode -> Hsc LargeAnonNames
+getLargeAnonNames mode = do
+    -- We avoid importing names from other packages; see detailed discussion
+    -- in "Data.Record.Anon.Plugin.Internal.Runtime".
+    largeAnon_empty        <- Exact <$> lookupName modl Nothing "empty"
+    largeAnon_insert       <- Exact <$> lookupName modl Nothing "insert"
+    largeAnon_applyPending <- Exact <$> lookupName modl Nothing "applyPending"
+    largeAnon_letRecordT   <- Exact <$> lookupName modl Nothing "letRecordT"
+    largeAnon_letInsertAs  <- Exact <$> lookupName modl Nothing "letInsertAs"
+    typelet_castEqual      <- Exact <$> lookupName modl Nothing "castEqual"
+    return LargeAnonNames{..}
   where
     modl :: ModuleName
     modl = case mode of
              Simple   -> mkModuleName "Data.Record.Anon.Simple"
              Advanced -> mkModuleName "Data.Record.Anon.Advanced"
-
-{-------------------------------------------------------------------------------
-  Typelet
--------------------------------------------------------------------------------}
-
-typelet :: ModuleName
-typelet = mkModuleName "TypeLet"
-
-typelet_castEqual :: RdrName
-typelet_castEqual = mkRdrQual typelet $ mkVarOcc "castEqual"

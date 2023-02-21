@@ -13,7 +13,7 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.2
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.5
 
 library
   exposed-modules:

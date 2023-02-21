@@ -4,10 +4,6 @@ packages: large-generics
         , large-anon
         , beam-large-records
         , typelet
-        , typelet-doctests
-
--- https://github.com/well-typed/json-sop/issues/8
-allow-newer: json-sop-0.2.1:aeson
 
 -- we need https://github.com/haskell-beam/beam/pull/585
 source-repository-package
@@ -35,12 +31,12 @@ package large-records
 package large-records-benchmarks
   tests: True
 
-package beam-large-records
-  tests: True
-
 package large-anon
   tests: True
   ghc-options: -dcore-lint
+
+package beam-large-records
+  tests: True
 
 package typelet
   tests: True

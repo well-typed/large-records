@@ -16,6 +16,8 @@
 
 module Test.Record.Sanity.NamedWildCards where
 
+import Data.Record.Plugin
+
 {-# ANN type X largeRecord #-}
 data X = MkX { _x :: Int }
 

@@ -73,11 +73,14 @@ module Data.Record.Anon.Advanced (
     -- linear in size.
   , letRecordT
   , letInsertAs
+    -- ** Supporting definitions
+  , castEqual
   ) where
 
 import Prelude hiding (sequenceA, map, mapM, pure, zip, zipWith)
 
-import TypeLet
+import TypeLet (Let, Equal)
+import qualified TypeLet
 
 import Data.Record.Anon
 
@@ -93,7 +96,6 @@ import qualified Data.Record.Anon.Internal.Advanced as A
 -- >>> import Prelude hiding (pure)
 -- >>> import qualified Prelude
 -- >>> import Data.Record.Anon
--- >>> import TypeLet
 
 {-------------------------------------------------------------------------------
   Construction
@@ -564,5 +566,11 @@ letInsertAs :: forall r r' f n a.
   -> Record f r
 letInsertAs p n x r f = A.letInsertAs p n x r f
 
+{-------------------------------------------------------------------------------
+  Supporting definitions
+-------------------------------------------------------------------------------}
+
+castEqual :: Equal a b => a -> b
+castEqual = TypeLet.castEqual
 
 

@@ -21,9 +21,10 @@ import Data.Functor.Identity
 import Data.Functor.Const
 import Data.Kind
 import GHC.Records.Compat
-
 import Test.Tasty
 import Test.Tasty.HUnit
+
+import Data.Record.Plugin
 
 type family HKD f a where
   HKD Identity  a = a

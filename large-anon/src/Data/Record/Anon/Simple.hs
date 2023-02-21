@@ -40,11 +40,14 @@ module Data.Record.Anon.Simple (
     -- linear in size.
   , letRecordT
   , letInsertAs
+    -- ** Supporting definitions
+  , castEqual
   ) where
 
 import Prelude hiding (sequenceA)
 
-import TypeLet
+import TypeLet (Let, Equal)
+import qualified TypeLet
 
 import Data.Record.Anon
 
@@ -58,7 +61,6 @@ import qualified Data.Record.Anon.Internal.Advanced as A
 -- >>> :set -XTypeOperators
 -- >>> :set -fplugin=TypeLet -fplugin=Data.Record.Anon.Plugin
 -- >>> :set -dppr-cols=200
--- >>> import TypeLet
 -- >>> import Data.Record.Anon
 
 {-------------------------------------------------------------------------------
@@ -275,4 +277,11 @@ letInsertAs :: forall r r' n a.
                  -- ^ Assign type variable to new partial record, and continue
   -> Record r
 letInsertAs p n x r f = S.letInsertAs p n x r f
+
+{-------------------------------------------------------------------------------
+  Supporting definitions
+-------------------------------------------------------------------------------}
+
+castEqual :: Equal a b => a -> b
+castEqual = TypeLet.castEqual
 

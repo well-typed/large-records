@@ -134,6 +134,17 @@ test_recordToJSON = do
     headerToJSON "" = Aeson.Null
     headerToJSON xs = toJSON xs
 
+-- | Aeson config with specific field ordering
+--
+-- For some reason this function results in a Core Lint warning in ghc 9.0
+--
+-- > *** Core Lint warnings : in result of CorePrep ***
+-- > <no location info>: warning:
+-- >     Unsafe coercion: between unboxed and boxed value
+-- >       From: Int
+-- >         To: Int#
+--
+-- No idea why; this is just regular Haskell code.
 aesonPrettyConfig :: Aeson.Pretty.Config
 aesonPrettyConfig = Aeson.Pretty.defConfig {
       Aeson.Pretty.confCompare = compare `on` (fieldIndex . Text.unpack)

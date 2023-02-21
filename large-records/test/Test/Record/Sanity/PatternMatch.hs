@@ -22,6 +22,8 @@ import Data.List (isInfixOf)
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import Data.Record.Plugin
+
 import Test.Record.Util
 
 {-------------------------------------------------------------------------------

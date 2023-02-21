@@ -23,6 +23,8 @@ import GHC.Records.Compat
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import Data.Record.Plugin
+
 {-------------------------------------------------------------------------------
   Class of kind @Type -> Constraint@.
 -------------------------------------------------------------------------------}

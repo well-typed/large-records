@@ -20,6 +20,9 @@ module TypeLet.UserAPI (
 import Data.Proxy
 import Unsafe.Coerce (unsafeCoerce)
 
+-- $setup
+-- >>> :set -fplugin=TypeLet
+
 {-------------------------------------------------------------------------------
   Main classes
 -------------------------------------------------------------------------------}
@@ -51,7 +54,33 @@ class Let (a :: k) (b :: k)
 -- manually, the plugin will report a type error if
 --
 -- * The left-hand side is not a skolem type variable
+--
+-- >>> let aux :: Let Int Int => () ; aux = castEqual () in aux
+-- ...
+-- ...Let with non-variable LHS: Int := Int
+-- ...
+--
+-- >>> :{
+--   \(x :: a) ->
+--     let
+--       y :: Let a Integer => a
+--       y = castEqual (1 :: Integer)
+--     in y
+-- :}
+-- ...
+-- ...Let with non-skolem LHS: a := Integer
+-- ...
+--
 -- * The set of let-bindings in scope are cyclic.
+--
+-- >>> :{
+--   let cycle :: (Let a b, Let b a) => (a, b) -> (a, b)
+--       cycle (a, b) = (castEqual b, castEqual a)
+--   in cycle ('a', 'b')
+-- :}
+-- ...
+-- ...Cycle in type-level let bindings: a := b, b := a
+-- ...
 instance Let a a
 
 -- | (Nominal) type equality, up to type-level let
@@ -69,7 +98,15 @@ class Equal (a :: k) (b :: k)
 
 -- | Type-safe cast, using 'Equal' as the notion of equality
 --
--- See comments for 'Equal'.
+-- See discussion of 'Equal' for additional information.
+--
+-- Note: without additional 'Let' constraints in scope, 'Equal' constraints
+-- simply resolve to unification constraints:
+--
+-- >>> (castEqual :: Int -> Bool) 1
+-- ...
+-- ...Couldn't match...Int...Bool...
+-- ...
 castEqual :: Equal a b => a -> b
 -- Implementation note: marking this as NOINLINE in an attempt to make sure that
 -- @unsafeCoerce@ does not escape the scope of the evidence for @Equal@ (which,

@@ -20,6 +20,8 @@
 
 module HigherKinded.Sized.R040 where
 
+import Data.Record.Plugin
+
 import Bench.Types
 
 {-# ANN type R largeRecord #-}

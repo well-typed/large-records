@@ -16,6 +16,9 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
   , reLoc, reLocA
 #endif
 
+    -- * Names
+  , lookupName
+
     -- * Miscellaneous
   , importDecl
   , issueWarning
@@ -58,18 +61,24 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
 #endif
   ) where
 
+import GHC.Stack
+
 #if __GLASGOW_HASKELL__ < 900
 
 import Data.List (foldl')
 
+import GHC hiding (lookupName)
+
 import Bag (listToBag)
-import BasicTypes (Origin(Generated), PromotionFlag(NotPromoted))
+import BasicTypes (Origin(Generated), PromotionFlag(NotPromoted), SourceText(NoSourceText))
+import DynFlags (getDynFlags)
 import ErrUtils (mkWarnMsg)
 import FastString (FastString)
-import GHC
-import GhcPlugins
+import Finder (findImportedModule)
 import HscMain (getHscEnv)
 import HscTypes
+import IfaceEnv (lookupOrigIO)
+import MonadUtils
 import Name (mkInternalName)
 import NameCache (NameCache(nsUniqs))
 import OccName
@@ -79,28 +88,59 @@ import UniqSupply (takeUniqFromSupply)
 
 #else
 
-import GHC
+#if __GLASGOW_HASKELL__ >= 902
+import GHC.Driver.Env.Types
+import GHC.Driver.Errors
+import GHC.Types.SourceText (SourceText(NoSourceText))
+import GHC.Unit.Finder (findImportedModule, FindResult(Found))
+import GHC.Unit.Types (IsBootInterface(NotBoot))
+#else
+import GHC.Driver.Finder (findImportedModule)
+import GHC.Driver.Types
+import GHC.Types.Basic (SourceText(NoSourceText))
+#endif
+
+import GHC hiding (lookupName)
+
 import GHC.Data.Bag (listToBag)
 import GHC.Data.FastString (FastString)
 import GHC.Driver.Main (getHscEnv)
-
-#if __GLASGOW_HASKELL__ >= 902
-import GHC.Driver.Errors
-import GHC.Driver.Env.Types
-import GHC.Types.SourceText
-#else
-import GHC.Driver.Types
-#endif
-import GHC.Plugins
+import GHC.Driver.Session (getDynFlags)
+import GHC.Iface.Env (lookupOrigIO)
 import GHC.Types.Name (mkInternalName)
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
 import GHC.Types.Name.Occurrence
 import GHC.Types.Name.Reader (RdrName(Exact), rdrNameOcc, mkRdrQual, mkRdrUnqual)
+import GHC.Types.SrcLoc (LayoutInfo(NoLayoutInfo))
 import GHC.Types.Unique.Supply (takeUniqFromSupply)
 import GHC.Utils.Error (mkWarnMsg)
+import GHC.Utils.Monad
 import GHC.Utils.Outputable
 
 #endif
+
+{-------------------------------------------------------------------------------
+  Names
+-------------------------------------------------------------------------------}
+
+lookupName ::
+     HasCallStack
+  => ModuleName
+  -> Maybe FastString -- ^ Optional package name
+  -> String -> Hsc Name
+lookupName modl pkg = lookupOccName modl pkg . mkVarOcc
+
+lookupOccName ::
+     HasCallStack
+  => ModuleName
+  -> Maybe FastString -- ^ Optional package name
+  -> OccName -> Hsc Name
+lookupOccName modlName mPkgName name = do
+    env   <- getHscEnv
+    mModl <- liftIO $ findImportedModule env modlName mPkgName
+    case mModl of
+      Found _ modl -> liftIO $ lookupOrigIO env modl name
+      _otherwise   -> error $ "lookupName: name not found"
 
 {-------------------------------------------------------------------------------
   Miscellaneous
@@ -185,7 +225,6 @@ reLoc = id
 reLocA :: Located a -> Located a
 reLocA = id
 #endif
-
 
 {-------------------------------------------------------------------------------
   mkLabel

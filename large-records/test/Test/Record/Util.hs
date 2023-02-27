@@ -168,6 +168,9 @@ instance Quasi CollectProblems where
   qPutDoc             = \x y -> liftQ $ qPutDoc             x y
   qGetDoc             = \x   -> liftQ $ qGetDoc             x
 #endif
+#if MIN_VERSION_template_haskell(2,19,0)
+  qGetPackageRoot     =         liftQ $ qGetPackageRoot
+#endif
 
 {-------------------------------------------------------------------------------
   Internal auxiliary: figure out how TH does error handling

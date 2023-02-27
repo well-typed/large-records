@@ -73,7 +73,7 @@ import Data.Record.Generic.JSON
 import Data.Record.Generic.NFData
 import Data.Record.Generic.Show
 import Data.Tagged
-import GHC.Exts
+import GHC.Exts (Any)
 import GHC.OverloadedLabels
 import GHC.Records.Compat
 import GHC.TypeLits

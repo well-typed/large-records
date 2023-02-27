@@ -9,8 +9,22 @@ packages: large-generics
 source-repository-package
   type: git
   location: https://github.com/well-typed/beam
-  tag: c07ecfe95a4d92b84e440bac1d5f1e2714f58780
+  tag: f13fedc299727b2706f26cdfeff3913923cb1a79
   subdir: beam-core beam-migrate beam-sqlite
+
+-- TODO: Delete once https://github.com/ndmitchell/record-dot-preprocessor/pull/57 is released
+source-repository-package
+  type: git
+  location: https://github.com/edsko/record-dot-preprocessor
+  tag: cfc5a491ab7c2969994875c557acb2715ee12562
+
+-- TODO: Delete once https://github.com/sheaf/ghc-tcplugin-api/pull/6 is released
+source-repository-package
+  type: git
+  location: https://github.com/sheaf/ghc-tcplugin-api
+  tag: 93a28bbe22bd408bc7a2b56a9f17393977989b77 
+
+allow-newer: validation-selective:base
 
 -- enable for GHC head
 -- repository head.hackage.ghc.haskell.org

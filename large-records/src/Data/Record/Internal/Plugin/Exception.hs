@@ -18,9 +18,9 @@ data Exception =
 
 exceptionLoc :: Exception -> SrcSpan
 exceptionLoc = \case
-    UnsupportedStockDeriving (reLoc -> L l _) -> l
-    UnsupportedStrategy      (id    -> L l _) -> l
-    InvalidDeclaration       (reLoc -> L l _) -> l
+    UnsupportedStockDeriving x -> toSrcSpan x
+    UnsupportedStrategy      x -> toSrcSpan x
+    InvalidDeclaration       x -> toSrcSpan x
 
 exceptionToSDoc :: Exception -> SDoc
 exceptionToSDoc = hsep . \case

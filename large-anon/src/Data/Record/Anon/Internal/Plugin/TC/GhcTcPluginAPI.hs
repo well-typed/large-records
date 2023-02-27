@@ -20,7 +20,10 @@ module Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI (
 
     -- * New functonality
   , isCanonicalVarEq
+  , getModule
   ) where
+
+import GHC.Stack
 
 #if __GLASGOW_HASKELL__ < 900
 import Data.List.NonEmpty (NonEmpty, toList)
@@ -81,3 +84,17 @@ instance Outputable a => Outputable (NonEmpty a) where
 instance (Outputable l, Outputable e) => Outputable (GenLocated l e) where
   ppr (L l e) = parens $ text "L" <+> ppr l <+> ppr e
 #endif
+
+getModule :: (HasCallStack, MonadTcPlugin m) => String -> String -> m Module
+getModule pkg modl = do
+    let modl' = mkModuleName modl
+    pkg' <- resolveImport modl' (Just $ fsLit pkg)
+    res  <- findImportedModule modl' pkg'
+    case res of
+      Found _ m  -> return m
+      _otherwise -> error $ concat [
+          "getModule: could not find "
+        , modl
+        , " in package "
+        , pkg
+        ]

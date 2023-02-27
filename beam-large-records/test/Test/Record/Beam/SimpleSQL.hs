@@ -12,9 +12,10 @@
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
-{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
 
 -- | Simple but complete example that does an SQL INSERT and SELECT
 module Test.Record.Beam.SimpleSQL (

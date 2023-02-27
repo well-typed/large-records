@@ -34,8 +34,8 @@ library
         TypeLet.Plugin.NameResolution
         TypeLet.Plugin.Substitution
     build-depends:
-        base >= 4.13 && < 4.17
-      , ghc-tcplugin-api >= 0.8 && < 0.9
+        base >= 4.13 && < 4.18
+      , ghc-tcplugin-api >= 0.10 && < 0.11
 
         -- whichever versions are bundled with ghc:
       , containers

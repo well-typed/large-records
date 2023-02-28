@@ -11,7 +11,12 @@ set -e
 # NOTE: If benchmarking only a single target, you will need to manually remove
 # old lines from runtime.csv.
 #
-
+# To run the NoFieldSelectors experiment, make sure ghc 9.2 is activated, then:
+#
+#   TARGET=experiments EXPERIMENT=PatternSynonym_ PLOTS=nofieldselectors.gnuplot ./update.sh
+#
+# This will still need a bit of manual post-processing however.
+#
 
 ## Core size
 
@@ -39,7 +44,7 @@ then
 
   cabal run parse-coresize -- \
     --dist ../../dist-newstyle \
-    --match '.*/(.*)/Sized/R(.*)\.dump-(ds-preopt|ds|simpl)' \
+    --match ".*/($EXPERIMENT.*)/Sized/R(.*)\.dump-(ds-preopt|ds|simpl)" \
     -o coresize.csv
 
 fi
@@ -70,7 +75,7 @@ then
 
   cabal run parse-timing -- \
     --dist ../../dist-newstyle \
-    --match '.*/(.*)/Sized/R(.*)\.dump-timings' \
+    --match ".*/($EXPERIMENT.*)/Sized/R(.*)\.dump-timings" \
     --omit-per-phase \
     -o timing.csv
 
@@ -96,5 +101,9 @@ fi
 
 ## Plots
 
-gnuplot all-plots.gnuplot
-# gnuplot nofieldselectors.gnuplot # from 9.2.1 only
+if [[ "$PLOTS" == "" ]]; then
+  gnuplot all-plots.gnuplot
+else
+  # Use this to run nofieldselectors.gnuplot (ghc 9.2.1 and up only)
+  gnuplot "$PLOTS"
+fi

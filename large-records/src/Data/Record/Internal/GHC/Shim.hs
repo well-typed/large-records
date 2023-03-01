@@ -466,19 +466,6 @@ compareHs x y = compareHs' x y
   Working with locations
 -------------------------------------------------------------------------------}
 
-{-
-class FromSrcSpan l where
-  fromSrcSpan :: SrcSpan -> l
-
-instance FromSrcSpan SrcSpan where
-  fromSrcSpan = id
-
-#if __GLASGOW_HASKELL__ >= 902
-instance HasDefaultExt ann => FromSrcSpan (SrcSpanAnn' ann) where
-  fromSrcSpan = SrcSpanAnn defExt
-#endif
--}
-
 class ToSrcSpan a where
   toSrcSpan :: a -> SrcSpan
 

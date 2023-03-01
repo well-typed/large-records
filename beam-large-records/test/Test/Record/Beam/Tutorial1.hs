@@ -13,9 +13,10 @@
 {-# LANGUAGE StandaloneDeriving        #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
-{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
 
 module Test.Record.Beam.Tutorial1 (
     tests

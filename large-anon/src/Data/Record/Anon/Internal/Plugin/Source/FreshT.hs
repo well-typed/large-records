@@ -12,7 +12,6 @@ module Data.Record.Anon.Internal.Plugin.Source.FreshT (
   ) where
 
 import Control.Monad.Reader
-import Data.IORef
 
 import Data.Record.Anon.Internal.Plugin.Source.GhcShim
 
@@ -22,38 +21,30 @@ import Data.Record.Anon.Internal.Plugin.Source.GhcShim
 
 -- | Fresh name generation
 newtype FreshT m a = WrapFreshT {
-      unwrapNamingT :: ReaderT (IORef NameCache) m a
+      unwrapNamingT :: ReaderT NameCacheIO m a
     }
   deriving (Functor, Applicative, Monad)
 
 instance MonadTrans FreshT where
   lift = WrapFreshT . lift
 
-runFreshT :: IORef NameCache -> FreshT m a -> m a
+runFreshT :: NameCacheIO -> FreshT m a -> m a
 runFreshT ncVar = flip runReaderT ncVar . unwrapNamingT
 
 runFreshHsc :: FreshT Hsc a -> Hsc a
 runFreshHsc ma = do
     env <- getHscEnv
-    runFreshT (hsc_NC env) ma
+    runFreshT (hscNameCacheIO env) ma
 
 {-------------------------------------------------------------------------------
   Key features of FreshT
 -------------------------------------------------------------------------------}
 
 fresh :: MonadIO m => SrcSpan -> RdrName -> FreshT m RdrName
-fresh l name = WrapFreshT $ do
-    ncVar <- ask
-    liftIO $ atomicModifyIORef ncVar aux
+fresh l name = WrapFreshT $ ReaderT $ \nc -> do
+    newUniq <- liftIO $ takeUniqFromNameCacheIO nc
+    return $ Exact $ mkInternalName newUniq (newOccName (rdrNameOcc name)) l
   where
-    aux :: NameCache -> (NameCache, RdrName)
-    aux nc = (
-          nc { nsUniqs = us }
-        , Exact $ mkInternalName newUniq (newOccName (rdrNameOcc name)) l
-        )
-      where
-        (newUniq, us) = takeUniqFromSupply (nsUniqs nc)
-
     -- Even when we generate fresh names, ghc can still complain about name
     -- shadowing, because this check only considers the 'OccName', not the
     -- unique. We therefore prefix the name with an underscore to avoid the

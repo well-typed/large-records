@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -54,10 +55,17 @@ transformExpr options@Options{debug} e@(reLoc -> L l expr)
     getField ::
          LHsRecField GhcPs (LHsExpr GhcPs)
       -> Maybe (FastString, LHsExpr GhcPs)
+#if __GLASGOW_HASKELL__ < 904
     getField (L _ (HsRecField
                     { hsRecFieldLbl = L _ fieldOcc
                     , hsRecFieldArg = arg
                     , hsRecPun = pun }))
+#else
+    getField (L _ (HsFieldBind
+                    { hfbLHS = L _ fieldOcc
+                    , hfbRHS = arg
+                    , hfbPun = pun }))
+#endif
       | FieldOcc _ (L _ nm) <- fieldOcc
       , Unqual nm' <- nm
       , not pun

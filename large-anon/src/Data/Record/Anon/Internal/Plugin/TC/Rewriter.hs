@@ -60,8 +60,8 @@ rewriteRecordMetadataOf fun rn given args@(parseArgs given rn -> Args{..}) =
         return TcPluginNoRewrite
       Just knownFields ->
         return TcPluginRewriteTo {
-            tcRewriterWanteds = []
-          , tcPluginReduction =
+            tcRewriterNewWanteds = []
+          , tcPluginReduction    =
                mkTyFamAppReduction
                  "large-anon"
                  Nominal

@@ -18,13 +18,19 @@
 --
 -- = Usage with @record-dot-preprocessor@
 --
--- There are two important points. First, the order of plugins matters —
--- @record-dot-preprocessor@ has to be listed before this plugin (and
--- correspondingly will be applied /after/ this plugin):
+-- The easiest way to use both plugins together is to do
+--
+-- > {-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
+--
+-- You /can/ also load them separately, but if you do, you need to be careful
+-- with the order. Unfortunately, the correct order is different in different
+-- ghc versions. Prior to ghc 9.4, the plugins must be loaded like this:
 --
 -- > {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
 --
--- Second, you will want at least version 0.2.14.
+-- From ghc 9.4 and up, they need to be loaded in the opposite order:
+--
+-- > {-# OPTIONS_GHC -fplugin=Data.Record.Plugin -fplugin=RecordDotPreprocessor #-}
 module Data.Record.Plugin (
     -- * Annotations
     LargeRecordOptions(..)
@@ -54,9 +60,19 @@ import Data.Record.Internal.Plugin.Record
 import Data.Record.Internal.Plugin.Names
 
 #if __GLASGOW_HASKELL__ >= 902
-import GHC.Driver.Errors
-import GHC.Types.Error (mkWarnMsg, mkErr, mkDecorated)
 import GHC.Utils.Logger (getLogger)
+#endif
+
+#if __GLASGOW_HASKELL__ == 902
+import GHC.Types.Error (mkWarnMsg, mkErr, mkDecorated)
+import GHC.Driver.Errors (printOrThrowWarnings)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 904
+import GHC.Types.Error (MsgEnvelope(..), mkPlainError, mkMessages)
+import GHC.Driver.Errors.Types (GhcMessage(GhcUnknownMessage))
+import GHC.Driver.Errors (printOrThrowDiagnostics)
+import GHC.Driver.Config.Diagnostic (initDiagOpts)
 #endif
 
 {-------------------------------------------------------------------------------
@@ -65,15 +81,19 @@ import GHC.Utils.Logger (getLogger)
 
 plugin :: Plugin
 plugin = defaultPlugin {
-      parsedResultAction = aux
+      parsedResultAction = \_ _ -> ignoreMessages aux
     , pluginRecompile    = purePlugin
     }
   where
-    aux ::
-         [CommandLineOption]
-      -> ModSummary
-      -> HsParsedModule -> Hsc HsParsedModule
-    aux _opts _summary parsed@HsParsedModule{hpm_module = modl} = do
+#if __GLASGOW_HASKELL__ >= 904
+    ignoreMessages f (ParsedResult modl msgs) =
+            (\modl' -> ParsedResult modl' msgs) <$> f modl
+#else
+    ignoreMessages = id
+#endif
+
+    aux :: HsParsedModule -> Hsc HsParsedModule
+    aux parsed@HsParsedModule{hpm_module = modl} = do
         modl' <- transformDecls modl
         pure $ parsed { hpm_module = modl' }
 
@@ -189,9 +209,17 @@ isEnabled dynflags (RequiredExtension exts) = any (`xopt` dynflags) exts
 
 issueError :: SrcSpan -> SDoc -> Hsc ()
 issueError l errMsg = do
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ == 902
     throwOneError $
       mkErr l neverQualify (mkDecorated [errMsg])
+#elif __GLASGOW_HASKELL__ >= 904
+    throwOneError $
+      MsgEnvelope {
+          errMsgSpan       = l
+        , errMsgContext    = neverQualify
+        , errMsgDiagnostic = GhcUnknownMessage $ mkPlainError [] errMsg
+        , errMsgSeverity   = SevError
+        }
 #else
     dynFlags <- getDynFlags
     throwOneError $
@@ -201,11 +229,23 @@ issueError l errMsg = do
 issueWarning :: SrcSpan -> SDoc -> Hsc ()
 issueWarning l errMsg = do
     dynFlags <- getDynFlags
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ == 902
     logger <- getLogger
-    liftIO $ printOrThrowWarnings logger dynFlags . listToBag . (:[]) $
+    liftIO $ printOrThrowWarnings logger dynFlags . bag $
       mkWarnMsg l neverQualify errMsg
+#elif __GLASGOW_HASKELL__ >= 904
+    logger <- getLogger
+    liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $
+      MsgEnvelope {
+          errMsgSpan       = l
+        , errMsgContext    = neverQualify
+        , errMsgDiagnostic = GhcUnknownMessage $ mkPlainError [] errMsg
+        , errMsgSeverity   = SevWarning
+        }
 #else
-    liftIO $ printOrThrowWarnings dynFlags . listToBag . (:[]) $
+    liftIO $ printOrThrowWarnings dynFlags . bag $
       mkWarnMsg dynFlags l neverQualify errMsg
 #endif
+  where
+    bag :: a -> Bag a
+    bag = listToBag . (:[])

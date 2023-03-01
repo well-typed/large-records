@@ -49,11 +49,18 @@ module Data.Record.Internal.GHC.Shim (
   , hsTyVarLName
   , setDefaultSpecificity
 
+    -- * Locations
+  , ToSrcSpan(..)
+  , InheritLoc(..)
+  , withoutLoc
+
     -- * New functionality
   , compareHs
-  , inheritLoc
-  , inheritLoc'
-  , inheritLocPat
+
+    -- * NameCache
+  , NameCacheIO
+  , hscNameCacheIO
+  , takeUniqFromNameCacheIO
 
     -- * Re-exports
 
@@ -74,7 +81,6 @@ module Data.Record.Internal.GHC.Shim (
   , module GHC.Hs
   , module GHC.Plugins
   , module GHC.Tc.Types.Evidence
-  , module GHC.Types.Name.Cache
   , module GHC.Utils.Error
 #if __GLASGOW_HASKELL__ >= 902
   , module GHC.Types.SourceText
@@ -90,7 +96,9 @@ import qualified Data.List.NonEmpty as NE
 
 #if __GLASGOW_HASKELL__ < 900
 
-import Bag (listToBag, emptyBag)
+import Data.IORef
+
+import Bag (Bag, listToBag, emptyBag)
 import BasicTypes (SourceText (NoSourceText))
 import ConLike (ConLike)
 import ErrUtils (mkErrMsg, mkWarnMsg)
@@ -114,11 +122,9 @@ import qualified GHC.Hs as GHC
 import GHC.Core.Class (Class)
 import GHC.Core.ConLike (ConLike)
 import GHC.Core.PatSyn (PatSyn)
-import GHC.Data.Bag (listToBag, emptyBag)
+import GHC.Data.Bag (Bag, listToBag, emptyBag)
 import GHC.Driver.Main (getHscEnv)
-import GHC.Iface.Env (lookupOrigIO)
 import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
-import GHC.Types.Name.Cache (NameCache(nsUniqs))
 import GHC.Utils.Error (Severity(SevError, SevWarning))
 
 import GHC.Plugins hiding ((<>), getHscEnv
@@ -138,10 +144,20 @@ import GHC.Types.SourceText (SourceText(NoSourceText), mkIntegralLit)
 import GHC.Unit.Finder (findImportedModule, FindResult(Found))
 #endif
 
+#if __GLASGOW_HASKELL__ < 904
+import Data.IORef
+import GHC.Iface.Env (lookupOrigIO)
+import GHC.Types.Name.Cache (NameCache(nsUniqs))
+#else
+import GHC.Iface.Env (lookupNameCache)
+import GHC.Rename.Names (renamePkgQual)
+import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
+#endif
+
 #endif
 
 {-------------------------------------------------------------------------------
-  Names
+  Name resolution
 -------------------------------------------------------------------------------}
 
 lookupVarName ::
@@ -164,8 +180,17 @@ lookupOccName ::
   -> Maybe FastString -- ^ Optional package name
   -> OccName -> Hsc Name
 lookupOccName modlName mPkgName name = do
-    env   <- getHscEnv
-    mModl <- liftIO $ findImportedModule env modlName mPkgName
+    env <- getHscEnv
+
+#if __GLASGOW_HASKELL__ >= 904
+    let pkgq :: PkgQual
+        pkgq = renamePkgQual (hsc_unit_env env) modlName mPkgName
+#else
+    let pkgq :: Maybe FastString
+        pkgq = mPkgName
+#endif
+
+    mModl <- liftIO $ findImportedModule env modlName pkgq
     case mModl of
       Found _ modl -> liftIO $ lookupOrigIO env modl name
       _otherwise   -> error $ concat [
@@ -180,6 +205,11 @@ lookupOccName modlName mPkgName name = do
         , "."
         ]
 
+#if __GLASGOW_HASKELL__ >= 904
+lookupOrigIO :: HscEnv -> Module -> OccName -> IO Name
+lookupOrigIO env modl occ = lookupNameCache (hsc_NC env) modl occ
+#endif
+
 {-------------------------------------------------------------------------------
   Miscellaneous
 -------------------------------------------------------------------------------}
@@ -190,7 +220,11 @@ importDecl name qualified = noLocA $ ImportDecl {
       ideclExt       = defExt
     , ideclSourceSrc = NoSourceText
     , ideclName      = noLocA name
+#if __GLASGOW_HASKELL__ >= 904
+    , ideclPkgQual   = NoRawPkgQual
+#else
     , ideclPkgQual   = Nothing
+#endif
     , ideclSafe      = False
     , ideclImplicit  = False
     , ideclAs        = Nothing
@@ -229,6 +263,29 @@ type HsModule = GHC.HsModule
 
 type LHsModule = Located HsModule
 type LRdrName  = Located RdrName
+
+{-------------------------------------------------------------------------------
+  NameCache
+-------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ < 904
+type NameCacheIO = IORef NameCache
+
+takeUniqFromNameCacheIO :: NameCacheIO -> IO Unique
+takeUniqFromNameCacheIO = flip atomicModifyIORef aux
+  where
+    aux :: NameCache -> (NameCache, Unique)
+    aux nc = let (newUniq, us) = takeUniqFromSupply (nsUniqs nc)
+             in (nc { nsUniqs = us }, newUniq)
+#else
+type NameCacheIO = NameCache
+
+takeUniqFromNameCacheIO :: NameCacheIO -> IO Unique
+takeUniqFromNameCacheIO = takeUniqFromNameCache
+#endif
+
+hscNameCacheIO :: HscEnv -> NameCacheIO
+hscNameCacheIO = hsc_NC
 
 {-------------------------------------------------------------------------------
   Exact-print annotations
@@ -305,11 +362,13 @@ type  HsTyVarBndr pass =  GHC.HsTyVarBndr () pass
 type LHsTyVarBndr pass = GHC.LHsTyVarBndr () pass
 #endif
 
-hsFunTy :: XFunTy pass -> LHsType pass -> LHsType pass -> HsType pass
+hsFunTy :: XFunTy GhcPs -> LHsType GhcPs -> LHsType GhcPs -> HsType GhcPs
 #if __GLASGOW_HASKELL__ < 900
 hsFunTy = HsFunTy
-#else
+#elif __GLASGOW_HASKELL__ < 904
 hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow NormalSyntax)
+#else
+hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow (L NoTokenLoc HsNormalTok))
 #endif
 
 userTyVar ::
@@ -407,6 +466,7 @@ compareHs x y = compareHs' x y
   Working with locations
 -------------------------------------------------------------------------------}
 
+{-
 class FromSrcSpan l where
   fromSrcSpan :: SrcSpan -> l
 
@@ -417,47 +477,50 @@ instance FromSrcSpan SrcSpan where
 instance HasDefaultExt ann => FromSrcSpan (SrcSpanAnn' ann) where
   fromSrcSpan = SrcSpanAnn defExt
 #endif
+-}
 
-class InheritLoc a where
-  inheritLoc :: FromSrcSpan l => a -> b -> GenLocated l b
+class ToSrcSpan a where
+  toSrcSpan :: a -> SrcSpan
 
-#if __GLASGOW_HASKELL__ >= 902
--- GHC-9.2 may not require annotation
-inheritLoc' :: a -> b -> b
-inheritLoc' _ = id
-#else
-inheritLoc' :: InheritLoc a => a -> b -> Located b
-inheritLoc' = inheritLoc
-#endif
-
-instance InheritLoc a => InheritLoc (NonEmpty a) where
-  inheritLoc = inheritLoc . NE.head
-
-instance InheritLoc l => InheritLoc (GenLocated l a) where
-  inheritLoc (L l _) = inheritLoc l
-
-instance InheritLoc SrcSpan where
-  inheritLoc l x = L (fromSrcSpan l) x
+instance ToSrcSpan SrcSpan where
+  toSrcSpan = id
 
 #if __GLASGOW_HASKELL__ >= 902
-instance InheritLoc (SrcSpanAnn' ann) where
-  inheritLoc (SrcSpanAnn _ l) = inheritLoc l
+instance ToSrcSpan (SrcSpanAnn' a) where
+  toSrcSpan = locA
 #endif
 
+instance ToSrcSpan l => ToSrcSpan (GenLocated l a) where
+  toSrcSpan (L l _) = toSrcSpan l
+
+instance ToSrcSpan a => ToSrcSpan (NonEmpty a) where
+  toSrcSpan = toSrcSpan . NE.head
+
+-- | The instance for @[]@ is not ideal: we use 'noLoc' if the list is empty
 --
--- -- | The instance for @[]@ is not ideal: we use 'noLoc' if the list is empty
--- --
--- -- For the use cases in this library, this is acceptable: typically these are
--- -- lists with elements for the record fields, and having slightly poorer error
--- -- messages for highly unusual "empty large" records is fine.
-instance InheritLoc a => InheritLoc [a] where
-   inheritLoc (a:_) = inheritLoc a
-   inheritLoc []    = inheritLoc noSrcSpan
+-- For the use cases in this library, this is acceptable: typically these are
+-- lists with elements for the record fields, and having slightly poorer error
+-- messages for highly unusual "empty large" records is fine.
+instance ToSrcSpan a => ToSrcSpan [a] where
+   toSrcSpan (a:_) = toSrcSpan a
+   toSrcSpan []    = noSrcSpan
 
-#if __GLASGOW_HASKELL__ < 810
-inheritLocPat :: a -> Pat p -> LPat p
-inheritLocPat _ = id -- In 8.8, 'LPat' is a synonym for 'Pat'
-#else
-inheritLocPat :: InheritLoc a => a -> Pat (GhcPass p) -> LPat (GhcPass p)
-inheritLocPat = inheritLoc
+class InheritLoc x a b | b -> a where
+  inheritLoc :: x -> a -> b
+
+instance ToSrcSpan x => InheritLoc x a (GenLocated SrcSpan a) where
+  inheritLoc = L . toSrcSpan
+
+#if __GLASGOW_HASKELL__ >= 902
+instance ToSrcSpan x => InheritLoc x a (GenLocated (SrcAnn ann) a) where
+  inheritLoc = L . SrcSpanAnn defExt . toSrcSpan
 #endif
+
+instance InheritLoc x [a]                  [a]                  where inheritLoc _ = id
+instance InheritLoc x Bool                 Bool                 where inheritLoc _ = id
+instance InheritLoc x (HsTupArg p)         (HsTupArg p)         where inheritLoc _ = id
+instance InheritLoc x (Pat p    )          (Pat p)              where inheritLoc _ = id
+instance InheritLoc x (HsLocalBindsLR p q) (HsLocalBindsLR p q) where inheritLoc _ = id
+
+withoutLoc :: InheritLoc SrcSpan a b => a -> b
+withoutLoc = inheritLoc noSrcSpan

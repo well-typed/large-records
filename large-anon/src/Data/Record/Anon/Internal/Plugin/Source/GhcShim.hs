@@ -19,6 +19,11 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
     -- * Names
   , lookupName
 
+    -- * NameCache
+  , NameCacheIO
+  , hscNameCacheIO
+  , takeUniqFromNameCacheIO
+
     -- * Miscellaneous
   , importDecl
   , issueWarning
@@ -35,7 +40,6 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
   , module HscMain
   , module HscTypes
   , module Name
-  , module NameCache
   , module OccName
   , module Outputable
   , module RdrName
@@ -45,7 +49,6 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
   , module GHC.Data.FastString
   , module GHC.Driver.Main
   , module GHC.Types.Name
-  , module GHC.Types.Name.Cache
   , module GHC.Types.Name.Occurrence
   , module GHC.Types.Name.Reader
   , module GHC.Types.Unique.Supply
@@ -65,11 +68,12 @@ import GHC.Stack
 
 #if __GLASGOW_HASKELL__ < 900
 
+import Data.IORef
 import Data.List (foldl')
 
 import GHC hiding (lookupName)
 
-import Bag (listToBag)
+import Bag (Bag, listToBag)
 import BasicTypes (Origin(Generated), PromotionFlag(NotPromoted), SourceText(NoSourceText))
 import DynFlags (getDynFlags)
 import ErrUtils (mkWarnMsg)
@@ -85,8 +89,24 @@ import OccName
 import Outputable
 import RdrName (RdrName(Exact), rdrNameOcc, mkRdrQual, mkRdrUnqual)
 import UniqSupply (takeUniqFromSupply)
+import Unique (Unique)
 
 #else
+
+import GHC hiding (lookupName)
+
+import GHC.Data.Bag (listToBag, Bag)
+import GHC.Data.FastString (FastString)
+import GHC.Driver.Main (getHscEnv)
+import GHC.Driver.Session (getDynFlags)
+import GHC.Types.Name (mkInternalName)
+import GHC.Types.Name.Occurrence
+import GHC.Types.Name.Reader (RdrName(Exact), rdrNameOcc, mkRdrQual, mkRdrUnqual)
+import GHC.Types.SrcLoc (LayoutInfo(NoLayoutInfo))
+import GHC.Types.Unique (Unique)
+import GHC.Types.Unique.Supply (takeUniqFromSupply)
+import GHC.Utils.Monad
+import GHC.Utils.Outputable
 
 #if __GLASGOW_HASKELL__ >= 902
 import GHC.Driver.Env.Types
@@ -100,22 +120,22 @@ import GHC.Driver.Types
 import GHC.Types.Basic (SourceText(NoSourceText))
 #endif
 
-import GHC hiding (lookupName)
+#if __GLASGOW_HASKELL__ < 904
+import Data.IORef
 
-import GHC.Data.Bag (listToBag)
-import GHC.Data.FastString (FastString)
-import GHC.Driver.Main (getHscEnv)
-import GHC.Driver.Session (getDynFlags)
 import GHC.Iface.Env (lookupOrigIO)
-import GHC.Types.Name (mkInternalName)
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
-import GHC.Types.Name.Occurrence
-import GHC.Types.Name.Reader (RdrName(Exact), rdrNameOcc, mkRdrQual, mkRdrUnqual)
-import GHC.Types.SrcLoc (LayoutInfo(NoLayoutInfo))
-import GHC.Types.Unique.Supply (takeUniqFromSupply)
 import GHC.Utils.Error (mkWarnMsg)
-import GHC.Utils.Monad
-import GHC.Utils.Outputable
+#else
+import GHC.Driver.Config.Diagnostic (initDiagOpts)
+import GHC.Driver.Errors.Types (GhcMessage(..))
+import GHC.Iface.Env (lookupNameCache)
+import GHC.Rename.Names (renamePkgQual)
+import GHC.Types.Error (MsgEnvelope(..), mkMessages)
+import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
+import GHC.Types.PkgQual (RawPkgQual(NoRawPkgQual))
+import GHC.Utils.Error (mkPlainError)
+#endif
 
 #endif
 
@@ -136,11 +156,48 @@ lookupOccName ::
   -> Maybe FastString -- ^ Optional package name
   -> OccName -> Hsc Name
 lookupOccName modlName mPkgName name = do
-    env   <- getHscEnv
-    mModl <- liftIO $ findImportedModule env modlName mPkgName
+    env <- getHscEnv
+
+#if __GLASGOW_HASKELL__ >= 904
+    let pkgq :: PkgQual
+        pkgq = renamePkgQual (hsc_unit_env env) modlName mPkgName
+#else
+    let pkgq :: Maybe FastString
+        pkgq = mPkgName
+#endif
+
+    mModl <- liftIO $ findImportedModule env modlName pkgq
     case mModl of
       Found _ modl -> liftIO $ lookupOrigIO env modl name
       _otherwise   -> error $ "lookupName: name not found"
+
+#if __GLASGOW_HASKELL__ >= 904
+lookupOrigIO :: HscEnv -> Module -> OccName -> IO Name
+lookupOrigIO env modl occ = lookupNameCache (hsc_NC env) modl occ
+#endif
+
+{-------------------------------------------------------------------------------
+  NameCache
+-------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ < 904
+type NameCacheIO = IORef NameCache
+
+takeUniqFromNameCacheIO :: NameCacheIO -> IO Unique
+takeUniqFromNameCacheIO = flip atomicModifyIORef aux
+  where
+    aux :: NameCache -> (NameCache, Unique)
+    aux nc = let (newUniq, us) = takeUniqFromSupply (nsUniqs nc)
+             in (nc { nsUniqs = us }, newUniq)
+#else
+type NameCacheIO = NameCache
+
+takeUniqFromNameCacheIO :: NameCacheIO -> IO Unique
+takeUniqFromNameCacheIO = takeUniqFromNameCache
+#endif
+
+hscNameCacheIO :: HscEnv -> NameCacheIO
+hscNameCacheIO = hsc_NC
 
 {-------------------------------------------------------------------------------
   Miscellaneous
@@ -152,7 +209,11 @@ importDecl qualified name = reLocA $ noLoc $ ImportDecl {
       ideclExt       = defExt
     , ideclSourceSrc = NoSourceText
     , ideclName      = reLocA $ noLoc name
+#if __GLASGOW_HASKELL__ >= 904
+    , ideclPkgQual   = NoRawPkgQual
+#else
     , ideclPkgQual   = Nothing
+#endif
     , ideclSafe      = False
     , ideclImplicit  = False
     , ideclAs        = Nothing
@@ -172,14 +233,26 @@ importDecl qualified name = reLocA $ noLoc $ ImportDecl {
 issueWarning :: SrcSpan -> SDoc -> Hsc ()
 issueWarning l errMsg = do
     dynFlags <- getDynFlags
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ == 902
     logger <- getLogger
-    liftIO $ printOrThrowWarnings logger dynFlags . listToBag . (:[]) $
+    liftIO $ printOrThrowWarnings logger dynFlags . bag $
       mkWarnMsg l neverQualify errMsg
+#elif __GLASGOW_HASKELL__ >= 904
+    logger <- getLogger
+    liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $
+      MsgEnvelope {
+          errMsgSpan       = l
+        , errMsgContext    = neverQualify
+        , errMsgDiagnostic = GhcUnknownMessage $ mkPlainError [] errMsg
+        , errMsgSeverity   = SevWarning
+        }
 #else
-    liftIO $ printOrThrowWarnings dynFlags . listToBag . (:[]) $
+    liftIO $ printOrThrowWarnings dynFlags . bag $
       mkWarnMsg dynFlags l neverQualify errMsg
 #endif
+  where
+    bag :: a -> Bag a
+    bag = listToBag . (:[])
 
 #if __GLASGOW_HASKELL__ < 900
 mkHsApps ::

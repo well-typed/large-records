@@ -102,7 +102,7 @@ genDatatype Record{..} = pure $
           (zipWith fieldExistentialType vars recordFields)
 
       ]
-      [ DerivClause (Just (noLoc (withDefExt AnyclassStrategy))) (c :| [])
+      [ DerivClause (Just (withoutLoc (withDefExt AnyclassStrategy))) (c :| [])
       | DeriveAnyClass c <- recordDerivings
       ]
   where
@@ -504,30 +504,20 @@ genMetadata names@QualifiedNames{..} r@Record{..} dynFlags = do
   where
     auxField :: Field -> LHsExpr GhcPs
     auxField Field{..} =
-        case decideStrictness dynFlags fieldStrictness of
-          HsStrict ->
-            appE (VarE mkStrictField) $
-              proxyE names $ stringT (nameBase fieldName)
-          HsLazy ->
-            appE (VarE mkLazyField) $
-              proxyE names $ stringT (nameBase fieldName)
-          HsUnpack _ ->
-            appE (VarE mkStrictField) $
-              proxyE names $ stringT (nameBase fieldName)
+          (appE . VarE $ if isStrict dynFlags fieldStrictness
+            then mkStrictField
+            else mkLazyField)
+        $ proxyE names
+        $ stringT (nameBase fieldName)
 
--- | Implementation of https://hackage.haskell.org/package/base-4.16.1.0/docs/GHC-Generics.html#t:DecidedStrictness
-decideStrictness :: DynFlags -> HsSrcBang -> HsImplBang
-decideStrictness dynFlags (HsSrcBang _ unpackedness strictness) =
-  case (unpackedness, srcToImpl strictness) of
-    (SrcUnpack, HsStrict) | optimizations -> HsUnpack Nothing
-    (_, strictness') -> strictness'
+isStrict :: DynFlags -> HsSrcBang -> Bool
+isStrict dynFlags (HsSrcBang _ _ strictness) =
+    case strictness of
+      SrcStrict   -> True
+      SrcLazy     -> False
+      NoSrcStrict -> if strictData then True else False
   where
     strictData = xopt StrictData dynFlags
-    optimizations = optLevel dynFlags >= 1
-    srcToImpl = \case
-      SrcStrict -> HsStrict
-      SrcLazy -> HsLazy
-      NoSrcStrict -> if strictData then HsStrict else HsLazy
 
 -- | Generate definition for `from` in the `Generic` instance
 --

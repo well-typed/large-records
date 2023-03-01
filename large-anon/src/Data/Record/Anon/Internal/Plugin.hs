@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Data.Record.Anon.Internal.Plugin (plugin) where
 
 import GHC.TcPlugin.API
@@ -21,10 +23,17 @@ plugin = GHC.Plugins.defaultPlugin {
       GHC.Plugins.tcPlugin = \_args -> Just $
         mkTcPlugin tcPlugin
     , GHC.Plugins.parsedResultAction = \args _modSummary ->
-        sourcePlugin args
+        ignoreMessages $ sourcePlugin args
     , GHC.Plugins.pluginRecompile =
         GHC.Plugins.purePlugin
     }
+  where
+#if __GLASGOW_HASKELL__ >= 904
+    ignoreMessages f (GHC.Plugins.ParsedResult modl msgs) =
+            (\modl' -> GHC.Plugins.ParsedResult modl' msgs) <$> f modl
+#else
+    ignoreMessages = id
+#endif
 
 tcPlugin :: TcPlugin
 tcPlugin = TcPlugin {

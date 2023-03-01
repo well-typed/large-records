@@ -31,7 +31,7 @@ library
       Data.Record.Beam.ZipDatabase
       Data.Record.Beam.ZipTables
   build-depends:
-      base >= 4.13 && < 4.17
+      base >= 4.13 && < 4.18
     , beam-core >= 0.9
     , large-generics
     , microlens

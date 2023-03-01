@@ -69,14 +69,3 @@ nameResolution = do
     tyConSimpleFieldTypes <- getTyCon       "SimpleFieldTypes"
 
     return $ ResolvedNames {..}
-
-{-------------------------------------------------------------------------------
-  Auxiliary
--------------------------------------------------------------------------------}
-
-getModule :: MonadTcPlugin m => String -> String -> m Module
-getModule pkg modl = do
-    r <- findImportedModule (mkModuleName modl) (OtherPkg $ stringToUnitId pkg)
-    case r of
-      Found _ m  -> return m
-      _otherwise -> panic $ "Could not find " ++ modl ++ " in package " ++ pkg

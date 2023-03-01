@@ -13,12 +13,10 @@
 {-# LANGUAGE StandaloneDeriving        #-}
 {-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
 
--- For lens derivation
--- {-# LANGUAGE ImpredicativeTypes #-}
-
-{-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Plugin #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
 
 {-# OPTIONS_GHC -Wno-missing-signatures -Wno-unused-top-binds #-}
 

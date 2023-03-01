@@ -22,21 +22,18 @@ instance Outputable ResolvedNames where
 
 resolveNames :: TcPluginM 'Init ResolvedNames
 resolveNames = do
-    m <- do r <- findImportedModule typeletMod (OtherPkg typeletUnitId)
-            case r of
-              Found _ m  -> return m
-              _otherwise -> panic $ "Could not find "
-                                 ++ showSDocUnsafe (ppr typeletMod)
+    pkgQual <- resolveImport typeletMod (Just $ fsLit "typelet")
+    modl    <- do res <- findImportedModule typeletMod pkgQual
+                  case res of
+                    Found _ m  -> return m
+                    _otherwise -> panic $ "resolveNames: could not find "
+                                       ++ showSDocUnsafe (ppr typeletMod)
 
     -- Constraints handled by the plugin
 
-    clsEqual <- tcLookupClass =<< lookupOrig m (mkTcOcc "Equal")
-    clsLet   <- tcLookupClass =<< lookupOrig m (mkTcOcc "Let")
-
+    clsEqual <- tcLookupClass =<< lookupOrig modl (mkTcOcc "Equal")
+    clsLet   <- tcLookupClass =<< lookupOrig modl (mkTcOcc "Let")
     return ResolvedNames{..}
   where
     typeletMod :: ModuleName
     typeletMod = mkModuleName "TypeLet.UserAPI"
-
-    typeletUnitId :: UnitId
-    typeletUnitId = stringToUnitId "typelet"

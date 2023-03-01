@@ -24,6 +24,7 @@ blog posts:
 - [Induction without core-size blow-up a.k.a. Large records: anonymous edition](https://well-typed.com/blog/2021/10/large-records-part-2/)
 - [Type-level sharing in Haskell, now](https://well-typed.com/blog/2021/12/type-level-sharing-now/)
 - [New large-records release: now with 100% fewer quotes](https://well-typed.com/blog/2022/03/large-records-without-the-quotes/)
+- [`large-anon`: Practical scalable anonymous records for Haskell](https://well-typed.com/blog/2022/04/large-anon/)
 
 as well as in various presentations:
 

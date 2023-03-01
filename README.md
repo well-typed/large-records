@@ -2,9 +2,8 @@
 
 This repository contains all of the work on scalable records in Haskell:
 
-- [large-records](large-records/) is the main library for large records.
-- [large-anon](large-anon/) provides scalable _anonymous_ records. This is
-  currently work in progress.
+- [large-records](large-records/) provides scalable _named_ records (records that are declared before they are used, just like standard Haskell records).
+- [large-anon](large-anon/) provides scalable _anonymous_ records.
 - [large-generics](large-generics/) is the generics library that supports both
   `large-records` and `large-anon`.
 - [beam-large-records](beam-large-records/) provides integration for

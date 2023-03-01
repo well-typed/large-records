@@ -6,7 +6,7 @@ module Test.Sanity.Named.Record2 (
   ) where
 
 -- | Non-anonymous record (for comparison with equivalent anonymous record)
-data Record f = Record { y :: f Char, x :: f Bool }
+data Record f = ANON_F { y :: f Char, x :: f Bool }
 
 deriving instance (Show (f Char), Show (f Bool)) => Show (Record f)
 deriving instance (Eq   (f Char), Eq   (f Bool)) => Eq   (Record f)

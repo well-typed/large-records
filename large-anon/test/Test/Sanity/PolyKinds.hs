@@ -34,7 +34,7 @@ test_show =
       show exampleRecord1'
   where
     expected :: String
-    expected = "Record {a = True, b = 1234}"
+    expected = "ANON_F {a = True, b = 1234}"
 
 -- | 'HasField' (and 'KnownHash', but that's no different for polykinds)
 test_hasField :: Assertion

@@ -130,7 +130,7 @@ test_show = do
   where
     expectedSame, expectedDiff :: String
     expectedSame = concat [
-          "Record {a = I 'a'"
+          "ANON_F {a = I 'a'"
         ,       ", b = I 1"
         ,       ", c = I ()"
         ,       ", b = I 2"
@@ -138,7 +138,7 @@ test_show = do
         ,         "}"
         ]
     expectedDiff = concat [
-          "Record {a = I 'a'"
+          "ANON_F {a = I 'a'"
         ,       ", b = I 1"
         ,       ", c = I ()"
         ,       ", b = I True"

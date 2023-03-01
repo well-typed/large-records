@@ -26,6 +26,9 @@ source-repository-package
 
 allow-newer: validation-selective:base
 
+-- 2.1.2.0 introduces 'AesonException' which clashes with yaml
+constraints: aeson < 2.1.2.0
+
 -- enable for GHC head
 -- repository head.hackage.ghc.haskell.org
 --    url: https://ghc.gitlab.haskell.org/head.hackage/

@@ -75,12 +75,13 @@ import Data.Record.Generic.Show
 import Data.Tagged
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
-import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet
 import Data.Primitive.SmallArray
 
-import qualified Optics.Core as Optics
+import qualified GHC.Records        as Base
+import qualified GHC.Records.Compat as RecordHasfield
+import qualified Optics.Core        as Optics
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
@@ -111,7 +112,10 @@ import qualified Data.Record.Anon.Internal.Advanced as A
 -- NOTE: For some applications it is useful to have an additional functor
 -- parameter @f@, so that every field has type @f x@ instead.
 -- See "Data.Record.Anon.Advanced".
-newtype Record r = SimpleRecord { toAdvanced :: A.Record I r }
+newtype Record r = SimpleRecord (A.Record I r)
+
+toAdvanced :: Record r -> A.Record I r
+toAdvanced (SimpleRecord r) = r
 
 {-------------------------------------------------------------------------------
   Interop with advanced API
@@ -160,19 +164,19 @@ applyPending = fromAdvanced . A.applyPending . toAdvanced
   HasField
 -------------------------------------------------------------------------------}
 
-instance HasField  n            (A.Record I r) (I a)
-      => HasField (n :: Symbol) (    Record   r)    a where
-  hasField = aux . hasField @n . toAdvanced
+instance RecordHasfield.HasField  n            (A.Record I r) (I a)
+      => RecordHasfield.HasField (n :: Symbol) (  Record   r)    a where
+  hasField = aux . RecordHasfield.hasField @n . toAdvanced
     where
       aux :: (I a -> A.Record I r, I a) -> (a -> Record r, a)
       aux (setX, x) = (fromAdvanced . setX . I, unI x)
 
 instance Optics.LabelOptic n Optics.A_Lens (A.Record I r) (A.Record I r) (I a) (I a)
       => Optics.LabelOptic n Optics.A_Lens (    Record   r) (    Record   r)    a     a where
-  labelOptic = toAdvanced Optics.% fromLabel @n Optics.% fromI
+  labelOptic = isoAdvanced Optics.% fromLabel @n Optics.% fromI
     where
-      toAdvanced :: Optics.Iso' (Record r) (A.Record I r)
-      toAdvanced = Optics.coerced
+      isoAdvanced :: Optics.Iso' (Record r) (A.Record I r)
+      isoAdvanced = Optics.coerced
 
       fromI :: Optics.Iso' (I a) a
       fromI = Optics.coerced
@@ -181,13 +185,21 @@ instance Optics.LabelOptic n Optics.A_Lens (A.Record I r) (A.Record I r) (I a) (
 --
 -- This is just a wrapper around 'getField'.
 get :: forall n r a. RowHasField n r a => Field n -> Record r -> a
-get (Field _) = getField @n @(Record r)
+get (Field _) = RecordHasfield.getField @n @(Record r)
 
 -- | Update field in the record
 --
 -- This is just a wrapper around 'setField'.
 set :: forall n r a. RowHasField n r a => Field n -> a -> Record r -> Record r
-set (Field _) = flip (setField @n @(Record r))
+set (Field _) = flip (RecordHasfield.setField @n @(Record r))
+
+{-------------------------------------------------------------------------------
+  Compatibility with HasField from base
+-------------------------------------------------------------------------------}
+
+instance RecordHasfield.HasField  n            (A.Record I r) (I a)
+      => Base.HasField           (n :: Symbol) (  Record   r)    a where
+  getField = snd . RecordHasfield.hasField @n
 
 {-------------------------------------------------------------------------------
   Constraints
@@ -231,7 +243,7 @@ toAdvancedRep = noInlineUnsafeCo
 recordMetadata :: forall r. KnownFields r => Metadata (Record r)
 recordMetadata = Metadata {
       recordName          = "Record"
-    , recordConstructor   = "Record"
+    , recordConstructor   = "ANON"
     , recordSize          = length fields
     , recordFieldMetadata = Rep $ smallArrayFromList fields
     }

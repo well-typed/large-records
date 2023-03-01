@@ -77,7 +77,7 @@ test_showColor =
       show magenta
   where
     expected :: String
-    expected = "Record {red = 1.0, green = 0.0, blue = 1.0}"
+    expected = "ANON {red = 1.0, green = 0.0, blue = 1.0}"
 
 test_toJSON :: Assertion
 test_toJSON =

@@ -93,11 +93,12 @@ import Data.SOP.Constraint
 import Data.Tagged
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
-import GHC.Records.Compat
 import GHC.TypeLits
 import TypeLet.UserAPI
 
-import qualified Optics.Core as Optics
+import qualified Optics.Core        as Optics
+import qualified GHC.Records        as Base
+import qualified GHC.Records.Compat as RecordHasfield
 
 import qualified Data.Record.Generic.Eq     as Generic
 import qualified Data.Record.Generic.JSON   as Generic
@@ -146,7 +147,7 @@ unsafeFromCanonical :: Canonical f -> Record f r
 unsafeFromCanonical = NoPending
 
 {-------------------------------------------------------------------------------
-  HasField
+  HasField from @record-hasfield@
 -------------------------------------------------------------------------------}
 
 -- | Proxy for a field name, with 'IsLabel' instance
@@ -166,7 +167,7 @@ instance (n ~ n', KnownSymbol n, KnownHash n) => IsLabel n' (Field n) where
 
 instance forall k (n :: Symbol) (f :: k -> Type) (r :: Row k) (a :: k).
        (KnownSymbol n, KnownHash n, RowHasField n r a)
-    => HasField n (Record f r) (f a) where
+    => RecordHasfield.HasField n (Record f r) (f a) where
 
   -- INLINE pragma important: it makes the 'NoPendingCases' cases very close
   -- to the performance of using a 'SmallArray' directly.
@@ -224,12 +225,20 @@ unsafeSetField i n x = \case
 get :: forall n f r a.
      RowHasField n r a
   => Field n -> Record f r -> f a
-get (Field _) = getField @n @(Record f r)
+get (Field _) = RecordHasfield.getField @n @(Record f r)
 
 set :: forall n f r a.
      RowHasField n r a
   => Field n -> f a -> Record f r -> Record f r
-set (Field _) = flip (setField @n @(Record f r))
+set (Field _) = flip (RecordHasfield.setField @n @(Record f r))
+
+{-------------------------------------------------------------------------------
+  Compatibility with HasField from base
+-------------------------------------------------------------------------------}
+
+instance (KnownSymbol n, KnownHash n, RowHasField n r a)
+      => Base.HasField n (Record f r) (f a) where
+  getField = snd . RecordHasfield.hasField @n
 
 {-------------------------------------------------------------------------------
   Main API
@@ -523,7 +532,7 @@ recordMetadata :: forall k (f :: k -> Type) (r :: Row k).
   => Metadata (Record f r)
 recordMetadata = Metadata {
       recordName          = "Record"
-    , recordConstructor   = "Record"
+    , recordConstructor   = "ANON_F"
     , recordSize          = length fields
     , recordFieldMetadata = Rep $ smallArrayFromList fields
     }
@@ -565,27 +574,6 @@ instance RecordConstraints f r ToJSON => ToJSON (Record f r) where
 
 instance RecordConstraints f r FromJSON => FromJSON (Record f r) where
   parseJSON = Generic.gparseJSON
-
-{-------------------------------------------------------------------------------
-  UTIL. Not sure if we still need this
--------------------------------------------------------------------------------}
-
-{-
-
-data Constrained (c :: k -> Constraint) (f :: k -> Type) (x :: k) where
-  Constrained :: c x => f x -> Constrained c f x
-
-constrain :: forall k (c :: k -> Constraint) (f :: k -> Type) (r :: Row k).
-      AllFields r c
-   => Proxy c -> Record f r -> Record (Constrained c f) r
-constrain p (Record.toCanonical -> r) = Record.unsafeFromCanonical $
-    Canon.fromLazyVector $
-      V.zipWith aux (Canon.toLazyVector r) (fieldDicts (Proxy @r) p)
-  where
-    aux :: f Any -> DictAny c -> Constrained c f Any
-    aux x DictAny = Constrained x
-
--}
 
 {-------------------------------------------------------------------------------
   Constrained combinators

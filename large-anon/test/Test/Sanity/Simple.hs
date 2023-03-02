@@ -15,6 +15,7 @@ import Test.Tasty.HUnit
 
 import Data.Record.Anon
 import Data.Record.Anon.Simple (Record)
+
 import qualified Data.Record.Anon.Simple as Anon
 
 tests :: TestTree

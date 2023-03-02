@@ -61,7 +61,7 @@ test_simple_inferType =
           Dyn.S.toRecord r example2
   where
     expected :: String
-    expected = "Record {a = 1, b = True, c = 'a'}"
+    expected = "ANON {a = 1, b = True, c = 'a'}"
 
 test_simple_toLens :: Assertion
 test_simple_toLens = do
@@ -81,7 +81,7 @@ test_simple_toLens = do
           Dyn.S.toLens (Proxy @ExpectedSimple) example1
 
     expectedGet :: String
-    expectedGet = "Record {a = 1, c = 'a'}"
+    expectedGet = "ANON {a = 1, c = 'a'}"
 
     expectedMissingField :: Either NotSubRow ()
     expectedMissingField = Left ["c"]
@@ -114,7 +114,7 @@ test_advanced_inferType =
           Dyn.A.toRecord r example2
   where
     expected :: String
-    expected = "Record {a = 1, b = True, c = 'a'}"
+    expected = "ANON_F {a = 1, b = True, c = 'a'}"
 
 test_advanced_toLens :: Assertion
 test_advanced_toLens = do
@@ -130,7 +130,7 @@ test_advanced_toLens = do
          Dyn.A.toLens (Proxy @ExpectedAdvanced) example1
 
     expectedGet :: String
-    expectedGet = "Record {a = 1, c = 'a'}"
+    expectedGet = "ANON_F {a = 1, c = 'a'}"
 
 {-------------------------------------------------------------------------------
   Example 'DynRecord' values

@@ -69,9 +69,9 @@ record3 =
 
 test_Show :: Assertion
 test_Show = do
-    assertEqual "R1" (show (R1.Record (I True) (I 'a') (I ()))) $ show record1
-    assertEqual "R2" (show (R2.Record (I 'a')  (I True)))       $ show record2
-    assertEqual "R3" (show (R2.Record (K ())   (K ())))         $ show record3
+    assertEqual "R1" (show (R1.ANON_F (I True) (I 'a') (I ()))) $ show record1
+    assertEqual "R2" (show (R2.ANON_F (I 'a')  (I True)))       $ show record2
+    assertEqual "R3" (show (R2.ANON_F (K ())   (K ())))         $ show record3
 
 test_Eq :: Assertion
 test_Eq = do
@@ -82,9 +82,9 @@ test_Eq = do
 
 test_Ord :: Assertion
 test_Ord = do
-    assertEqual "R1" (compare (R1.Record (I True) (I 'a') (I ())) (R1.Record (I False) (I 'a') (I ()))) $
+    assertEqual "R1" (compare (R1.ANON_F (I True) (I 'a') (I ())) (R1.ANON_F (I False) (I 'a') (I ()))) $
       compare record1 (Anon.set #x (I False) record1)
-    assertEqual "R2" (compare (R2.Record (I 'a') (I True)) (R2.Record (I 'a') (I False))) $
+    assertEqual "R2" (compare (R2.ANON_F (I 'a') (I True)) (R2.ANON_F (I 'a') (I False))) $
       compare record2 (Anon.set #x (I False) record2)
 
 -- Test 'describeRecord'

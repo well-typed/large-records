@@ -10,11 +10,17 @@ import qualified Test.Sanity.BlogPost
 import qualified Test.Sanity.CheckIsSubRow
 import qualified Test.Sanity.Discovery
 import qualified Test.Sanity.DuplicateFields
+import qualified Test.Sanity.Fourmolu.OverloadedRecordDot
+import qualified Test.Sanity.Fourmolu.OverloadedRecordUpdate
 import qualified Test.Sanity.Generics
 import qualified Test.Sanity.HasField
 import qualified Test.Sanity.Intersection
 import qualified Test.Sanity.Merging
+import qualified Test.Sanity.OverloadedRecordDot
+import qualified Test.Sanity.OverloadedRecordUpdate
 import qualified Test.Sanity.PolyKinds
+import qualified Test.Sanity.RebindableSyntax.Disabled
+import qualified Test.Sanity.RebindableSyntax.Enabled
 import qualified Test.Sanity.RecordLens
 import qualified Test.Sanity.Simple
 import qualified Test.Sanity.SrcPlugin.WithoutTypelet
@@ -40,6 +46,12 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.SrcPlugin.WithTypelet.tests
         , Test.Sanity.Intersection.tests
         , Test.Sanity.BlogPost.tests
+        , Test.Sanity.OverloadedRecordDot.tests
+        , Test.Sanity.OverloadedRecordUpdate.tests
+        , Test.Sanity.RebindableSyntax.Disabled.tests
+        , Test.Sanity.RebindableSyntax.Enabled.tests
+        , Test.Sanity.Fourmolu.OverloadedRecordDot.tests
+        , Test.Sanity.Fourmolu.OverloadedRecordUpdate.tests
         ]
     , testGroup "Prop" [
           Test.Prop.Record.Combinators.Simple.tests

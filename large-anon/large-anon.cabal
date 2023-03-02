@@ -11,15 +11,17 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Records
 extra-source-files: CHANGELOG.md
+                    test/Test/Sanity/RebindableSyntax/Tests.hs
 tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.5
 
 library
   exposed-modules:
       Data.Record.Anon
-      Data.Record.Anon.Simple
       Data.Record.Anon.Advanced
+      Data.Record.Anon.Overloading
       Data.Record.Anon.Plugin
       Data.Record.Anon.Plugin.Internal.Runtime
+      Data.Record.Anon.Simple
 
   other-modules:
       -- Module organization:
@@ -117,12 +119,12 @@ test-suite test-large-anon
   main-is:
       TestLargeAnon.hs
   other-modules:
-      Test.Infra.Generics
-      Test.Infra.MarkStrictness
       Test.Infra.Discovery
       Test.Infra.DynRecord
       Test.Infra.DynRecord.Advanced
       Test.Infra.DynRecord.Simple
+      Test.Infra.Generics
+      Test.Infra.MarkStrictness
       Test.Prop.Record.Combinators.Constrained
       Test.Prop.Record.Combinators.Simple
       Test.Prop.Record.Model
@@ -134,22 +136,29 @@ test-suite test-large-anon
       Test.Sanity.CheckIsSubRow
       Test.Sanity.Discovery
       Test.Sanity.DuplicateFields
+      Test.Sanity.Fourmolu.OverloadedRecordDot
+      Test.Sanity.Fourmolu.OverloadedRecordUpdate
       Test.Sanity.Generics
       Test.Sanity.HasField
       Test.Sanity.Intersection
       Test.Sanity.Merging
       Test.Sanity.Named.Record1
       Test.Sanity.Named.Record2
+      Test.Sanity.OverloadedRecordDot
+      Test.Sanity.OverloadedRecordUpdate
       Test.Sanity.PolyKinds
+      Test.Sanity.RebindableSyntax.Disabled
+      Test.Sanity.RebindableSyntax.Enabled
       Test.Sanity.RecordLens
       Test.Sanity.Simple
       Test.Sanity.SrcPlugin.WithoutTypelet
       Test.Sanity.SrcPlugin.WithTypelet
       Test.Sanity.TypeLevelMetadata
   build-depends:
-      base
     , aeson
     , aeson-pretty
+    , arrows
+    , base
     , bytestring
     , large-anon
     , large-generics
@@ -158,16 +167,15 @@ test-suite test-large-anon
     , parsec
     , QuickCheck
     , record-dot-preprocessor
+    , record-hasfield
     , sop-core
+    , Stream
     , tasty
     , tasty-hunit
     , tasty-quickcheck
     , text
     , typelet
     , validation-selective
-
-      -- required when using record-dot-preprocessor
-    , record-hasfield
   ghc-options:
       -Wall
       -Wredundant-constraints
@@ -178,6 +186,28 @@ test-suite test-large-anon
   -- despite it actually being required. So for now we just disable this check.
   -- if impl(ghc >= 8.10)
   --   ghc-options: -Wunused-packages
+
+  if impl(ghc >= 9.2)
+    build-tool-depends:
+      large-anon:fourmolu-preprocessor
+
+Executable fourmolu-preprocessor
+  main-is:
+      Main.hs
+  hs-source-dirs:
+      fourmolu-preprocessor
+  build-depends:
+    , base
+    , fourmolu >= 0.10.1
+    , text
+  default-language:
+      Haskell2010
+  ghc-options:
+      -Wall
+
+  -- Fourmolu is only compatible with RDP syntax from ghc 9.2 and up.
+  if impl(ghc < 9.2)
+    buildable: False
 
 Flag debug
   Description: Enable internal debugging features

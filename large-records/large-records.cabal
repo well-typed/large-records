@@ -55,8 +55,8 @@ library
       -- transformers 0.5.6 introduces Writer.CPS
     , transformers >= 0.5.6 && < 0.7
 
-      -- TODO: This should be 0.2.16 (after it is released)
-    , record-dot-preprocessor >= 0.2.15 && < 0.3
+      -- 0.2.16 introduces support for ghc 9.4
+    , record-dot-preprocessor >= 0.2.16 && < 0.3
 
       -- whatever versions are bundled with ghc
     , ghc
@@ -115,14 +115,12 @@ test-suite test-large-records
     , large-generics
     , mtl
     , newtype
+    , record-dot-preprocessor
     , record-hasfield
     , tasty
     , tasty-hunit
     , template-haskell
     , transformers
-
-      -- <https://github.com/ndmitchell/record-dot-preprocessor/pull/48>
-    , record-dot-preprocessor >= 0.2.14
   hs-source-dirs:
       test
   default-language:

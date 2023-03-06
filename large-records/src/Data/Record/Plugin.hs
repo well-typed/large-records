@@ -69,10 +69,11 @@ import GHC.Driver.Errors (printOrThrowWarnings)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 904
-import GHC.Types.Error (MsgEnvelope(..), mkPlainError, mkMessages)
-import GHC.Driver.Errors.Types (GhcMessage(GhcUnknownMessage))
-import GHC.Driver.Errors (printOrThrowDiagnostics)
 import GHC.Driver.Config.Diagnostic (initDiagOpts)
+import GHC.Driver.Errors (printOrThrowDiagnostics)
+import GHC.Driver.Errors.Types (GhcMessage(GhcUnknownMessage))
+import GHC.Types.Error (mkPlainError, mkMessages, mkPlainDiagnostic)
+import GHC.Utils.Error (mkMsgEnvelope, mkErrorMsgEnvelope)
 #endif
 
 {-------------------------------------------------------------------------------
@@ -214,12 +215,10 @@ issueError l errMsg = do
       mkErr l neverQualify (mkDecorated [errMsg])
 #elif __GLASGOW_HASKELL__ >= 904
     throwOneError $
-      MsgEnvelope {
-          errMsgSpan       = l
-        , errMsgContext    = neverQualify
-        , errMsgDiagnostic = GhcUnknownMessage $ mkPlainError [] errMsg
-        , errMsgSeverity   = SevError
-        }
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkPlainError [] errMsg)
 #else
     dynFlags <- getDynFlags
     throwOneError $
@@ -236,12 +235,11 @@ issueWarning l errMsg = do
 #elif __GLASGOW_HASKELL__ >= 904
     logger <- getLogger
     liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $
-      MsgEnvelope {
-          errMsgSpan       = l
-        , errMsgContext    = neverQualify
-        , errMsgDiagnostic = GhcUnknownMessage $ mkPlainError [] errMsg
-        , errMsgSeverity   = SevWarning
-        }
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
 #else
     liftIO $ printOrThrowWarnings dynFlags . bag $
       mkWarnMsg dynFlags l neverQualify errMsg

@@ -2,9 +2,11 @@
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase             #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE PatternSynonyms        #-}
 {-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE TupleSections          #-}
 {-# LANGUAGE TypeApplications       #-}
 {-# LANGUAGE UndecidableInstances   #-}
 {-# LANGUAGE ViewPatterns           #-}
@@ -62,6 +64,9 @@ module Data.Record.Internal.GHC.Shim (
   , hscNameCacheIO
   , takeUniqFromNameCacheIO
 
+    -- * Records
+  , simpleRecordUpdates
+
     -- * Re-exports
 
     -- The whole-sale module exports are not ideal for preserving compatibility
@@ -89,6 +94,7 @@ module Data.Record.Internal.GHC.Shim (
 #endif
   ) where
 
+import Control.Monad
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Generics (Data, GenericQ, cast, toConstr, gzipWithQ)
 
@@ -128,9 +134,12 @@ import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
 import GHC.Utils.Error (Severity(SevError, SevWarning))
 
 import GHC.Plugins hiding ((<>), getHscEnv
-#if __GLASGOW_HASKELL__ >=902
+#if __GLASGOW_HASKELL__ >= 902
     , AnnType, AnnLet, AnnRec, AnnLam, AnnCase
     , Exception
+#endif
+#if __GLASGOW_HASKELL__ < 904
+    , trace
 #endif
     )
 
@@ -511,3 +520,98 @@ instance InheritLoc x (HsLocalBindsLR p q) (HsLocalBindsLR p q) where inheritLoc
 
 withoutLoc :: InheritLoc SrcSpan a b => a -> b
 withoutLoc = inheritLoc noSrcSpan
+
+{-------------------------------------------------------------------------------
+  Records
+-------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ >= 902
+type RupdFlds = Either [LHsRecUpdField GhcPs] [LHsRecUpdProj GhcPs]
+#else
+type RupdFlds = [LHsRecUpdField GhcPs]
+#endif
+
+-- | Pattern match against the @rupd_flds@ of @RecordUpd@
+simpleRecordUpdates :: RupdFlds -> Maybe [(LRdrName, LHsExpr GhcPs)]
+
+#if __GLASGOW_HASKELL__ >= 904
+
+simpleRecordUpdates =
+    \case
+      Left  flds -> mapM (aux (isUnambigous  . unLoc)) flds
+      Right flds -> mapM (aux (isSingleLabel . unLoc)) flds
+  where
+    aux :: forall lhs rhs.
+         (lhs -> Maybe LRdrName)
+      -> LHsFieldBind GhcPs lhs rhs
+      -> Maybe (LRdrName, rhs)
+    aux f (L _ (HsFieldBind { hfbLHS = lbl
+                            , hfbRHS = val
+                            , hfbPun = pun
+                            })) = do
+        guard $ not pun
+        (, val) <$> f lbl
+
+    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe LRdrName
+    isUnambigous (Unambiguous _ name) = Just $ reLoc name
+    isUnambigous _                    = Nothing
+
+    isSingleLabel :: FieldLabelStrings GhcPs -> Maybe LRdrName
+    isSingleLabel (FieldLabelStrings labels) =
+        case labels of
+          [L _ (DotFieldOcc _ (L l label))] ->
+            Just $ reLoc $ L l (Unqual $ mkVarOccFS label)
+          _otherwise ->
+            Nothing
+
+#elif __GLASGOW_HASKELL__ == 902
+
+simpleRecordUpdates =
+    \case
+      Left  flds -> mapM (aux isUnambigous)  flds
+      Right flds -> mapM (aux isSingleLabel) flds
+  where
+    aux :: forall lhs rhs.
+         (lhs -> Maybe LRdrName)
+      -> LHsRecField' GhcPs lhs rhs
+      -> Maybe (LRdrName, rhs)
+    aux f (L _ (HsRecField { hsRecFieldLbl = L _ lbl
+                           , hsRecFieldArg = val
+                           , hsRecPun      = pun
+                           })) = do
+        guard $ not pun
+        (, val) <$> f lbl
+
+    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe LRdrName
+    isUnambigous (Unambiguous _ name) = Just $ reLoc name
+    isUnambigous _                    = Nothing
+
+    isSingleLabel :: FieldLabelStrings GhcPs -> Maybe LRdrName
+    isSingleLabel (FieldLabelStrings labels) =
+        case labels of
+          [L _ (HsFieldLabel _ (L l label))] ->
+            Just $ L l (Unqual $ mkVarOccFS label)
+          _otherwise ->
+            Nothing
+
+#else
+
+simpleRecordUpdates =
+     mapM (aux isUnambigous)
+  where
+    aux :: forall lhs rhs.
+         (lhs -> Maybe LRdrName)
+      -> LHsRecField' lhs rhs
+      -> Maybe (LRdrName, rhs)
+    aux f (L _ (HsRecField { hsRecFieldLbl = L _ lbl
+                           , hsRecFieldArg = val
+                           , hsRecPun      = pun
+                           })) = do
+        guard $ not pun
+        (, val) <$> f lbl
+
+    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe LRdrName
+    isUnambigous (Unambiguous _ name) = Just $ reLoc name
+    isUnambigous _                    = Nothing
+
+#endif

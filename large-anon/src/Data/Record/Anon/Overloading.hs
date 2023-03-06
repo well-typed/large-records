@@ -13,7 +13,6 @@
 -- functions are suddenly no longer in scope that normally are. This module
 -- restores those functions to their standard definition.
 module Data.Record.Anon.Overloading (
-    -- * Re-exports
     module Prelude
   , Control.Arrow.app
   , Control.Arrow.arr

@@ -17,7 +17,7 @@ tests =
 -- | Test with Fourmolu, without RDP
 --
 -- See "Test.Sanity.Fourmolu.OverloadedRecordDot" for additional discussion.
-{-# OPTIONS_GHC -F -pgmF=fourmolu-preprocessor #-}
+{-# OPTIONS_GHC -F -pgmF=large-anon-testsuite-fourmolu-preprocessor #-}
 
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE OverloadedRecordDot    #-}

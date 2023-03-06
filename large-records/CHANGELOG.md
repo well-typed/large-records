@@ -1,14 +1,23 @@
 # Revision history for large-records
 
-## 0.3.1 -- 2023-mm-dd
+## 0.4 -- 2023-03-06
 
 * Fix issue with operator type families used in fields (#120).
 * Fix issue with `NamedWildCards` (#121, #124, #125).
+* Do not generate imports in the plugin (#129).
+  NOTE: This means that use code must now import `Data.Record.Plugin` to bring
+  `largeRecord` into scope (necessary for `ANN` annotations).
+* Support ghc 9.4 (#131).
+  An annoying quirk of ghc 9.4 is that the order of plugins is reversed; this
+  matters when using `large-records` and `record-dot-preprocessor` together.
+  To avoid CPP, you can now use `Data.Record.Plugin.WithRDP`, which combines
+  both plugins.
+* Support `OverloadedRecordDot` and `OverloadedRecordUpdate` (#135).
 
 ## 0.3 -- 2022-07-22
 
-* Support ghc 9.2 (#117)
-* Support for field strictness annotations (#107)
+* Support ghc 9.2 (#113 / #117).
+* Support for field strictness annotations (#106 / #107).
 
 ## 0.2.1.0 -- 2022-04-06
 

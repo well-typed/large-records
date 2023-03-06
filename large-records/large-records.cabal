@@ -29,6 +29,7 @@ library
       Data.Record.Plugin.Options
       Data.Record.Plugin.Runtime
       Data.Record.Plugin.WithRDP
+      Data.Record.Overloading
 
   other-modules:
 
@@ -43,11 +44,12 @@ library
       Data.Record.Internal.Plugin.Record
 
   build-depends:
-      base       >= 4.13   && < 4.18
-    , containers >= 0.6.2  && < 0.7
-    , mtl        >= 2.2.1  && < 2.3
-    , primitive  >= 0.7    && < 0.8
-    , syb        >= 0.7    && < 0.8
+      base            >= 4.13   && < 4.18
+    , containers      >= 0.6.2  && < 0.7
+    , mtl             >= 2.2.1  && < 2.3
+    , primitive       >= 0.7    && < 0.8
+    , syb             >= 0.7    && < 0.8
+    , record-hasfield >= 1.0    && < 1.1
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics >= 0.2 && < 0.3
@@ -89,8 +91,12 @@ test-suite test-large-records
       Test.Record.Sanity.CodeGen
       Test.Record.Sanity.Derive
       Test.Record.Sanity.EqualFieldTypes
+      Test.Record.Sanity.GhcGenerics
       Test.Record.Sanity.HigherKinded
       Test.Record.Sanity.HKD
+      Test.Record.Sanity.NamedWildCards
+      Test.Record.Sanity.Operators
+      Test.Record.Sanity.OverloadedRecordUpdate
       Test.Record.Sanity.OverloadingNoDRF
       Test.Record.Sanity.PatternMatch
       Test.Record.Sanity.QualifiedImports
@@ -102,9 +108,6 @@ test-suite test-large-records
       Test.Record.Sanity.RecordConstruction
       Test.Record.Sanity.Strictness
       Test.Record.Sanity.StrictnessStrictData
-      Test.Record.Sanity.GhcGenerics
-      Test.Record.Sanity.Operators
-      Test.Record.Sanity.NamedWildCards
       Test.Record.Util
 
   build-depends:

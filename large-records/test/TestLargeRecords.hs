@@ -5,17 +5,18 @@ import Test.Tasty
 import qualified Test.Record.Sanity.CodeGen
 import qualified Test.Record.Sanity.Derive
 import qualified Test.Record.Sanity.EqualFieldTypes
+import qualified Test.Record.Sanity.GhcGenerics
 import qualified Test.Record.Sanity.HigherKinded
 import qualified Test.Record.Sanity.HKD
+import qualified Test.Record.Sanity.OverloadedRecordUpdate
 import qualified Test.Record.Sanity.OverloadingNoDRF
 import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.QualifiedImports
-import qualified Test.Record.Sanity.RDP.SplitModule
 import qualified Test.Record.Sanity.RDP.SingleModule
+import qualified Test.Record.Sanity.RDP.SplitModule
 import qualified Test.Record.Sanity.RecordConstruction
 import qualified Test.Record.Sanity.Strictness
 import qualified Test.Record.Sanity.StrictnessStrictData
-import qualified Test.Record.Sanity.GhcGenerics
 
 main :: IO ()
 main = defaultMain tests
@@ -37,5 +38,6 @@ tests = testGroup "Tests" [
         , Test.Record.Sanity.Strictness.tests
         , Test.Record.Sanity.StrictnessStrictData.tests
         , Test.Record.Sanity.GhcGenerics.tests
+        , Test.Record.Sanity.OverloadedRecordUpdate.tests
         ]
     ]

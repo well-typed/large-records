@@ -1,7 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE ViewPatterns       #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DerivingStrategies    #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ViewPatterns          #-}
 
 -- | Generation options for large-records.
 module Data.Record.Internal.Plugin.Options (
@@ -16,6 +18,7 @@ import Data.Bifunctor
 import Data.Data (Data)
 import Data.Map (Map)
 import Data.Maybe (mapMaybe)
+import GHC.Records.Compat
 
 import qualified Data.Generics   as SYB
 import qualified Data.Map.Strict as Map
@@ -47,6 +50,15 @@ largeRecord :: LargeRecordOptions
 largeRecord = LargeRecordOptions {
       debugLargeRecords = False
     }
+
+{-------------------------------------------------------------------------------
+  HasField instances
+
+  These instances are required in modules that enable 'OverloadedRecordUpdate'
+-------------------------------------------------------------------------------}
+
+instance HasField "debugLargeRecords" LargeRecordOptions Bool where
+   hasField r = (\x -> r{debugLargeRecords = x}, debugLargeRecords r)
 
 {-------------------------------------------------------------------------------
   Extract options from module
@@ -86,7 +98,7 @@ intOptions (RecUpdE expr fields) = do
     opts    <- intOptions expr
     updates <- mapM intUpdate fields
     return $ foldr (.) id updates opts
-intOptions _otherwise =
+intOptions _ =
     Nothing
 
 intUpdate ::

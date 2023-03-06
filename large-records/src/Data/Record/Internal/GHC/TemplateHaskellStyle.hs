@@ -264,31 +264,8 @@ recUpdE = \recExpr -> updRec recExpr . map (uncurry updFld)
 viewRecUpdE ::
      LHsExpr GhcPs
   -> Maybe (LHsExpr GhcPs, [(LRdrName, LHsExpr GhcPs)])
-#if __GLASGOW_HASKELL__ >= 902
-viewRecUpdE (L _ (RecordUpd _ recExpr (Left fields))) =
-#else
 viewRecUpdE (L _ (RecordUpd _ recExpr fields)) =
-#endif
-    (recExpr,) <$> mapM viewFieldUpd fields
-  where
-    viewFieldUpd :: LHsRecUpdField GhcPs -> Maybe (LRdrName, LHsExpr GhcPs)
-#if __GLASGOW_HASKELL__ >= 904
-    viewFieldUpd (L _ (HsFieldBind {
-                           hfbLHS = L _ (Unambiguous _ name)
-                         , hfbRHS = val
-                         , hfbPun = False
-                         })) =
-#else
-    viewFieldUpd (L _ (HsRecField {
-                           hsRecFieldLbl = L _ (Unambiguous _ name)
-                         , hsRecFieldArg = val
-                         , hsRecPun      = False
-                         })) =
-#endif
-
-        Just (reLoc name, val)
-    viewFieldUpd _otherwise =
-        Nothing
+    (recExpr,) <$> simpleRecordUpdates fields
 viewRecUpdE _otherwise = Nothing
 
 pattern RecUpdE :: LHsExpr GhcPs -> [(LRdrName, LHsExpr GhcPs)] -> LHsExpr GhcPs

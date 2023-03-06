@@ -53,22 +53,22 @@ class Let (a :: k) (b :: k)
 -- @Let@ constraints of the right shape. When @Let@ constraints are introduced
 -- manually, the plugin will report a type error if
 --
--- * The left-hand side is not a skolem type variable
+-- * The left-hand side is not a type variable
 --
 -- >>> let aux :: Let Int Int => () ; aux = castEqual () in aux
 -- ...
--- ...Let with non-variable LHS: Int := Int
+-- ...Let with non-variable LHS...
 -- ...
 --
 -- >>> :{
 --   \(x :: a) ->
 --     let
---       y :: Let a Integer => a
---       y = castEqual (1 :: Integer)
+--       y :: Let a Int => a
+--       y = castEqual (1 :: Int)
 --     in y
 -- :}
 -- ...
--- ...Let with non-skolem LHS: a := Integer
+-- ...Let with non-variable LHS...
 -- ...
 --
 -- * The set of let-bindings in scope are cyclic.

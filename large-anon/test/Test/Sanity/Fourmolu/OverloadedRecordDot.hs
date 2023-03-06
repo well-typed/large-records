@@ -22,8 +22,8 @@ tests =
 --
 -- To manually check the output of Fourmolu, use
 --
--- > cabal run fourmolu-preprocessor x test/Test/Sanity/Fourmolu/OverloadedRecordDot.hs /dev/stdout
-{-# OPTIONS_GHC -F -pgmF=fourmolu-preprocessor #-}
+-- > cabal run large-anon-testsuite-fourmolu-preprocessor x test/Test/Sanity/Fourmolu/OverloadedRecordDot.hs /dev/stdout
+{-# OPTIONS_GHC -F -pgmF=large-anon-testsuite-fourmolu-preprocessor #-}
 
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE OverloadedRecordDot #-}

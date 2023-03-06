@@ -26,3 +26,6 @@ data Y a = MkY { _y :: a }
 
 {-# ANN type Z largeRecord #-}
 data Z a (b :: a) = MkZ { _z :: a }
+
+{-# ANN type Empty largeRecord #-}
+data Empty = MkEmpty {}

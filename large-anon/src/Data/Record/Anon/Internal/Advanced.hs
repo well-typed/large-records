@@ -53,6 +53,8 @@ module Data.Record.Anon.Internal.Advanced (
   , cmapM
   , sequenceA
   , sequenceA'
+  , distribute
+
     -- ** Zipping
   , zip
   , zipWith
@@ -340,6 +342,11 @@ sequenceA' = sequenceA . co
   where
     co :: Record m r -> Record (m :.: I) r
     co = noInlineUnsafeCo
+
+distribute :: forall r f g . (Functor f) => KnownFields r => f (Record g r) -> Record (f :.: g) r
+distribute = unsafeFromCanonical . Canon.fromList .(\cs -> fieldVec cs <$> indexes) . fmap toCanonical
+  where indexes = [0.. pred (length $ proxy fieldNames (Proxy @r))]
+        fieldVec cs idx = Comp $ flip Canon.getAtIndex idx <$> cs
 
 pure :: forall f r. KnownFields r => (forall x. f x) -> Record f r
 pure f = unsafeFromCanonical $

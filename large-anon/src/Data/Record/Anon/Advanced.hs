@@ -48,7 +48,7 @@ module Data.Record.Anon.Advanced (
   , cmapM
   , sequenceA
   , sequenceA'
-  , collect
+  , distribute
 
     -- ** Zipping
   , zip
@@ -415,8 +415,8 @@ sequenceA = A.sequenceA
 sequenceA' :: Applicative m => Record m r -> m (Record I r)
 sequenceA' = A.sequenceA'
 
-collect :: forall r f . (Functor f) => KnownFields r => f (Record I r) -> Record f r
-collect = A.collect
+distribute :: forall r f g . (Functor f) => KnownFields r => f (Record g r) -> Record (f :.: g) r
+distribute = A.distribute
 
 -- | Analogue of 'Prelude.zip'
 zip :: Record f r -> Record g r -> Record (Product f g) r

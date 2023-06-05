@@ -1,7 +1,9 @@
-{-# LANGUAGE GADTs            #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators    #-}
-{-# LANGUAGE ViewPatterns     #-}
+{-# LANGUAGE DeriveFunctor       #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE ViewPatterns        #-}
 
 module Test.Prop.Record.Combinators.Simple (tests) where
 
@@ -9,6 +11,7 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.SOP
 
+import qualified Data.Record.Anon          as Anon
 import qualified Data.Record.Anon.Advanced as Anon
 
 import Test.Tasty
@@ -21,15 +24,16 @@ import qualified Test.Prop.Record.Model as Modl
 
 tests :: TestTree
 tests = testGroup "Test.Prop.Record.Combinators.Simple" [
-      testProperty "map"       test_map
-    , testProperty "mapM"      test_mapM
-    , testProperty "zip"       test_zip
-    , testProperty "zipWith"   test_zipWith
-    , testProperty "zipWithM"  test_zipWithM
-    , testProperty "collapse"  test_collapse
-    , testProperty "sequenceA" test_sequenceA
-    , testProperty "pure"      test_pure
-    , testProperty "ap"        test_ap
+      testProperty "map"        test_map
+    , testProperty "mapM"       test_mapM
+    , testProperty "zip"        test_zip
+    , testProperty "zipWith"    test_zipWith
+    , testProperty "zipWithM"   test_zipWithM
+    , testProperty "collapse"   test_collapse
+    , testProperty "sequenceA"  test_sequenceA
+    , testProperty "pure"       test_pure
+    , testProperty "ap"         test_ap
+    , testProperty "distribute" test_distribute
     ]
 
 {-------------------------------------------------------------------------------
@@ -38,6 +42,13 @@ tests = testGroup "Test.Prop.Record.Combinators.Simple" [
 
 pTop :: Proxy Top
 pTop = Proxy
+
+data Pair a = MkPair a a
+  deriving (Show, Eq, Functor)
+
+instance Applicative Pair where
+  pure x = MkPair x x
+  MkPair f1 f2 <*> MkPair x1 x2 = MkPair (f1 x1) (f2 x2)
 
 {-------------------------------------------------------------------------------
   Tests proper
@@ -141,3 +152,27 @@ test_ap (SR2 mf rx ry) =
 
     f :: K Int x -> (K Int -.-> K Int) x
     f (K x) = fn $ \(K y) -> K (x + y)
+
+-- | Test 'Anon.distribute'
+--
+-- We do not have a model implementation, but instead test that
+-- 'Anon.distribute' is right inverse to 'Anon.sequenceA'.
+test_distribute ::
+     SomeRecordPair (K Int) (K Int)
+  -> Property
+test_distribute = \(SR2 fields r1 r2) ->
+    Modl.fieldsKnown fields $
+      go fields r1 r2
+  where
+    go :: forall r.
+         Anon.KnownFields r
+      => Modl.ModelFields r
+      -> Modl.ModelRecord (K Int) r
+      -> Modl.ModelRecord (K Int) r
+      -> Property
+    go fields r1 r2 =
+            rs
+        === Anon.sequenceA (Anon.distribute rs)
+      where
+        rs :: Pair (Anon.Record (K Int) r)
+        rs = MkPair (Modl.toRecord fields r1) (Modl.toRecord fields r2)

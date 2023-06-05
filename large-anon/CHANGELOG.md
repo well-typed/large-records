@@ -1,5 +1,9 @@
 # Revision history for large-anon
 
+## 0.2.1 -- 2023-07-05
+
+* Add `distribute` (Johannes Gerer, #142)
+
 ## 0.2 -- 2023-03-06
 
 * Do not generate imports in the plugin (#129).

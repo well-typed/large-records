@@ -34,6 +34,7 @@ module Test.Prop.Record.Model (
     -- * Constraints
   , ModelSatisfies
   , satisfyAll
+  , fieldsKnown
     -- * Conversion to/from 'Record'
   , toRecord
   , fromRecord
@@ -70,6 +71,7 @@ import qualified Data.SOP as SOP
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)
+
 import qualified Data.Record.Anon.Advanced as Anon
 
 {-------------------------------------------------------------------------------
@@ -122,6 +124,12 @@ satisfyAll _ MF0  k = k
 satisfyAll _ MF1  k = k
 satisfyAll _ MF2  k = k
 satisfyAll _ MF2' k = k
+
+fieldsKnown :: ModelFields r -> (KnownFields r => a) -> a
+fieldsKnown MF0  k = k
+fieldsKnown MF1  k = k
+fieldsKnown MF2  k = k
+fieldsKnown MF2' k = k
 
 {-------------------------------------------------------------------------------
   Conversion from/to model

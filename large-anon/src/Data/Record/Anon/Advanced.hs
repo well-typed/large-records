@@ -49,7 +49,7 @@ module Data.Record.Anon.Advanced (
   , sequenceA
   , sequenceA'
   , distribute
-
+  , distribute'
     -- ** Zipping
   , zip
   , zipWith
@@ -415,8 +415,22 @@ sequenceA = A.sequenceA
 sequenceA' :: Applicative m => Record m r -> m (Record I r)
 sequenceA' = A.sequenceA'
 
-distribute :: forall r f g . (Functor f) => KnownFields r => f (Record g r) -> Record (f :.: g) r
+-- | Distribute
+--
+-- This is a higher kinded version of @distribute@ from
+-- <https://hackage.haskell.org/package/distributive>, and inverse to
+-- 'sequenceA'.
+--
+-- Be careful with this function: if @f@ allows effects, then those effects will
+-- be duplicated whenever any field of the resulting record is accessed. Using
+-- this with @f == Vector@ or @f == Maybe@ is fine, but you almost certainly
+-- don't want to use it with @f == IO@, for example.
+distribute :: (Functor m, KnownFields r) => m (Record f r) -> Record (m :.: f) r
 distribute = A.distribute
+
+-- | Simplified form of 'distribute'.
+distribute' :: (Functor m, KnownFields r) => m (Record I r) -> Record m r
+distribute' = A.distribute'
 
 -- | Analogue of 'Prelude.zip'
 zip :: Record f r -> Record g r -> Record (Product f g) r

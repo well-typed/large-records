@@ -206,10 +206,15 @@ Executable large-anon-testsuite-fourmolu-preprocessor
       -Wall
 
   -- Fourmolu is only compatible with RDP syntax from ghc 9.2 and up.
-  if impl(ghc < 9.2)
+  if impl(ghc < 9.2) || flag(disableFourmoluExec)
     buildable: False
 
 Flag debug
   Description: Enable internal debugging features
+  Default: False
+  Manual: True
+
+Flag disableFourmoluExec
+  Description: Disable executable large-anon-testsuite-fourmolu-preprocessor
   Default: False
   Manual: True

@@ -121,13 +121,14 @@ empty = Diff {
 -- > Diff.get f d c == Canon.get f (Diff.apply d c)
 --
 -- @O(1)@.
+-- or in certain cases @O(n)@.
 get :: (Int, FieldName) -> Diff f -> Canonical f -> f Any
-get (i, f) Diff{..} c =
+get (i, f) d@Diff{..} c =
     case HashMap.lookup f diffNew of
       Just xs -> NE.head xs                          -- inserted  in the diff
       Nothing -> case IntMap.lookup i diffUpd of
                    Just x  -> x                      -- updated   in the diff
-                   Nothing -> Canon.getAtIndex c i   -- unchanged in the diff
+                   Nothing -> Canon.getAtIndex (apply d c) i   -- unchanged in the diff
 
 -- | Update existing field
 --

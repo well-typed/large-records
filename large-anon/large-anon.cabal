@@ -150,6 +150,7 @@ test-suite test-large-anon
       Test.Sanity.RebindableSyntax.Disabled
       Test.Sanity.RebindableSyntax.Enabled
       Test.Sanity.RecordLens
+      Test.Sanity.Regression
       Test.Sanity.Simple
       Test.Sanity.SrcPlugin.WithoutTypelet
       Test.Sanity.SrcPlugin.WithTypelet

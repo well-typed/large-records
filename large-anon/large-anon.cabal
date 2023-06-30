@@ -127,6 +127,7 @@ test-suite test-large-anon
       Test.Infra.MarkStrictness
       Test.Prop.Record.Combinators.Constrained
       Test.Prop.Record.Combinators.Simple
+      Test.Prop.Record.Diff
       Test.Prop.Record.Model
       Test.Prop.Record.Model.Generator
       Test.Prop.Record.Model.Orphans
@@ -161,6 +162,7 @@ test-suite test-large-anon
     , arrows
     , base
     , bytestring
+    , containers
     , large-anon
     , large-generics
     , mtl

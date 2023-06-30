@@ -1,5 +1,6 @@
-{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 {-# LANGUAGE OverloadedLabels #-}
+
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.Regression (tests) where
 
@@ -74,7 +75,7 @@ test_get_applyPending_insert_empty =
 
 -- | Simplest form: just a get after an insert
 --
--- The bug caused this test to segfault.
+-- This test was not affected by the bug.
 test_get_insert_empty :: Assertion
 test_get_insert_empty =
     assertEqual "" "field1" $

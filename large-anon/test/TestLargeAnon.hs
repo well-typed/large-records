@@ -4,6 +4,7 @@ import Test.Tasty
 
 import qualified Test.Prop.Record.Combinators.Constrained
 import qualified Test.Prop.Record.Combinators.Simple
+import qualified Test.Prop.Record.Diff
 import qualified Test.Sanity.AllFields
 import qualified Test.Sanity.Applicative
 import qualified Test.Sanity.BlogPost
@@ -56,7 +57,8 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.Regression.tests
         ]
     , testGroup "Prop" [
-          Test.Prop.Record.Combinators.Simple.tests
+          Test.Prop.Record.Diff.tests
+        , Test.Prop.Record.Combinators.Simple.tests
         , Test.Prop.Record.Combinators.Constrained.tests
         ]
     ]

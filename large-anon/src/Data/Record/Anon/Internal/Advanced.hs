@@ -164,6 +164,10 @@ unsafeFromCanonical = NoPending
 data Field n where
   Field :: (KnownSymbol n, KnownHash n) => Proxy n -> Field n
 
+-- | 'Show' instance relies on the 'IsLabel' instance
+instance Show (Field n) where
+  show (Field p) = "#" ++ symbolVal p
+
 instance (n ~ n', KnownSymbol n, KnownHash n) => IsLabel n' (Field n) where
   fromLabel = Field (Proxy @n)
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
@@ -25,10 +26,16 @@ module Data.Record.Anon.Internal.Util.StrictArray (
 import Prelude hiding (mapM, zipWith)
 
 import Control.Monad (forM_)
-import Data.Primitive.SmallArray
+import Data.Primitive.SmallArray hiding (writeSmallArray, indexSmallArray)
 
-import qualified Control.Monad as Monad
-import qualified Data.Foldable as Foldable
+import qualified Control.Monad             as Monad
+import qualified Data.Foldable             as Foldable
+import qualified Data.Primitive.SmallArray as SmallArray
+
+#ifdef DEBUG
+import GHC.Stack
+import Control.Monad.ST
+#endif
 
 {-------------------------------------------------------------------------------
   Definition
@@ -38,7 +45,8 @@ import qualified Data.Foldable as Foldable
 --
 -- Implemented as a wrapper around a 'SmallArray'.
 --
--- NOTE: None of the operations on 'Vector' do any bounds checking.
+-- NOTE: The operations on 'Vector' do bounds checking only if the @debug@ flag
+-- is enabled.
 --
 -- NOTE: 'Vector' is implemented as a newtype around 'SmallArray', which in turn
 -- is defined as
@@ -188,4 +196,44 @@ forArrayM_ arr f = go 0
 
       | otherwise
       = return ()
+
+{-------------------------------------------------------------------------------
+  Bounds checking (enabled when built with the @debug@ flag set only)
+-------------------------------------------------------------------------------}
+
+indexSmallArray :: SmallArray r -> Int -> r
+indexSmallArray arr n = boundsCheck arr n $
+    SmallArray.indexSmallArray arr n
+
+writeSmallArray :: SmallMutableArray s a -> Int -> a -> ST s ()
+writeSmallArray arr i a = boundsCheckM arr i $
+    SmallArray.writeSmallArray arr i a
+
+#ifdef DEBUG
+boundsCheck :: HasCallStack => SmallArray a -> Int -> r -> r
+boundsCheck arr i k =
+    if 0 <= i && i < sizeofSmallArray arr
+      then k
+      else error $ concat [
+               "StrictArray: index " ++ show i ++ " out of bounds"
+             , " (array size: " ++ show (sizeofSmallArray arr) ++ ")"
+             ]
+#else
+boundsCheck :: SmallArray a -> Int -> r -> r
+boundsCheck _arr _i k = k
+#endif
+
+#ifdef DEBUG
+boundsCheckM :: HasCallStack => SmallMutableArray s a -> Int -> r -> r
+boundsCheckM arr i k =
+    if 0 <= i && i < sizeofSmallMutableArray arr
+      then k
+      else error $ concat [
+               "StrictArray: index " ++ show i ++ " out of bounds"
+             , " (array size: " ++ show (sizeofSmallMutableArray arr) ++ ")"
+             ]
+#else
+boundsCheckM :: SmallMutableArray s a -> Int -> r -> r
+boundsCheckM _arr _i k = k
+#endif
 

@@ -11,10 +11,11 @@ module Data.Record.Anon.Internal.Plugin.TC.Constraints.RowHasField (
 import Data.Void
 import GHC.Stack
 
-import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields, FieldLabel(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRowField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields, FieldLabel(..))
 import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
@@ -143,10 +144,10 @@ solveRowHasField rn orig (L loc hf@CRowHasField{hasFieldLabel = FieldKnown name,
             -- TODO: We should issue an error here rather than leaving the
             -- constraint unsolved: we /know/ the field does not exist
             return (Nothing, [])
-          Just (i, typ) -> do
+          Just info -> do
             eq <- newWanted loc $
                     mkPrimEqPredRole Nominal
                       hasFieldTypeField
-                      typ
-            ev <- evidenceHasField rn hf i
+                      (knownRowFieldInfo info)
+            ev <- evidenceHasField rn hf (knownRowFieldIndex info)
             return (Just (ev, orig), [mkNonCanonical eq])

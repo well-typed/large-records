@@ -20,6 +20,7 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (
 import Prelude hiding (lookup)
 
 import Control.Monad (mzero)
+import Control.Monad.State (State, evalState, state)
 import Data.Foldable (asum)
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
@@ -27,7 +28,7 @@ import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
 
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
-import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..), KnownRowField(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution (ResolvedNames(..))
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
@@ -58,13 +59,13 @@ data FieldLabel =
 
 -- | Return map from field name to type, /if/ all fields are statically known
 allKnown :: Fields -> Maybe (KnownRow Type)
-allKnown
- = go [] . (:[])
+allKnown =
+    go [] . (:[])
   where
     go :: [KnownField Type]
        -> [Fields]
        -> Maybe (KnownRow Type)
-    go acc []       = Just $ KnownRow.fromList (reverse acc)
+    go acc []       = Just $ postprocess (reverse acc)
     go acc (fs:fss) =
         case fs of
           FieldsNil ->
@@ -83,6 +84,20 @@ allKnown
           knownFieldName = nm
         , knownFieldInfo = typ
         }
+
+    -- Assign field indices
+    postprocess :: [KnownField Type] -> KnownRow Type
+    postprocess fields =
+          KnownRow.fromList
+        . flip evalState 0
+        . mapM assignIndex
+        $ fields
+      where
+        assignIndex :: KnownField Type -> State Int (KnownRowField Type)
+        assignIndex field = state $ \ix -> (
+              KnownRow.toKnownRowField field ix
+            , succ ix
+            )
 
 {-------------------------------------------------------------------------------
   Parsing

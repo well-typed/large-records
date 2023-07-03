@@ -100,4 +100,4 @@ computeMetadataOf :: Maybe Type -> KnownRow Type -> TcType
 computeMetadataOf mf r =
     mkPromotedListTy
       (mkTupleTy Boxed [mkTyConTy typeSymbolKindCon, liftedTypeKind])
-      (map (KnownField.toType mf) $ KnownRow.toList r)
+      (map (KnownField.toType mf) $ KnownRow.inRowOrder r)

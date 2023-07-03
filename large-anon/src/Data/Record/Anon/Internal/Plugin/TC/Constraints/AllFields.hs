@@ -11,7 +11,6 @@ module Data.Record.Anon.Internal.Plugin.TC.Constraints.AllFields (
   ) where
 
 import Data.Bifunctor
-import Data.Foldable (toList)
 import Data.Void
 
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
@@ -93,7 +92,7 @@ evidenceAllFields ::
   -> KnownRow (Type, EvVar)
   -> TcPluginM 'Solve EvTerm
 evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
-    fields' <- mapM dictForField (KnownRow.toList fields)
+    fields' <- mapM dictForField (KnownRow.inRowOrder fields)
     return $
       evDataConApp
         (classDataCon clsAllFields)
@@ -149,13 +148,14 @@ solveAllFields rn orig (L loc cr@CAllFields{..}) = do
         return (Nothing, [])
       Just fields -> do
         fields' :: KnownRow (Type, CtEvidence)
-           <- KnownRow.traverse fields $ \_nm typ -> fmap (typ,) $
+           <- KnownRow.traverse fields $ \_nm _ix typ -> fmap (typ,) $
                 newWanted loc $
                   mkAppTy allFieldsTypeConstraint typ
         ev <- evidenceAllFields rn cr $ second getEvVar <$> fields'
         return (
             Just (ev, orig)
-          , map (mkNonCanonical . snd) (toList fields')
+          , map (mkNonCanonical . snd . knownFieldInfo) $
+              KnownRow.inRowOrder fields'
           )
   where
     getEvVar :: CtEvidence -> EvVar

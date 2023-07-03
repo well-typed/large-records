@@ -18,6 +18,8 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (
   , fromList
   , toList
   , visibleMap
+    -- * Query
+  , lookup
     -- * Combinators
   , traverse
   , indexed
@@ -26,7 +28,7 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (
   , isSubRow
   ) where
 
-import Prelude hiding (traverse)
+import Prelude hiding (traverse, lookup)
 import qualified Prelude
 
 import Control.Monad.State (State, evalState, state)
@@ -121,6 +123,17 @@ fromList = go [] 0 HashMap.empty True
                  fs
           where
             name = knownFieldName f
+
+{-------------------------------------------------------------------------------
+  Query
+-------------------------------------------------------------------------------}
+
+lookup :: FieldName -> KnownRow Type -> Maybe (Int, Type)
+lookup field KnownRow{..} =
+    aux <$> HashMap.lookup field knownRecordVisible
+  where
+    aux :: Int -> (Int, Type)
+    aux i = (i, knownFieldInfo (knownRecordVector !! i))
 
 {-------------------------------------------------------------------------------
   Combinators

@@ -10,8 +10,7 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (
     -- * Definition
     Fields     -- opaque
   , FieldLabel(..)
-    -- * Query
-  , lookup
+    -- * Check if all fields are known
   , allKnown
     -- * Parsing
   , parseFields
@@ -54,46 +53,8 @@ data FieldLabel =
   deriving (Eq)
 
 {-------------------------------------------------------------------------------
-  Query
+  Check if all fields are known
 -------------------------------------------------------------------------------}
-
--- | Find field type by name
---
--- Since records are left-biased, we report the /first/ match, independent of
--- what is in the record tail. If however we encounter an unknown (variable)
--- field, we stop the search: even if a later field matches the one we're
--- looking for, the unknown field might too and, crucially, might not have the
--- same type.
---
--- Put another way: unlike in 'checkAllFieldsKnown', we do not insist that /all/
--- fields are known here, but only the fields up to (including) the one we're
--- looking for.
---
--- Returns the index and the type of the field, if found.
-lookup :: FieldName -> Fields -> Maybe (Int, Type)
-lookup nm = go 0 . (:[])
-  where
-    go :: Int -> [Fields] -> Maybe (Int, Type)
-    go _ []       = Nothing
-    go i (fs:fss) =
-        case fs of
-          FieldsNil ->
-            go i fss
-          FieldsVar _ ->
-            -- The moment we encounter a variable (unknown part of the record),
-            -- we must say that the field is unknown (see discussion above)
-            Nothing
-          FieldsCons (Field (FieldKnown nm') typ) fs' ->
-            if nm == nm' then
-              Just (i, typ)
-            else
-              go (succ i) (fs':fss)
-          FieldsCons (Field (FieldVar _) _) _ ->
-            -- We must also stop when we see a field with an unknown name
-            Nothing
-          FieldsMerge l r ->
-            go i (l:r:fss)
-
 
 -- | Return map from field name to type, /if/ all fields are statically known
 allKnown :: Fields -> Maybe (KnownRow Type)

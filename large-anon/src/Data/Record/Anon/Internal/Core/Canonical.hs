@@ -25,10 +25,11 @@ module Data.Record.Anon.Internal.Core.Canonical (
   , getAtIndex
   , setAtIndex
     -- * Conversion
-  , toList
-  , fromList
-  , toVector
-  , fromVector
+  , fromRowOrderList
+  , toRowOrderList
+  , fromRowOrderArray
+  , toRowOrderArray
+  , arrayIndicesInRowOrder
     -- * Basic API
   , insert
   , lens
@@ -47,6 +48,7 @@ module Data.Record.Anon.Internal.Core.Canonical (
   ) where
 
 import Prelude hiding (map, mapM, zipWith, sequenceA, pure)
+import qualified Prelude
 
 import Data.Coerce (coerce)
 import Data.Kind
@@ -63,6 +65,7 @@ import qualified Data.Foldable as Foldable
 import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
 
 import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
+import Data.Primitive (SmallArray)
 
 {-------------------------------------------------------------------------------
   Definition
@@ -125,21 +128,31 @@ setAtIndex fs (Canonical v) = Canonical (v Strict.// co fs)
   Conversion
 -------------------------------------------------------------------------------}
 
--- | From strict vector
-fromVector :: StrictArray Strict.ZeroBasedIndex (f Any) -> Canonical f
-fromVector = Canonical
+-- | From list of fields in row order
+--
+-- @O(n)@.
+fromRowOrderList :: [f Any] -> Canonical f
+fromRowOrderList = Canonical . Strict.fromList
 
 -- | All fields in row order
 --
 -- @O(n)@
-toList :: Canonical f -> [f Any]
-toList = Foldable.toList . toVector
+toRowOrderList :: Canonical f -> [f Any]
+toRowOrderList = Foldable.toList . toVector
 
--- | From list of fields in row order
---
--- @O(n)@.
-fromList :: [f Any] -> Canonical f
-fromList = fromVector . Strict.fromList
+toRowOrderArray :: Canonical f -> SmallArray (f Any)
+toRowOrderArray = Strict.toLazy . toVector
+
+fromRowOrderArray :: SmallArray (f Any) -> Canonical f
+fromRowOrderArray = Canonical . Strict.fromLazy
+
+-- | Given the length of the array, all indices in row order
+arrayIndicesInRowOrder :: Int -> [Int]
+arrayIndicesInRowOrder 0 = []
+arrayIndicesInRowOrder n = Prelude.map (Strict.arrayIndex n) [
+                               Strict.ZeroBasedIndex i
+                             | i <- [0 .. pred n]
+                             ]
 
 {-------------------------------------------------------------------------------
   Basic API

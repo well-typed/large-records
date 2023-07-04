@@ -114,10 +114,9 @@ import Data.Record.Anon.Internal.Reflection (Reflected(..))
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
-import qualified Data.Record.Anon.Internal.Core.Canonical   as Canon
-import qualified Data.Record.Anon.Internal.Core.Diff        as Diff
-import qualified Data.Record.Anon.Internal.Reflection       as Unsafe
-import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
+import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
+import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
+import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
 
 {-------------------------------------------------------------------------------
   Definition
@@ -351,12 +350,12 @@ distribute :: forall r m f.
   => m (Record f r) -> Record (m :.: f) r
 distribute =
       unsafeFromCanonical
-    . Canon.fromList
+    . Canon.fromRowOrderList
     . (\cs -> fieldVec cs <$> indices)
     . fmap toCanonical
   where
     indices :: [Int]
-    indices = [0 .. pred (length $ proxy fieldNames (Proxy @r))]
+    indices = Canon.arrayIndicesInRowOrder (length $ proxy fieldNames (Proxy @r))
 
     fieldVec :: m (Canonical f) -> Int -> (m :.: f) Any
     fieldVec cs idx = Comp $ flip Canon.getAtIndex idx <$> cs
@@ -369,7 +368,8 @@ distribute' = co . distribute
 
 pure :: forall f r. KnownFields r => (forall x. f x) -> Record f r
 pure f = unsafeFromCanonical $
-    Canon.fromList $ Prelude.map (const f) (proxy fieldNames (Proxy @r))
+    Canon.fromRowOrderList $
+      Prelude.map (const f) (proxy fieldNames (Proxy @r))
 
 ap :: Record (f -.-> g) r -> Record f r -> Record g r
 ap (toCanonical -> r) (toCanonical -> r') = unsafeFromCanonical $
@@ -398,7 +398,7 @@ reifyKnownFields :: forall k (r :: Row k) proxy.
   => proxy r -> Record (K String) r
 reifyKnownFields _ =
     unsafeFromCanonical $
-      Canon.fromList $ co $ proxy fieldNames (Proxy @r)
+      Canon.fromRowOrderList $ co $ proxy fieldNames (Proxy @r)
   where
     co :: [String] -> [K String Any]
     co = coerce
@@ -413,7 +413,7 @@ reifyAllFields :: forall k (r :: Row k) (c :: k -> Constraint) proxy.
      AllFields r c
   => proxy c -> Record (Dict c) r
 reifyAllFields _ = unsafeFromCanonical $
-    Canon.fromVector . Strict.fromLazy $
+    Canon.fromRowOrderArray $
       fmap aux $ proxy fieldDicts (Proxy @r)
   where
     aux :: DictAny c -> Dict c Any
@@ -424,7 +424,7 @@ reflectAllFields :: forall k (c :: k -> Constraint) (r :: Row k).
   -> Reflected (AllFields r c)
 reflectAllFields dicts =
     Unsafe.reflectAllFields $ Tagged $
-      fmap aux $ Strict.toLazy $ Canon.toVector $ toCanonical dicts
+      fmap aux $ Canon.toRowOrderArray $ toCanonical dicts
   where
     aux :: Dict c Any -> DictAny c
     aux Dict = DictAny
@@ -445,7 +445,7 @@ reifySubRow =
   where
     ixs :: Record (K Int) r'
     ixs = unsafeFromCanonical $
-            Canon.fromList $ co $ proxy projectIndices (Proxy @'(r, r'))
+           Canon.fromRowOrderList $ co $ proxy projectIndices (Proxy @'(r, r'))
 
     co :: [Int] -> [K Int Any]
     co = coerce
@@ -460,7 +460,7 @@ reflectSubRow :: forall k (r :: Row k) (r' :: Row k).
   -> Reflected (SubRow r r')
 reflectSubRow (toCanonical -> ixs) =
     Unsafe.reflectSubRow $ Tagged $
-      (\inRow@(InRow p) -> aux inRow p) <$> Canon.toList ixs
+      (\inRow@(InRow p) -> aux inRow p) <$> Canon.toRowOrderList ixs
   where
     aux :: forall x n. RowHasField n r x => InRow r x -> Proxy n -> Int
     aux _ _ = proxy rowHasField (Proxy @'(n, r, x))
@@ -493,8 +493,11 @@ data SomeRecord (f :: k -> Type) where
 someRecord :: forall k (f :: k -> Type). [(String, Some f)] -> SomeRecord f
 someRecord fields =
     mkSomeRecord $
-      unsafeFromCanonical . Canon.fromList $
-        Prelude.zipWith aux [0..] (Prelude.map (first someSymbolVal) fields)
+      unsafeFromCanonical . Canon.fromRowOrderList $
+        Prelude.zipWith
+          aux
+          (Canon.arrayIndicesInRowOrder (length fields))
+          (Prelude.map (first someSymbolVal) fields)
   where
     aux :: Int -> (SomeSymbol, Some f) -> Product (InRow r) f Any
     aux i (SomeSymbol n, Some fx) = Pair (unsafeInRow i n) (co fx)
@@ -519,7 +522,7 @@ someRecord fields =
 
 recordToRep :: Record f r -> Rep I (Record f r)
 recordToRep (toCanonical -> r) =
-    Rep $ co . Strict.toLazy . Canon.toVector $ r
+    Rep $ co $ Canon.toRowOrderArray r
   where
     -- Second @Any@ is really (f (Any))
     co :: SmallArray (f Any) -> SmallArray (I Any)
@@ -527,7 +530,7 @@ recordToRep (toCanonical -> r) =
 
 repToRecord :: Rep I (Record f r) -> Record f r
 repToRecord (Rep r) =
-    unsafeFromCanonical $ Canon.fromVector . Strict.fromLazy . co $ r
+    unsafeFromCanonical $ Canon.fromRowOrderArray . co $ r
   where
     -- First @Any@ is really (f Any)@
     co :: SmallArray (I Any) -> SmallArray (f Any)

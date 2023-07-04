@@ -42,7 +42,7 @@ import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 
 import qualified Data.List.NonEmpty as NE
 
-import Data.Record.Anon.Internal.Core.Canonical (Canonical(..))
+import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
 

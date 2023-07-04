@@ -9,6 +9,7 @@ module Data.Record.Anon.Internal.Util.StrictArray (
     -- * Array index
   , ArrayIndex(..)
   , ZeroBasedIndex(..)
+  , ReverseIndex(..)
     -- * Reads
   , (!)
     -- * Conversion
@@ -81,6 +82,14 @@ newtype ZeroBasedIndex = ZeroBasedIndex { getZeroBasedIndex :: Int }
 
 instance ArrayIndex ZeroBasedIndex where
   arrayIndex _size = getZeroBasedIndex
+
+-- | Index from the /end/ of the array
+--
+-- @ReverseIndex 0@ points to the final element.
+newtype ReverseIndex = ReverseIndex { getReverseIndex :: Int }
+
+instance ArrayIndex ReverseIndex where
+  arrayIndex size i = size - 1 - getReverseIndex i
 
 {-------------------------------------------------------------------------------
   Reads

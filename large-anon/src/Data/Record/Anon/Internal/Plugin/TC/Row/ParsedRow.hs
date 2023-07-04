@@ -89,14 +89,14 @@ allKnown =
     postprocess :: [KnownField Type] -> KnownRow Type
     postprocess fields =
           KnownRow.fromList
-        . flip evalState 0
+        . flip evalState (length fields)
         . mapM assignIndex
         $ fields
       where
         assignIndex :: KnownField Type -> State Int (KnownRowField Type)
         assignIndex field = state $ \ix -> (
-              KnownRow.toKnownRowField field ix
-            , succ ix
+              KnownRow.toKnownRowField field (ix - 1)
+            , pred ix
             )
 
 {-------------------------------------------------------------------------------

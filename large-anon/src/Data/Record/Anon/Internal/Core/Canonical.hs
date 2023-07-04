@@ -74,11 +74,20 @@ import Data.Primitive (SmallArray)
 -- | Canonical record representation
 --
 -- Canonicity here refers to the fact that we have no @Diff@ to apply (see
--- "Data.Record.Anonymous.Internal.Diff"). In this case, the record is
--- represented as a strict vector in row order (@large-anon@ is strict by
--- default; lazy records can be achieved using boxing). This order is important:
--- it makes it possible to define functions such as @mapM@ (for which ordering
--- must be well-defined).
+-- "Data.Record.Anonymous.Internal.Diff").
+--
+-- == Order
+--
+-- The record is represented as a strict vector in row order (@large-anon@ is
+-- strict by default; lazy records can be achieved using boxing). This order is
+-- important: it makes it possible to define functions such as @mapM@ (for which
+-- ordering must be well-defined).
+--
+-- /Indices/ into the array however are interpreted from the /end/ of the array.
+-- This ensures that when we insert new elements into the record, the indices of
+-- the already existing fields do not change; see 'Diff' for further discussion.
+--
+-- == Shadowing
 --
 -- Type level shadowing is reflected at the term level: if a record has
 -- duplicate fields in its type, it will have multiple entries for that field
@@ -88,14 +97,16 @@ import Data.Primitive (SmallArray)
 -- adding an API for that is future work. The work by Daan Leijen on scoped
 -- labels might offer some inspiration there.
 --
--- NOTE: When we cite the algorithmic complexity of operations on 'Canonical',
--- we assume that 'HashMap' inserts and lookups are @O(1)@, which they are in
+-- == Note on complexity
+--
+-- When we cite the algorithmic complexity of operations on 'Canonical', we
+-- assume that 'HashMap' inserts and lookups are @O(1)@, which they are in
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
 newtype Canonical (f :: k -> Type) = Canonical {
       -- | To strict vector
-      toVector :: StrictArray Strict.ZeroBasedIndex (f Any)
+      toVector :: StrictArray Strict.ReverseIndex (f Any)
     }
   deriving newtype (Semigroup, Monoid)
 
@@ -111,7 +122,7 @@ deriving instance Show a => Show (Canonical (K a))
 --
 -- @O(1)@.
 getAtIndex :: Canonical f -> Int -> f Any
-getAtIndex (Canonical c) ix = c Strict.! Strict.ZeroBasedIndex ix
+getAtIndex (Canonical c) ix = c Strict.! Strict.ReverseIndex ix
 
 -- | Set fields at the specified indices
 --
@@ -121,7 +132,7 @@ setAtIndex :: [(Int, f Any)] -> Canonical f -> Canonical f
 setAtIndex [] c             = c
 setAtIndex fs (Canonical v) = Canonical (v Strict.// co fs)
   where
-    co :: [(Int, f Any)] -> [(Strict.ZeroBasedIndex, f Any)]
+    co :: [(Int, f Any)] -> [(Strict.ReverseIndex, f Any)]
     co = coerce
 
 {-------------------------------------------------------------------------------
@@ -150,7 +161,7 @@ fromRowOrderArray = Canonical . Strict.fromLazy
 arrayIndicesInRowOrder :: Int -> [Int]
 arrayIndicesInRowOrder 0 = []
 arrayIndicesInRowOrder n = Prelude.map (Strict.arrayIndex n) [
-                               Strict.ZeroBasedIndex i
+                               Strict.ReverseIndex i
                              | i <- [0 .. pred n]
                              ]
 
@@ -187,7 +198,7 @@ lens is (Canonical v) = (
          Strict.update v (zip (co is) $ Foldable.toList v')
     )
   where
-    co :: [Int] -> [Strict.ZeroBasedIndex]
+    co :: [Int] -> [Strict.ReverseIndex]
     co = coerce
 
 {-------------------------------------------------------------------------------

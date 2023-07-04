@@ -111,7 +111,6 @@ import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Internal.Core.Diff (Diff)
 import Data.Record.Anon.Internal.Core.FieldName
 import Data.Record.Anon.Internal.Reflection (Reflected(..))
-import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
@@ -446,9 +445,9 @@ reifySubRow =
   where
     ixs :: Record (K Int) r'
     ixs = unsafeFromCanonical $
-            Canon.fromVector $ co $ proxy projectIndices (Proxy @'(r, r'))
+            Canon.fromList $ co $ proxy projectIndices (Proxy @'(r, r'))
 
-    co :: StrictArray Int -> StrictArray (K Int Any)
+    co :: [Int] -> [K Int Any]
     co = coerce
 
     aux :: forall x. K Int x -> K String x -> InRow r x
@@ -461,7 +460,7 @@ reflectSubRow :: forall k (r :: Row k) (r' :: Row k).
   -> Reflected (SubRow r r')
 reflectSubRow (toCanonical -> ixs) =
     Unsafe.reflectSubRow $ Tagged $
-      (\inRow@(InRow p) -> aux inRow p) <$> Canon.toVector ixs
+      (\inRow@(InRow p) -> aux inRow p) <$> Canon.toList ixs
   where
     aux :: forall x n. RowHasField n r x => InRow r x -> Proxy n -> Int
     aux _ _ = proxy rowHasField (Proxy @'(n, r, x))

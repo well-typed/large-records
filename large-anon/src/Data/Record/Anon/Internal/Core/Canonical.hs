@@ -46,7 +46,7 @@ module Data.Record.Anon.Internal.Core.Canonical (
 #endif
   ) where
 
-import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
+import Prelude hiding (map, mapM, zipWith, sequenceA, pure)
 
 import Data.Coerce (coerce)
 import Data.Kind
@@ -164,12 +164,12 @@ insert new = prepend
 -- order of the new record.
 --
 -- @O(n)@ (in both directions)
-lens :: StrictArray Int -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
+lens :: [Int] -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
 lens is (Canonical v) = (
       Canonical $
         Strict.backpermute v is
     , \(Canonical v') -> Canonical $
-         Strict.update v (Strict.zipWith (,) is v')
+         Strict.update v (zip is $ Foldable.toList v')
     )
 
 {-------------------------------------------------------------------------------

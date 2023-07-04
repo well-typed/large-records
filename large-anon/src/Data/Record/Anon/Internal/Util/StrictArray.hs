@@ -123,19 +123,28 @@ instance Functor StrictArray where
     newSize :: Int
     newSize = sizeofSmallArray as
 
-update :: StrictArray a -> StrictArray (Int, a) -> StrictArray a
-update (WrapLazy as) (WrapLazy as') = WrapLazy $ runSmallArray $ do
+update ::
+     StrictArray a  -- ^ Array to update
+  -> [(Int, a)]     -- ^ Indices into the original array and their new value
+                    --   (the order of this list is irrelevant)
+  -> StrictArray a
+update (WrapLazy as) as' = WrapLazy $ runSmallArray $ do
     r <- thawSmallArray as 0 newSize
-    forArrayM_ as' $ \_i (j, !a) -> writeSmallArray r j a
+    forM_ as' $ \(j, !a) -> writeSmallArray r j a
     return r
   where
     newSize :: Int
     newSize = sizeofSmallArray as
 
-backpermute :: StrictArray a -> StrictArray Int -> StrictArray a
-backpermute (WrapLazy as) (WrapLazy is) = WrapLazy $ runSmallArray $ do
+backpermute ::
+     StrictArray a   -- ^ Array to take values from
+  -> [Int]           -- ^ List of indices into the source array,
+                     --   in the order they must appear in the result array
+  -> StrictArray a
+backpermute (WrapLazy as) is = WrapLazy $ runSmallArray $ do
     r <- newSmallArray newSize undefined
-    forArrayM_ is $ \i j -> writeSmallArray r i $! indexSmallArray as j
+    forM_ (zip [0..] is) $ \(i, j) ->
+      writeSmallArray r i $! indexSmallArray as j
     return r
   where
     newSize :: Int

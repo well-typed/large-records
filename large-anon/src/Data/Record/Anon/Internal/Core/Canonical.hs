@@ -20,7 +20,7 @@
 -- > import Data.Record.Anonymous.Internal.Canonical (Canonical)
 -- > import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 module Data.Record.Anon.Internal.Core.Canonical (
-    Canonical(..)
+    Canonical -- opaque
     -- * Indexed access
   , getAtIndex
   , setAtIndex
@@ -90,7 +90,10 @@ import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
-newtype Canonical (f :: k -> Type) = Canonical (StrictArray (f Any))
+newtype Canonical (f :: k -> Type) = Canonical {
+      -- | To strict vector
+      toVector :: StrictArray Strict.ZeroBasedIndex (f Any)
+    }
   deriving newtype (Semigroup, Monoid)
 
 type role Canonical representational
@@ -105,7 +108,7 @@ deriving instance Show a => Show (Canonical (K a))
 --
 -- @O(1)@.
 getAtIndex :: Canonical f -> Int -> f Any
-getAtIndex (Canonical c) ix = c Strict.! ix
+getAtIndex (Canonical c) ix = c Strict.! Strict.ZeroBasedIndex ix
 
 -- | Set fields at the specified indices
 --
@@ -113,18 +116,17 @@ getAtIndex (Canonical c) ix = c Strict.! ix
 -- @O(1)@ if the list of updates is empty.
 setAtIndex :: [(Int, f Any)] -> Canonical f -> Canonical f
 setAtIndex [] c             = c
-setAtIndex fs (Canonical v) = Canonical (v Strict.// fs)
+setAtIndex fs (Canonical v) = Canonical (v Strict.// co fs)
+  where
+    co :: [(Int, f Any)] -> [(Strict.ZeroBasedIndex, f Any)]
+    co = coerce
 
 {-------------------------------------------------------------------------------
   Conversion
 -------------------------------------------------------------------------------}
 
--- | To strict vector
-toVector :: Canonical f -> StrictArray (f Any)
-toVector (Canonical v) = v
-
 -- | From strict vector
-fromVector :: StrictArray (f Any) -> Canonical f
+fromVector :: StrictArray Strict.ZeroBasedIndex (f Any) -> Canonical f
 fromVector = Canonical
 
 -- | All fields in row order
@@ -167,10 +169,13 @@ insert new = prepend
 lens :: [Int] -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
 lens is (Canonical v) = (
       Canonical $
-        Strict.backpermute v is
+        Strict.backpermute v (co is)
     , \(Canonical v') -> Canonical $
-         Strict.update v (zip is $ Foldable.toList v')
+         Strict.update v (zip (co is) $ Foldable.toList v')
     )
+  where
+    co :: [Int] -> [Strict.ZeroBasedIndex]
+    co = coerce
 
 {-------------------------------------------------------------------------------
   Simple (non-constrained) combinators

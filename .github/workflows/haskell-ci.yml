@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.16.3
+# version: 0.16.5
 #
-# REGENDATA ("0.16.3",["github","cabal.project"])
+# REGENDATA ("0.16.5",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -37,14 +37,9 @@ jobs:
             compilerVersion: 9.4.5
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.4.4
+          - compiler: ghc-9.2.8
             compilerKind: ghc
-            compilerVersion: 9.4.4
-            setup-method: ghcup
-            allow-failure: false
-          - compiler: ghc-9.2.7
-            compilerKind: ghc
-            compilerVersion: 9.2.7
+            compilerVersion: 9.2.8
             setup-method: ghcup
             allow-failure: false
           - compiler: ghc-9.0.2
@@ -179,12 +174,12 @@ jobs:
       - name: initial cabal.project for sdist
         run: |
           touch cabal.project
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project ; fi
+          echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project
           if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90400 || HCNUMVER >= 90405)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project ; fi
+          echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
           cat cabal.project
       - name: sdist
         run: |
@@ -211,24 +206,24 @@ jobs:
           rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_generics}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records}" >> cabal.project ; fi
+          echo "packages: ${PKGDIR_large_generics}" >> cabal.project
+          echo "packages: ${PKGDIR_large_records}" >> cabal.project
           if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90400 || HCNUMVER >= 90405)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_anon}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "packages: ${PKGDIR_typelet}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "package large-generics" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
+          echo "packages: ${PKGDIR_large_anon}" >> cabal.project
+          echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project
+          echo "packages: ${PKGDIR_typelet}" >> cabal.project
+          echo "package large-generics" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package large-records" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
           if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90400 || HCNUMVER >= 90405)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90400 || HCNUMVER >= 90405)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "package typelet" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90405)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
+          echo "package large-anon" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package beam-large-records" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package typelet" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
           source-repository-package
             type:     git

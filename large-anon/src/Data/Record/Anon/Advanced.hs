@@ -332,8 +332,7 @@ lens = A.lens
 -- :}
 --
 -- 'HasField' constraints can be resolved for merged records, subject to the
--- same condition discussed in 'get': all fields in the record must be known up
--- to the requested field (in case of shadowing). So the record /may/ be fully
+-- same condition discussed in 'get': all fields in the record must be fully
 -- known:
 --
 -- >>> :{
@@ -341,15 +340,7 @@ lens = A.lens
 -- example r = get #b r
 -- :}
 --
--- but it doesn't have to be:
---
--- >>> :{
--- example :: Record I (Merge '[ "a" := Bool ] r) -> I Bool
--- example = get #a
--- :}
---
--- However, just like in the case of unknown fields (see example in 'get'),
--- if earlier parts in the record are unknown we get type error:
+-- If parts in the record are unknown we get type error:
 --
 -- >>> :{
 -- example :: Record I (Merge r '[ "b" := Char ]) -> I Char

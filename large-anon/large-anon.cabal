@@ -190,9 +190,12 @@ test-suite test-large-anon
   -- if impl(ghc >= 8.10)
   --   ghc-options: -Wunused-packages
 
-  if impl(ghc >= 9.2)
+  if impl(ghc >= 9.2) && !flag(disableFourmoluExec)
     build-tool-depends:
       large-anon:large-anon-testsuite-fourmolu-preprocessor
+  else
+    cpp-options:
+      -DNO_FOURMOLU
 
 Executable large-anon-testsuite-fourmolu-preprocessor
   main-is:
@@ -209,10 +212,15 @@ Executable large-anon-testsuite-fourmolu-preprocessor
       -Wall
 
   -- Fourmolu is only compatible with RDP syntax from ghc 9.2 and up.
-  if impl(ghc < 9.2)
+  if impl(ghc < 9.2) || flag(disableFourmoluExec)
     buildable: False
 
 Flag debug
   Description: Enable internal debugging features
+  Default: False
+  Manual: True
+
+Flag disableFourmoluExec
+  Description: Disable executable large-anon-testsuite-fourmolu-preprocessor
   Default: False
   Manual: True

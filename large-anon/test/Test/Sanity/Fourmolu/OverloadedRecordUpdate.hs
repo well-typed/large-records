@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-#if __GLASGOW_HASKELL__ < 902
+#ifdef NO_FOURMOLU
 
 module Test.Sanity.Fourmolu.OverloadedRecordUpdate (tests) where
 
@@ -10,7 +10,7 @@ import Test.Tasty.HUnit
 tests :: TestTree
 tests =
     testCaseInfo "Test.Sanity.Fourmolu.OverloadedRecordUpdate" $
-      return "Skipped for ghc < 9.2"
+      return "Fourmolu tests disabled"
 
 #else
 

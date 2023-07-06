@@ -11,12 +11,14 @@ module Data.Record.Anon.Internal.Plugin.TC.Constraints.RowHasField (
 import Data.Void
 import GHC.Stack
 
-import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields, FieldLabel(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRowField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields, FieldLabel(..))
 import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
+import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
 
 {-------------------------------------------------------------------------------
@@ -132,15 +134,20 @@ solveRowHasField ::
 solveRowHasField _ _ (L _ CRowHasField{hasFieldLabel = FieldVar _}) =
     return (Nothing, [])
 solveRowHasField rn orig (L loc hf@CRowHasField{hasFieldLabel = FieldKnown name, ..}) =
-    case ParsedRow.lookup name hasFieldRecord of
+    case ParsedRow.allKnown hasFieldRecord of
       Nothing ->
-        -- TODO: If the record is fully known, we should issue a custom type
-        -- error here rather than leaving the constraint unsolved
+        -- Not all fields are known; leave the constraint unsolved
         return (Nothing, [])
-      Just (i, typ) -> do
-        eq <- newWanted loc $
-                mkPrimEqPredRole Nominal
-                  hasFieldTypeField
-                  typ
-        ev <- evidenceHasField rn hf i
-        return (Just (ev, orig), [mkNonCanonical eq])
+      Just allKnown ->
+        case KnownRow.lookup name allKnown of
+          Nothing ->
+            -- TODO: We should issue an error here rather than leaving the
+            -- constraint unsolved: we /know/ the field does not exist
+            return (Nothing, [])
+          Just info -> do
+            eq <- newWanted loc $
+                    mkPrimEqPredRole Nominal
+                      hasFieldTypeField
+                      (knownRowFieldInfo info)
+            ev <- evidenceHasField rn hf (knownRowFieldIndex info)
+            return (Just (ev, orig), [mkNonCanonical eq])

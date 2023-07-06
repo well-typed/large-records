@@ -20,7 +20,6 @@ import qualified Data.Record.Anon.Advanced as Anon
 tests :: TestTree
 tests = testGroup "Test.Sanity.Merging" [
       testCase "concrete"     test_concrete
-    , testCase "polymorphic"  test_polymorphic
     , testCase "eqConstraint" test_eqConstraint
     ]
 
@@ -57,19 +56,6 @@ test_concrete :: Assertion
 test_concrete = do
     assertEqual "get" (I True) $ Anon.get #a ab
     assertEqual "set" ab'      $ Anon.set #a (I False) ab
-
-test_polymorphic :: Assertion
-test_polymorphic = do
-    assertEqual "get" (I 1) $ getPoly ab
-    assertEqual "set" ab'   $ setPoly ab
-  where
-    getPoly :: Record I (Merge [ "a" := Bool, "b" := Int ] r) -> I Int
-    getPoly = Anon.get #b
-
-    setPoly ::
-         Record I (Merge [ "a" := Bool, "b" := Int ] r)
-      -> Record I (Merge [ "a" := Bool, "b" := Int ] r)
-    setPoly = Anon.set #a (I False)
 
 -- | Test that type equalities are handled correctly
 test_eqConstraint :: Assertion

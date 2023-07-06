@@ -14,23 +14,33 @@
 module Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (
     -- * Definition
     KnownRow(..)
-    -- * Construction
+    -- * Fields
+  , KnownRowField(..)
+  , FieldIndex
+  , toKnownRowField
+  , fromKnownRowField
+    -- * Conversion
   , fromList
-  , toList
+  , inRowOrder
+  , inFieldOrder
   , visibleMap
+    -- * Query
+  , lookup
     -- * Combinators
   , traverse
-  , indexed
     -- * Check for subrows
   , NotSubRow(..)
-  , isSubRow
+  , Source(..)
+  , Target(..)
+  , isSubRowOf
   ) where
 
-import Prelude hiding (traverse)
+import Prelude hiding (traverse, lookup)
 import qualified Prelude
 
-import Control.Monad.State (State, evalState, state)
 import Data.Either (partitionEithers)
+import Data.List (sortBy)
+import Data.Ord (comparing)
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
@@ -52,7 +62,7 @@ data KnownRow a = KnownRow {
       -- order are not considered equal by the library (merely isomorphic).
       --
       -- May contain duplicates (if fields are shadowed).
-      knownRecordVector :: [KnownField a]
+      knownRecordVector :: [KnownRowField a]
 
       -- | "Most recent" position of each field in the record
       --
@@ -69,16 +79,57 @@ data KnownRow a = KnownRow {
       -- 'False' if some fields are shadowed.
     , knownRecordAllVisible :: Bool
     }
-  deriving (Functor, Foldable)
+  deriving (Functor)
+
+{-------------------------------------------------------------------------------
+  Individual fields
+-------------------------------------------------------------------------------}
+
+-- | Field in a known row
+data KnownRowField a = KnownRowField {
+      knownRowFieldName  :: FieldName
+    , knownRowFieldIndex :: FieldIndex
+    , knownRowFieldInfo  :: a
+    }
+  deriving (Functor)
+
+type FieldIndex = Int
+
+-- | Drop index information
+fromKnownRowField :: KnownRowField a -> KnownField a
+fromKnownRowField field = KnownField {
+      knownFieldName = knownRowFieldName field
+    , knownFieldInfo = knownRowFieldInfo field
+    }
+
+-- | Add index information
+toKnownRowField :: KnownField a -> FieldIndex -> KnownRowField a
+toKnownRowField field ix = KnownRowField {
+      knownRowFieldName  = knownFieldName field
+    , knownRowFieldInfo  = knownFieldInfo field
+    , knownRowFieldIndex = ix
+    }
 
 {-------------------------------------------------------------------------------
   Conversion
 -------------------------------------------------------------------------------}
 
-toList :: KnownRow a -> [KnownField a]
-toList = knownRecordVector
+-- | List of all fields, in row order
+--
+-- This may /NOT/ be the order in which the fields are stored.
+inRowOrder :: KnownRow a -> [KnownField a]
+inRowOrder =
+      map fromKnownRowField
+    . knownRecordVector
 
-visibleMap :: KnownRow a -> SmallHashMap FieldName (KnownField a)
+-- | List of all fields, ordered by fieldIndex
+inFieldOrder :: KnownRow a -> [KnownField a]
+inFieldOrder =
+      map fromKnownRowField
+    . sortBy (comparing knownRowFieldIndex)
+    . knownRecordVector
+
+visibleMap :: KnownRow a -> SmallHashMap FieldName (KnownRowField a)
 visibleMap KnownRow{..} = (knownRecordVector !!) <$> knownRecordVisible
 
 {-------------------------------------------------------------------------------
@@ -86,18 +137,18 @@ visibleMap KnownRow{..} = (knownRecordVector !!) <$> knownRecordVisible
 -------------------------------------------------------------------------------}
 
 fromList :: forall a.
-     [KnownField a]
+     [KnownRowField a]
      -- ^ Fields of the record in the order they appear in the row types
      --
      -- In other words, fields earlier in the list shadow later fields.
   -> KnownRow a
 fromList = go [] 0 HashMap.empty True
   where
-    go :: [KnownField a]  -- Acc fields, reverse order (includes shadowed)
-       -> Int             -- Next index
-       -> SmallHashMap FieldName Int -- Acc indices of visible fields
-       -> Bool            -- Are all already processed fields visible?
-       -> [KnownField a]  -- To process
+    go :: [KnownRowField a]           -- Acc fields, rev order (incl shadowed)
+       -> Int                         -- Next index
+       -> SmallHashMap FieldName Int  -- Acc indices of visible fields
+       -> Bool                        -- All already processed fields visible?
+       -> [KnownRowField a]           -- To process
        -> KnownRow a
     go accFields !nextIndex !accVisible !accAllVisible = \case
         [] -> KnownRow {
@@ -120,7 +171,16 @@ fromList = go [] 0 HashMap.empty True
                  accAllVisible
                  fs
           where
-            name = knownFieldName f
+            name = knownRowFieldName f
+
+{-------------------------------------------------------------------------------
+  Query
+-------------------------------------------------------------------------------}
+
+lookup :: FieldName -> KnownRow a -> Maybe (KnownRowField a)
+lookup field KnownRow{..} =
+    (knownRecordVector !!) <$>
+      HashMap.lookup field knownRecordVisible
 
 {-------------------------------------------------------------------------------
   Combinators
@@ -129,28 +189,20 @@ fromList = go [] 0 HashMap.empty True
 traverse :: forall m a b.
      Applicative m
   => KnownRow a
-  -> (FieldName -> a -> m b)
+  -> (FieldName -> FieldIndex -> a -> m b)
   -> m (KnownRow b)
 traverse KnownRow{..} f =
     mkRow <$> Prelude.traverse f' knownRecordVector
   where
-    mkRow :: [KnownField b] -> KnownRow b
+    mkRow :: [KnownRowField b] -> KnownRow b
     mkRow updated = KnownRow {
           knownRecordVector     = updated
         , knownRecordVisible    = knownRecordVisible
         , knownRecordAllVisible = knownRecordAllVisible
         }
 
-    f' :: KnownField a -> m (KnownField b)
-    f' (KnownField nm info) = KnownField nm <$> f nm info
-
-indexed :: KnownRow a -> KnownRow (Int, a)
-indexed r =
-    flip evalState 0 $
-      traverse r (const aux)
-  where
-    aux :: a -> State Int (Int, a)
-    aux a = state $ \i -> ((i, a), succ i)
+    f' :: KnownRowField a -> m (KnownRowField b)
+    f' (KnownRowField nm ix info) = KnownRowField nm ix <$> f nm ix info
 
 {-------------------------------------------------------------------------------
   Check for projections
@@ -158,7 +210,7 @@ indexed r =
 
 -- | Reason why we cannot failed to prove 'SubRow'
 data NotSubRow =
-    -- | We do not support precords with shadowed fields
+    -- | We do not support records with shadowed fields
     --
     -- Since these fields can only come from the source record, and shadowed
     -- fields in the source record are invisible, shadowed fields in the target
@@ -172,40 +224,46 @@ data NotSubRow =
   | SourceMissesFields [FieldName]
   deriving (Show, Eq)
 
+newtype Source a = Source { getSource :: a } deriving (Show, Functor)
+newtype Target a = Target { getTarget :: a } deriving (Show, Functor)
+
 -- | Check if one row is a subrow of another
 --
--- If it is, returns the paired information from both records in the order of
--- the /target/ record along with the index into the /source/ record.
+-- If it is, returns the paired information from both records. If @a@ is a
+-- subrow of @b@, then we can project from @b@ to @a@; for improved clarity,
+-- we therefore mark @a@ as the /target/ and @b@ as the source.
+--
+-- Results are returned in row order of the target.
 --
 -- See 'NotSubRow' for some discussion of shadowing.
-isSubRow :: forall a b.
-     KnownRow a
-  -> KnownRow b
-  -> Either NotSubRow [(Int, (a, b))]
-isSubRow recordA recordB =
-    if not (knownRecordAllVisible recordB) then
+isSubRowOf :: forall a b.
+     KnownRow a  -- ^ Target
+  -> KnownRow b  -- ^ Source
+  -> Either NotSubRow [(Target (KnownField a), Source (KnownRowField b))]
+target `isSubRowOf` source =
+    if not (knownRecordAllVisible target) then
       Left TargetContainsShadowedFields
     else
         uncurry checkMissing
       . partitionEithers
-      $ map findInA (toList recordB)
+        -- It doesn't matter which order we process 'target' in:
+      $ map findInSrc (inRowOrder target)
   where
-    findInA :: KnownField b -> Either FieldName (Int, (a, b))
-    findInA b =
-        case HashMap.lookup (knownFieldName b) (visibleMap (indexed recordA)) of
-          Nothing -> Left  $ knownFieldName b
-          Just a  -> Right $ distrib (knownFieldInfo a, knownFieldInfo b)
+    findInSrc ::
+         KnownField a
+      -> Either FieldName (Target (KnownField a), Source (KnownRowField b))
+    findInSrc a =
+        case HashMap.lookup (knownFieldName a) (visibleMap source) of
+          Nothing -> Left  $ knownFieldName a
+          Just b  -> Right $ (Target a, Source b)
 
     checkMissing :: [FieldName] -> x -> Either NotSubRow x
     checkMissing []      x = Right x
     checkMissing missing _ = Left $ SourceMissesFields missing
-
-    distrib :: ((i, a), b) -> (i, (a, b))
-    distrib ((i, a), b) = (i, (a, b))
 
 {-------------------------------------------------------------------------------
   Outputable
 -------------------------------------------------------------------------------}
 
 instance Outputable a => Outputable (KnownRow a) where
-  ppr = ppr . toList
+  ppr = ppr . inRowOrder

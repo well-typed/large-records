@@ -42,7 +42,7 @@ import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 
 import qualified Data.List.NonEmpty as NE
 
-import Data.Record.Anon.Internal.Core.Canonical (Canonical(..))
+import Data.Record.Anon.Internal.Core.Canonical (Canonical)
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
 
@@ -75,7 +75,10 @@ import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
 data Diff (f :: k -> Type) = Diff {
       -- | New values of existing fields
       --
-      -- Indices refer to the original record.
+      -- Indices refer to the /canonical/ record. Since new fields are inserted
+      -- /after/ old fields, field indices do not change as we insert new
+      -- fields. This is key to the soundness of having a 'Canonical' and 'Diff'
+      -- pair.
       diffUpd :: !(IntMap (f Any))
 
       -- | List of new fields, most recently inserted first
@@ -98,7 +101,8 @@ deriving instance Show a => Show (Diff (K a))
 {-------------------------------------------------------------------------------
   Incremental construction
 
-  TODO: We should property check these postconditions.
+  The post-conditions are verified (albeit somewhat implicitly) in
+  "Test.Prop.Record.Diff".
 -------------------------------------------------------------------------------}
 
 -- | Empty difference

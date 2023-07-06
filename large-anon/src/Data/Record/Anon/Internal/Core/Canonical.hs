@@ -20,15 +20,16 @@
 -- > import Data.Record.Anonymous.Internal.Canonical (Canonical)
 -- > import qualified Data.Record.Anonymous.Internal.Canonical as Canon
 module Data.Record.Anon.Internal.Core.Canonical (
-    Canonical(..)
+    Canonical -- opaque
     -- * Indexed access
   , getAtIndex
   , setAtIndex
     -- * Conversion
-  , toList
-  , fromList
-  , toVector
-  , fromVector
+  , fromRowOrderList
+  , toRowOrderList
+  , fromRowOrderArray
+  , toRowOrderArray
+  , arrayIndicesInRowOrder
     -- * Basic API
   , insert
   , lens
@@ -46,7 +47,8 @@ module Data.Record.Anon.Internal.Core.Canonical (
 #endif
   ) where
 
-import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
+import Prelude hiding (map, mapM, zipWith, sequenceA, pure)
+import qualified Prelude
 
 import Data.Coerce (coerce)
 import Data.Kind
@@ -63,6 +65,7 @@ import qualified Data.Foldable as Foldable
 import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
 
 import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
+import Data.Primitive (SmallArray)
 
 {-------------------------------------------------------------------------------
   Definition
@@ -71,11 +74,20 @@ import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 -- | Canonical record representation
 --
 -- Canonicity here refers to the fact that we have no @Diff@ to apply (see
--- "Data.Record.Anonymous.Internal.Diff"). In this case, the record is
--- represented as a strict vector in row order (@large-anon@ is strict by
--- default; lazy records can be achieved using boxing). This order is important:
--- it makes it possible to define functions such as @mapM@ (for which ordering
--- must be well-defined).
+-- "Data.Record.Anonymous.Internal.Diff").
+--
+-- == Order
+--
+-- The record is represented as a strict vector in row order (@large-anon@ is
+-- strict by default; lazy records can be achieved using boxing). This order is
+-- important: it makes it possible to define functions such as @mapM@ (for which
+-- ordering must be well-defined).
+--
+-- /Indices/ into the array however are interpreted from the /end/ of the array.
+-- This ensures that when we insert new elements into the record, the indices of
+-- the already existing fields do not change; see 'Diff' for further discussion.
+--
+-- == Shadowing
 --
 -- Type level shadowing is reflected at the term level: if a record has
 -- duplicate fields in its type, it will have multiple entries for that field
@@ -85,12 +97,17 @@ import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
 -- adding an API for that is future work. The work by Daan Leijen on scoped
 -- labels might offer some inspiration there.
 --
--- NOTE: When we cite the algorithmic complexity of operations on 'Canonical',
--- we assume that 'HashMap' inserts and lookups are @O(1)@, which they are in
+-- == Note on complexity
+--
+-- When we cite the algorithmic complexity of operations on 'Canonical', we
+-- assume that 'HashMap' inserts and lookups are @O(1)@, which they are in
 -- practice (especially given the relatively small size of typical records),
 -- even if theoretically they are @O(log n)@. See also the documentation of
 -- "Data.HashMap.Strict".
-newtype Canonical (f :: k -> Type) = Canonical (StrictArray (f Any))
+newtype Canonical (f :: k -> Type) = Canonical {
+      -- | To strict vector
+      toVector :: StrictArray Strict.ReverseIndex (f Any)
+    }
   deriving newtype (Semigroup, Monoid)
 
 type role Canonical representational
@@ -105,7 +122,7 @@ deriving instance Show a => Show (Canonical (K a))
 --
 -- @O(1)@.
 getAtIndex :: Canonical f -> Int -> f Any
-getAtIndex (Canonical c) ix = c Strict.! ix
+getAtIndex (Canonical c) ix = c Strict.! Strict.ReverseIndex ix
 
 -- | Set fields at the specified indices
 --
@@ -113,31 +130,40 @@ getAtIndex (Canonical c) ix = c Strict.! ix
 -- @O(1)@ if the list of updates is empty.
 setAtIndex :: [(Int, f Any)] -> Canonical f -> Canonical f
 setAtIndex [] c             = c
-setAtIndex fs (Canonical v) = Canonical (v Strict.// fs)
+setAtIndex fs (Canonical v) = Canonical (v Strict.// co fs)
+  where
+    co :: [(Int, f Any)] -> [(Strict.ReverseIndex, f Any)]
+    co = coerce
 
 {-------------------------------------------------------------------------------
   Conversion
 -------------------------------------------------------------------------------}
 
--- | To strict vector
-toVector :: Canonical f -> StrictArray (f Any)
-toVector (Canonical v) = v
-
--- | From strict vector
-fromVector :: StrictArray (f Any) -> Canonical f
-fromVector = Canonical
+-- | From list of fields in row order
+--
+-- @O(n)@.
+fromRowOrderList :: [f Any] -> Canonical f
+fromRowOrderList = Canonical . Strict.fromList
 
 -- | All fields in row order
 --
 -- @O(n)@
-toList :: Canonical f -> [f Any]
-toList = Foldable.toList . toVector
+toRowOrderList :: Canonical f -> [f Any]
+toRowOrderList = Foldable.toList . toVector
 
--- | From list of fields in row order
---
--- @O(n)@.
-fromList :: [f Any] -> Canonical f
-fromList = fromVector . Strict.fromList
+toRowOrderArray :: Canonical f -> SmallArray (f Any)
+toRowOrderArray = Strict.toLazy . toVector
+
+fromRowOrderArray :: SmallArray (f Any) -> Canonical f
+fromRowOrderArray = Canonical . Strict.fromLazy
+
+-- | Given the length of the array, all indices in row order
+arrayIndicesInRowOrder :: Int -> [Int]
+arrayIndicesInRowOrder 0 = []
+arrayIndicesInRowOrder n = Prelude.map (Strict.arrayIndex n) [
+                               Strict.ReverseIndex i
+                             | i <- [0 .. pred n]
+                             ]
 
 {-------------------------------------------------------------------------------
   Basic API
@@ -164,13 +190,16 @@ insert new = prepend
 -- order of the new record.
 --
 -- @O(n)@ (in both directions)
-lens :: StrictArray Int -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
+lens :: [Int] -> Canonical f -> (Canonical f, Canonical f -> Canonical f)
 lens is (Canonical v) = (
       Canonical $
-        Strict.backpermute v is
+        Strict.backpermute v (co is)
     , \(Canonical v') -> Canonical $
-         Strict.update v (Strict.zipWith (,) is v')
+         Strict.update v (zip (co is) $ Foldable.toList v')
     )
+  where
+    co :: [Int] -> [Strict.ReverseIndex]
+    co = coerce
 
 {-------------------------------------------------------------------------------
   Simple (non-constrained) combinators

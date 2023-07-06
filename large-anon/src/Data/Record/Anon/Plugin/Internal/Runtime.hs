@@ -58,10 +58,6 @@ import GHC.Exts (Any)
 import GHC.TypeLits
 import Unsafe.Coerce (unsafeCoerce)
 
-import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
-
-import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
-
 {-------------------------------------------------------------------------------
   IMPLEMENTATION NOTE
 
@@ -262,10 +258,10 @@ class SubRow (r :: Row k) (r' :: Row k) where
 
 -- | In order of the fields in the /target/ record, the index in the /source/
 type DictSubRow k (r :: Row k) (r' :: Row k) =
-       Tagged '(r, r') (StrictArray Int)
+       Tagged '(r, r') [Int]
 
 evidenceSubRow :: forall k r r'. [Int] -> DictSubRow k r r'
-evidenceSubRow = Tagged . Strict.fromList
+evidenceSubRow = Tagged
 
 {-------------------------------------------------------------------------------
   Utility

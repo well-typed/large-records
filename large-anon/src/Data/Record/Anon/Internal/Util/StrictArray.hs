@@ -1,10 +1,15 @@
 {-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 
 module Data.Record.Anon.Internal.Util.StrictArray (
     StrictArray -- opaque
+    -- * Array index
+  , ArrayIndex(..)
+  , ZeroBasedIndex(..)
+  , ReverseIndex(..)
     -- * Reads
   , (!)
     -- * Conversion
@@ -25,10 +30,16 @@ module Data.Record.Anon.Internal.Util.StrictArray (
 import Prelude hiding (mapM, zipWith)
 
 import Control.Monad (forM_)
-import Data.Primitive.SmallArray
+import Control.Monad.ST
+import Data.Primitive.SmallArray hiding (writeSmallArray, indexSmallArray)
 
-import qualified Control.Monad as Monad
-import qualified Data.Foldable as Foldable
+import qualified Control.Monad             as Monad
+import qualified Data.Foldable             as Foldable
+import qualified Data.Primitive.SmallArray as SmallArray
+
+#ifdef DEBUG
+import GHC.Stack
+#endif
 
 {-------------------------------------------------------------------------------
   Definition
@@ -38,7 +49,8 @@ import qualified Data.Foldable as Foldable
 --
 -- Implemented as a wrapper around a 'SmallArray'.
 --
--- NOTE: None of the operations on 'Vector' do any bounds checking.
+-- NOTE: The operations on 'Vector' do bounds checking only if the @debug@ flag
+-- is enabled.
 --
 -- NOTE: 'Vector' is implemented as a newtype around 'SmallArray', which in turn
 -- is defined as
@@ -55,49 +67,71 @@ import qualified Data.Foldable as Foldable
 --
 -- This means that 'Record' will have /direct/ access (no pointers) to the
 -- 'SmallArray#'.
-newtype StrictArray a = WrapLazy { unwrapLazy :: SmallArray a }
+newtype StrictArray i a = WrapLazy { unwrapLazy :: SmallArray a }
   deriving newtype (Show, Eq, Foldable, Semigroup, Monoid)
+
+{-------------------------------------------------------------------------------
+  Array index
+-------------------------------------------------------------------------------}
+
+class ArrayIndex i where
+  -- | Compute 0-based index from @i@, given the size of the array
+  arrayIndex :: Int -> i -> Int
+
+newtype ZeroBasedIndex = ZeroBasedIndex { getZeroBasedIndex :: Int }
+
+instance ArrayIndex ZeroBasedIndex where
+  arrayIndex _size = getZeroBasedIndex
+
+-- | Index from the /end/ of the array
+--
+-- @ReverseIndex 0@ points to the final element.
+newtype ReverseIndex = ReverseIndex { getReverseIndex :: Int }
+
+instance ArrayIndex ReverseIndex where
+  arrayIndex size i = size - 1 - getReverseIndex i
 
 {-------------------------------------------------------------------------------
   Reads
 -------------------------------------------------------------------------------}
 
-(!) :: StrictArray a -> Int -> a
+(!) :: ArrayIndex i => StrictArray i a -> i -> a
 (!) = indexSmallArray . unwrapLazy
 
 {-------------------------------------------------------------------------------
   Conversion
 -------------------------------------------------------------------------------}
 
-fromList :: [a] -> StrictArray a
+fromList :: [a] -> StrictArray i a
 fromList as = fromListN (length as) as
 
-fromListN :: Int -> [a] -> StrictArray a
+fromListN :: Int -> [a] -> StrictArray i a
 fromListN n as = WrapLazy $ runSmallArray $ do
     r <- newSmallArray n undefined
     forM_ (zip [0..] as) $ \(i, !a) ->
-      writeSmallArray r i a
+      writeSmallArray r (ZeroBasedIndex i) a
     return r
 
-fromLazy :: forall a. SmallArray a -> StrictArray a
+fromLazy :: forall i a. SmallArray a -> StrictArray i a
 fromLazy v = go 0
   where
-    go :: Int -> StrictArray a
+    go :: Int -> StrictArray i a
     go i
       | i < sizeofSmallArray v
-      = let !_a = indexSmallArray v i in go (succ i)
+      = let !_a = indexSmallArray v (ZeroBasedIndex i)
+        in go (succ i)
 
       | otherwise
       = WrapLazy v
 
-toLazy :: StrictArray a -> SmallArray a
+toLazy :: StrictArray i a -> SmallArray a
 toLazy = unwrapLazy
 
 {-------------------------------------------------------------------------------
   Non-monadic combinators
 -------------------------------------------------------------------------------}
 
-instance Functor StrictArray where
+instance Functor (StrictArray i) where
   fmap f (WrapLazy as) = WrapLazy $ runSmallArray $ do
       r <- newSmallArray newSize undefined
       forArrayM_ as $ \i a -> writeSmallArray r i $! f a
@@ -106,7 +140,7 @@ instance Functor StrictArray where
       newSize :: Int
       newSize = sizeofSmallArray as
 
-(//) :: StrictArray a -> [(Int, a)] -> StrictArray a
+(//) :: ArrayIndex i => StrictArray i a -> [(i, a)] -> StrictArray i a
 (//) (WrapLazy as) as' = WrapLazy $ runSmallArray $ do
     r <- thawSmallArray as 0 newSize
     forM_ as' $ \(i, !a) -> writeSmallArray r i a
@@ -115,30 +149,44 @@ instance Functor StrictArray where
     newSize :: Int
     newSize = sizeofSmallArray as
 
-update :: StrictArray a -> StrictArray (Int, a) -> StrictArray a
-update (WrapLazy as) (WrapLazy as') = WrapLazy $ runSmallArray $ do
+update ::
+     ArrayIndex i
+  => StrictArray i a  -- ^ Array to update
+  -> [(i, a)]         -- ^ Indices into the original array and their new value
+                      --   (the order of this list is irrelevant)
+  -> StrictArray i a
+update (WrapLazy as) as' = WrapLazy $ runSmallArray $ do
     r <- thawSmallArray as 0 newSize
-    forArrayM_ as' $ \_i (j, !a) -> writeSmallArray r j a
+    forM_ as' $ \(j, !a) -> writeSmallArray r j a
     return r
   where
     newSize :: Int
     newSize = sizeofSmallArray as
 
-backpermute :: StrictArray a -> StrictArray Int -> StrictArray a
-backpermute (WrapLazy as) (WrapLazy is) = WrapLazy $ runSmallArray $ do
+backpermute ::
+     ArrayIndex i
+  => StrictArray i a   -- ^ Array to take values from
+  -> [i]               -- ^ List of indices into the source array,
+                       --   in the order they must appear in the result array
+  -> StrictArray i a
+backpermute (WrapLazy as) is = WrapLazy $ runSmallArray $ do
     r <- newSmallArray newSize undefined
-    forArrayM_ is $ \i j -> writeSmallArray r i $! indexSmallArray as j
+    forM_ (zip [0..] is) $ \(i, j) ->
+      writeSmallArray r (ZeroBasedIndex i) $! indexSmallArray as j
     return r
   where
     newSize :: Int
     newSize = length is
 
-zipWith :: (a -> b -> c) -> StrictArray a -> StrictArray b -> StrictArray c
+zipWith ::
+     (a -> b -> c)
+  -> StrictArray i a -> StrictArray i b -> StrictArray i c
 zipWith f (WrapLazy as) (WrapLazy bs) = WrapLazy $ runSmallArray $ do
     r <- newSmallArray newSize undefined
     forM_ [0 .. newSize - 1] $ \i -> do
-      let !c = f (indexSmallArray as i) (indexSmallArray bs i)
-      writeSmallArray r i c
+      let !c = f (indexSmallArray as (ZeroBasedIndex i))
+                 (indexSmallArray bs (ZeroBasedIndex i))
+      writeSmallArray r (ZeroBasedIndex i) c
     return r
   where
     newSize :: Int
@@ -154,9 +202,9 @@ zipWith f (WrapLazy as) (WrapLazy bs) = WrapLazy $ runSmallArray $ do
   (through the monadic combinators on 'Record'), we prefer to avoid it.
 -------------------------------------------------------------------------------}
 
-mapM :: forall m a b.
+mapM :: forall m i a b.
      Applicative m
-  => (a -> m b) -> StrictArray a -> m (StrictArray b)
+  => (a -> m b) -> StrictArray i a -> m (StrictArray i b)
 mapM f (WrapLazy as) =
     fromListN newSize <$>
       traverse f (Foldable.toList as)
@@ -166,7 +214,8 @@ mapM f (WrapLazy as) =
 
 zipWithM ::
      Applicative m
-  => (a -> b -> m c) -> StrictArray a -> StrictArray b -> m (StrictArray c)
+  => (a -> b -> m c)
+  -> StrictArray i a -> StrictArray i b -> m (StrictArray i c)
 zipWithM f (WrapLazy as) (WrapLazy bs) = do
     fromListN newSize <$>
       Monad.zipWithM f (Foldable.toList as) (Foldable.toList bs)
@@ -178,14 +227,64 @@ zipWithM f (WrapLazy as) (WrapLazy bs) = do
   Internal auxiliary
 -------------------------------------------------------------------------------}
 
-forArrayM_ :: forall m a. Monad m => SmallArray a -> (Int -> a -> m ()) -> m ()
+forArrayM_ :: forall m a.
+     Monad m
+  => SmallArray a -> (ZeroBasedIndex -> a -> m ()) -> m ()
 forArrayM_ arr f = go 0
   where
     go :: Int -> m ()
     go i
-      | i < sizeofSmallArray arr
-      = f i (indexSmallArray arr i) >> go (succ i)
+      | i < sizeofSmallArray arr = do
+          f (ZeroBasedIndex i) (indexSmallArray arr (ZeroBasedIndex i))
+          go (succ i)
+      | otherwise =
+          return ()
 
-      | otherwise
-      = return ()
+{-------------------------------------------------------------------------------
+  Interpreting 'ArrayIndex'
+
+  Bounds checking is only enabled when built with the @debug@ flag set.
+-------------------------------------------------------------------------------}
+
+indexSmallArray :: ArrayIndex i => SmallArray r -> i -> r
+indexSmallArray arr i = boundsCheck arr i' $
+    SmallArray.indexSmallArray arr i'
+  where
+    i' :: Int
+    i' = arrayIndex (sizeofSmallArray arr) i
+
+writeSmallArray :: ArrayIndex i => SmallMutableArray s a -> i -> a -> ST s ()
+writeSmallArray arr i a = boundsCheckM arr i' $
+    SmallArray.writeSmallArray arr i' a
+  where
+    i' :: Int
+    i' = arrayIndex (sizeofSmallMutableArray arr) i
+
+#ifdef DEBUG
+boundsCheck :: HasCallStack => SmallArray a -> Int -> r -> r
+boundsCheck arr i k =
+    if 0 <= i && i < sizeofSmallArray arr
+      then k
+      else error $ concat [
+               "StrictArray: index " ++ show i ++ " out of bounds"
+             , " (array size: " ++ show (sizeofSmallArray arr) ++ ")"
+             ]
+#else
+boundsCheck :: SmallArray a -> Int -> r -> r
+boundsCheck _arr _i k = k
+#endif
+
+#ifdef DEBUG
+boundsCheckM :: HasCallStack => SmallMutableArray s a -> Int -> r -> r
+boundsCheckM arr i k =
+    if 0 <= i && i < sizeofSmallMutableArray arr
+      then k
+      else error $ concat [
+               "StrictArray: index " ++ show i ++ " out of bounds"
+             , " (array size: " ++ show (sizeofSmallMutableArray arr) ++ ")"
+             ]
+#else
+boundsCheckM :: SmallMutableArray s a -> Int -> r -> r
+boundsCheckM _arr _i k = k
+#endif
 

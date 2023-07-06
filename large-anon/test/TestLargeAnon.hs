@@ -4,6 +4,7 @@ import Test.Tasty
 
 import qualified Test.Prop.Record.Combinators.Constrained
 import qualified Test.Prop.Record.Combinators.Simple
+import qualified Test.Prop.Record.Diff
 import qualified Test.Sanity.AllFields
 import qualified Test.Sanity.Applicative
 import qualified Test.Sanity.BlogPost
@@ -22,6 +23,7 @@ import qualified Test.Sanity.PolyKinds
 import qualified Test.Sanity.RebindableSyntax.Disabled
 import qualified Test.Sanity.RebindableSyntax.Enabled
 import qualified Test.Sanity.RecordLens
+import qualified Test.Sanity.Regression
 import qualified Test.Sanity.Simple
 import qualified Test.Sanity.SrcPlugin.WithoutTypelet
 import qualified Test.Sanity.SrcPlugin.WithTypelet
@@ -52,9 +54,11 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.RebindableSyntax.Enabled.tests
         , Test.Sanity.Fourmolu.OverloadedRecordDot.tests
         , Test.Sanity.Fourmolu.OverloadedRecordUpdate.tests
+        , Test.Sanity.Regression.tests
         ]
     , testGroup "Prop" [
-          Test.Prop.Record.Combinators.Simple.tests
+          Test.Prop.Record.Diff.tests
+        , Test.Prop.Record.Combinators.Simple.tests
         , Test.Prop.Record.Combinators.Constrained.tests
         ]
     ]

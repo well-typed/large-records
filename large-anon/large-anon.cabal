@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-anon
-version:            0.2.1
+version:            0.3.0
 synopsis:           Scalable anonymous records
 description:        The @large-anon@ package provides support for anonymous
                     records in Haskell, with a focus on compile-time (and
@@ -12,7 +12,7 @@ maintainer:         edsko@well-typed.com
 category:           Records
 extra-source-files: CHANGELOG.md
                     test/Test/Sanity/RebindableSyntax/Tests.hs
-tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.7 || ==9.4.5
+tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.5
 
 library
   exposed-modules:
@@ -127,6 +127,7 @@ test-suite test-large-anon
       Test.Infra.MarkStrictness
       Test.Prop.Record.Combinators.Constrained
       Test.Prop.Record.Combinators.Simple
+      Test.Prop.Record.Diff
       Test.Prop.Record.Model
       Test.Prop.Record.Model.Generator
       Test.Prop.Record.Model.Orphans
@@ -150,6 +151,7 @@ test-suite test-large-anon
       Test.Sanity.RebindableSyntax.Disabled
       Test.Sanity.RebindableSyntax.Enabled
       Test.Sanity.RecordLens
+      Test.Sanity.Regression
       Test.Sanity.Simple
       Test.Sanity.SrcPlugin.WithoutTypelet
       Test.Sanity.SrcPlugin.WithTypelet
@@ -160,6 +162,7 @@ test-suite test-large-anon
     , arrows
     , base
     , bytestring
+    , containers
     , large-anon
     , large-generics
     , mtl

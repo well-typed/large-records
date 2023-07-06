@@ -10,8 +10,7 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (
     -- * Definition
     Fields     -- opaque
   , FieldLabel(..)
-    -- * Query
-  , lookup
+    -- * Check if all fields are known
   , allKnown
     -- * Parsing
   , parseFields
@@ -21,6 +20,7 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (
 import Prelude hiding (lookup)
 
 import Control.Monad (mzero)
+import Control.Monad.State (State, evalState, state)
 import Data.Foldable (asum)
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
@@ -28,7 +28,7 @@ import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
 
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
-import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..), KnownRowField(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution (ResolvedNames(..))
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
@@ -54,56 +54,18 @@ data FieldLabel =
   deriving (Eq)
 
 {-------------------------------------------------------------------------------
-  Query
+  Check if all fields are known
 -------------------------------------------------------------------------------}
-
--- | Find field type by name
---
--- Since records are left-biased, we report the /first/ match, independent of
--- what is in the record tail. If however we encounter an unknown (variable)
--- field, we stop the search: even if a later field matches the one we're
--- looking for, the unknown field might too and, crucially, might not have the
--- same type.
---
--- Put another way: unlike in 'checkAllFieldsKnown', we do not insist that /all/
--- fields are known here, but only the fields up to (including) the one we're
--- looking for.
---
--- Returns the index and the type of the field, if found.
-lookup :: FieldName -> Fields -> Maybe (Int, Type)
-lookup nm = go 0 . (:[])
-  where
-    go :: Int -> [Fields] -> Maybe (Int, Type)
-    go _ []       = Nothing
-    go i (fs:fss) =
-        case fs of
-          FieldsNil ->
-            go i fss
-          FieldsVar _ ->
-            -- The moment we encounter a variable (unknown part of the record),
-            -- we must say that the field is unknown (see discussion above)
-            Nothing
-          FieldsCons (Field (FieldKnown nm') typ) fs' ->
-            if nm == nm' then
-              Just (i, typ)
-            else
-              go (succ i) (fs':fss)
-          FieldsCons (Field (FieldVar _) _) _ ->
-            -- We must also stop when we see a field with an unknown name
-            Nothing
-          FieldsMerge l r ->
-            go i (l:r:fss)
-
 
 -- | Return map from field name to type, /if/ all fields are statically known
 allKnown :: Fields -> Maybe (KnownRow Type)
-allKnown
- = go [] . (:[])
+allKnown =
+    go [] . (:[])
   where
     go :: [KnownField Type]
        -> [Fields]
        -> Maybe (KnownRow Type)
-    go acc []       = Just $ KnownRow.fromList (reverse acc)
+    go acc []       = Just $ postprocess (reverse acc)
     go acc (fs:fss) =
         case fs of
           FieldsNil ->
@@ -122,6 +84,20 @@ allKnown
           knownFieldName = nm
         , knownFieldInfo = typ
         }
+
+    -- Assign field indices
+    postprocess :: [KnownField Type] -> KnownRow Type
+    postprocess fields =
+          KnownRow.fromList
+        . flip evalState (length fields)
+        . mapM assignIndex
+        $ fields
+      where
+        assignIndex :: KnownField Type -> State Int (KnownRowField Type)
+        assignIndex field = state $ \ix -> (
+              KnownRow.toKnownRowField field (ix - 1)
+            , pred ix
+            )
 
 {-------------------------------------------------------------------------------
   Parsing

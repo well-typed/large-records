@@ -11,11 +11,11 @@ module Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownFields (
 
 import Data.Void
 
-import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow)
-import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow)
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
 import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownField as KnownField
@@ -85,7 +85,7 @@ evidenceKnownFields ::
   -> KnownRow a
   -> TcPluginM 'Solve EvTerm
 evidenceKnownFields ResolvedNames{..} CKnownFields{..} r = do
-    fields <- mapM KnownField.toExpr (KnownRow.toList r)
+    fields <- mapM KnownField.toExpr (KnownRow.inRowOrder r)
     return $
       evDataConApp
         (classDataCon clsKnownFields)

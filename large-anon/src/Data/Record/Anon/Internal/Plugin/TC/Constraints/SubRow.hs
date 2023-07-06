@@ -10,10 +10,12 @@ module Data.Record.Anon.Internal.Plugin.TC.Constraints.SubRow (
 import Control.Monad (forM)
 import Data.Void
 
-import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (Source(..), Target (..), KnownRowField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
 import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
@@ -89,7 +91,7 @@ parseSubRow tcs rn@ResolvedNames{..} =
 evidenceSubRow ::
      ResolvedNames
   -> CSubRow
-  -> [Int]
+  -> [(Target (KnownField Type), Source (KnownRowField Type))]
   -> TcPluginM 'Solve EvTerm
 evidenceSubRow ResolvedNames{..} CSubRow{..} fields = do
     return $
@@ -99,7 +101,7 @@ evidenceSubRow ResolvedNames{..} CSubRow{..} fields = do
         [ mkCoreApps (Var idEvidenceSubRow) $ concat [
               map Type typeArgsEvidence
             , [ mkListExpr intTy $
-                  map (mkUncheckedIntExpr . fromIntegral) fields ]
+                  map (mkUncheckedIntExpr . fromIntegral) indices ]
             ]
         ]
   where
@@ -109,6 +111,10 @@ evidenceSubRow ResolvedNames{..} CSubRow{..} fields = do
         , subrowTypeLHS
         , subrowTypeRHS
         ]
+
+    -- Indices into the source array, in the order of the target array
+    indices :: [Int]
+    indices = map (knownRowFieldIndex . getSource . snd) fields
 
 {-------------------------------------------------------------------------------
   Solver
@@ -124,11 +130,14 @@ solveSubRow rn orig (L loc proj@CSubRow{..}) =
          , ParsedRow.allKnown subrowParsedRHS
          ) of
       (Just lhs, Just rhs) ->
-        case KnownRow.isSubRow lhs rhs of
+        case rhs `KnownRow.isSubRowOf` lhs of
           Right inBoth -> do
-            eqs <- forM inBoth $ \(_i, (l, r)) ->
-                     newWanted loc $ mkPrimEqPredRole Nominal l r
-            ev  <- evidenceSubRow rn proj (map fst inBoth)
+            eqs <- forM inBoth $ \(Target r, Source l) -> newWanted loc $
+                     mkPrimEqPredRole
+                       Nominal
+                       (knownRowFieldInfo l)
+                       (knownFieldInfo r)
+            ev  <- evidenceSubRow rn proj inBoth
             return (Just (ev, orig), map mkNonCanonical eqs)
           Left _err ->
             -- TODO: Return a custom error message

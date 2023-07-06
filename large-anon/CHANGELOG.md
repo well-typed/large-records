@@ -17,6 +17,8 @@
   support did not extend to other constraints, it was probably not very useful
   anyway; `large-anon` is quite explicit about not supporting inductive
   reasoning.
+* Add `disableFourmoluExec` flag to disable the Fourmolu tests in the test suite
+  (#145; together with Johannes Gerer).
 
 ## 0.2.1 -- 2023-06-05
 

@@ -40,3 +40,6 @@ package beam-large-records
 
 package typelet
   tests: True
+
+-- allow newer beam-core ghc-prim
+allow-newer: all

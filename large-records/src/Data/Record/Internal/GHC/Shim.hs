@@ -165,6 +165,11 @@ import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 
 #endif
 
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+import Language.Haskell.Syntax.Basic (FieldLabelString (..))
+import qualified GHC.Types.Basic
+#endif
+
 {-------------------------------------------------------------------------------
   Name resolution
 -------------------------------------------------------------------------------}
@@ -227,7 +232,10 @@ lookupOrigIO env modl occ = lookupNameCache (hsc_NC env) modl occ
 importDecl :: ModuleName -> Bool -> LImportDecl GhcPs
 importDecl name qualified = noLocA $ ImportDecl {
       ideclExt       = defExt
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+#else
     , ideclSourceSrc = NoSourceText
+#endif
     , ideclName      = noLocA name
 #if __GLASGOW_HASKELL__ >= 904
     , ideclPkgQual   = NoRawPkgQual
@@ -235,9 +243,16 @@ importDecl name qualified = noLocA $ ImportDecl {
     , ideclPkgQual   = Nothing
 #endif
     , ideclSafe      = False
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+    , ideclImportList = Nothing
+#else
     , ideclImplicit  = False
+#endif
     , ideclAs        = Nothing
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+#else
     , ideclHiding    = Nothing
+#endif
 #if __GLASGOW_HASKELL__ < 810
     , ideclQualified = qualified
 #else
@@ -270,7 +285,11 @@ type HsModule = GHC.HsModule GhcPs
 type HsModule = GHC.HsModule
 #endif
 
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+type LHsModule = Located (HsModule GhcPs)
+#else
 type LHsModule = Located HsModule
+#endif
 type LRdrName  = Located RdrName
 
 {-------------------------------------------------------------------------------
@@ -331,7 +350,16 @@ instance HasDefaultExt NoExtField where
   defExt = noExtField
 #endif
 
-#if __GLASGOW_HASKELL__ >= 900
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+instance HasDefaultExt (LayoutInfo GhcPs) where
+  defExt = NoLayoutInfo
+instance HasDefaultExt XImportDeclPass where
+  defExt = XImportDeclPass EpAnnNotUsed NoSourceText True {- implicit -}
+instance HasDefaultExt GHC.Types.Basic.Origin where
+  defExt = Generated
+instance HasDefaultExt SourceText where
+  defExt = NoSourceText
+#elif __GLASGOW_HASKELL__ >= 900
 instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
 #endif
@@ -559,7 +587,11 @@ simpleRecordUpdates =
     isSingleLabel :: FieldLabelStrings GhcPs -> Maybe LRdrName
     isSingleLabel (FieldLabelStrings labels) =
         case labels of
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+          [L _ (DotFieldOcc _ (L l (FieldLabelString label)))] ->
+#else
           [L _ (DotFieldOcc _ (L l label))] ->
+#endif
             Just $ reLoc $ L l (Unqual $ mkVarOccFS label)
           _otherwise ->
             Nothing

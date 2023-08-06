@@ -39,6 +39,8 @@ module Data.Record.Plugin (
   , plugin
   ) where
 
+import Control.Monad
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Except
 import Control.Monad.Trans.Writer.CPS
 import Data.List (intersperse)
@@ -75,7 +77,10 @@ import GHC.Driver.Errors.Types (GhcMessage(GhcUnknownMessage))
 import GHC.Types.Error (mkPlainError, mkMessages, mkPlainDiagnostic)
 import GHC.Utils.Error (mkMsgEnvelope, mkErrorMsgEnvelope)
 #endif
-
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+import GHC.Types.Error (UnknownDiagnostic(..))
+import GHC.Driver.Config.Diagnostic (initPrintConfig)
+#endif
 {-------------------------------------------------------------------------------
   Top-level: the plugin proper
 -------------------------------------------------------------------------------}
@@ -213,6 +218,12 @@ issueError l errMsg = do
 #if __GLASGOW_HASKELL__ == 902
     throwOneError $
       mkErr l neverQualify (mkDecorated [errMsg])
+#elif MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainError [] errMsg)
 #elif __GLASGOW_HASKELL__ >= 904
     throwOneError $
       mkErrorMsgEnvelope
@@ -232,6 +243,16 @@ issueWarning l errMsg = do
     logger <- getLogger
     liftIO $ printOrThrowWarnings logger dynFlags . bag $
       mkWarnMsg l neverQualify errMsg
+#elif MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+    logger <- getLogger
+    dflags <- getDynFlags
+    let print_config = initPrintConfig dflags
+    liftIO $ printOrThrowDiagnostics logger print_config (initDiagOpts dynFlags) . mkMessages . bag $
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
 #elif __GLASGOW_HASKELL__ >= 904
     logger <- getLogger
     liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $

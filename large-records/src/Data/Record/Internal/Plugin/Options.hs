@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DerivingStrategies    #-}
@@ -67,7 +68,11 @@ instance HasField "debugLargeRecords" LargeRecordOptions Bool where
 -- | Extract all 'LargeRecordOptions' in a module
 --
 -- Additionally returns the location of the ANN pragma.
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+getLargeRecordOptions :: HsModule GhcPs -> Map String [(SrcSpan, LargeRecordOptions)]
+#else
 getLargeRecordOptions :: HsModule -> Map String [(SrcSpan, LargeRecordOptions)]
+#endif
 getLargeRecordOptions =
       Map.fromListWith (++)
     . map (second (:[]))

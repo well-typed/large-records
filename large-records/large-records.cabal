@@ -47,7 +47,7 @@ library
       base            >= 4.13   && < 4.18
     , containers      >= 0.6.2  && < 0.7
     , mtl             >= 2.2.1  && < 2.3
-    , primitive       >= 0.7    && < 0.8
+    , primitive       >= 0.8    && < 0.9
     , syb             >= 0.7    && < 0.8
     , record-hasfield >= 1.0    && < 1.1
 

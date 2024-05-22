@@ -289,7 +289,11 @@ listE es = inheritLoc es $ ExplicitList defExt
 lamE :: NonEmpty (LPat GhcPs) -> LHsExpr GhcPs -> LHsExpr GhcPs
 lamE pats body = inheritLoc body $
     HsLam defExt $
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+      MG defExt (inheritLoc body [inheritLoc body match])
+#else
       MG defExt (inheritLoc body [inheritLoc body match]) Generated
+#endif
   where
     match :: Match GhcPs (LHsExpr GhcPs)
     match = Match defExt LambdaExpr (NE.toList pats) (simpleGHRSs body)
@@ -301,7 +305,11 @@ lamE1 p = lamE (p :| [])
 -- | Equivalent of 'Language.Haskell.TH.Lib.caseE'
 caseE :: LHsExpr GhcPs -> [(LPat GhcPs, LHsExpr GhcPs)] -> LHsExpr GhcPs
 caseE x alts = inheritLoc x $
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+    HsCase defExt x (MG defExt (inheritLoc x (map mkAlt alts)))
+#else
     HsCase defExt x (MG defExt (inheritLoc x (map mkAlt alts)) Generated)
+#endif
   where
     mkAlt :: (LPat GhcPs, LHsExpr GhcPs) -> LMatch GhcPs (LHsExpr GhcPs)
     mkAlt (pat, body) = inheritLoc x $
@@ -314,6 +322,9 @@ appsE = foldl' appE
 -- | Equivalent of 'Language.Haskell.TH.Lib.appT'
 appTypeE :: LHsExpr GhcPs -> LHsType GhcPs -> LHsExpr GhcPs
 appTypeE expr typ = inheritLoc expr $
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+    HsAppType noExtField expr noHsTok (HsWC defExt typ)
+#else
     HsAppType
 #if __GLASGOW_HASKELL__ >= 902
       (toSrcSpan expr)
@@ -322,7 +333,7 @@ appTypeE expr typ = inheritLoc expr $
 #endif
       expr
       (HsWC defExt typ)
-
+#endif
 -- | Equivalent of 'Language.Haskell.TH.Lib.tupE'
 tupE :: NonEmpty (LHsExpr GhcPs) -> LHsExpr GhcPs
 tupE xs = inheritLoc xs $
@@ -353,7 +364,11 @@ parensT :: LHsType GhcPs -> LHsType GhcPs
 parensT = noLocA . HsParTy defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.litT'
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+litT :: HsTyLit GhcPs -> LHsType GhcPs
+#else
 litT :: HsTyLit -> LHsType GhcPs
+#endif
 litT = noLocA . HsTyLit defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varT'
@@ -604,7 +619,10 @@ dataD typeName tyVars cons derivs = inheritLoc typeName $
       , tcdFixity   = Prefix
       , tcdDataDefn = HsDataDefn {
             dd_ext     = defExt
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+#else
           , dd_ND      = DataType
+#endif
 #if __GLASGOW_HASKELL__ >= 902
           , dd_ctxt    = Nothing
 #else
@@ -612,7 +630,11 @@ dataD typeName tyVars cons derivs = inheritLoc typeName $
 #endif
           , dd_cType   = Nothing
           , dd_kindSig = Nothing
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+          , dd_cons    = DataTypeCons False cons
+#else
           , dd_cons    = cons
+#endif
           , dd_derivs  = inheritLoc typeName derivs
           }
       }
@@ -635,15 +657,22 @@ viewDataD
            , tcdTyVars   = HsQTvs {hsq_explicit = tyVars}
            , tcdFixity   = Prefix
            , tcdDataDefn = HsDataDefn {
-                   dd_ND      = DataType
-#if __GLASGOW_HASKELL__ >= 902
-                 , dd_ctxt    = Nothing
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
 #else
-                 , dd_ctxt    = L _ []
+                   dd_ND      = DataType,
+#endif
+#if __GLASGOW_HASKELL__ >= 902
+                   dd_ctxt    = Nothing
+#else
+                   dd_ctxt    = L _ []
 #endif
                  , dd_cType   = Nothing
                  , dd_kindSig = Nothing
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+                 , dd_cons    = DataTypeCons False cons
+#else
                  , dd_cons    = cons
+#endif
 #if __GLASGOW_HASKELL__ >= 902
                  , dd_derivs  = derivs
 #else
@@ -746,6 +775,9 @@ classD ::
 classD = \ctx name clsVars sigs -> inheritLoc name $
     TyClD defExt $ ClassDecl {
         tcdCExt   = defExt
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+      , tcdLayout = NoLayoutInfo
+#endif
 #if __GLASGOW_HASKELL__ >= 902
       , tcdCtxt   = Just (inheritLoc name ctx)
 #else
@@ -821,14 +853,22 @@ pattern TypeAnnotation name <- (viewTypeAnnotation -> Just name)
 -- | Equivalent of 'Language.Haskell.TH.Lib.pragAnnD'
 pragAnnD :: AnnProvenancePs -> LHsExpr GhcPs -> AnnDecl GhcPs
 pragAnnD prov value =
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+    HsAnnotation defExt prov value
+#else
     HsAnnotation
       defExt
       NoSourceText
       prov
       value
+#endif
 
 viewPragAnnD :: AnnDecl GhcPs -> (AnnProvenancePs, LHsExpr GhcPs)
+#if MIN_VERSION_GLASGOW_HASKELL(9,6,0,0)
+viewPragAnnD (HsAnnotation _ prov value) = (prov, value)
+#else
 viewPragAnnD (HsAnnotation _ _ prov value) = (prov, value)
+#endif
 #if __GLASGOW_HASKELL__ < 900
 viewPragAnnD _ = panic "viewPragAnnD"
 #endif
@@ -881,5 +921,3 @@ simpleGHRSs body =
     GRHSs defExt
           [inheritLoc body $ GRHS defExt [] body]
           (inheritLoc body $ EmptyLocalBinds defExt)
-
-

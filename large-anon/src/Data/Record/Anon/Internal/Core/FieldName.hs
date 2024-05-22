@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- | Field name
 --
 -- Intended for qualified import.
@@ -16,6 +18,11 @@ import Data.Hashable
 import Data.String
 
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
+
+#if __GLASGOW_HASKELL__ >= 906
+import GHC.Data.FastString (mkFastString)
+#endif
+
 
 {-------------------------------------------------------------------------------
   Definition
@@ -63,6 +70,8 @@ instance Show FieldName where
     showString "fromString " . showsPrec 11 (fieldNameLabel n)
 
 instance Outputable FieldName where
+#if __GLASGOW_HASKELL__ >= 906
+  ppr = ppr . mkFastString . fieldNameLabel
+#else
   ppr = ppr . fieldNameLabel
-
-
+#endif

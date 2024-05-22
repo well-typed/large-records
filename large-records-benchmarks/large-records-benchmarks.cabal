@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-records-benchmarks
-version:            0.1.0.0
+version:            0.2.0.0
 synopsis:           Benchmarks for the large-records library.
 description:        Detailed benchmarks of the compile-time performance of the
                     large-records library, as well as various experiments
@@ -21,7 +21,7 @@ common defaults
   default-language:
       Haskell2010
   build-depends:
-      base >= 4.13 && < 4.18
+      base >= 4.13 && < 4.19
   ghc-options:
       -Wall
 

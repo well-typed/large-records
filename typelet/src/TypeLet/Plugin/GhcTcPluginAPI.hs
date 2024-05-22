@@ -22,7 +22,6 @@ import GHC.Utils.Outputable
 #if MIN_VERSION_ghc(9,0,0)
 
 import GHC.Core.TyCo.FVs (tyCoVarsOfType)
-import GHC.Core.TyCo.Subst (TCvSubst)
 import GHC.Types.Var.Set (elemVarSet)
 
 import qualified GHC.Core.TyCo.Subst as Subst
@@ -36,3 +35,9 @@ import qualified TcType as Subst
 
 #endif
 
+#if __GLASGOW_HASKELL__ >= 906
+import GHC.Core.Subst (Subst)
+type TCvSubst = Subst
+#else
+import GHC.Core.TyCo.Subst (TCvSubst)
+#endif

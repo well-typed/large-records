@@ -33,7 +33,6 @@ package large-records-benchmarks
 
 package large-anon
   tests: True
-  ghc-options: -dcore-lint
 
 -- package beam-large-records
 --   tests: True

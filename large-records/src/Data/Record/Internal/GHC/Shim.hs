@@ -163,6 +163,10 @@ import GHC.Rename.Names (renamePkgQual)
 import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 #endif
 
+#if __GLASGOW_HASKELL__ >= 906
+import Language.Haskell.Syntax.Basic (FieldLabelString(..))
+#endif
+
 #endif
 
 {-------------------------------------------------------------------------------
@@ -226,8 +230,12 @@ lookupOrigIO env modl occ = lookupNameCache (hsc_NC env) modl occ
 -- | Optionally @qualified@ import declaration
 importDecl :: ModuleName -> Bool -> LImportDecl GhcPs
 importDecl name qualified = noLocA $ ImportDecl {
+#if __GLASGOW_HASKELL__ >= 906
+      ideclExt       = XImportDeclPass EpAnnNotUsed NoSourceText True
+#else
       ideclExt       = defExt
     , ideclSourceSrc = NoSourceText
+#endif
     , ideclName      = noLocA name
 #if __GLASGOW_HASKELL__ >= 904
     , ideclPkgQual   = NoRawPkgQual
@@ -235,9 +243,13 @@ importDecl name qualified = noLocA $ ImportDecl {
     , ideclPkgQual   = Nothing
 #endif
     , ideclSafe      = False
+#if __GLASGOW_HASKELL__ < 906
     , ideclImplicit  = False
+#endif
     , ideclAs        = Nothing
+#if __GLASGOW_HASKELL__ < 906
     , ideclHiding    = Nothing
+#endif
 #if __GLASGOW_HASKELL__ < 810
     , ideclQualified = qualified
 #else
@@ -247,6 +259,9 @@ importDecl name qualified = noLocA $ ImportDecl {
     , ideclSource    = False
 #else
     , ideclSource    = NotBoot
+#endif
+#if __GLASGOW_HASKELL__ >= 906
+    , ideclImportList = Nothing
 #endif
     }
 
@@ -270,7 +285,11 @@ type HsModule = GHC.HsModule GhcPs
 type HsModule = GHC.HsModule
 #endif
 
+#if __GLASGOW_HASKELL__ >= 906
+type LHsModule = Located (HsModule GhcPs)
+#else
 type LHsModule = Located HsModule
+#endif
 type LRdrName  = Located RdrName
 
 {-------------------------------------------------------------------------------
@@ -331,9 +350,18 @@ instance HasDefaultExt NoExtField where
   defExt = noExtField
 #endif
 
-#if __GLASGOW_HASKELL__ >= 900
+#if __GLASGOW_HASKELL__ >= 906
+instance HasDefaultExt (LayoutInfo pass) where
+  defExt = NoLayoutInfo
+#elif __GLASGOW_HASKELL__ >= 900
 instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
+#endif
+#if __GLASGOW_HASKELL__ >= 906
+instance HasDefaultExt Origin where
+  defExt = Generated
+instance HasDefaultExt SourceText where
+  defExt = NoSourceText
 #endif
 
 instance (HasDefaultExt a, HasDefaultExt b) => HasDefaultExt (a, b) where
@@ -559,7 +587,11 @@ simpleRecordUpdates =
     isSingleLabel :: FieldLabelStrings GhcPs -> Maybe LRdrName
     isSingleLabel (FieldLabelStrings labels) =
         case labels of
+#if __GLASGOW_HASKELL__ >= 906
+          [L _ (DotFieldOcc _ (L l (FieldLabelString label)))] ->
+#else
           [L _ (DotFieldOcc _ (L l label))] ->
+#endif
             Just $ reLoc $ L l (Unqual $ mkVarOccFS label)
           _otherwise ->
             Nothing

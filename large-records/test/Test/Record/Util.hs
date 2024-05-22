@@ -18,7 +18,11 @@ module Test.Record.Util (
   ) where
 
 import Control.Exception
+#if __GLASGOW_HASKELL__ >= 906
+import Control.Monad.Except
+#else
 import Control.Monad.Except hiding (lift)
+#endif
 import Control.Monad.State hiding (lift)
 import Data.Bifunctor
 import Data.List (isPrefixOf)

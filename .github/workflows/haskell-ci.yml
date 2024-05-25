@@ -189,8 +189,6 @@ jobs:
           echo "PKGDIR_large_records_benchmarks=${PKGDIR_large_records_benchmarks}" >> "$GITHUB_ENV"
           PKGDIR_large_anon="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-anon-[0-9.]*')"
           echo "PKGDIR_large_anon=${PKGDIR_large_anon}" >> "$GITHUB_ENV"
-          PKGDIR_beam_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/beam-large-records-[0-9.]*')"
-          echo "PKGDIR_beam_large_records=${PKGDIR_beam_large_records}" >> "$GITHUB_ENV"
           PKGDIR_typelet="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/typelet-[0-9.]*')"
           echo "PKGDIR_typelet=${PKGDIR_typelet}" >> "$GITHUB_ENV"
           rm -f cabal.project cabal.project.local
@@ -200,7 +198,6 @@ jobs:
           echo "packages: ${PKGDIR_large_records}" >> cabal.project
           if [ $((HCNUMVER < 81000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
           echo "packages: ${PKGDIR_large_anon}" >> cabal.project
-          echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project
           echo "packages: ${PKGDIR_typelet}" >> cabal.project
           echo "package large-generics" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
@@ -251,7 +248,7 @@ jobs:
           package typelet
             ghc-options: -Werror
           EOF
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks|typelet)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(large-anon|large-generics|large-records|large-records-benchmarks|typelet)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan

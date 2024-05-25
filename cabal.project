@@ -2,15 +2,15 @@ packages: large-generics
         , large-records
         , large-records-benchmarks
         , large-anon
-        , beam-large-records
+--        , beam-large-records
         , typelet
 
 -- we need https://github.com/haskell-beam/beam/pull/585
-source-repository-package
-  type: git
-  location: https://github.com/well-typed/beam
-  tag: f13fedc299727b2706f26cdfeff3913923cb1a79
-  subdir: beam-core beam-migrate beam-sqlite
+-- source-repository-package
+--   type: git
+--   location: https://github.com/well-typed/beam
+--   tag: f13fedc299727b2706f26cdfeff3913923cb1a79
+--   subdir: beam-core beam-migrate beam-sqlite
 
 -- enable for GHC head
 -- repository head.hackage.ghc.haskell.org
@@ -35,8 +35,8 @@ package large-anon
   tests: True
   ghc-options: -dcore-lint
 
-package beam-large-records
-  tests: True
+-- package beam-large-records
+--   tests: True
 
 package typelet
   tests: True

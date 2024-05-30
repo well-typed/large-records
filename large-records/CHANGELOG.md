@@ -1,5 +1,10 @@
 # Revision history for large-records
 
+## 0.4.1 -- 2024-05-30
+
+* Support ghc 9.6 (and drop ghc <= 8.8)
+  [together with Tristan Cacqueray and Gabriele Sales]
+
 ## 0.4 -- 2023-03-06
 
 * Fix issue with operator type families used in fields (#120).

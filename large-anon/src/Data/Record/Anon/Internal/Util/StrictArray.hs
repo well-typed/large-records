@@ -254,11 +254,11 @@ indexSmallArray arr i = boundsCheck arr i' $
     i' = arrayIndex (sizeofSmallArray arr) i
 
 writeSmallArray :: ArrayIndex i => SmallMutableArray s a -> i -> a -> ST s ()
-writeSmallArray arr i a = boundsCheckM arr i' $
-    SmallArray.writeSmallArray arr i' a
-  where
-    i' :: Int
-    i' = arrayIndex (sizeofSmallMutableArray arr) i
+writeSmallArray arr i a = do
+    sz <- getSizeofSmallMutableArray arr
+    let i' = arrayIndex sz i
+    boundsCheckM arr i' $
+      SmallArray.writeSmallArray arr i' a
 
 #ifdef DEBUG
 boundsCheck :: HasCallStack => SmallArray a -> Int -> r -> r
@@ -288,3 +288,11 @@ boundsCheckM :: SmallMutableArray s a -> Int -> r -> r
 boundsCheckM _arr _i k = k
 #endif
 
+{-------------------------------------------------------------------------------
+  Auxiliary: support primitive < 0.9
+-------------------------------------------------------------------------------}
+
+#if !MIN_VERSION_primitive(0,9,0)
+getSizeofSmallMutableArray :: SmallMutableArray s a -> ST s Int
+getSizeofSmallMutableArray = return . sizeofSmallMutableArray
+#endif

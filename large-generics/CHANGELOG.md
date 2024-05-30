@@ -1,5 +1,10 @@
 # Revision history for large-generics
 
+## 0.2.2 -- 2024-05-30
+
+* Support ghc 9.6 (and drop ghc <= 8.8)
+  [together with Tristan Cacqueray and Gabriele Sales]
+
 ## 0.2.1 -- 2023-03-06
 
 * Support ghc 9.4

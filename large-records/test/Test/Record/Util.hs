@@ -18,8 +18,9 @@ module Test.Record.Util (
   ) where
 
 import Control.Exception
-import Control.Monad.Except hiding (lift)
-import Control.Monad.State hiding (lift)
+import Control.Monad.Except (ExceptT(..), runExceptT, throwError)
+import Control.Monad.IO.Class
+import Control.Monad.State (StateT(..), modify)
 import Data.Bifunctor
 import Data.List (isPrefixOf)
 import Language.Haskell.TH

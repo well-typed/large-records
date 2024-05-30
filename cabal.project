@@ -9,7 +9,7 @@ packages: large-generics
 source-repository-package
   type: git
   location: https://github.com/well-typed/beam
-  tag: f13fedc299727b2706f26cdfeff3913923cb1a79
+  tag: 57a12e68727c027f0f1c25752f8c5704ddbe1516
   subdir: beam-core beam-migrate beam-sqlite
 
 -- enable for GHC head
@@ -33,7 +33,6 @@ package large-records-benchmarks
 
 package large-anon
   tests: True
-  ghc-options: -dcore-lint
 
 package beam-large-records
   tests: True

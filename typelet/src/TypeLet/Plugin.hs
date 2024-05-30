@@ -95,7 +95,7 @@ simplifyWanteds rn given wanted = do
     -- Solve an Equal constraint by applying the substitution and turning it
     -- into a nominal equality constraint
     solveEqual ::
-         TCvSubst
+         Subst
       -> Ct                       -- Original Equal constraint
       -> GenLocated CtLoc CEqual  -- Parsed Equal constraint
       -> TcPluginM 'Solve ((EvTerm, Ct), Ct)

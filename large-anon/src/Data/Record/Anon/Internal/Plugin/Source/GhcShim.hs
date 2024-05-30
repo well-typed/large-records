@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
 
 -- | Thin shim around the GHC API
 --
@@ -102,7 +103,6 @@ import GHC.Driver.Session (getDynFlags)
 import GHC.Types.Name (mkInternalName)
 import GHC.Types.Name.Occurrence
 import GHC.Types.Name.Reader (RdrName(Exact), rdrNameOcc, mkRdrQual, mkRdrUnqual)
-import GHC.Types.SrcLoc (LayoutInfo(NoLayoutInfo))
 import GHC.Types.Unique (Unique)
 import GHC.Types.Unique.Supply (takeUniqFromSupply)
 import GHC.Utils.Monad
@@ -113,11 +113,14 @@ import GHC.Driver.Env.Types
 import GHC.Driver.Errors
 import GHC.Types.SourceText (SourceText(NoSourceText))
 import GHC.Unit.Finder (findImportedModule, FindResult(Found))
-import GHC.Unit.Types (IsBootInterface(NotBoot))
 #else
 import GHC.Driver.Finder (findImportedModule)
 import GHC.Driver.Types
 import GHC.Types.Basic (SourceText(NoSourceText))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 902 && __GLASGOW_HASKELL__ < 906
+import GHC.Unit.Types (IsBootInterface(NotBoot))
 #endif
 
 #if __GLASGOW_HASKELL__ < 904
@@ -131,12 +134,20 @@ import GHC.Driver.Config.Diagnostic (initDiagOpts)
 import GHC.Driver.Errors.Types (GhcMessage(..))
 import GHC.Iface.Env (lookupNameCache)
 import GHC.Rename.Names (renamePkgQual)
-import GHC.Types.Error (MsgEnvelope(..), mkMessages)
 import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 import GHC.Types.PkgQual (RawPkgQual(NoRawPkgQual))
 import GHC.Utils.Error (mkPlainError)
+import qualified GHC.Types.Error as Err
 #endif
 
+#endif
+
+#if __GLASGOW_HASKELL__ >= 900 && __GLASGOW_HASKELL__ < 906
+import GHC.Types.SrcLoc (LayoutInfo(NoLayoutInfo))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 906
+import GHC.Driver.Config.Diagnostic (initPrintConfig)
 #endif
 
 {-------------------------------------------------------------------------------
@@ -206,8 +217,18 @@ hscNameCacheIO = hsc_NC
 -- | Optionally @qualified@ import declaration
 importDecl :: Bool -> ModuleName -> LImportDecl GhcPs
 importDecl qualified name = reLocA $ noLoc $ ImportDecl {
+#if __GLASGOW_HASKELL__ < 906
       ideclExt       = defExt
+#else
+      ideclExt       = XImportDeclPass {
+                           ideclAnn        = defExt
+                         , ideclSourceText = NoSourceText
+                         , ideclImplicit   = False
+                         }
+#endif
+#if __GLASGOW_HASKELL__ < 906
     , ideclSourceSrc = NoSourceText
+#endif
     , ideclName      = reLocA $ noLoc name
 #if __GLASGOW_HASKELL__ >= 904
     , ideclPkgQual   = NoRawPkgQual
@@ -215,18 +236,21 @@ importDecl qualified name = reLocA $ noLoc $ ImportDecl {
     , ideclPkgQual   = Nothing
 #endif
     , ideclSafe      = False
+#if __GLASGOW_HASKELL__ < 906
     , ideclImplicit  = False
-    , ideclAs        = Nothing
-    , ideclHiding    = Nothing
-#if __GLASGOW_HASKELL__ < 810
-    , ideclQualified = qualified
-#else
-    , ideclQualified = if qualified then QualifiedPre else NotQualified
 #endif
+    , ideclAs        = Nothing
+#if __GLASGOW_HASKELL__ < 906
+    , ideclHiding    = Nothing
+#endif
+    , ideclQualified = if qualified then QualifiedPre else NotQualified
 #if __GLASGOW_HASKELL__ < 900
     , ideclSource    = False
 #else
     , ideclSource    = NotBoot
+#endif
+#if __GLASGOW_HASKELL__ >= 906
+    , ideclImportList = Nothing
 #endif
     }
 
@@ -239,11 +263,31 @@ issueWarning l errMsg = do
       mkWarnMsg l neverQualify errMsg
 #elif __GLASGOW_HASKELL__ >= 904
     logger <- getLogger
-    liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $
-      MsgEnvelope {
+
+#if __GLASGOW_HASKELL__ < 906
+    let printOrThrow :: Err.Messages GhcMessage -> IO ()
+        printOrThrow = printOrThrowDiagnostics
+                         logger
+                         (initDiagOpts dynFlags)
+
+    let msg :: Err.DiagnosticMessage
+        msg = mkPlainError [] errMsg
+#else
+    let printOrThrow :: Err.Messages GhcMessage -> IO ()
+        printOrThrow = printOrThrowDiagnostics
+                         logger
+                         (initPrintConfig dynFlags)
+                         (initDiagOpts dynFlags)
+
+    let msg :: Err.UnknownDiagnostic
+        msg = Err.UnknownDiagnostic $
+                mkPlainError [] errMsg
+#endif
+    liftIO $ printOrThrow . Err.mkMessages . bag $
+      Err.MsgEnvelope {
           errMsgSpan       = l
         , errMsgContext    = neverQualify
-        , errMsgDiagnostic = GhcUnknownMessage $ mkPlainError [] errMsg
+        , errMsgDiagnostic = GhcUnknownMessage msg
         , errMsgSeverity   = SevWarning
         }
 #else
@@ -269,15 +313,10 @@ mkHsApps = foldl' mkHsApp
 class HasDefaultExt a where
   defExt :: a
 
-#if __GLASGOW_HASKELL__ < 810
-instance HasDefaultExt NoExt where
-  defExt = noExt
-#else
 instance HasDefaultExt NoExtField where
   defExt = noExtField
-#endif
 
-#if __GLASGOW_HASKELL__ >= 900
+#if __GLASGOW_HASKELL__ >= 900 && __GLASGOW_HASKELL__ < 906
 instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
 #endif
@@ -307,6 +346,9 @@ mkLabel :: SrcSpan -> FastString -> LHsExpr GhcPs
 mkLabel l n = reLocA $ L l
             $ HsOverLabel defExt
 #if __GLASGOW_HASKELL__ < 902
-                 Nothing
+                 Nothing -- RebindableSyntax
+#elif __GLASGOW_HASKELL__ >= 906
+                 NoSourceText
 #endif
+
                  n

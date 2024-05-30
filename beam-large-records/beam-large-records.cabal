@@ -11,7 +11,7 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Database
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.5
+tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.4
 
 source-repository head
   type:     git
@@ -31,7 +31,7 @@ library
       Data.Record.Beam.ZipDatabase
       Data.Record.Beam.ZipTables
   build-depends:
-      base >= 4.13 && < 4.18
+      base >= 4.14 && < 4.19
     , beam-core >= 0.9
     , large-generics
     , microlens

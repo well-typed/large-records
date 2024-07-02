@@ -70,10 +70,11 @@ library
       Data.Record.Anon.Internal.Plugin.Source.Options
 
   build-depends:
-      base             >= 4.14  && < 4.19
     , aeson            >= 1.4.4 && < 2.3
+    , base             >= 4.14  && < 4.19
     , containers       >= 0.6.2 && < 0.8
     , deepseq          >= 1.4.4 && < 1.6
+    , ghc              >= 8.10  && < 9.7 
     , ghc-tcplugin-api >= 0.11  && < 0.12
     , hashable         >= 1.3   && < 1.5
     , mtl              >= 2.2.1 && < 2.4
@@ -87,9 +88,6 @@ library
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics   >= 0.2   && < 0.3
-
-      -- Whatever version is bundled with ghc
-    , ghc
   hs-source-dirs:
       src
   default-language:
@@ -184,7 +182,6 @@ test-suite test-large-anon
       -Wredundant-constraints
       -Wno-unticked-promoted-constructors
       -fno-show-valid-hole-fits
-      -dcore-lint
 
   -- Not sure why, but ghc warns about record-hasfield being unused,
   -- despite it actually being required. So for now we just disable this check.

@@ -44,12 +44,14 @@ library
       Data.Record.Internal.Plugin.Record
 
   build-depends:
-      base            >= 4.14   && < 4.19
-    , containers      >= 0.6.2  && < 0.8
-    , mtl             >= 2.2.1  && < 2.4
-    , primitive       >= 0.8    && < 0.10
-    , syb             >= 0.7    && < 0.8
-    , record-hasfield >= 1.0    && < 1.1
+    , base             >= 4.14   && < 4.19
+    , containers       >= 0.6.2  && < 0.8
+    , ghc              >= 8.10   && < 9.7
+    , mtl              >= 2.2.1  && < 2.4
+    , primitive        >= 0.8    && < 0.10
+    , record-hasfield  >= 1.0    && < 1.1
+    , syb              >= 0.7    && < 0.8
+    , template-haskell >= 2.16   && < 2.21
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics >= 0.2 && < 0.3
@@ -59,10 +61,6 @@ library
 
       -- 0.2.16 introduces support for ghc 9.4
     , record-dot-preprocessor >= 0.2.16 && < 0.3
-
-      -- whatever versions are bundled with ghc
-    , ghc
-    , template-haskell
   hs-source-dirs:
       src
   default-language:

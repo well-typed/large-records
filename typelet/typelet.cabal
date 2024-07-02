@@ -34,12 +34,10 @@ library
         TypeLet.Plugin.NameResolution
         TypeLet.Plugin.Substitution
     build-depends:
-        base >= 4.14 && < 4.19
+      , base             >= 4.14 && < 4.19
+      , containers       >= 0.6  && < 0.7
+      , ghc              >= 8.10 && < 9.7
       , ghc-tcplugin-api >= 0.11 && < 0.12
-
-        -- whichever versions are bundled with ghc:
-      , containers
-      , ghc
     hs-source-dirs:
         src
     default-language:

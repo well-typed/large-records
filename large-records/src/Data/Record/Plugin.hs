@@ -39,8 +39,10 @@ module Data.Record.Plugin (
   , plugin
   ) where
 
-import Control.Monad.Except
-import Control.Monad.Trans.Writer.CPS
+import Control.Monad
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Except (runExcept)
+import Control.Monad.Trans.Writer.CPS (WriterT, tell, runWriterT)
 import Data.List (intersperse)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
@@ -74,6 +76,11 @@ import GHC.Driver.Errors (printOrThrowDiagnostics)
 import GHC.Driver.Errors.Types (GhcMessage(GhcUnknownMessage))
 import GHC.Types.Error (mkPlainError, mkMessages, mkPlainDiagnostic)
 import GHC.Utils.Error (mkMsgEnvelope, mkErrorMsgEnvelope)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 906
+import GHC.Types.Error (UnknownDiagnostic(..))
+import GHC.Driver.Config.Diagnostic (initPrintConfig)
 #endif
 
 {-------------------------------------------------------------------------------
@@ -213,6 +220,12 @@ issueError l errMsg = do
 #if __GLASGOW_HASKELL__ == 902
     throwOneError $
       mkErr l neverQualify (mkDecorated [errMsg])
+#elif __GLASGOW_HASKELL__ >= 906
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainError [] errMsg)
 #elif __GLASGOW_HASKELL__ >= 904
     throwOneError $
       mkErrorMsgEnvelope
@@ -232,6 +245,16 @@ issueWarning l errMsg = do
     logger <- getLogger
     liftIO $ printOrThrowWarnings logger dynFlags . bag $
       mkWarnMsg l neverQualify errMsg
+#elif __GLASGOW_HASKELL__ >= 906
+    logger <- getLogger
+    dflags <- getDynFlags
+    let print_config = initPrintConfig dflags
+    liftIO $ printOrThrowDiagnostics logger print_config (initDiagOpts dynFlags) . mkMessages . bag $
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
 #elif __GLASGOW_HASKELL__ >= 904
     logger <- getLogger
     liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $

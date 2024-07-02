@@ -21,6 +21,7 @@ module Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI (
     -- * New functonality
   , isCanonicalVarEq
   , getModule
+  , pprString
   ) where
 
 import GHC.Stack
@@ -36,10 +37,6 @@ import GHC.Builtin.Types.Prim
 import GHC.Core.Make
 import GHC.Utils.Outputable
 
-#if __GLASGOW_HASKELL__ >= 808 &&  __GLASGOW_HASKELL__ < 810
-import TcRnTypes (Ct(..))
-#endif
-
 #if __GLASGOW_HASKELL__ >= 810 &&  __GLASGOW_HASKELL__ < 900
 import Constraint (Ct(..))
 #endif
@@ -53,7 +50,7 @@ import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..))
 #endif
 
 isCanonicalVarEq :: Ct -> Maybe (TcTyVar, Type)
-#if __GLASGOW_HASKELL__ >= 808 &&  __GLASGOW_HASKELL__ < 902
+#if __GLASGOW_HASKELL__ >= 810 &&  __GLASGOW_HASKELL__ < 902
 isCanonicalVarEq = \case
     CTyEqCan{..}  -> Just (cc_tyvar, cc_rhs)
     CFunEqCan{..} -> Just (cc_fsk, mkTyConApp cc_fun cc_tyargs)
@@ -98,3 +95,7 @@ getModule pkg modl = do
         , " in package "
         , pkg
         ]
+
+pprString :: String -> SDoc
+pprString = text
+

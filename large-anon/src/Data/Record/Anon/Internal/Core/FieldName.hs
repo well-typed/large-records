@@ -63,6 +63,6 @@ instance Show FieldName where
     showString "fromString " . showsPrec 11 (fieldNameLabel n)
 
 instance Outputable FieldName where
-  ppr = ppr . fieldNameLabel
+  ppr = pprString . fieldNameLabel
 
 

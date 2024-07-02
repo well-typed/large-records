@@ -23,7 +23,7 @@ import TypeLet.Plugin.GhcTcPluginAPI
 -- our use case is simpler? Needs more thought.
 letsToSubst ::
      [GenLocated CtLoc CLet]
-  -> Either (Cycle (GenLocated CtLoc CLet)) TCvSubst
+  -> Either (Cycle (GenLocated CtLoc CLet)) Subst
 letsToSubst = fmap (uncurry zipTvSubst . unzip . go []) . inorder
   where
     go :: [(TyVar, Type)] -> [(TyVar, Type)] -> [(TyVar, Type)]

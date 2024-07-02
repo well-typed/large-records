@@ -11,7 +11,7 @@ license:            BSD-3-Clause
 author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
-tested-with:        GHC ==8.8.4
+tested-with:        GHC ==8.10.7
 
 source-repository head
   type:     git
@@ -21,7 +21,7 @@ common defaults
   default-language:
       Haskell2010
   build-depends:
-      base >= 4.13 && < 4.18
+      base >= 4.14 && < 4.19
   ghc-options:
       -Wall
 
@@ -632,112 +632,6 @@ executable bench-large-anon
   if flag(profile-runtime)
     ghc-options:
       -O1
-
-executable bench-superrecord
-  import:
-      defaults
-    , benchmark
-  main-is:
-      Main.hs
-  hs-source-dirs:
-      bench/superrecord
-  build-depends:
-      superrecord
-    , aeson
-  other-modules:
-
-      --
-      -- The SR_Construct benchmark is expensive: only measure up to 40 fields.
-      --
-      -- The other benchmarks also get expensive for larger records, but we
-      -- can go up to 80 without things getting /too/ ridiculous.
-      --
-      -- (These benchmarks are /especially/ expensive when we measure the core
-      -- size using @-ddump-ds-preopt@ and friends.)
-      --
-
-      Common.RowOfSize.Row010
-      Common.RowOfSize.Row020
-      Common.RowOfSize.Row030
-      Common.RowOfSize.Row040
-      Common.RowOfSize.Row050
-      Common.RowOfSize.Row060
-      Common.RowOfSize.Row070
-      Common.RowOfSize.Row080
-
-      Experiment.SR_Construct.Sized.R000
-      Experiment.SR_Construct.Sized.R010
-      Experiment.SR_Construct.Sized.R020
-      Experiment.SR_Construct.Sized.R030
-      Experiment.SR_Construct.Sized.R040
-
-      Experiment.SR_Unsafe.Sized.R000
-      Experiment.SR_Unsafe.Sized.R010
-      Experiment.SR_Unsafe.Sized.R020
-      Experiment.SR_Unsafe.Sized.R030
-      Experiment.SR_Unsafe.Sized.R040
-      Experiment.SR_Unsafe.Sized.R050
-      Experiment.SR_Unsafe.Sized.R060
-      Experiment.SR_Unsafe.Sized.R070
-      Experiment.SR_Unsafe.Sized.R080
-
-      Experiment.SR_GetEvens.Sized.R000
-      Experiment.SR_GetEvens.Sized.R010
-      Experiment.SR_GetEvens.Sized.R020
-      Experiment.SR_GetEvens.Sized.R030
-      Experiment.SR_GetEvens.Sized.R040
-      Experiment.SR_GetEvens.Sized.R050
-      Experiment.SR_GetEvens.Sized.R060
-      Experiment.SR_GetEvens.Sized.R070
-      Experiment.SR_GetEvens.Sized.R080
-
-      Experiment.SR_SetEvens.Sized.R000
-      Experiment.SR_SetEvens.Sized.R010
-      Experiment.SR_SetEvens.Sized.R020
-      Experiment.SR_SetEvens.Sized.R030
-      Experiment.SR_SetEvens.Sized.R040
-      Experiment.SR_SetEvens.Sized.R050
-      Experiment.SR_SetEvens.Sized.R060
-      Experiment.SR_SetEvens.Sized.R070
-      Experiment.SR_SetEvens.Sized.R080
-
-      Experiment.SR_UpdateOne.Sized.R000
-      Experiment.SR_UpdateOne.Sized.R010
-      Experiment.SR_UpdateOne.Sized.R020
-      Experiment.SR_UpdateOne.Sized.R030
-      Experiment.SR_UpdateOne.Sized.R040
-      Experiment.SR_UpdateOne.Sized.R050
-      Experiment.SR_UpdateOne.Sized.R060
-      Experiment.SR_UpdateOne.Sized.R070
-      Experiment.SR_UpdateOne.Sized.R080
-
-      Experiment.SR_ToJSON.Sized.R000
-      Experiment.SR_ToJSON.Sized.R010
-      Experiment.SR_ToJSON.Sized.R020
-      Experiment.SR_ToJSON.Sized.R030
-      Experiment.SR_ToJSON.Sized.R040
-      Experiment.SR_ToJSON.Sized.R050
-      Experiment.SR_ToJSON.Sized.R060
-      Experiment.SR_ToJSON.Sized.R070
-      Experiment.SR_ToJSON.Sized.R080
-
-      Experiment.SR_ParseJSON.Sized.R000
-      Experiment.SR_ParseJSON.Sized.R010
-      Experiment.SR_ParseJSON.Sized.R020
-      Experiment.SR_ParseJSON.Sized.R030
-      Experiment.SR_ParseJSON.Sized.R040
-      Experiment.SR_ParseJSON.Sized.R050
-      Experiment.SR_ParseJSON.Sized.R060
-      Experiment.SR_ParseJSON.Sized.R070
-      Experiment.SR_ParseJSON.Sized.R080
-
-  if flag(profile-runtime)
-    ghc-options:
-      -O1
-
-  if impl(ghc >= 9.0)
-    -- superrecord is not yet (2023-02-20) supported for ghc >= 9
-    buildable: False
 
 --
 -- TEST SUITE

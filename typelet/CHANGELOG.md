@@ -1,5 +1,10 @@
 # Revision history for typelet
 
+## 0.1.4 -- 2024-05-30
+
+* Support ghc 9.6 (and drop ghc <= 8.8)
+  [together with Gabriele Sales]
+
 ## 0.1.3 -- 2023-03-06
 
 * Support ghc 9.4

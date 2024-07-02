@@ -1,5 +1,10 @@
 # Revision history for large-anon
 
+## 0.3.1 -- 2024-05-30
+
+* Support ghc 9.6 (and drop ghc <= 8.8)
+  [together with Gabriele Sales]
+
 ## 0.3 -- 2023-07-04
 
 * Critical bugfix (#146): incremental record construction was fundamentally

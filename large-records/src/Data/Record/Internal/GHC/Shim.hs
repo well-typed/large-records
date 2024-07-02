@@ -165,6 +165,11 @@ import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 
 #endif
 
+#if __GLASGOW_HASKELL__ >= 906
+import Language.Haskell.Syntax.Basic (FieldLabelString (..))
+import qualified GHC.Types.Basic
+#endif
+
 {-------------------------------------------------------------------------------
   Name resolution
 -------------------------------------------------------------------------------}
@@ -224,29 +229,42 @@ lookupOrigIO env modl occ = lookupNameCache (hsc_NC env) modl occ
 -------------------------------------------------------------------------------}
 
 -- | Optionally @qualified@ import declaration
-importDecl :: ModuleName -> Bool -> LImportDecl GhcPs
-importDecl name qualified = noLocA $ ImportDecl {
+importDecl :: Bool -> ModuleName -> LImportDecl GhcPs
+importDecl qualified name = reLocA $ noLoc $ ImportDecl {
+#if __GLASGOW_HASKELL__ < 906
       ideclExt       = defExt
+#else
+      ideclExt       = XImportDeclPass {
+                           ideclAnn        = defExt
+                         , ideclSourceText = NoSourceText
+                         , ideclImplicit   = False
+                         }
+#endif
+#if __GLASGOW_HASKELL__ < 906
     , ideclSourceSrc = NoSourceText
-    , ideclName      = noLocA name
+#endif
+    , ideclName      = reLocA $ noLoc name
 #if __GLASGOW_HASKELL__ >= 904
     , ideclPkgQual   = NoRawPkgQual
 #else
     , ideclPkgQual   = Nothing
 #endif
     , ideclSafe      = False
+#if __GLASGOW_HASKELL__ < 906
     , ideclImplicit  = False
-    , ideclAs        = Nothing
-    , ideclHiding    = Nothing
-#if __GLASGOW_HASKELL__ < 810
-    , ideclQualified = qualified
-#else
-    , ideclQualified = if qualified then QualifiedPre else NotQualified
 #endif
+    , ideclAs        = Nothing
+#if __GLASGOW_HASKELL__ < 906
+    , ideclHiding    = Nothing
+#endif
+    , ideclQualified = if qualified then QualifiedPre else NotQualified
 #if __GLASGOW_HASKELL__ < 900
     , ideclSource    = False
 #else
     , ideclSource    = NotBoot
+#endif
+#if __GLASGOW_HASKELL__ >= 906
+    , ideclImportList = Nothing
 #endif
     }
 
@@ -258,11 +276,7 @@ conPat x y = ConPat defExt (reLocA x) y
 #endif
 
 mkFunBind :: Located RdrName -> [LMatch GhcPs (LHsExpr GhcPs)] -> HsBind GhcPs
-#if __GLASGOW_HASKELL__ < 810
-mkFunBind = GHC.mkFunBind
-#else
 mkFunBind (reLocA -> n) = GHC.mkFunBind Generated n
-#endif
 
 #if __GLASGOW_HASKELL__ < 900
 type HsModule = GHC.HsModule GhcPs
@@ -270,7 +284,11 @@ type HsModule = GHC.HsModule GhcPs
 type HsModule = GHC.HsModule
 #endif
 
+#if __GLASGOW_HASKELL__ >= 906
+type LHsModule = Located (HsModule GhcPs)
+#else
 type LHsModule = Located HsModule
+#endif
 type LRdrName  = Located RdrName
 
 {-------------------------------------------------------------------------------
@@ -323,15 +341,17 @@ mapXRec = fmap
 class HasDefaultExt a where
   defExt :: a
 
-#if __GLASGOW_HASKELL__ < 810
-instance HasDefaultExt NoExt where
-  defExt = noExt
-#else
 instance HasDefaultExt NoExtField where
   defExt = noExtField
-#endif
 
-#if __GLASGOW_HASKELL__ >= 900
+#if __GLASGOW_HASKELL__ >= 906
+instance HasDefaultExt (LayoutInfo GhcPs) where
+  defExt = NoLayoutInfo
+instance HasDefaultExt GHC.Types.Basic.Origin where
+  defExt = Generated
+instance HasDefaultExt SourceText where
+  defExt = NoSourceText
+#elif __GLASGOW_HASKELL__ >= 900
 instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
 #endif
@@ -559,7 +579,11 @@ simpleRecordUpdates =
     isSingleLabel :: FieldLabelStrings GhcPs -> Maybe LRdrName
     isSingleLabel (FieldLabelStrings labels) =
         case labels of
+#if __GLASGOW_HASKELL__ >= 906
+          [L _ (DotFieldOcc _ (L l (FieldLabelString label)))] ->
+#else
           [L _ (DotFieldOcc _ (L l label))] ->
+#endif
             Just $ reLoc $ L l (Unqual $ mkVarOccFS label)
           _otherwise ->
             Nothing

@@ -22,6 +22,8 @@ import Unsafe.Coerce (unsafeCoerce)
 
 -- $setup
 -- >>> :set -fplugin=TypeLet
+-- >>> :set -XFlexibleContexts
+-- >>> :set -XScopedTypeVariables
 
 {-------------------------------------------------------------------------------
   Main classes

@@ -117,21 +117,10 @@ evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
 
     dictForField :: KnownField (Type, EvVar) -> TcPluginM 'Solve EvExpr
     dictForField KnownField{ knownFieldInfo = (fieldType, dict) } = do
-        return $ mkCoreConApps dataConDictAny $ concat [
-            map Type typeArgsDict
-          , [ -- We have a dictionary of type @c a@ from the evidence we get
-              -- from ghc; we cast it to @c Any@ to serve as arg to @DictAny@.
-               mkCoreApps (Var idUnsafeCoerce) [
-                Type $ mkAppTy allFieldsTypeConstraint fieldType
-              , Type $ mkAppTy allFieldsTypeConstraint anyAtKind
-              , Var dict
-              ]
-            ]
+        return $ mkCoreApps (Var idMkDictAny) $ concat [
+            map Type (typeArgsDict ++ [fieldType])
+          , [Var dict]
           ]
-
-    -- Any at kind @k@
-    anyAtKind :: Type
-    anyAtKind = mkTyConApp anyTyCon [allFieldsTypeKind]
 
 {-------------------------------------------------------------------------------
   Solver

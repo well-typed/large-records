@@ -23,7 +23,7 @@ data ResolvedNames = ResolvedNames {
     , idEvidenceKnownHash   :: Id
     , idEvidenceRowHasField :: Id
     , idEvidenceSubRow      :: Id
-    , idUnsafeCoerce        :: Id
+    , idMkDictAny           :: Id
     , tyConDictAny          :: TyCon
     , tyConMerge            :: TyCon
     , tyConFieldTypes       :: TyCon
@@ -60,7 +60,7 @@ nameResolution = do
     idEvidenceKnownHash   <- getVar "evidenceKnownHash"
     idEvidenceRowHasField <- getVar "evidenceRowHasField"
     idEvidenceSubRow      <- getVar "evidenceSubRow"
-    idUnsafeCoerce        <- getVar "noInlineUnsafeCo"
+    idMkDictAny           <- getVar "mkDictAny"
 
     tyConDictAny          <- getTyCon       "DictAny"
     tyConFieldTypes       <- getTyCon       "FieldTypes"

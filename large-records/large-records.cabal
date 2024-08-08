@@ -48,7 +48,7 @@ library
     , containers       >= 0.6.2  && < 0.8
     , ghc              >= 8.10   && < 9.7
     , mtl              >= 2.2.1  && < 2.4
-    , primitive        >= 0.8    && < 0.10
+    , primitive        >= 0.7.3  && < 0.10
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
     , template-haskell >= 2.16   && < 2.21

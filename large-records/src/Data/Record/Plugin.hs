@@ -135,7 +135,18 @@ transformDecl ::
   -> WriterT (Set String) Hsc [LHsDecl GhcPs]
 transformDecl largeRecords decl@(reLoc -> L l _) =
     case decl of
-      DataD (nameBase -> name) _ _ _  ->
+      (unLoc -> AnnD _ (PragAnnD (TypeAnnotation (nameBase -> name)) _)) ->
+        case Map.findWithDefault [] name largeRecords of
+          [_] ->
+            {- A valid `large-records` annotation.
+
+            Remove it so that subsequent passes of the plugin will ignore the generated
+            `large-records` code.
+            -}
+            pure []
+          _ ->
+            pure [decl]
+      DataD (nameBase -> name) _ _ _  -> do
         case Map.findWithDefault [] name largeRecords of
           [] ->
             -- Not a large record. Leave alone.

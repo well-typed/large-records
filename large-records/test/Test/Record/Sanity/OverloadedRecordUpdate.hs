@@ -39,7 +39,6 @@ import Test.Tasty.HUnit
 import Data.Record.Generic (Rep)
 import Data.Record.Generic.Lens.VL
 import Data.Record.Overloading
-import Data.Record.Plugin
 
 tests :: TestTree
 tests = testGroup "Test.Record.Sanity.OverloadedRecordUpdate" [

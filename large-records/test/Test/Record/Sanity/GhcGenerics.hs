@@ -21,8 +21,6 @@ import Test.Tasty.HUnit
 
 import qualified GHC.Generics as GHC
 
-import Data.Record.Plugin
-
 {-# ANN type R largeRecord #-}
 data R = MkR { a :: Int }
   deriving (Show)

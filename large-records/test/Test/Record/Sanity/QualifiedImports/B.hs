@@ -13,8 +13,6 @@
 
 module Test.Record.Sanity.QualifiedImports.B (T(..)) where
 
-import Data.Record.Plugin
-
 import qualified Test.Record.Sanity.QualifiedImports.A as A
 
 {-# ANN type T largeRecord #-}

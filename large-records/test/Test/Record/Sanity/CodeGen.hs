@@ -16,7 +16,6 @@
 module Test.Record.Sanity.CodeGen (tests) where
 
 import Data.Record.Generic
-import Data.Record.Plugin
 
 import Test.Tasty
 import Test.Tasty.HUnit

@@ -1,5 +1,14 @@
 # Revision history for large-records
 
+## 0.4.2 -- 2024-10-15
+
+* Support `primitive-0.7.3` (#159, Isaac Elliott)
+* Plugin idempotence (#159, Isaac Elliott).
+
+Note: if your code imports `Data.Plugin.Record` only for the `largeRecord`
+identifier used in the `ANN` annotations, this import is no longer required
+as of this version and can be omitted.
+
 ## 0.4.1 -- 2024-05-30
 
 * Support ghc 9.6 (and drop ghc <= 8.8)

@@ -8,8 +8,6 @@
 --
 -- > {-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 -- >
--- > import Data.Record.Plugin
--- >
 -- > {-# ANN type B largeRecord #-}
 -- > data B a = B {a :: a, b :: String}
 -- >   deriving stock (Show, Eq, Ord)

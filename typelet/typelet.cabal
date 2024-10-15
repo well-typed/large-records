@@ -17,7 +17,7 @@ maintainer:         edsko@well-typed.com
 copyright:          Well-Typed LLP, Juspay Technologies Pvt Ltd
 category:           Plugin
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.4
+tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
 
 source-repository head
   type:     git

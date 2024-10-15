@@ -21,8 +21,6 @@
 
 module HigherKinded.Sized.R100 where
 
-import Data.Record.Plugin
-
 import Bench.Types
 
 {-# ANN type R largeRecord #-}

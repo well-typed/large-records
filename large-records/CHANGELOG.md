@@ -2,8 +2,9 @@
 
 ## 0.4.2 -- 2024-10-15
 
-* Support `primitive-0.7.3` (#159, Isaac Elliott)
+* Support `primitive-0.7.3` (#159, Isaac Elliott).
 * Plugin idempotence (#159, Isaac Elliott).
+* Document required additional dependencies and language extensions (#161).
 
 Note: if your code imports `Data.Plugin.Record` only for the `largeRecord`
 identifier used in the `ANN` annotations, this import is no longer required

@@ -14,6 +14,34 @@
 --
 -- See 'LargeRecordOptions' for the list of all possible annotations.
 --
+-- = Dependencies
+--
+-- In addition to the dependency on @large-records@, you will also need to add
+-- dependencies
+-- on [large-generics](http://hackage.haskell.org/package/large-generics)
+-- and [record-hasfield](http://hackage.haskell.org/package/record-hasfield).
+--
+-- = Language extensions
+--
+-- The plugin depends on a number of language extensions. If you are using
+-- GHC2021, you will need enable:
+--
+-- > {-# LANGUAGE DataKinds             #-}
+-- > {-# LANGUAGE TypeFamilies          #-}
+-- > {-# LANGUAGE UndecidableInstances  #-}
+--
+-- If you are using Haskell2010, you need to enable:
+--
+-- > {-# LANGUAGE ConstraintKinds       #-}
+-- > {-# LANGUAGE DataKinds             #-}
+-- > {-# LANGUAGE FlexibleInstances     #-}
+-- > {-# LANGUAGE GADTs                 #-}
+-- > {-# LANGUAGE MultiParamTypeClasses #-}
+-- > {-# LANGUAGE ScopedTypeVariables   #-}
+-- > {-# LANGUAGE TypeFamilies          #-}
+-- > {-# LANGUAGE TypeOperators         #-}
+-- > {-# LANGUAGE UndecidableInstances  #-}
+--
 -- = Usage with @record-dot-preprocessor@
 --
 -- The easiest way to use both plugins together is to do

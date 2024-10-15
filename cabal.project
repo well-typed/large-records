@@ -5,11 +5,11 @@ packages: large-generics
         , beam-large-records
         , typelet
 
--- we need https://github.com/haskell-beam/beam/pull/585
+-- We need beam 0.10.3.0 (not yet released), to include #585
 source-repository-package
   type: git
-  location: https://github.com/well-typed/beam
-  tag: 57a12e68727c027f0f1c25752f8c5704ddbe1516
+  location: https://github.com/haskell-beam/beam.git
+  tag: 3b0c00bbaebfe879c1461287a1d843c8223fee54
   subdir: beam-core beam-migrate beam-sqlite
 
 -- enable for GHC head

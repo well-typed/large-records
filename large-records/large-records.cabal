@@ -15,7 +15,7 @@ license:            BSD-3-Clause
 author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
-extra-source-files: CHANGELOG.md
+extra-doc-files:    CHANGELOG.md
 tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
 
 source-repository head
@@ -113,6 +113,7 @@ test-suite test-large-records
     , large-records
 
     , generic-deriving
+    , ghc-prim
     , large-generics
     , mtl
     , newtype

@@ -74,6 +74,7 @@ test-suite test-beam-large-records
     , beam-core
     , beam-large-records
     , beam-sqlite
+    , ghc-prim
     , large-generics
     , large-records
     , microlens

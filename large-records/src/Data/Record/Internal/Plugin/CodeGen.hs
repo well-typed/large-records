@@ -5,6 +5,8 @@
 -- | The core of the plugin implementation.
 module Data.Record.Internal.Plugin.CodeGen (genLargeRecord) where
 
+import Prelude hiding (error)
+
 import Data.List (nubBy)
 import Data.List.NonEmpty (NonEmpty(..))
 
@@ -159,8 +161,6 @@ genVectorConversions QualifiedNames{..} r@Record{..} = concatM [
     , toVector
     ]
   where
-    UnqualifiedNames{..} = getUnqualifiedNames
-
     fromVector :: m [LHsDecl GhcPs]
     fromVector = do
         args <- mapM (freshName . fieldName) recordFields
@@ -203,7 +203,7 @@ genVectorConversions QualifiedNames{..} r@Record{..} = concatM [
                         ]
                     )
                   , ( wildP
-                    , VarE unq_error `appE` stringE matchErr
+                    , VarE error `appE` stringE matchErr
                     )
                   ]
           ]
@@ -245,7 +245,7 @@ genIndexedAccessor QualifiedNames{..} r@Record{..} = do
     return [
         sigD name $
           funT
-            (ConT unq_type_Int)
+            (ConT type_Int)
             (recordTypeT r `funT` VarT x)
       , valD name $
           lamE (varP n :| [varP t]) $
@@ -259,8 +259,6 @@ genIndexedAccessor QualifiedNames{..} r@Record{..} = do
               )
       ]
   where
-    UnqualifiedNames{..} = getUnqualifiedNames
-
     name :: LRdrName
     name = nameUnsafeGetIndex r
 
@@ -287,7 +285,7 @@ genUnsafeSetIndex QualifiedNames{..} r@Record{..} = do
     val <- freshName $ mkExpVar recordAnnLoc "val"
     return [
       sigD name $
-               ConT unq_type_Int
+               ConT type_Int
         `funT` (recordTypeT r `funT` (VarT x `funT` recordTypeT r))
       , valD name $
           lamE (varP n :| [varP t, (varP val)]) $
@@ -305,8 +303,6 @@ genUnsafeSetIndex QualifiedNames{..} r@Record{..} = do
               )
       ]
   where
-    UnqualifiedNames{..} = getUnqualifiedNames
-
     name :: LRdrName
     name = nameUnsafeSetIndex r
 
@@ -624,13 +620,11 @@ genStockInstance :: MonadFresh m
   => QualifiedNames
   -> Record -> StockDeriving -> m [LHsDecl GhcPs]
 genStockInstance QualifiedNames{..} r = pure . \case
-    Show    -> [mkInstance unq_type_Show unq_showsPrec gshowsPrec]
-    Eq      -> [mkInstance unq_type_Eq   unq_eq        geq       ]
-    Ord     -> [mkInstance unq_type_Ord  unq_compare   gcompare  ]
+    Show    -> [mkInstance prelude_type_Show prelude_showsPrec gshowsPrec]
+    Eq      -> [mkInstance prelude_type_Eq   prelude_eq        geq       ]
+    Ord     -> [mkInstance prelude_type_Ord  prelude_compare   gcompare  ]
     Generic -> []
   where
-    UnqualifiedNames{..} = getUnqualifiedNames
-
     mkInstance :: LRdrName -> LRdrName -> LRdrName -> LHsDecl GhcPs
     mkInstance cls mthd gen =
         instanceD

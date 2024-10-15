@@ -17,9 +17,11 @@
 -- = Dependencies
 --
 -- In addition to the dependency on @large-records@, you will also need to add
--- dependencies
--- on [large-generics](http://hackage.haskell.org/package/large-generics)
--- and [record-hasfield](http://hackage.haskell.org/package/record-hasfield).
+-- dependencies on
+--
+-- * [ghc-prim](http://hackage.haskell.org/package/ghc-prim).
+-- * [large-generics](http://hackage.haskell.org/package/large-generics)
+-- * [record-hasfield](http://hackage.haskell.org/package/record-hasfield).
 --
 -- = Language extensions
 --

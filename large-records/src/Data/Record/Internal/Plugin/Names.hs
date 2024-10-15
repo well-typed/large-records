@@ -2,14 +2,11 @@
 {-# LANGUAGE RecordWildCards   #-}
 
 module Data.Record.Internal.Plugin.Names (
-    -- * Qualified names
     QualifiedNames(..)
   , getQualifiedNames
-    -- * Unqualified names
-  , UnqualifiedNames(..)
-  , getUnqualifiedNames
   ) where
 
+import Prelude hiding (error)
 import Data.Record.Internal.GHC.Shim
 
 {-------------------------------------------------------------------------------
@@ -19,17 +16,30 @@ import Data.Record.Internal.GHC.Shim
 data QualifiedNames = QualifiedNames {
 
       --
-      -- Base
+      -- Prelude type classes
       --
 
-      type_Constraint  :: LRdrName
+      prelude_type_Eq   :: LRdrName
+    , prelude_type_Ord  :: LRdrName
+    , prelude_type_Show :: LRdrName
+    , prelude_compare   :: LRdrName
+    , prelude_eq        :: LRdrName
+    , prelude_showsPrec :: LRdrName
+
+      --
+      -- Other base
+      --
+
+    , type_Constraint  :: LRdrName
     , type_GHC_Generic :: LRdrName
     , type_GHC_Rep     :: LRdrName
+    , type_Int         :: LRdrName
     , type_Proxy       :: LRdrName
     , type_Type        :: LRdrName
-    , proxy            :: LRdrName
+    , error            :: LRdrName
     , ghc_from         :: LRdrName
     , ghc_to           :: LRdrName
+    , proxy            :: LRdrName
 
       --
       -- AnyArray
@@ -100,8 +110,23 @@ data QualifiedNames = QualifiedNames {
 --   define a dependency on that other package.
 getQualifiedNames :: Hsc QualifiedNames
 getQualifiedNames = do
+
     --
-    -- base
+    -- Prelude classes
+    --
+    -- Annoyingly, we cannot re-rexport these through our runtime module, since
+    -- we cannot declare instances of type aliased classes.
+    --
+
+    prelude_type_Eq   <- exact <$> lookupTcName  ghcClasses (Just "ghc-prim") "Eq"
+    prelude_type_Ord  <- exact <$> lookupTcName  ghcClasses (Just "ghc-prim") "Ord"
+    prelude_type_Show <- exact <$> lookupTcName  ghcShow    Nothing           "Show"
+    prelude_compare   <- exact <$> lookupVarName ghcClasses (Just "ghc-prim") "compare"
+    prelude_eq        <- exact <$> lookupVarName ghcClasses (Just "ghc-prim") "=="
+    prelude_showsPrec <- exact <$> lookupVarName ghcShow    Nothing           "showsPrec"
+
+    --
+    -- Other base
     --
 
     type_Constraint  <- exact <$> lookupTcName  runtime     Nothing "Constraint"
@@ -109,9 +134,11 @@ getQualifiedNames = do
     type_GHC_Rep     <- exact <$> lookupTcName  ghcGenerics Nothing "Rep"
     type_Proxy       <- exact <$> lookupTcName  runtime     Nothing "Proxy"
     type_Type        <- exact <$> lookupTcName  runtime     Nothing "Type"
-    proxy            <- exact <$> lookupVarName runtime     Nothing "proxy"
+    type_Int         <- exact <$> lookupTcName  runtime     Nothing "Int"
+    error            <- exact <$> lookupVarName runtime     Nothing "error"
     ghc_from         <- exact <$> lookupVarName ghcGenerics Nothing "from"
     ghc_to           <- exact <$> lookupVarName ghcGenerics Nothing "to"
+    proxy            <- exact <$> lookupVarName runtime     Nothing "proxy"
 
     --
     -- AnyArray
@@ -173,39 +200,12 @@ getQualifiedNames = do
    exact :: Name -> LRdrName
    exact = noLoc . Exact
 
+   ghcClasses, ghcShow :: ModuleName
+   ghcClasses = mkModuleName "GHC.Classes"
+   ghcShow    = mkModuleName "GHC.Show"
+
    runtime, recordHasField, ghcGenerics, largeGenerics :: ModuleName
    runtime        = mkModuleName "Data.Record.Plugin.Runtime"
    recordHasField = mkModuleName "GHC.Records.Compat"
    ghcGenerics    = mkModuleName "GHC.Generics"
    largeGenerics  = mkModuleName "Data.Record.Generic"
-
-{-------------------------------------------------------------------------------
-  We use Prelude names unqualified.
--------------------------------------------------------------------------------}
-
-data UnqualifiedNames = UnqualifiedNames {
-      unq_type_Eq   :: LRdrName
-    , unq_type_Int  :: LRdrName
-    , unq_type_Ord  :: LRdrName
-    , unq_type_Show :: LRdrName
-    , unq_compare   :: LRdrName
-    , unq_eq        :: LRdrName
-    , unq_error     :: LRdrName
-    , unq_showsPrec :: LRdrName
-    }
-
-getUnqualifiedNames :: UnqualifiedNames
-getUnqualifiedNames = UnqualifiedNames {
-      unq_type_Eq   = tc "Eq"
-    , unq_type_Int  = tc "Int"
-    , unq_type_Ord  = tc "Ord"
-    , unq_type_Show = tc "Show"
-    , unq_compare   = var "compare"
-    , unq_eq        = var "=="
-    , unq_error     = var "error"
-    , unq_showsPrec = var "showsPrec"
-    }
-  where
-    var, tc :: String -> LRdrName
-    var x = noLoc $ mkRdrUnqual $ mkVarOcc x
-    tc  x = noLoc $ mkRdrUnqual $ mkTcOcc  x

@@ -26,8 +26,6 @@ import GHC.TypeLits
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Plugin
-
 newtype T (n :: Nat) (f :: Type -> Type) = MkT (f Word)
 
 instance LowerBound (T n I) where

@@ -1,5 +1,20 @@
 # Revision history for large-records
 
+## 0.4.2 -- 2024-10-15
+
+* Support `primitive-0.7.3` (#159, Isaac Elliott).
+* Plugin idempotence (#159, Isaac Elliott).
+* Document required additional dependencies and language extensions (#161).
+* Use `Exact` names for `Prelude` imports, to avoid unexpected clashes (#162).
+
+Notes:
+
+* If your code imports `Data.Plugin.Record` only for the `largeRecord`
+  identifier used in the `ANN` annotations, this import is no longer required as
+  of this version and can be omitted.
+* In addition to `large-generics` and `record-hasfield` you will now also need
+  to declare a dependency on `ghc-prim`.
+
 ## 0.4.1 -- 2024-05-30
 
 * Support ghc 9.6 (and drop ghc <= 8.8)

@@ -8,13 +8,41 @@
 --
 -- > {-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 -- >
--- > import Data.Record.Plugin
--- >
 -- > {-# ANN type B largeRecord #-}
 -- > data B a = B {a :: a, b :: String}
 -- >   deriving stock (Show, Eq, Ord)
 --
 -- See 'LargeRecordOptions' for the list of all possible annotations.
+--
+-- = Dependencies
+--
+-- In addition to the dependency on @large-records@, you will also need to add
+-- dependencies on
+--
+-- * [ghc-prim](http://hackage.haskell.org/package/ghc-prim).
+-- * [large-generics](http://hackage.haskell.org/package/large-generics)
+-- * [record-hasfield](http://hackage.haskell.org/package/record-hasfield).
+--
+-- = Language extensions
+--
+-- The plugin depends on a number of language extensions. If you are using
+-- GHC2021, you will need enable:
+--
+-- > {-# LANGUAGE DataKinds             #-}
+-- > {-# LANGUAGE TypeFamilies          #-}
+-- > {-# LANGUAGE UndecidableInstances  #-}
+--
+-- If you are using Haskell2010, you need to enable:
+--
+-- > {-# LANGUAGE ConstraintKinds       #-}
+-- > {-# LANGUAGE DataKinds             #-}
+-- > {-# LANGUAGE FlexibleInstances     #-}
+-- > {-# LANGUAGE GADTs                 #-}
+-- > {-# LANGUAGE MultiParamTypeClasses #-}
+-- > {-# LANGUAGE ScopedTypeVariables   #-}
+-- > {-# LANGUAGE TypeFamilies          #-}
+-- > {-# LANGUAGE TypeOperators         #-}
+-- > {-# LANGUAGE UndecidableInstances  #-}
 --
 -- = Usage with @record-dot-preprocessor@
 --
@@ -135,7 +163,18 @@ transformDecl ::
   -> WriterT (Set String) Hsc [LHsDecl GhcPs]
 transformDecl largeRecords decl@(reLoc -> L l _) =
     case decl of
-      DataD (nameBase -> name) _ _ _  ->
+      (unLoc -> AnnD _ (PragAnnD (TypeAnnotation (nameBase -> name)) _)) ->
+        case Map.findWithDefault [] name largeRecords of
+          [_] ->
+            {- A valid `large-records` annotation.
+
+            Remove it so that subsequent passes of the plugin will ignore the generated
+            `large-records` code.
+            -}
+            pure []
+          _ ->
+            pure [decl]
+      DataD (nameBase -> name) _ _ _  -> do
         case Map.findWithDefault [] name largeRecords of
           [] ->
             -- Not a large record. Leave alone.

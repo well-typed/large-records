@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-records
-version:            0.4.1
+version:            0.4.2
 synopsis:           Efficient compilation for large records, linear in the size of the record
 description:        For many reasons, the internal code generated for modules
                     that contain records is quadratic in the number of record
@@ -15,8 +15,8 @@ license:            BSD-3-Clause
 author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
-extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.4
+extra-doc-files:    CHANGELOG.md
+tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
 
 source-repository head
   type:     git
@@ -48,7 +48,7 @@ library
     , containers       >= 0.6.2  && < 0.8
     , ghc              >= 8.10   && < 9.7
     , mtl              >= 2.2.1  && < 2.4
-    , primitive        >= 0.8    && < 0.10
+    , primitive        >= 0.7.3  && < 0.10
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
     , template-haskell >= 2.16   && < 2.21
@@ -113,6 +113,7 @@ test-suite test-large-records
     , large-records
 
     , generic-deriving
+    , ghc-prim
     , large-generics
     , mtl
     , newtype

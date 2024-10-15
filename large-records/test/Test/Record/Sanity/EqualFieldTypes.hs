@@ -21,8 +21,6 @@ module Test.Record.Sanity.EqualFieldTypes (tests) where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Plugin
-
 {-# ANN type R largeRecord #-}
 data R a = MkR {
       field1 :: a

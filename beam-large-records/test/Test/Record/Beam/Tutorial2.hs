@@ -32,7 +32,6 @@ module Test.Record.Beam.Tutorial2 (
 import Data.Functor.Const
 import Data.Int
 import Data.Kind
-import Data.Record.Plugin
 import Data.Text (Text)
 import Database.Beam
 import Database.Beam.Schema.Tables

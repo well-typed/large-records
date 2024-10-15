@@ -11,8 +11,11 @@
 -- This exports all functionality required by the generated code, with the
 -- exception of GHC generics (name clash with @large-records@ generics).
 module Data.Record.Plugin.Runtime (
-    -- * Base
-    Constraint
+    -- * Prelude
+    Int
+  , error
+    -- * Other base
+  , Constraint
   , Proxy
   , Type
   , proxy
@@ -43,10 +46,14 @@ module Data.Record.Plugin.Runtime (
   , unwrapThroughLRGenerics
   ) where
 
+import Prelude hiding (Int, error)
+import qualified Prelude as Prelude
+
 import Control.Monad (forM_)
 import Data.Coerce (coerce)
 import Data.Primitive.SmallArray
 import GHC.Exts (Any)
+import GHC.Stack (HasCallStack)
 import GHC.TypeLits
 
 import qualified Data.Foldable                    as Foldable
@@ -57,6 +64,15 @@ import qualified Data.Record.Generic.Eq           as LR
 import qualified Data.Record.Generic.GHC          as LR
 import qualified Data.Record.Generic.Rep.Internal as LR
 import qualified Data.Record.Generic.Show         as LR
+
+{-------------------------------------------------------------------------------
+  Prelude
+-------------------------------------------------------------------------------}
+
+type Int = Prelude.Int
+
+error :: HasCallStack => String -> a
+error = Prelude.error
 
 {-------------------------------------------------------------------------------
   base
@@ -85,11 +101,11 @@ anyArrayIndex :: AnyArray -> Int -> Any
 anyArrayIndex = indexSmallArray
 
 anyArrayUpdate :: AnyArray -> [(Int, Any)] -> AnyArray
-anyArrayUpdate v updates = runSmallArray $ do
+anyArrayUpdate v updates = runSmallArray (do
     v' <- thawSmallArray v 0 (sizeofSmallArray v)
-    forM_ updates $ \(i, a) -> do
-      writeSmallArray v' i a
+    forM_ updates (\(i, a) -> writeSmallArray v' i a)
     return v'
+  )
 
 {-------------------------------------------------------------------------------
   large-generics: utilities
@@ -102,7 +118,7 @@ anyArrayFromRep :: Rep LR.I a -> AnyArray
 anyArrayFromRep = coerce
 
 mkDicts :: [Dict c Any] -> Rep (Dict c) a
-mkDicts = LR.Rep . smallArrayFromList
+mkDicts ds = LR.Rep (smallArrayFromList ds)
 
 mkDict :: c x => Proxy c -> Proxy x -> Dict c x
 mkDict _ _ = LR.Dict
@@ -126,7 +142,7 @@ mkMetadata name constr fields = LR.Metadata {
       recordName          = name
     , recordConstructor   = constr
     , recordSize          = length fields
-    , recordFieldMetadata = LR.Rep $ smallArrayFromList fields
+    , recordFieldMetadata = LR.Rep (smallArrayFromList fields)
     }
 
 {-------------------------------------------------------------------------------

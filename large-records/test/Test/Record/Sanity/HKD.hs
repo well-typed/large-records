@@ -25,8 +25,6 @@ import GHC.Records.Compat
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Plugin
-
 type family HKD f a where
   HKD Identity  a = a
   HKD (Const b) a = b

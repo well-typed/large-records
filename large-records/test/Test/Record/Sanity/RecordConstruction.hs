@@ -20,8 +20,6 @@ import GHC.Records.Compat
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Plugin
-
 -- Test that this works if we don't generate field accessors
 -- See <https://gitlab.haskell.org/ghc/ghc/-/issues/19312>
 --

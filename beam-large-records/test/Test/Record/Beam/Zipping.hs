@@ -21,7 +21,6 @@ module Test.Record.Beam.Zipping (tests) where
 
 import Data.Functor.Identity
 import Data.Kind
-import Data.Record.Plugin
 import Database.Beam
 import Database.Beam.Schema.Tables
 import Test.Tasty

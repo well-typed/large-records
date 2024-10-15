@@ -131,6 +131,7 @@ executable bench-before
   build-depends:
     , aeson
     , generics-sop
+    , ghc-prim
     , json-sop
     , record-dot-preprocessor
     , record-hasfield
@@ -159,7 +160,8 @@ executable bench-after
       -- Needed for the HasNormalForm benchmark
       -freduction-depth=2000
   build-depends:
-      aeson
+    , aeson
+    , ghc-prim
     , large-generics
     , large-records
     , record-hasfield
@@ -656,8 +658,9 @@ test-suite test-large-records-benchmarks
       bench/before
       bench/experiments
   build-depends:
-      aeson
+    , aeson
     , generics-sop
+    , ghc-prim
     , json-sop
     , large-generics
     , large-records

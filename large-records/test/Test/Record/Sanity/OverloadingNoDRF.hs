@@ -21,8 +21,6 @@ import GHC.Records.Compat
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Record.Plugin
-
 {-------------------------------------------------------------------------------
   Simple test case
 

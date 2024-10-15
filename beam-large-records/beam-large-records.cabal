@@ -11,7 +11,7 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Database
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.4
+tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
 
 source-repository head
   type:     git
@@ -74,6 +74,7 @@ test-suite test-beam-large-records
     , beam-core
     , beam-large-records
     , beam-sqlite
+    , ghc-prim
     , large-generics
     , large-records
     , microlens

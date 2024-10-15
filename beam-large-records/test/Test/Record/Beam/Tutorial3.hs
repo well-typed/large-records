@@ -28,7 +28,6 @@ import Prelude hiding (product)
 
 import Data.Int
 import Data.Kind
-import Data.Record.Plugin
 import Data.Text (Text)
 import Data.Time
 import Database.Beam hiding (countAll_)

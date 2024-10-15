@@ -26,8 +26,6 @@ import Test.Tasty.HUnit
 
 import qualified Data.Record.Generic.Rep as Rep
 
-import Data.Record.Plugin
-
 {-# ANN type Lazy largeRecord #-}
 data Lazy = MkLazy { lazyField :: Word }
 

@@ -9,6 +9,7 @@
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE RoleAnnotations       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -126,6 +127,8 @@ import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
 data Record (f :: k -> Type) (r :: Row k) =
     NoPending  {-# UNPACK #-} !(Canonical f)
   | HasPending {-# UNPACK #-} !(Canonical f) !(Diff f)
+
+type role Record representational representational
 
 {-------------------------------------------------------------------------------
   Conversion

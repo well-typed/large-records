@@ -146,7 +146,7 @@ solveRowHasField rn orig (L loc hf@CRowHasField{hasFieldLabel = FieldKnown name,
             return (Nothing, [])
           Just info -> do
             eq <- newWanted loc $
-                    mkPrimEqPredRole Nominal
+                    mkEqPredRole Nominal
                       hasFieldTypeField
                       (knownRowFieldInfo info)
             ev <- evidenceHasField rn hf (knownRowFieldIndex info)

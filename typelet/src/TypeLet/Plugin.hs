@@ -101,7 +101,7 @@ simplifyWanteds rn given wanted = do
       -> TcPluginM 'Solve ((EvTerm, Ct), Ct)
     solveEqual subst orig (L l parsed) = do
         ev <- newWanted' l $
-                mkPrimEqPredRole
+                mkEqPredRole
                   Nominal
                   (substTy subst (equalLHS parsed))
                   (substTy subst (equalRHS parsed))

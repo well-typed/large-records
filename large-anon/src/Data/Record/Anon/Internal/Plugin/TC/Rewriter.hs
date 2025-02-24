@@ -65,6 +65,7 @@ rewriteRecordMetadataOf fun rn given args@(parseArgs given rn -> Args{..}) =
                mkTyFamAppReduction
                  "large-anon"
                  Nominal
+                 []
                  fun
                  args
                  (computeMetadataOf argsFunctor knownFields)

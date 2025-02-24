@@ -133,7 +133,7 @@ solveSubRow rn orig (L loc proj@CSubRow{..}) =
         case rhs `KnownRow.isSubRowOf` lhs of
           Right inBoth -> do
             eqs <- forM inBoth $ \(Target r, Source l) -> newWanted loc $
-                     mkPrimEqPredRole
+                     mkEqPredRole
                        Nominal
                        (knownRowFieldInfo l)
                        (knownFieldInfo r)

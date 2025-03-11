@@ -16,7 +16,10 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
 extra-doc-files:    CHANGELOG.md
-tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
+tested-with:        GHC ==8.10.7
+                    GHC ==9.2.8
+                    GHC ==9.4.8
+                    GHC ==9.6.6
 
 source-repository head
   type:     git

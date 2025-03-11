@@ -13,7 +13,11 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Generics
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
+tested-with:        GHC ==8.10.7
+                    GHC ==9.2.8
+                    GHC ==9.4.8
+                    GHC ==9.6.6
+                    GHC ==9.8.2
 
 library
   exposed-modules:
@@ -42,7 +46,7 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base         >= 4.14  && < 4.19
+      base         >= 4.14  && < 4.20
     , aeson        >= 1.4.4 && < 2.3
     , deepseq      >= 1.4.4 && < 1.6
     , generics-sop >= 0.5   && < 0.6

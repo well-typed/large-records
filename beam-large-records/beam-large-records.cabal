@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               beam-large-records
-version:            0.1.0.0
+version:            0.1.1
 synopsis:           Integration of large-records with beam-core.
 description:        This package provides the necessary instances that make
                     it possible to use records defined with large-records as
@@ -11,7 +11,10 @@ author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Database
 extra-source-files: CHANGELOG.md
-tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
+tested-with:        GHC ==8.10.7
+                    GHC ==9.2.8
+                    GHC ==9.4.8
+                    GHC ==9.6.6
 
 source-repository head
   type:     git
@@ -32,7 +35,9 @@ library
       Data.Record.Beam.ZipTables
   build-depends:
       base >= 4.14 && < 4.19
-    , beam-core >= 0.9
+      -- lower bound on beam-core is necessary
+      -- see https://github.com/haskell-beam/beam/issues/585
+    , beam-core >= 0.10.3.0
     , large-generics
     , microlens
     , sop-core

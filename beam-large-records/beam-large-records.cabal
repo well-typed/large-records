@@ -10,7 +10,7 @@ license:            BSD-3-Clause
 author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Database
-extra-source-files: CHANGELOG.md
+extra-doc-files:    CHANGELOG.md
 tested-with:        GHC ==8.10.7
                     GHC ==9.2.8
                     GHC ==9.4.8
@@ -34,14 +34,14 @@ library
       Data.Record.Beam.ZipDatabase
       Data.Record.Beam.ZipTables
   build-depends:
-      base >= 4.14 && < 4.19
       -- lower bound on beam-core is necessary
       -- see https://github.com/haskell-beam/beam/issues/585
-    , beam-core >= 0.10.3.0
-    , large-generics
-    , microlens
-    , sop-core
-    , text
+      base           >= 4.14     && < 4.19
+    , beam-core      >= 0.10.3.0 && < 0.11
+    , large-generics >= 0.2      && < 0.3
+    , microlens      >= 0.4      && < 0.5
+    , sop-core       >= 0.5      && < 0.6
+    , text           >= 1.2      && < 2.1
   hs-source-dirs:
       src
   default-language:

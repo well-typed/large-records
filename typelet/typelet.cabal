@@ -1,7 +1,7 @@
 cabal-version:      2.4
 build-type:         Simple
 name:               typelet
-version:            0.1.4
+version:            0.1.5
 synopsis:           Plugin to faciliate type-level let
 description:        For a certain class of programs, type-level let is essential
                     in order to be able to write these programs in such a way

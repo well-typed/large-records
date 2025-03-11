@@ -1,5 +1,10 @@
 # Revision history for large-anon
 
+## 0.3.2 -- 2025-03-11
+
+* Use ghc-tcplugin-api 0.14 (Chan Siu Man, #169)
+* Add role annotation to `Record` (Sam Derbyshire, #167)
+
 ## 0.3.1 -- 2024-05-30
 
 * Support ghc 9.6 (and drop ghc <= 8.8)

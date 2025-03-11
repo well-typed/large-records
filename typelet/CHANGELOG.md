@@ -1,5 +1,9 @@
 # Revision history for typelet
 
+## 0.1.5 -- 2025-03-11
+
+* Use ghc-tcplugin-api 0.14 [Chan Siu Man]
+
 ## 0.1.4 -- 2024-05-30
 
 * Support ghc 9.6 (and drop ghc <= 8.8)

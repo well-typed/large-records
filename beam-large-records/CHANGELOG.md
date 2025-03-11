@@ -1,5 +1,6 @@
 # Revision history for beam-large-records
 
-## 0.1.0.0 -- YYYY-mm-dd
+## 0.1.1 -- 2025-03-11
 
-* First version. Released on an unsuspecting world.
+* First released version
+  (we previously depended on an unreleased version of `beam-core`)

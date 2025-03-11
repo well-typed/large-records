@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-anon
-version:            0.3.1
+version:            0.3.2
 synopsis:           Scalable anonymous records
 description:        The @large-anon@ package provides support for anonymous
                     records in Haskell, with a focus on compile-time (and
@@ -10,9 +10,12 @@ license:            BSD-3-Clause
 author:             Edsko de Vries
 maintainer:         edsko@well-typed.com
 category:           Records
-extra-source-files: CHANGELOG.md
+extra-doc-files:    CHANGELOG.md
                     test/Test/Sanity/RebindableSyntax/Tests.hs
-tested-with:        GHC ==8.10.7 || ==9.2.8 || ==9.4.8 || ==9.6.6
+tested-with:        GHC ==8.10.7
+                    GHC ==9.2.8
+                    GHC ==9.4.8
+                    GHC ==9.6.6
 
 library
   exposed-modules:
@@ -74,8 +77,8 @@ library
     , base             >= 4.14  && < 4.19
     , containers       >= 0.6.2 && < 0.8
     , deepseq          >= 1.4.4 && < 1.6
-    , ghc              >= 8.10  && < 9.7 
-    , ghc-tcplugin-api >= 0.11  && < 0.12
+    , ghc              >= 8.10  && < 9.7
+    , ghc-tcplugin-api >= 0.14  && < 0.15
     , hashable         >= 1.3   && < 1.5
     , mtl              >= 2.2.1 && < 2.4
     , optics-core      >= 0.3   && < 0.5
@@ -201,9 +204,9 @@ Executable large-anon-testsuite-fourmolu-preprocessor
   hs-source-dirs:
       fourmolu-preprocessor
   build-depends:
-    , base
-    , fourmolu >= 0.10.1
-    , text
+    , base     >= 4.16   && < 4.19
+    , fourmolu >= 0.10.1 && < 0.16
+    , text     >= 1.2    && < 2.1
   default-language:
       Haskell2010
   ghc-options:

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,10 +16,15 @@ import Language.Haskell.TH (Extension(StrictData))
 import qualified Data.Generics as SYB
 
 import Data.Record.Internal.GHC.Fresh
-import Data.Record.Internal.GHC.Shim hiding (mkTyVar)
 import Data.Record.Internal.GHC.TemplateHaskellStyle
 import Data.Record.Internal.Plugin.Names
 import Data.Record.Internal.Plugin.Record
+
+#if __GLASGOW_HASKELL__ >= 908
+import Data.Record.Internal.GHC.Shim hiding (fieldName, mkTyVar)
+#else
+import Data.Record.Internal.GHC.Shim hiding (mkTyVar)
+#endif
 
 {-------------------------------------------------------------------------------
   Top-level

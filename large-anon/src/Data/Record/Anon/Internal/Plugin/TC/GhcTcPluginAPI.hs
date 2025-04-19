@@ -45,7 +45,9 @@ import Constraint (Ct(..))
 import GHC.Tc.Types.Constraint (Ct(..))
 #endif
 
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 908
+import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..), EqCt(..))
+#elif __GLASGOW_HASKELL__ >= 902
 import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..))
 #endif
 
@@ -56,7 +58,17 @@ isCanonicalVarEq = \case
     CFunEqCan{..} -> Just (cc_fsk, mkTyConApp cc_fun cc_tyargs)
     _otherwise    -> Nothing
 #endif
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 908
+isCanonicalVarEq = \case
+    CEqCan (EqCt {..})
+      | TyVarLHS var <- eq_lhs
+      -> Just (var, eq_rhs)
+      | TyFamLHS tyCon args <- eq_lhs
+      , Just var            <- getTyVar_maybe eq_rhs
+      -> Just (var, mkTyConApp tyCon args)
+    _otherwise
+      -> Nothing
+#elif __GLASGOW_HASKELL__ >= 902
 isCanonicalVarEq = \case
     CEqCan{..}
       | TyVarLHS var <- cc_lhs

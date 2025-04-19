@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-records
-version:            0.4.2
+version:            0.4.2.1
 synopsis:           Efficient compilation for large records, linear in the size of the record
 description:        For many reasons, the internal code generated for modules
                     that contain records is quadratic in the number of record
@@ -20,6 +20,7 @@ tested-with:        GHC ==8.10.7
                     GHC ==9.2.8
                     GHC ==9.4.8
                     GHC ==9.6.6
+                    GHC ==9.8.4
 
 source-repository head
   type:     git
@@ -47,14 +48,14 @@ library
       Data.Record.Internal.Plugin.Record
 
   build-depends:
-    , base             >= 4.14   && < 4.19
-    , containers       >= 0.6.2  && < 0.8
-    , ghc              >= 8.10   && < 9.7
+    , base             >= 4.14   && < 4.20
+    , containers       >= 0.6.2  && < 0.9
+    , ghc              >= 8.10   && < 9.9
     , mtl              >= 2.2.1  && < 2.4
     , primitive        >= 0.7.3  && < 0.10
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
-    , template-haskell >= 2.16   && < 2.21
+    , template-haskell >= 2.16   && < 2.22
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics >= 0.2 && < 0.3

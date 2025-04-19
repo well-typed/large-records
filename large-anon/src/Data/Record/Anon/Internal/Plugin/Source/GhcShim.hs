@@ -272,7 +272,7 @@ issueWarning l errMsg = do
 
     let msg :: Err.DiagnosticMessage
         msg = mkPlainError [] errMsg
-#else
+#elif __GLASGOW_HASKELL__ < 908
     let printOrThrow :: Err.Messages GhcMessage -> IO ()
         printOrThrow = printOrThrowDiagnostics
                          logger
@@ -281,6 +281,16 @@ issueWarning l errMsg = do
 
     let msg :: Err.UnknownDiagnostic
         msg = Err.UnknownDiagnostic $
+                mkPlainError [] errMsg
+#else
+    let printOrThrow :: Err.Messages GhcMessage -> IO ()
+        printOrThrow = printOrThrowDiagnostics
+                         logger
+                         (initPrintConfig dynFlags)
+                         (initDiagOpts dynFlags)
+
+    let msg :: Err.UnknownDiagnostic opts
+        msg = Err.mkSimpleUnknownDiagnostic $
                 mkPlainError [] errMsg
 #endif
     liftIO $ printOrThrow . Err.mkMessages . bag $

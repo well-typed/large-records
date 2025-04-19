@@ -106,10 +106,16 @@ import GHC.Types.Error (mkPlainError, mkMessages, mkPlainDiagnostic)
 import GHC.Utils.Error (mkMsgEnvelope, mkErrorMsgEnvelope)
 #endif
 
-#if __GLASGOW_HASKELL__ >= 906
+#if __GLASGOW_HASKELL__ >= 908
+import GHC.Types.Error (mkSimpleUnknownDiagnostic)
+#elif __GLASGOW_HASKELL__ >= 906
 import GHC.Types.Error (UnknownDiagnostic(..))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 906
 import GHC.Driver.Config.Diagnostic (initPrintConfig)
 #endif
+
 
 {-------------------------------------------------------------------------------
   Top-level: the plugin proper
@@ -259,6 +265,12 @@ issueError l errMsg = do
 #if __GLASGOW_HASKELL__ == 902
     throwOneError $
       mkErr l neverQualify (mkDecorated [errMsg])
+#elif __GLASGOW_HASKELL__ >= 908
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkSimpleUnknownDiagnostic $ mkPlainError [] errMsg)
 #elif __GLASGOW_HASKELL__ >= 906
     throwOneError $
       mkErrorMsgEnvelope
@@ -284,6 +296,16 @@ issueWarning l errMsg = do
     logger <- getLogger
     liftIO $ printOrThrowWarnings logger dynFlags . bag $
       mkWarnMsg l neverQualify errMsg
+#elif __GLASGOW_HASKELL__ >= 908
+    logger <- getLogger
+    dflags <- getDynFlags
+    let print_config = initPrintConfig dflags
+    liftIO $ printOrThrowDiagnostics logger print_config (initDiagOpts dynFlags) . mkMessages . bag $
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkSimpleUnknownDiagnostic $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
 #elif __GLASGOW_HASKELL__ >= 906
     logger <- getLogger
     dflags <- getDynFlags

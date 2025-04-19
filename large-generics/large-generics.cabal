@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-generics
-version:            0.2.2
+version:            0.2.2.1
 synopsis:           Generic programming API for large-records and large-anon
 description:        The large-generics package offers a style of generic
                     programming inspired by generics-sop, but optimized for

@@ -16,7 +16,6 @@ import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow)
 import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownField as KnownField
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow   as KnownRow
@@ -43,11 +42,11 @@ data CKnownFields = CKnownFields {
 -------------------------------------------------------------------------------}
 
 instance Outputable CKnownFields where
-  ppr (CKnownFields parsedFields typeRecord typeKind) = parens $
+  ppr CKnownFields{..} = parens $
       text "CKnownFields" <+> braces (vcat [
-          text "knownFieldsParsedFields" <+> text "=" <+> ppr parsedFields
-        , text "knownFieldsTypeRecord"   <+> text "=" <+> ppr typeRecord
-        , text "knownFieldsTypeKind"     <+> text "=" <+> ppr typeKind
+          text "knownFieldsParsedFields" <+> text "=" <+> ppr knownFieldsParsedFields
+        , text "knownFieldsTypeRecord"   <+> text "=" <+> ppr knownFieldsTypeRecord
+        , text "knownFieldsTypeKind"     <+> text "=" <+> ppr knownFieldsTypeKind
         ])
 
 {-------------------------------------------------------------------------------
@@ -86,7 +85,7 @@ evidenceKnownFields ::
   -> TcPluginM 'Solve EvTerm
 evidenceKnownFields ResolvedNames{..} CKnownFields{..} r = do
     fields <- mapM KnownField.toExpr (KnownRow.inRowOrder r)
-    return $
+    return $ EvExpr $
       evDataConApp
         (classDataCon clsKnownFields)
         typeArgsEvidence

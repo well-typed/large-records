@@ -147,7 +147,7 @@ parseEqual ResolvedNames{..} ct = fmap (L $ ctLoc ct) $
 -- stuff out of scope...? (the whole "coercions cannot simply be zapped" thing)
 -- See also https://gitlab.haskell.org/ghc/ghc/-/issues/8095#note_108189 .
 evidenceEqual :: ResolvedNames -> CEqual -> EvTerm
-evidenceEqual ResolvedNames{..} (CEqual k a b) =
+evidenceEqual ResolvedNames{..} (CEqual k a b) = EvExpr $
     evDataConApp
       (classDataCon clsEqual)
       [k, a, b]

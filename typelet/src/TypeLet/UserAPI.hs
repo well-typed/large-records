@@ -1,5 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+
 module TypeLet.UserAPI (
     -- * Main classes
     Let

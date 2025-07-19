@@ -19,7 +19,6 @@ import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
@@ -48,12 +47,12 @@ data CAllFields = CAllFields {
 -------------------------------------------------------------------------------}
 
 instance Outputable CAllFields where
-  ppr (CAllFields parsedFields typeConstraint typeKind typeFields) = parens $
+  ppr CAllFields{..} = parens $
       text "CAllFields" <+> braces (vcat [
-          text "allFieldsParsedFields"   <+> text "=" <+> ppr parsedFields
-        , text "allFieldsTypeFields    " <+> text "=" <+> ppr typeFields
-        , text "allFieldsTypeConstraint" <+> text "=" <+> ppr typeConstraint
-        , text "allFieldsTypeKind"       <+> text "=" <+> ppr typeKind
+          text "allFieldsParsedFields"   <+> text "=" <+> ppr allFieldsParsedFields
+        , text "allFieldsTypeFields    " <+> text "=" <+> ppr allFieldsTypeFields
+        , text "allFieldsTypeConstraint" <+> text "=" <+> ppr allFieldsTypeConstraint
+        , text "allFieldsTypeKind"       <+> text "=" <+> ppr allFieldsTypeKind
         ])
 
 {-------------------------------------------------------------------------------
@@ -89,11 +88,11 @@ parseAllFields tcs rn@ResolvedNames{..} =
 evidenceAllFields ::
      ResolvedNames
   -> CAllFields
-  -> KnownRow (Type, EvVar)
+  -> KnownRow (Type, EvExpr)
   -> TcPluginM 'Solve EvTerm
 evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
     fields' <- mapM dictForField (KnownRow.inRowOrder fields)
-    return $
+    return $ EvExpr $
       evDataConApp
         (classDataCon clsAllFields)
         typeArgsEvidence
@@ -115,11 +114,11 @@ evidenceAllFields ResolvedNames{..} CAllFields{..} fields = do
         , allFieldsTypeConstraint
         ]
 
-    dictForField :: KnownField (Type, EvVar) -> TcPluginM 'Solve EvExpr
+    dictForField :: KnownField (Type, EvExpr) -> TcPluginM 'Solve EvExpr
     dictForField KnownField{ knownFieldInfo = (fieldType, dict) } = do
         return $ mkCoreApps (Var idMkDictAny) $ concat [
             map Type (typeArgsDict ++ [fieldType])
-          , [Var dict]
+          , [dict]
           ]
 
 {-------------------------------------------------------------------------------
@@ -140,16 +139,9 @@ solveAllFields rn orig (L loc cr@CAllFields{..}) = do
            <- KnownRow.traverse fields $ \_nm _ix typ -> fmap (typ,) $
                 newWanted loc $
                   mkAppTy allFieldsTypeConstraint typ
-        ev <- evidenceAllFields rn cr $ second getEvVar <$> fields'
+        ev <- evidenceAllFields rn cr $ second ctEvExpr <$> fields'
         return (
             Just (ev, orig)
           , map (mkNonCanonical . snd . knownFieldInfo) $
               KnownRow.inRowOrder fields'
           )
-  where
-    getEvVar :: CtEvidence -> EvVar
-    getEvVar ct = case ctev_dest ct of
-      EvVarDest var -> var
-      HoleDest  _   -> error "impossible (we don't ask for primitive equality)"
-
-

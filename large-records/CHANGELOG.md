@@ -1,5 +1,9 @@
 # Revision history for large-records
 
+## 0.4.3 -- 2025-07-19
+
+* Support ghc 9.8 (Gabriele Sales)
+
 ## 0.4.2 -- 2024-10-15
 
 * Support `primitive-0.7.3` (#159, Isaac Elliott).

@@ -67,6 +67,10 @@ module Data.Record.Internal.GHC.Shim (
     -- * Records
   , simpleRecordUpdates
 
+    -- * Diagnostics
+  , issueError
+  , issueWarning
+
     -- * Re-exports
 
     -- The whole-sale module exports are not ideal for preserving compatibility
@@ -141,6 +145,9 @@ import GHC.Plugins hiding ((<>), getHscEnv
 #if __GLASGOW_HASKELL__ < 904
     , trace
 #endif
+#if __GLASGOW_HASKELL__ >= 908
+    , fieldName
+#endif
     )
 
 #if __GLASGOW_HASKELL__ < 902
@@ -168,6 +175,33 @@ import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 #if __GLASGOW_HASKELL__ >= 906
 import Language.Haskell.Syntax.Basic (FieldLabelString (..))
 import qualified GHC.Types.Basic
+#endif
+
+#if __GLASGOW_HASKELL__ >= 902
+import GHC.Utils.Logger (getLogger)
+#endif
+
+#if __GLASGOW_HASKELL__ == 902
+import GHC.Types.Error (mkWarnMsg, mkErr, mkDecorated)
+import GHC.Driver.Errors (printOrThrowWarnings)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 904
+import GHC.Driver.Config.Diagnostic (initDiagOpts)
+import GHC.Driver.Errors (printOrThrowDiagnostics)
+import GHC.Driver.Errors.Types (GhcMessage(GhcUnknownMessage))
+import GHC.Types.Error (mkPlainError, mkMessages, mkPlainDiagnostic)
+import GHC.Utils.Error (mkMsgEnvelope, mkErrorMsgEnvelope)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 908
+import GHC.Types.Error (mkSimpleUnknownDiagnostic)
+#elif __GLASGOW_HASKELL__ >= 906
+import GHC.Types.Error (UnknownDiagnostic(..))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 906
+import GHC.Driver.Config.Diagnostic (initPrintConfig)
 #endif
 
 {-------------------------------------------------------------------------------
@@ -665,3 +699,73 @@ simpleRecordUpdates =
     isUnambigous _                    = Nothing
 
 #endif
+
+{-------------------------------------------------------------------------------
+  Diagnostics
+-------------------------------------------------------------------------------}
+
+issueError :: SrcSpan -> SDoc -> Hsc ()
+issueError l errMsg = do
+#if __GLASGOW_HASKELL__ == 902
+    throwOneError $
+      mkErr l neverQualify (mkDecorated [errMsg])
+#elif __GLASGOW_HASKELL__ >= 908
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkSimpleUnknownDiagnostic $ mkPlainError [] errMsg)
+#elif __GLASGOW_HASKELL__ >= 906
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainError [] errMsg)
+#elif __GLASGOW_HASKELL__ >= 904
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkPlainError [] errMsg)
+#else
+    dynFlags <- getDynFlags
+    throwOneError $
+      mkErrMsg dynFlags l neverQualify errMsg
+#endif
+
+issueWarning :: SrcSpan -> SDoc -> Hsc ()
+issueWarning l errMsg = do
+    dynFlags <- getDynFlags
+#if __GLASGOW_HASKELL__ == 902
+    logger <- getLogger
+    liftIO $ printOrThrowWarnings logger dynFlags . bag $
+      mkWarnMsg l neverQualify errMsg
+#elif __GLASGOW_HASKELL__ >= 906
+    logger <- getLogger
+    dflags <- getDynFlags
+    let print_config = initPrintConfig dflags
+    liftIO $ printOrThrowDiagnostics logger print_config (initDiagOpts dynFlags) . mkMessages . bag $
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+#if __GLASGOW_HASKELL__ >= 908
+        (GhcUnknownMessage $ mkSimpleUnknownDiagnostic $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
+#else
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
+#endif
+#elif __GLASGOW_HASKELL__ >= 904
+    logger <- getLogger
+    liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
+#else
+    liftIO $ printOrThrowWarnings dynFlags . bag $
+      mkWarnMsg dynFlags l neverQualify errMsg
+#endif
+  where
+    bag :: a -> Bag a
+    bag = listToBag . (:[])

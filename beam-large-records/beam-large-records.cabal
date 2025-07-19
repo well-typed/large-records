@@ -14,7 +14,8 @@ extra-doc-files:    CHANGELOG.md
 tested-with:        GHC ==8.10.7
                     GHC ==9.2.8
                     GHC ==9.4.8
-                    GHC ==9.6.6
+                    GHC ==9.6.7
+                    GHC ==9.8.4
 
 source-repository head
   type:     git
@@ -40,8 +41,6 @@ library
     , beam-core      >= 0.10.3.0 && < 0.11
     , large-generics >= 0.2      && < 0.3
     , microlens      >= 0.4      && < 0.5
-    , sop-core       >= 0.5      && < 0.6
-    , text           >= 1.2      && < 2.2
   hs-source-dirs:
       src
   default-language:
@@ -49,6 +48,7 @@ library
   ghc-options:
       -Wall
       -Wredundant-constraints
+      -Wunused-packages
       -fmax-refinement-hole-fits=0
       -- The proxying from GHC generics to LR generics needs orphans
       -Wno-orphans
@@ -79,17 +79,20 @@ test-suite test-beam-large-records
     , beam-core
     , beam-large-records
     , beam-sqlite
-    , ghc-prim
-    , large-generics
     , large-records
     , microlens
-    , record-dot-preprocessor
     , record-hasfield
     , sqlite-simple
     , tasty
     , tasty-hunit
     , text
     , time
+
+      -- dependencies needed when using large-records
+      -- (cannot enable -Wunused-packages for tihs reason)
+    , ghc-prim
+    , large-generics
+    , record-hasfield
   ghc-options:
       -Wall
       -Wredundant-constraints

@@ -2,7 +2,12 @@ jobs-selection: any
 branches: main
 local-ghc-options: -Werror
 cabal-check: False
+copy-fields: all
 
--- We test only with the most recent ghc, because the precise error messages
+-- if large-records is used, some dependencies must be declared
+-- which ghc thinks are unused.
+error-unused-packages: False 
+
+-- We test only with one ghc version, because the precise error messages
 -- that are tested by the tests vary between versions
 docspec: ==9.4.*

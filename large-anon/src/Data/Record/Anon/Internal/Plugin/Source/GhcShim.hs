@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
 -- | Thin shim around the GHC API
 --
@@ -15,6 +17,9 @@ module Data.Record.Anon.Internal.Plugin.Source.GhcShim (
 #if __GLASGOW_HASKELL__ < 902
     -- * Exact-print annotations
   , reLoc, reLocA
+#endif
+#if __GLASGOW_HASKELL__ >= 910
+  , reLocA
 #endif
 
     -- * Names
@@ -299,6 +304,9 @@ issueWarning l errMsg = do
         , errMsgContext    = neverQualify
         , errMsgDiagnostic = GhcUnknownMessage msg
         , errMsgSeverity   = SevWarning
+#if __GLASGOW_HASKELL__ >= 908
+        , errMsgReason     = Err.ResolvedDiagnosticReason Err.WarningWithoutFlag
+#endif
         }
 #else
     liftIO $ printOrThrowWarnings dynFlags . bag $
@@ -331,9 +339,17 @@ instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
 #endif
 
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 902 && __GLASGOW_HASKELL__ < 910
 instance HasDefaultExt (EpAnn ann) where
   defExt = noAnn
+#elif __GLASGOW_HASKELL__ >= 910
+instance NoAnn ann => HasDefaultExt (EpAnn ann) where
+  defExt = noAnn
+#endif
+
+#if __GLASGOW_HASKELL__ >= 906
+instance HasDefaultExt SourceText where
+  defExt = NoSourceText
 #endif
 
 {-------------------------------------------------------------------------------
@@ -348,6 +364,13 @@ reLocA :: Located a -> Located a
 reLocA = id
 #endif
 
+#if __GLASGOW_HASKELL__ >= 910
+reLocA ::
+     (HasLoc (GenLocated a e), HasAnnotation b)
+  => GenLocated a e -> GenLocated b e
+reLocA = reLoc
+#endif
+
 {-------------------------------------------------------------------------------
   mkLabel
 -------------------------------------------------------------------------------}
@@ -357,8 +380,7 @@ mkLabel l n = reLocA $ L l
             $ HsOverLabel defExt
 #if __GLASGOW_HASKELL__ < 902
                  Nothing -- RebindableSyntax
-#elif __GLASGOW_HASKELL__ >= 906
-                 NoSourceText
+#elif __GLASGOW_HASKELL__ >= 906 && __GLASGOW_HASKELL__ < 912
+                 defExt
 #endif
-
                  n

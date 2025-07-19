@@ -16,7 +16,6 @@ import Data.Record.Anon.Internal.Plugin.TC.Parsing
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (Source(..), Target (..), KnownRowField(..))
 import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
@@ -50,13 +49,13 @@ data CSubRow = CSubRow {
 -------------------------------------------------------------------------------}
 
 instance Outputable CSubRow where
-  ppr (CSubRow parsedLHS parsedRHS typeLHS typeRHS typeKind) = parens $
+  ppr CSubRow{..} = parens $
       text "CSubRow" <+> braces (vcat [
-          text "subrowParsedLHS"   <+> text "=" <+> ppr parsedLHS
-        , text "subrowParsedRHS"   <+> text "=" <+> ppr parsedRHS
-        , text "subrowTypeLHS"     <+> text "=" <+> ppr typeLHS
-        , text "subrowTypeRHS"     <+> text "=" <+> ppr typeRHS
-        , text "subrowTypeKind"    <+> text "=" <+> ppr typeKind
+          text "subrowParsedLHS"   <+> text "=" <+> ppr subrowParsedLHS
+        , text "subrowParsedRHS"   <+> text "=" <+> ppr subrowParsedRHS
+        , text "subrowTypeLHS"     <+> text "=" <+> ppr subrowTypeLHS
+        , text "subrowTypeRHS"     <+> text "=" <+> ppr subrowTypeRHS
+        , text "subrowTypeKind"    <+> text "=" <+> ppr subrowTypeKind
         ])
 
 {-------------------------------------------------------------------------------
@@ -71,16 +70,10 @@ parseSubRow ::
 parseSubRow tcs rn@ResolvedNames{..} =
     parseConstraint' clsSubRow $ \ args ->
       case args of
-        [typeKind, typeLHS, typeRHS] -> do
-          fieldsLHS <- ParsedRow.parseFields tcs rn typeLHS
-          fieldsRHS <- ParsedRow.parseFields tcs rn typeRHS
-          return $ CSubRow {
-                subrowParsedLHS = fieldsLHS
-              , subrowParsedRHS = fieldsRHS
-              , subrowTypeLHS   = typeLHS
-              , subrowTypeRHS   = typeRHS
-              , subrowTypeKind  = typeKind
-              }
+        [subrowTypeKind, subrowTypeLHS, subrowTypeRHS] -> do
+          subrowParsedLHS <- ParsedRow.parseFields tcs rn subrowTypeLHS
+          subrowParsedRHS <- ParsedRow.parseFields tcs rn subrowTypeRHS
+          return $ CSubRow {..}
         _ -> pprPanic "parseSubRow: expected 3 arguments" $
                text "args" <+> ppr args
 
@@ -94,7 +87,7 @@ evidenceSubRow ::
   -> [(Target (KnownField Type), Source (KnownRowField Type))]
   -> TcPluginM 'Solve EvTerm
 evidenceSubRow ResolvedNames{..} CSubRow{..} fields = do
-    return $
+    return $ EvExpr $
       evDataConApp
         (classDataCon clsSubRow)
         typeArgsEvidence

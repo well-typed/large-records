@@ -1,5 +1,9 @@
 # Revision history for large-generics
 
+## 0.2.3 -- 2025-07-19
+
+* Support ghc up to 9.12
+
 ## 0.2.2 -- 2024-05-30
 
 * Support ghc 9.6 (and drop ghc <= 8.8)

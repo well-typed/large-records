@@ -9,7 +9,6 @@ import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow)
 import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownField as KnownField
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow   as KnownRow

@@ -275,16 +275,17 @@ boundsCheck _arr _i k = k
 #endif
 
 #ifdef DEBUG
-boundsCheckM :: HasCallStack => SmallMutableArray s a -> Int -> r -> r
-boundsCheckM arr i k =
-    if 0 <= i && i < sizeofSmallMutableArray arr
+boundsCheckM :: HasCallStack => SmallMutableArray s a -> Int -> ST s r -> ST s r
+boundsCheckM arr i k = do
+    sz <- getSizeofSmallMutableArray arr
+    if 0 <= i && i < sz
       then k
       else error $ concat [
                "StrictArray: index " ++ show i ++ " out of bounds"
-             , " (array size: " ++ show (sizeofSmallMutableArray arr) ++ ")"
+             , " (array size: " ++ show sz ++ ")"
              ]
 #else
-boundsCheckM :: SmallMutableArray s a -> Int -> r -> r
+boundsCheckM :: SmallMutableArray s a -> Int -> ST s r -> ST s r
 boundsCheckM _arr _i k = k
 #endif
 

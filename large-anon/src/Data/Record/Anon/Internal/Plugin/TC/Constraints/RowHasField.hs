@@ -16,7 +16,6 @@ import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRowField(..))
 import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields, FieldLabel(..))
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
@@ -57,14 +56,14 @@ data CRowHasField = CRowHasField {
 -------------------------------------------------------------------------------}
 
 instance Outputable CRowHasField where
-  ppr (CRowHasField label record typeKind typeLabel typeRow typeField) = parens $
+  ppr CRowHasField{..} = parens $
       text "CRowHasField" <+> braces (vcat [
-          text "hasFieldLabel"     <+> text "=" <+> ppr label
-        , text "hasFieldRecord"    <+> text "=" <+> ppr record
-        , text "hasFieldTypeKind"  <+> text "=" <+> ppr typeKind
-        , text "hasFieldTypeLabel" <+> text "=" <+> ppr typeLabel
-        , text "hasFieldTypeRow"   <+> text "=" <+> ppr typeRow
-        , text "hasFieldTypeField" <+> text "=" <+> ppr typeField
+          text "hasFieldLabel"     <+> text "=" <+> ppr hasFieldLabel
+        , text "hasFieldRecord"    <+> text "=" <+> ppr hasFieldRecord
+        , text "hasFieldTypeKind"  <+> text "=" <+> ppr hasFieldTypeKind
+        , text "hasFieldTypeLabel" <+> text "=" <+> ppr hasFieldTypeLabel
+        , text "hasFieldTypeRow"   <+> text "=" <+> ppr hasFieldTypeRow
+        , text "hasFieldTypeField" <+> text "=" <+> ppr hasFieldTypeField
         ])
 
 {-------------------------------------------------------------------------------
@@ -104,7 +103,7 @@ evidenceHasField ::
   -> Int        -- ^ Field index
   -> TcPluginM 'Solve EvTerm
 evidenceHasField ResolvedNames{..} CRowHasField{..} i = do
-    return $
+    return $ EvExpr $
       evDataConApp
         (classDataCon clsRowHasField)
         typeArgsEvidence

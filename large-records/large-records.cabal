@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-records
-version:            0.4.2.1
+version:            0.4.3
 synopsis:           Efficient compilation for large records, linear in the size of the record
 description:        For many reasons, the internal code generated for modules
                     that contain records is quadratic in the number of record
@@ -19,7 +19,7 @@ extra-doc-files:    CHANGELOG.md
 tested-with:        GHC ==8.10.7
                     GHC ==9.2.8
                     GHC ==9.4.8
-                    GHC ==9.6.6
+                    GHC ==9.6.7
                     GHC ==9.8.4
 
 source-repository head
@@ -74,15 +74,13 @@ library
   ghc-options:
       -Wall
       -Wcompat
-      -Wincomplete-uni-patterns
-      -Wincomplete-record-updates
-      -Wpartial-fields
       -Widentities
-      -Wredundant-constraints
+      -Wincomplete-record-updates
+      -Wincomplete-uni-patterns
       -Wmissing-export-lists
-
-  if impl(ghc >= 8.10)
-    ghc-options: -Wunused-packages
+      -Wpartial-fields
+      -Wredundant-constraints
+      -Wunused-packages
 
 test-suite test-large-records
   type:

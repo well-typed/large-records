@@ -67,6 +67,10 @@ module Data.Record.Internal.GHC.Shim (
     -- * Records
   , simpleRecordUpdates
 
+    -- * Diagnostics
+  , issueError
+  , issueWarning
+
     -- * Re-exports
 
     -- The whole-sale module exports are not ideal for preserving compatibility
@@ -141,6 +145,9 @@ import GHC.Plugins hiding ((<>), getHscEnv
 #if __GLASGOW_HASKELL__ < 904
     , trace
 #endif
+#if __GLASGOW_HASKELL__ >= 908
+    , fieldName
+#endif
     )
 
 #if __GLASGOW_HASKELL__ < 902
@@ -168,6 +175,33 @@ import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 #if __GLASGOW_HASKELL__ >= 906
 import Language.Haskell.Syntax.Basic (FieldLabelString (..))
 import qualified GHC.Types.Basic
+#endif
+
+#if __GLASGOW_HASKELL__ >= 902
+import GHC.Utils.Logger (getLogger)
+#endif
+
+#if __GLASGOW_HASKELL__ == 902
+import GHC.Types.Error (mkWarnMsg, mkErr, mkDecorated)
+import GHC.Driver.Errors (printOrThrowWarnings)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 904
+import GHC.Driver.Config.Diagnostic (initDiagOpts)
+import GHC.Driver.Errors (printOrThrowDiagnostics)
+import GHC.Driver.Errors.Types (GhcMessage(GhcUnknownMessage))
+import GHC.Types.Error (mkPlainError, mkMessages, mkPlainDiagnostic)
+import GHC.Utils.Error (mkMsgEnvelope, mkErrorMsgEnvelope)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 908
+import GHC.Types.Error (mkSimpleUnknownDiagnostic)
+#elif __GLASGOW_HASKELL__ >= 906
+import GHC.Types.Error (UnknownDiagnostic(..))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 906
+import GHC.Driver.Config.Diagnostic (initPrintConfig)
 #endif
 
 {-------------------------------------------------------------------------------
@@ -276,7 +310,11 @@ conPat x y = ConPat defExt (reLocA x) y
 #endif
 
 mkFunBind :: Located RdrName -> [LMatch GhcPs (LHsExpr GhcPs)] -> HsBind GhcPs
+#if __GLASGOW_HASKELL__ >= 908
+mkFunBind (reLocA -> n) = GHC.mkFunBind (Generated DoPmc) n
+#else
 mkFunBind (reLocA -> n) = GHC.mkFunBind Generated n
+#endif
 
 #if __GLASGOW_HASKELL__ < 900
 type HsModule = GHC.HsModule GhcPs
@@ -347,13 +385,19 @@ instance HasDefaultExt NoExtField where
 #if __GLASGOW_HASKELL__ >= 906
 instance HasDefaultExt (LayoutInfo GhcPs) where
   defExt = NoLayoutInfo
-instance HasDefaultExt GHC.Types.Basic.Origin where
-  defExt = Generated
 instance HasDefaultExt SourceText where
   defExt = NoSourceText
 #elif __GLASGOW_HASKELL__ >= 900
 instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
+#endif
+
+#if __GLASGOW_HASKELL__ >= 908
+instance HasDefaultExt GHC.Types.Basic.Origin where
+  defExt = Generated DoPmc
+#elif __GLASGOW_HASKELL__ >= 906
+instance HasDefaultExt GHC.Types.Basic.Origin where
+  defExt = Generated
 #endif
 
 instance (HasDefaultExt a, HasDefaultExt b) => HasDefaultExt (a, b) where
@@ -386,7 +430,10 @@ withDefExt a = a
   Generalized @forall@ in 9.0
 -------------------------------------------------------------------------------}
 
-#if __GLASGOW_HASKELL__ >= 900
+#if __GLASGOW_HASKELL__ >= 908
+type  HsTyVarBndr pass =  GHC.HsTyVarBndr (HsBndrVis GhcPs) pass
+type LHsTyVarBndr pass = GHC.LHsTyVarBndr (HsBndrVis GhcPs) pass
+#elif __GLASGOW_HASKELL__ >= 900
 type  HsTyVarBndr pass =  GHC.HsTyVarBndr () pass
 type LHsTyVarBndr pass = GHC.LHsTyVarBndr () pass
 #endif
@@ -406,8 +453,10 @@ userTyVar ::
   -> HsTyVarBndr GhcPs
 #if __GLASGOW_HASKELL__ < 900
 userTyVar = UserTyVar
-#else
+#elif __GLASGOW_HASKELL__ < 908
 userTyVar ext x = UserTyVar ext () (reLocA x)
+#else
+userTyVar ext x = UserTyVar ext HsBndrRequired (reLocA x)
 #endif
 
 kindedTyVar ::
@@ -417,8 +466,10 @@ kindedTyVar ::
   -> HsTyVarBndr GhcPs
 #if __GLASGOW_HASKELL__ < 900
 kindedTyVar = KindedTyVar
-#else
+#elif __GLASGOW_HASKELL__ < 908
 kindedTyVar ext k = KindedTyVar ext () (reLocA k)
+#else
+kindedTyVar ext k = KindedTyVar ext HsBndrRequired (reLocA k)
 #endif
 
 -- | Like 'hsTyVarName', but don't throw away the location information
@@ -437,9 +488,9 @@ setDefaultSpecificity :: LHsTyVarBndr pass -> GHC.LHsTyVarBndr pass
 setDefaultSpecificity = id
 #else
 setDefaultSpecificity :: LHsTyVarBndr GhcPs -> GHC.LHsTyVarBndr Specificity GhcPs
-setDefaultSpecificity = mapXRec @GhcPs $ \v -> case v of
-    UserTyVar   ext () name      -> UserTyVar   ext SpecifiedSpec name
-    KindedTyVar ext () name kind -> KindedTyVar ext SpecifiedSpec name kind
+setDefaultSpecificity = mapXRec @GhcPs $ \case
+    UserTyVar   ext _ name      -> UserTyVar   ext SpecifiedSpec name
+    KindedTyVar ext _ name kind -> KindedTyVar ext SpecifiedSpec name kind
 #if __GLASGOW_HASKELL__ < 900
     XTyVarBndr  ext              -> XTyVarBndr  ext
 #endif
@@ -545,7 +596,9 @@ withoutLoc = inheritLoc noSrcSpan
   Records
 -------------------------------------------------------------------------------}
 
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 908
+type RupdFlds = LHsRecUpdFields GhcPs
+#elif __GLASGOW_HASKELL__ >= 902
 type RupdFlds = Either [LHsRecUpdField GhcPs] [LHsRecUpdProj GhcPs]
 #else
 type RupdFlds = [LHsRecUpdField GhcPs]
@@ -558,8 +611,15 @@ simpleRecordUpdates :: RupdFlds -> Maybe [(LRdrName, LHsExpr GhcPs)]
 
 simpleRecordUpdates =
     \case
+#if __GLASGOW_HASKELL__ >= 908
+      RegularRecUpdFields _ flds ->
+        mapM (aux (isUnambigous  . unLoc)) flds
+      OverloadedRecUpdFields _ flds ->
+        mapM (aux (isSingleLabel . unLoc)) flds
+#else
       Left  flds -> mapM (aux (isUnambigous  . unLoc)) flds
       Right flds -> mapM (aux (isSingleLabel . unLoc)) flds
+#endif
   where
     aux :: forall lhs rhs.
          (lhs -> Maybe LRdrName)
@@ -639,3 +699,73 @@ simpleRecordUpdates =
     isUnambigous _                    = Nothing
 
 #endif
+
+{-------------------------------------------------------------------------------
+  Diagnostics
+-------------------------------------------------------------------------------}
+
+issueError :: SrcSpan -> SDoc -> Hsc ()
+issueError l errMsg = do
+#if __GLASGOW_HASKELL__ == 902
+    throwOneError $
+      mkErr l neverQualify (mkDecorated [errMsg])
+#elif __GLASGOW_HASKELL__ >= 908
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkSimpleUnknownDiagnostic $ mkPlainError [] errMsg)
+#elif __GLASGOW_HASKELL__ >= 906
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainError [] errMsg)
+#elif __GLASGOW_HASKELL__ >= 904
+    throwOneError $
+      mkErrorMsgEnvelope
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkPlainError [] errMsg)
+#else
+    dynFlags <- getDynFlags
+    throwOneError $
+      mkErrMsg dynFlags l neverQualify errMsg
+#endif
+
+issueWarning :: SrcSpan -> SDoc -> Hsc ()
+issueWarning l errMsg = do
+    dynFlags <- getDynFlags
+#if __GLASGOW_HASKELL__ == 902
+    logger <- getLogger
+    liftIO $ printOrThrowWarnings logger dynFlags . bag $
+      mkWarnMsg l neverQualify errMsg
+#elif __GLASGOW_HASKELL__ >= 906
+    logger <- getLogger
+    dflags <- getDynFlags
+    let print_config = initPrintConfig dflags
+    liftIO $ printOrThrowDiagnostics logger print_config (initDiagOpts dynFlags) . mkMessages . bag $
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+#if __GLASGOW_HASKELL__ >= 908
+        (GhcUnknownMessage $ mkSimpleUnknownDiagnostic $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
+#else
+        (GhcUnknownMessage $ UnknownDiagnostic $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
+#endif
+#elif __GLASGOW_HASKELL__ >= 904
+    logger <- getLogger
+    liftIO $ printOrThrowDiagnostics logger (initDiagOpts dynFlags) . mkMessages . bag $
+      mkMsgEnvelope
+        (initDiagOpts dynFlags)
+        l
+        neverQualify
+        (GhcUnknownMessage $ mkPlainDiagnostic WarningWithoutFlag [] errMsg)
+#else
+    liftIO $ printOrThrowWarnings dynFlags . bag $
+      mkWarnMsg dynFlags l neverQualify errMsg
+#endif
+  where
+    bag :: a -> Bag a
+    bag = listToBag . (:[])

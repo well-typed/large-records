@@ -1,5 +1,10 @@
 # Revision history for typelet
 
+## 0.1.6 -- 2025-07-19
+
+* Relax bounds [together with Gabriele Sales]
+* Use ghc-tcplugin-api 0.16
+
 ## 0.1.5 -- 2025-03-11
 
 * Use ghc-tcplugin-api 0.14 [Chan Siu Man]

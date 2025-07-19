@@ -11,8 +11,6 @@ import qualified Test.Sanity.BlogPost
 import qualified Test.Sanity.CheckIsSubRow
 import qualified Test.Sanity.Discovery
 import qualified Test.Sanity.DuplicateFields
-import qualified Test.Sanity.Fourmolu.OverloadedRecordDot
-import qualified Test.Sanity.Fourmolu.OverloadedRecordUpdate
 import qualified Test.Sanity.Generics
 import qualified Test.Sanity.HasField
 import qualified Test.Sanity.Intersection
@@ -52,8 +50,6 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.OverloadedRecordUpdate.tests
         , Test.Sanity.RebindableSyntax.Disabled.tests
         , Test.Sanity.RebindableSyntax.Enabled.tests
-        , Test.Sanity.Fourmolu.OverloadedRecordDot.tests
-        , Test.Sanity.Fourmolu.OverloadedRecordUpdate.tests
         , Test.Sanity.Regression.tests
         ]
     , testGroup "Prop" [

@@ -26,7 +26,6 @@ import Data.Void
 import GHC.Stack
 
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 {-------------------------------------------------------------------------------
   Basic infrastructure

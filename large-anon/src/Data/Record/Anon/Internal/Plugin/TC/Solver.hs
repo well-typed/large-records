@@ -17,7 +17,6 @@ import Data.Record.Anon.Internal.Plugin.TC.Constraints.SubRow
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 {-------------------------------------------------------------------------------
   Top-level solver

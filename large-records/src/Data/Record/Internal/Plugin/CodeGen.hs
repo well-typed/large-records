@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,7 +16,7 @@ import Language.Haskell.TH (Extension(StrictData))
 import qualified Data.Generics as SYB
 
 import Data.Record.Internal.GHC.Fresh
-import Data.Record.Internal.GHC.Shim hiding (mkTyVar)
+import Data.Record.Internal.GHC.Shim
 import Data.Record.Internal.GHC.TemplateHaskellStyle
 import Data.Record.Internal.Plugin.Names
 import Data.Record.Internal.Plugin.Record
@@ -112,7 +113,7 @@ genDatatype Record{..} = pure $
     -- cannot clash with anything else (no other type vars can be in scope).
     vars :: [LRdrName]
     vars = [
-          mkTyVar recordAnnLoc ("lr_f" <> show i)
+          mkNameTy recordAnnLoc ("lr_f" <> show i)
         | (i, _) <- zip [1 :: Int ..] recordFields
         ]
 
@@ -184,7 +185,7 @@ genVectorConversions QualifiedNames{..} r@Record{..} = concatM [
 
     toVector :: m [LHsDecl GhcPs]
     toVector = do
-        x    <- freshName $ mkExpVar recordAnnLoc "x"
+        x    <- freshName $ mkNameExp recordAnnLoc "x"
         args <- mapM (freshName . fieldName) recordFields
         return $ [
             sigD name $
@@ -239,9 +240,9 @@ genIndexedAccessor ::
   => QualifiedNames
   -> Record -> m [LHsDecl GhcPs]
 genIndexedAccessor QualifiedNames{..} r@Record{..} = do
-    x <- freshName' False $ mkTyVar  recordAnnLoc "x"
-    n <- freshName $ mkExpVar recordAnnLoc "n"
-    t <- freshName $ mkExpVar recordAnnLoc "t"
+    x <- freshName' False $ mkNameTy recordAnnLoc "x"
+    n <- freshName $ mkNameExp recordAnnLoc "n"
+    t <- freshName $ mkNameExp recordAnnLoc "t"
     return [
         sigD name $
           funT
@@ -279,10 +280,10 @@ genUnsafeSetIndex ::
   => QualifiedNames
   -> Record -> m [LHsDecl GhcPs]
 genUnsafeSetIndex QualifiedNames{..} r@Record{..} = do
-    x   <- freshName' False $ mkTyVar  recordAnnLoc "x"
-    n   <- freshName $ mkExpVar recordAnnLoc "n"
-    t   <- freshName $ mkExpVar recordAnnLoc "t"
-    val <- freshName $ mkExpVar recordAnnLoc "val"
+    x   <- freshName' False $ mkNameTy recordAnnLoc "x"
+    n   <- freshName $ mkNameExp recordAnnLoc "n"
+    t   <- freshName $ mkNameExp recordAnnLoc "t"
+    val <- freshName $ mkNameExp recordAnnLoc "val"
     return [
       sigD name $
                ConT type_Int
@@ -316,8 +317,8 @@ genHasFieldInstance :: MonadFresh m
   => QualifiedNames
   -> Record -> Field -> m (LHsDecl GhcPs)
 genHasFieldInstance QualifiedNames{..} r@Record{..} Field{..} = do
-    x <- freshName' False $ mkTyVar  recordAnnLoc "x"
-    t <- freshName $ mkExpVar recordAnnLoc "t"
+    x <- freshName' False $ mkNameTy recordAnnLoc "x"
+    t <- freshName $ mkNameExp recordAnnLoc "t"
     return $
       instanceD
         [equalP (VarT x) fieldType]
@@ -362,7 +363,7 @@ genConstraintsClass ::
      MonadFresh m
   => QualifiedNames -> Record -> m (LHsDecl GhcPs)
 genConstraintsClass QualifiedNames{..} r@Record{..} = do
-    c <- freshName' False $ mkTyVar recordAnnLoc "c"
+    c <- freshName' False $ mkNameTy recordAnnLoc "c"
     return $ classD
       []
       (nameConstraints r)
@@ -432,7 +433,7 @@ genDict ::
   => QualifiedNames
   -> Record -> m (LHsExpr GhcPs)
 genDict names@QualifiedNames{..} Record{..} = do
-    p <- freshName $ mkExpVar recordAnnLoc "p"
+    p <- freshName $ mkNameExp recordAnnLoc "p"
     return $
       lamE1 (varP p) $
         appE
@@ -458,7 +459,7 @@ genConstraintsInstance ::
   => QualifiedNames -> Record -> m (LHsDecl GhcPs)
 genConstraintsInstance names r@Record{..} = do
     body <- genDict names r
-    c    <- freshName' False $ mkTyVar recordAnnLoc "c"
+    c    <- freshName' False $ mkNameTy recordAnnLoc "c"
     return $
       instanceD
         (genRequiredConstraints r (VarT c))
@@ -489,7 +490,7 @@ genMetadata ::
   => QualifiedNames
   -> Record -> DynFlags -> m (LHsExpr GhcPs)
 genMetadata names@QualifiedNames{..} r@Record{..} dynFlags = do
-    p <- freshName $ mkExpVar recordAnnLoc "p"
+    p <- freshName $ mkNameExp recordAnnLoc "p"
     return $
       lamE1 (varP p) $
         appsE (VarE mkMetadata) [
@@ -525,7 +526,7 @@ genFrom ::
   => QualifiedNames
   -> Record -> m (LHsExpr GhcPs)
 genFrom QualifiedNames{..} r@Record{..} = do
-    x <- freshName $ mkExpVar recordAnnLoc "x"
+    x <- freshName $ mkNameExp recordAnnLoc "x"
     return $
       lamE1 (varP x) $
         VarE anyArrayToRep `appE` (VarE (nameVectorFrom r) `appE` VarE x)
@@ -545,7 +546,7 @@ genTo ::
   => QualifiedNames
   -> Record -> m (LHsExpr GhcPs)
 genTo QualifiedNames{..} r@Record{..} = do
-    x <- freshName $ mkExpVar recordAnnLoc "x"
+    x <- freshName $ mkNameExp recordAnnLoc "x"
     return $
       lamE1 (varP x) $
         VarE (nameVectorTo r) `appE` (VarE anyArrayFromRep `appE` VarE x)
@@ -689,12 +690,12 @@ nameUnsafeSetIndex  :: Record -> LRdrName
 nameConstraints     :: Record -> LRdrName
 nameDictConstraints :: Record -> LRdrName
 
-nameVectorFrom      = mkDerived mkExpVar "vectorFrom"
-nameVectorTo        = mkDerived mkExpVar "vectorTo"
-nameUnsafeGetIndex  = mkDerived mkExpVar "unsafeGetIndex"
-nameUnsafeSetIndex  = mkDerived mkExpVar "unsafeSetIndex"
-nameConstraints     = mkDerived mkTyCon  "Constraints_"
-nameDictConstraints = mkDerived mkExpVar "dictConstraints_"
+nameVectorFrom      = mkDerived mkNameExp   "vectorFrom"
+nameVectorTo        = mkDerived mkNameExp   "vectorTo"
+nameUnsafeGetIndex  = mkDerived mkNameExp   "unsafeGetIndex"
+nameUnsafeSetIndex  = mkDerived mkNameExp   "unsafeSetIndex"
+nameConstraints     = mkDerived mkNameTyCon "Constraints_"
+nameDictConstraints = mkDerived mkNameExp   "dictConstraints_"
 
 {-------------------------------------------------------------------------------
   Auxiliary

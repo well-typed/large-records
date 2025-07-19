@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.19.20250216
+# version: 0.19.20250710
 #
-# REGENDATA ("0.19.20250216",["github","cabal.project"])
+# REGENDATA ("0.19.20250710",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -32,14 +32,24 @@ jobs:
     strategy:
       matrix:
         include:
-          - compiler: ghc-9.8.2
+          - compiler: ghc-9.12.2
             compilerKind: ghc
-            compilerVersion: 9.8.2
+            compilerVersion: 9.12.2
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.6.6
+          - compiler: ghc-9.10.2
             compilerKind: ghc
-            compilerVersion: 9.6.6
+            compilerVersion: 9.10.2
+            setup-method: ghcup
+            allow-failure: false
+          - compiler: ghc-9.8.4
+            compilerKind: ghc
+            compilerVersion: 9.8.4
+            setup-method: ghcup
+            allow-failure: false
+          - compiler: ghc-9.6.7
+            compilerKind: ghc
+            compilerVersion: 9.6.7
             setup-method: ghcup
             allow-failure: false
           - compiler: ghc-9.4.8
@@ -66,12 +76,12 @@ jobs:
       - name: Install GHCup
         run: |
           mkdir -p "$HOME/.ghcup/bin"
-          curl -sL https://downloads.haskell.org/ghcup/0.1.30.0/x86_64-linux-ghcup-0.1.30.0 > "$HOME/.ghcup/bin/ghcup"
+          curl -sL https://downloads.haskell.org/ghcup/0.1.50.1/x86_64-linux-ghcup-0.1.50.1 > "$HOME/.ghcup/bin/ghcup"
           chmod a+x "$HOME/.ghcup/bin/ghcup"
       - name: Install cabal-install
         run: |
-          "$HOME/.ghcup/bin/ghcup" install cabal 3.12.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
-          echo "CABAL=$HOME/.ghcup/bin/cabal-3.12.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          "$HOME/.ghcup/bin/ghcup" install cabal 3.14.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          echo "CABAL=$HOME/.ghcup/bin/cabal-3.14.2.0 -vnormal+nowrap" >> "$GITHUB_ENV"
       - name: Install GHC (GHCup)
         if: matrix.setup-method == 'ghcup'
         run: |
@@ -149,8 +159,8 @@ jobs:
       - name: install cabal-docspec
         run: |
           mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20240703/cabal-docspec-0.0.0.20240703-x86_64-linux.xz > cabal-docspec.xz
-          echo '48bf3b7fd2f7f0caa6162afee57a755be8523e7f467b694900eb420f5f9a7b76  cabal-docspec.xz' | sha256sum -c -
+          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20250606/cabal-docspec-0.0.0.20250606-x86_64-linux.xz > cabal-docspec.xz
+          echo 'cc20bb5c19501b42bde77556bc419c7c0a5c8d1eb65663024d8a4e4c868bef25  cabal-docspec.xz' | sha256sum -c -
           xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
           rm -f cabal-docspec.xz
           chmod a+x $HOME/.cabal/bin/cabal-docspec
@@ -163,10 +173,10 @@ jobs:
         run: |
           touch cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
+          echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
           echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
           cat cabal.project
       - name: sdist
@@ -195,24 +205,53 @@ jobs:
           touch cabal.project
           touch cabal.project.local
           echo "packages: ${PKGDIR_large_generics}" >> cabal.project
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records}" >> cabal.project ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records}" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_anon}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
+          echo "packages: ${PKGDIR_large_anon}" >> cabal.project
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
           echo "packages: ${PKGDIR_typelet}" >> cabal.project
           echo "package large-generics" >> cabal.project
-          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
           if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90800)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
+          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
+          echo "package large-anon" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
           echo "package typelet" >> cabal.project
-          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package large-generics" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package typelet" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           cat >> cabal.project <<EOF
+          package large-generics
+            tests: True
+
+          package large-records
+            tests: True
+
+          package large-records-benchmarks
+            tests: True
+
+          package large-anon
+            tests:       True
+            ghc-options: -dcore-lint
+
+          package beam-large-records
+            tests: True
+
+          package typelet
+            tests: True
+
           package large-generics
             ghc-options: -Werror
 

@@ -39,11 +39,11 @@ sourcePlugin rawOpts
 
 transformExpr :: Options -> LHsExpr GhcPs -> FreshT Hsc (LHsExpr GhcPs)
 transformExpr options@Options{debug} e@(reLoc -> L l expr)
-  | RecordCon _ext (L _ nm) (HsRecFields flds dotdot) <- expr
+  | RecordCon _ext (L _ nm) HsRecFields{rec_flds, rec_dotdot} <- expr
   , Unqual nm' <- nm
-  , Nothing    <- dotdot
+  , Nothing    <- rec_dotdot
   , Just mode  <- parseMode (occNameString nm')
-  , Just flds' <- mapM getField flds
+  , Just flds' <- mapM getField rec_flds
   = do names <- lift $ getLargeAnonNames mode
        e'    <- anonRec options names l flds'
        when debug $ lift $ issueWarning l (debugMsg e')
@@ -163,4 +163,8 @@ mkVar l name = reLocA $ L l $ HsVar defExt (reLocA $ L l name)
 --
 -- > \x -> e
 simpleLam :: RdrName -> LHsExpr GhcPs -> LHsExpr GhcPs
+#if __GLASGOW_HASKELL__ >= 912
+simpleLam x body = mkHsLam (noLocA [nlVarPat x]) body
+#else
 simpleLam x body = mkHsLam [nlVarPat x] body
+#endif

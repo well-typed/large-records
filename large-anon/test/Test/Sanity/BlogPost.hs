@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
@@ -11,6 +12,20 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+
+#if defined(NO_RECORD_DOT_PREPROCESSOR)
+
+module Test.Sanity.BlogPost (tests) where
+
+import Test.Tasty
+import Test.Tasty.HUnit
+
+tests :: TestTree
+tests =
+    testCaseInfo "Test.Sanity.BlogPost" $
+      return "Blogposts tests (no record-dot-preprocessor)"
+
+#else
 
 {-# OPTIONS_GHC -fplugin=RecordDotPreprocessor -fplugin=Data.Record.Anon.Plugin #-}
 
@@ -388,3 +403,5 @@ parseInt = parser
 
 parseString :: Parser String
 parseString = Parsec.tokenPrim id (\pos _ _ -> pos) Just
+
+#endif

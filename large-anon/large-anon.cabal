@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-anon
-version:            0.3.2
+version:            0.3.3
 synopsis:           Scalable anonymous records
 description:        The @large-anon@ package provides support for anonymous
                     records in Haskell, with a focus on compile-time (and
@@ -15,7 +15,10 @@ extra-doc-files:    CHANGELOG.md
 tested-with:        GHC ==8.10.7
                     GHC ==9.2.8
                     GHC ==9.4.8
-                    GHC ==9.6.6
+                    GHC ==9.6.7
+                    GHC ==9.8.4
+                    GHC ==9.10.2
+                    GHC ==9.12.2
 
 library
   exposed-modules:
@@ -64,7 +67,6 @@ library
       Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow
       Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow
       Data.Record.Anon.Internal.Plugin.TC.Solver
-      Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
       Data.Record.Anon.Internal.Plugin.Source
       Data.Record.Anon.Internal.Plugin.Source.FreshT
@@ -73,21 +75,21 @@ library
       Data.Record.Anon.Internal.Plugin.Source.Options
 
   build-depends:
-    , aeson            >= 1.4.4 && < 2.3
-    , base             >= 4.14  && < 4.19
-    , containers       >= 0.6.2 && < 0.8
-    , deepseq          >= 1.4.4 && < 1.6
-    , ghc              >= 8.10  && < 9.7
-    , ghc-tcplugin-api >= 0.14  && < 0.15
-    , hashable         >= 1.3   && < 1.5
-    , mtl              >= 2.2.1 && < 2.4
-    , optics-core      >= 0.3   && < 0.5
-    , primitive        >= 0.8   && < 0.10
-    , record-hasfield  >= 1.0   && < 1.1
-    , sop-core         >= 0.5   && < 0.6
-    , syb              >= 0.7   && < 0.8
-    , tagged           >= 0.8.6 && < 0.9
-    , typelet          >= 0.1   && < 0.2
+    , aeson            >= 1.4.4  && < 2.3
+    , base             >= 4.14   && < 4.22
+    , containers       >= 0.6.2  && < 0.9
+    , deepseq          >= 1.4.4  && < 1.6
+    , ghc              >= 8.10   && < 9.13
+    , ghc-tcplugin-api >= 0.16.1 && < 0.17
+    , hashable         >= 1.3    && < 1.6
+    , mtl              >= 2.2.1  && < 2.4
+    , optics-core      >= 0.3    && < 0.5
+    , primitive        >= 0.8    && < 0.10
+    , record-hasfield  >= 1.0    && < 1.1
+    , sop-core         >= 0.5    && < 0.6
+    , syb              >= 0.7    && < 0.8
+    , tagged           >= 0.8.6  && < 0.9
+    , typelet          >= 0.1    && < 0.2
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics   >= 0.2   && < 0.3
@@ -97,11 +99,8 @@ library
       Haskell2010
   ghc-options:
       -Wall
-      -Wredundant-constraints
       -Wno-unticked-promoted-constructors
-
-  if impl(ghc >= 8.10)
-    ghc-options:
+      -Wredundant-constraints
       -Wunused-packages
 
   if flag(debug)
@@ -138,8 +137,6 @@ test-suite test-large-anon
       Test.Sanity.CheckIsSubRow
       Test.Sanity.Discovery
       Test.Sanity.DuplicateFields
-      Test.Sanity.Fourmolu.OverloadedRecordDot
-      Test.Sanity.Fourmolu.OverloadedRecordUpdate
       Test.Sanity.Generics
       Test.Sanity.HasField
       Test.Sanity.Intersection
@@ -170,7 +167,6 @@ test-suite test-large-anon
     , optics-core
     , parsec
     , QuickCheck
-    , record-dot-preprocessor
     , record-hasfield
     , sop-core
     , Stream
@@ -188,40 +184,15 @@ test-suite test-large-anon
 
   -- Not sure why, but ghc warns about record-hasfield being unused,
   -- despite it actually being required. So for now we just disable this check.
-  -- if impl(ghc >= 8.10)
-  --   ghc-options: -Wunused-packages
+  -- ghc-options: -Wunused-packages
 
-  if impl(ghc >= 9.2) && !flag(disableFourmoluExec)
-    build-tool-depends:
-      large-anon:large-anon-testsuite-fourmolu-preprocessor
+  if impl(ghc < 9.10)
+    build-depends: record-dot-preprocessor
   else
     cpp-options:
-      -DNO_FOURMOLU
-
-Executable large-anon-testsuite-fourmolu-preprocessor
-  main-is:
-      Main.hs
-  hs-source-dirs:
-      fourmolu-preprocessor
-  build-depends:
-    , base     >= 4.16   && < 4.19
-    , fourmolu >= 0.10.1 && < 0.16
-    , text     >= 1.2    && < 2.1
-  default-language:
-      Haskell2010
-  ghc-options:
-      -Wall
-
-  -- Fourmolu is only compatible with RDP syntax from ghc 9.2 and up.
-  if impl(ghc < 9.2) || flag(disableFourmoluExec)
-    buildable: False
+      -DNO_RECORD_DOT_PREPROCESSOR
 
 Flag debug
   Description: Enable internal debugging features
-  Default: False
-  Manual: True
-
-Flag disableFourmoluExec
-  Description: Disable executable large-anon-testsuite-fourmolu-preprocessor
   Default: False
   Manual: True

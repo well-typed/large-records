@@ -13,7 +13,6 @@ import Data.Void
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst
 
 {-------------------------------------------------------------------------------
   Definition
@@ -70,7 +69,7 @@ evidenceKnownFieldLabel ::
   -> CKnownHash
   -> TcPluginM 'Solve EvTerm
 evidenceKnownFieldLabel ResolvedNames{..} CKnownHash{..} =
-    return $
+    return $ EvExpr $
       evDataConApp
         (classDataCon clsKnownHash)
         typeArgsEvidence

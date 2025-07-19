@@ -12,6 +12,7 @@
 module Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI (
     -- * Standard exports
     module GHC.TcPlugin.API
+  , module GHC.TcPlugin.API.TyConSubst
   , module GHC.Builtin.Names
   , module GHC.Builtin.Types
   , module GHC.Builtin.Types.Prim
@@ -26,11 +27,9 @@ module Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI (
 
 import GHC.Stack
 
-#if __GLASGOW_HASKELL__ < 900
-import Data.List.NonEmpty (NonEmpty, toList)
-#endif
-
 import GHC.TcPlugin.API
+import GHC.TcPlugin.API.TyConSubst
+
 import GHC.Builtin.Names
 import GHC.Builtin.Types
 import GHC.Builtin.Types.Prim
@@ -45,7 +44,9 @@ import Constraint (Ct(..))
 import GHC.Tc.Types.Constraint (Ct(..))
 #endif
 
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 908
+import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..), EqCt(..))
+#elif __GLASGOW_HASKELL__ >= 902
 import GHC.Tc.Types.Constraint (Ct(..), CanEqLHS(..))
 #endif
 
@@ -56,7 +57,17 @@ isCanonicalVarEq = \case
     CFunEqCan{..} -> Just (cc_fsk, mkTyConApp cc_fun cc_tyargs)
     _otherwise    -> Nothing
 #endif
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 908
+isCanonicalVarEq = \case
+    CEqCan (EqCt {..})
+      | TyVarLHS var <- eq_lhs
+      -> Just (var, eq_rhs)
+      | TyFamLHS tyCon args <- eq_lhs
+      , Just var            <- getTyVar_maybe eq_rhs
+      -> Just (var, mkTyConApp tyCon args)
+    _otherwise
+      -> Nothing
+#elif __GLASGOW_HASKELL__ >= 902
 isCanonicalVarEq = \case
     CEqCan{..}
       | TyVarLHS var <- cc_lhs
@@ -71,11 +82,6 @@ isCanonicalVarEq = \case
 -- TODO: Ideally we would actually show the location information obviously
 instance Outputable CtLoc where
   ppr _ = text "<CtLoc>"
-
-#if __GLASGOW_HASKELL__ < 900
-instance Outputable a => Outputable (NonEmpty a) where
-  ppr = ppr . toList
-#endif
 
 #if __GLASGOW_HASKELL__ >= 902
 instance (Outputable l, Outputable e) => Outputable (GenLocated l e) where

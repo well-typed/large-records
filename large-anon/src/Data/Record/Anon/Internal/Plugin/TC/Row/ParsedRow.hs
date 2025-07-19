@@ -32,7 +32,6 @@ import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..), KnownRowF
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution (ResolvedNames(..))
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
-import Data.Record.Anon.Internal.Plugin.TC.TyConSubst (TyConSubst)
 
 import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow as KnownRow
 

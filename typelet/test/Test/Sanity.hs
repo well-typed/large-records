@@ -31,7 +31,7 @@ tests = testGroup "Test.Sanity" [
         ]
     ]
 
-castIsId :: (Eq a, Show a, Arbitrary a) => (a -> a) -> a -> Property
+castIsId :: (Eq a, Show a) => (a -> a) -> a -> Property
 castIsId f x = x === f x
 
 testHList :: HList '[A, B, C] -> Assertion

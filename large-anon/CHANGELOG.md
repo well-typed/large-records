@@ -1,5 +1,13 @@
 # Revision history for large-anon
 
+## 0.3.3 -- 2025-07-19
+
+* Support ghc 9.8 (Gabriele Sales)
+* Support ghc 9.10 and ghc 9.12
+* Use ghc-tcplugin-api 0.16.1
+* Remove `fourmolu` tests from the test suite (they were causing CI problems);
+  this affects the test suite only.
+
 ## 0.3.2 -- 2025-03-11
 
 * Use ghc-tcplugin-api 0.14 (Chan Siu Man, #169)

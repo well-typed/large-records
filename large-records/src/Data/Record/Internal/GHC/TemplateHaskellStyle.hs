@@ -14,9 +14,9 @@
 module Data.Record.Internal.GHC.TemplateHaskellStyle (
     -- * Names
     nameBase
-  , mkExpVar
-  , mkTyVar
-  , mkTyCon
+  , mkNameExp
+  , mkNameTy
+  , mkNameTyCon
   , pattern ExpVar
   , pattern TyVar
   , pattern TyCon
@@ -105,10 +105,11 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   ) where
 
 import Data.List (foldl')
-
-import Data.Record.Internal.GHC.Shim hiding (mkTyVar)
 import Data.List.NonEmpty (NonEmpty(..))
+
 import qualified Data.List.NonEmpty as NE
+
+import Data.Record.Internal.GHC.Shim
 
 {-------------------------------------------------------------------------------
   Internal auxiliary: types of names
@@ -132,32 +133,32 @@ nameBase :: LRdrName -> String
 nameBase = occNameString . rdrNameOcc . unLoc
 
 -- | Equivalent of 'Language.Haskell.TH.Syntax.mkName', for expression vars
-mkExpVar :: SrcSpan -> String -> LRdrName
-mkExpVar l = L l . mkRdrUnqual . mkVarOcc
+mkNameExp :: SrcSpan -> String -> LRdrName
+mkNameExp l = L l . mkRdrUnqual . mkVarOcc
 
 -- | Equivalent of 'Language.Haskell.TH.Syntax.mkName', for type vars
-mkTyVar :: SrcSpan -> String -> LRdrName
-mkTyVar l = L l . mkRdrUnqual . mkTyVarOcc
+mkNameTy :: SrcSpan -> String -> LRdrName
+mkNameTy l = L l . mkRdrUnqual . mkTyVarOcc
 
 -- | Equivalent of 'Language.Haskell.TH.Syntax.mkName', for type constructors
-mkTyCon :: SrcSpan -> String -> LRdrName
-mkTyCon l = L l . mkRdrUnqual . mkTcOcc
+mkNameTyCon :: SrcSpan -> String -> LRdrName
+mkNameTyCon l = L l . mkRdrUnqual . mkTcOcc
 
--- | Inverse to 'mkExpVar'
+-- | Inverse to 'mkNameExp'
 --
 -- NOTE: Defined in terms of 'nameBase', so discards qualifiers.
 viewExpVar :: LRdrName -> Maybe String
 viewExpVar n | isTermVar n = Just (nameBase n)
 viewExpVar _otherwise = Nothing
 
--- | Inverse to 'mkTyVar'
+-- | Inverse to 'mkNameTy'
 --
 -- NOTE: Defined in terms of 'nameBase', so discards qualifiers.
 viewTyVar :: LRdrName -> Maybe String
 viewTyVar n | isTypeVar n = Just (nameBase n)
 viewTyVar _otherwise = Nothing
 
--- | Inverse to 'mkTyCon'
+-- | Inverse to 'mkNameTyCon'
 viewTyCon :: LRdrName -> Maybe String
 viewTyCon n | isTypeCon n = Just (nameBase n)
 viewTyCon _otherwise = Nothing
@@ -241,15 +242,25 @@ recConE = \recName -> mkRec recName . map (uncurry mkFld)
 recUpdE :: LHsExpr GhcPs -> [(LRdrName, LHsExpr GhcPs)] -> LHsExpr GhcPs
 recUpdE = \recExpr -> updRec recExpr . map (uncurry updFld)
   where
+#if __GLASGOW_HASKELL__ >= 908
+    updRec :: LHsExpr GhcPs -> [LHsRecUpdField GhcPs GhcPs] -> LHsExpr GhcPs
+#else
     updRec :: LHsExpr GhcPs -> [LHsRecUpdField GhcPs] -> LHsExpr GhcPs
+#endif
     updRec expr fields = inheritLoc expr $
         RecordUpd defExt expr
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 908
+          $ RegularRecUpdFields noExtField
+#elif __GLASGOW_HASKELL__ >= 902
           $ Left
 #endif
             fields
 
+#if __GLASGOW_HASKELL__ >= 908
+    updFld :: LRdrName -> LHsExpr GhcPs -> LHsRecUpdField GhcPs GhcPs
+#else
     updFld :: LRdrName -> LHsExpr GhcPs -> LHsRecUpdField GhcPs
+#endif
     updFld name val = inheritLoc name $
 #if __GLASGOW_HASKELL__ >= 904
         HsFieldBind
@@ -524,10 +535,10 @@ viewRecC
     viewRecField
         (L _
            ConDeclField {
-               cd_fld_names = [L _ fieldName]
+               cd_fld_names = [L _ name]
              , cd_fld_type  = ty
              }
-        ) = Just $ (viewFieldOcc fieldName, ty)
+        ) = Just $ (viewFieldOcc name, ty)
     viewRecField _otherwise = Nothing
 
     viewFieldOcc :: FieldOcc GhcPs -> LRdrName

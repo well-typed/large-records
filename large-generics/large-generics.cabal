@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-generics
-version:            0.2.2
+version:            0.2.3
 synopsis:           Generic programming API for large-records and large-anon
 description:        The large-generics package offers a style of generic
                     programming inspired by generics-sop, but optimized for
@@ -16,8 +16,10 @@ extra-doc-files:    CHANGELOG.md
 tested-with:        GHC ==8.10.7
                     GHC ==9.2.8
                     GHC ==9.4.8
-                    GHC ==9.6.6
-                    GHC ==9.8.2
+                    GHC ==9.6.7
+                    GHC ==9.8.4
+                    GHC ==9.10.2
+                    GHC ==9.12.2
 
 library
   exposed-modules:
@@ -43,18 +45,16 @@ library
   ghc-options:
       -Wall
       -Wredundant-constraints
+      -Wunused-packages
   hs-source-dirs:
       src
   build-depends:
-      base         >= 4.14  && < 4.20
+      base         >= 4.14  && < 4.22
     , aeson        >= 1.4.4 && < 2.3
     , deepseq      >= 1.4.4 && < 1.6
     , generics-sop >= 0.5   && < 0.6
     , sop-core     >= 0.5   && < 0.6
     , primitive    >= 0.7.3 && < 0.10
-
-  if impl(ghc >= 8.10)
-    ghc-options: -Wunused-packages
 
 test-suite test-large-generics
   type:
@@ -78,6 +78,7 @@ test-suite test-large-generics
   ghc-options:
       -Wall
       -Wredundant-constraints
+      -Wunused-packages
   hs-source-dirs:
       test
   build-depends:

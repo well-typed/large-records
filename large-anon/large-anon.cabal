@@ -177,6 +177,8 @@ test-suite test-large-anon
     , typelet
     , validation-selective
   ghc-options:
+      -dcore-lint
+  ghc-options:
       -Wall
       -Wredundant-constraints
       -Wno-unticked-promoted-constructors

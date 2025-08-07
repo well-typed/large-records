@@ -29,6 +29,7 @@ source-repository head
 library
   exposed-modules:
       Data.Record.Plugin
+      Data.Record.SetF
       Data.Record.Plugin.Options
       Data.Record.Plugin.Runtime
       Data.Record.Overloading

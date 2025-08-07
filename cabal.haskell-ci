@@ -2,7 +2,7 @@ jobs-selection: any
 branches: main
 local-ghc-options: -Werror
 cabal-check: False
-copy-fields: all
+copy-fields: some
 
 -- if large-records is used, some dependencies must be declared
 -- which ghc thinks are unused.

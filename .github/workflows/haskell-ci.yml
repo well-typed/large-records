@@ -172,12 +172,12 @@ jobs:
       - name: initial cabal.project for sdist
         run: |
           touch cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
-          echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
-          echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
+          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
           cat cabal.project
       - name: sdist
         run: |
@@ -189,68 +189,55 @@ jobs:
           find sdist -maxdepth 1 -type f -name '*.tar.gz' -exec tar -C $GITHUB_WORKSPACE/unpacked -xzvf {} \;
       - name: generate cabal.project
         run: |
+          PKGDIR_typelet="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/typelet-[0-9.]*')"
+          echo "PKGDIR_typelet=${PKGDIR_typelet}" >> "$GITHUB_ENV"
+          PKGDIR_large_anon="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-anon-[0-9.]*')"
+          echo "PKGDIR_large_anon=${PKGDIR_large_anon}" >> "$GITHUB_ENV"
           PKGDIR_large_generics="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-generics-[0-9.]*')"
           echo "PKGDIR_large_generics=${PKGDIR_large_generics}" >> "$GITHUB_ENV"
           PKGDIR_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-records-[0-9.]*')"
           echo "PKGDIR_large_records=${PKGDIR_large_records}" >> "$GITHUB_ENV"
-          PKGDIR_large_records_benchmarks="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-records-benchmarks-[0-9.]*')"
-          echo "PKGDIR_large_records_benchmarks=${PKGDIR_large_records_benchmarks}" >> "$GITHUB_ENV"
-          PKGDIR_large_anon="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-anon-[0-9.]*')"
-          echo "PKGDIR_large_anon=${PKGDIR_large_anon}" >> "$GITHUB_ENV"
           PKGDIR_beam_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/beam-large-records-[0-9.]*')"
           echo "PKGDIR_beam_large_records=${PKGDIR_beam_large_records}" >> "$GITHUB_ENV"
-          PKGDIR_typelet="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/typelet-[0-9.]*')"
-          echo "PKGDIR_typelet=${PKGDIR_typelet}" >> "$GITHUB_ENV"
+          PKGDIR_large_records_benchmarks="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-records-benchmarks-[0-9.]*')"
+          echo "PKGDIR_large_records_benchmarks=${PKGDIR_large_records_benchmarks}" >> "$GITHUB_ENV"
           rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
+          echo "packages: ${PKGDIR_typelet}" >> cabal.project
+          echo "packages: ${PKGDIR_large_anon}" >> cabal.project
           echo "packages: ${PKGDIR_large_generics}" >> cabal.project
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
-          echo "packages: ${PKGDIR_large_anon}" >> cabal.project
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
-          echo "packages: ${PKGDIR_typelet}" >> cabal.project
+          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
+          echo "package typelet" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
+          echo "package large-anon" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           echo "package large-generics" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
-          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
-          echo "package large-anon" >> cabal.project
-          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
-          echo "package typelet" >> cabal.project
-          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
+          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
+          if [ $((HCNUMVER < 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package typelet" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package large-generics" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package typelet" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           cat >> cabal.project <<EOF
-          package large-generics
-            tests: True
-
-          package large-records
-            tests: True
-
-          package large-records-benchmarks
-            tests: True
+          package typelet
+            ghc-options: -Werror
 
           package large-anon
-            tests:       True
-            ghc-options: -dcore-lint
-
-          package beam-large-records
-            tests: True
-
-          package typelet
-            tests: True
+            ghc-options: -Werror
 
           package large-generics
             ghc-options: -Werror
@@ -258,16 +245,10 @@ jobs:
           package large-records
             ghc-options: -Werror
 
-          package large-records-benchmarks
-            ghc-options: -Werror
-
-          package large-anon
-            ghc-options: -Werror
-
           package beam-large-records
             ghc-options: -Werror
 
-          package typelet
+          package large-records-benchmarks
             ghc-options: -Werror
           EOF
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks|typelet)$/; }' >> cabal.project.local

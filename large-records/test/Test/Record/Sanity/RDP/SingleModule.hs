@@ -12,7 +12,12 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
+#if __GLASGOW_HASKELL__ >=902
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
+#else
 {-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
+#endif
 
 -- | Test what happens if both plugins are used in the same module
 module Test.Record.Sanity.RDP.SingleModule (tests) where

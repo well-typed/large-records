@@ -92,8 +92,13 @@ data QualifiedNames = QualifiedNames {
       -- record-hasfield
       --
 
+#if __GLASGOW_HASKELL__ >= 902
     , type_HasField :: LRdrName
-    , hasField      :: LRdrName
+    , getField      :: LRdrName
+#endif
+
+    , type_HasFieldCompat :: LRdrName
+    , hasFieldCompat      :: LRdrName
     }
 
 -- | Resolve qualified names
@@ -187,12 +192,19 @@ getQualifiedNames = do
     wrapThroughLRGenerics   <- exact <$> lookupVarName runtime Nothing "wrapThroughLRGenerics"
     unwrapThroughLRGenerics <- exact <$> lookupVarName runtime Nothing "unwrapThroughLRGenerics"
 
+    -- GHC.Records.HasField
+
+#if __GLASGOW_HASKELL__ >= 902
+    type_HasField <- exact <$> lookupTcName  recordHasField Nothing "HasField"
+    getField      <- exact <$> lookupVarName recordHasField Nothing "getField"
+#endif
+
     --
     -- record-hasfield
     --
 
-    type_HasField <- exact <$> lookupTcName  recordHasField (Just "record-hasfield") "HasField"
-    hasField      <- exact <$> lookupVarName recordHasField (Just "record-hasfield") "hasField"
+    type_HasFieldCompat <- exact <$> lookupTcName  recordHasFieldCompat (Just "record-hasfield") "HasField"
+    hasFieldCompat      <- exact <$> lookupVarName recordHasFieldCompat (Just "record-hasfield") "hasField"
 
     return QualifiedNames{..}
 
@@ -206,6 +218,7 @@ getQualifiedNames = do
 
    runtime, recordHasField, ghcGenerics, largeGenerics :: ModuleName
    runtime        = mkModuleName "Data.Record.Plugin.Runtime"
-   recordHasField = mkModuleName "GHC.Records.Compat"
+   recordHasField = mkModuleName "GHC.Records"
+   recordHasFieldCompat = mkModuleName "GHC.Records.Compat"
    ghcGenerics    = mkModuleName "GHC.Generics"
    largeGenerics  = mkModuleName "Data.Record.Generic"

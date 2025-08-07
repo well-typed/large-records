@@ -323,13 +323,13 @@ genHasFieldInstance QualifiedNames{..} r@Record{..} Field{..} = do
       instanceD
         [equalP (VarT x) fieldType]
         (appsT
-           (ConT type_HasField)
+           (ConT type_HasFieldCompat)
            [ stringT (nameBase fieldName)
            , recordTypeT r
            , VarT x
            ]
         )
-        [ ( hasField
+        [ ( hasFieldCompat
           , lamE1 (varP t) $
               tupE $
                     appsE (VarE (nameUnsafeSetIndex r)) [intE fieldIndex, VarE t]

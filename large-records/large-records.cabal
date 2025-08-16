@@ -66,6 +66,9 @@ library
 
       -- 0.2.16 introduces support for ghc 9.4
     , record-dot-preprocessor >= 0.2.16 && < 0.3
+
+    , optics-core >=0.4.1.1 && <0.5
+
   hs-source-dirs:
       src
   default-language:
@@ -103,6 +106,9 @@ test-suite test-large-records
       Test.Record.Sanity.QualifiedImports
       Test.Record.Sanity.QualifiedImports.A
       Test.Record.Sanity.QualifiedImports.B
+      Test.Record.Sanity.Optics.SingleModule
+      Test.Record.Sanity.Optics.SplitModule
+      Test.Record.Sanity.Optics.SplitModule.RecordDef
       Test.Record.Sanity.RDP.SingleModule
       Test.Record.Sanity.RDP.SplitModule
       Test.Record.Sanity.RDP.SplitModule.RecordDef
@@ -125,6 +131,8 @@ test-suite test-large-records
     , tasty-hunit
     , template-haskell
     , transformers
+    , optics-core
+    , optics-th >=0.4.1 && <0.5
   hs-source-dirs:
       test
   default-language:

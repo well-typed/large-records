@@ -166,6 +166,7 @@ executable bench-after
     , large-generics
     , large-records
     , record-hasfield
+    , optics-core
   other-modules:
       After.Sized.R000
       After.Sized.R010
@@ -665,6 +666,7 @@ test-suite test-large-records-benchmarks
     , json-sop
     , large-generics
     , large-records
+    , optics-core
     , large-records-benchmarks
     , record-hasfield
     , sop-core

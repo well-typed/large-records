@@ -94,6 +94,7 @@ test-suite test-beam-large-records
     , ghc-prim
     , large-generics
     , record-hasfield
+    , optics-core
   ghc-options:
       -Wall
       -Wredundant-constraints

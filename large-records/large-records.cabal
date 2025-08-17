@@ -22,6 +22,8 @@ tested-with:        GHC ==8.10.7
                     GHC ==9.4.8
                     GHC ==9.6.7
                     GHC ==9.8.4
+                    GHC ==9.10.2
+                    GHC ==9.12.2
 
 source-repository head
   type:     git
@@ -53,14 +55,14 @@ library
       Data.Record.Internal.Plugin.Record
 
   build-depends:
-    , base             >= 4.14   && < 4.20
+    , base             >= 4.14   && < 4.22
     , containers       >= 0.6.2  && < 0.9
-    , ghc              >= 8.10   && < 9.9
+    , ghc              >= 8.10   && < 9.13
     , mtl              >= 2.2.1  && < 2.4
     , primitive        >= 0.7.3  && < 0.10
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
-    , template-haskell >= 2.16   && < 2.22
+    , template-haskell >= 2.16   && < 2.24
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics >= 0.2 && < 0.3
@@ -142,6 +144,9 @@ test-suite test-large-records
     , transformers
     , optics-core
     , optics-th >=0.4.1 && <0.5
+
+  if impl(ghc >= 9.10)
+    build-depends: ghc-internal
 
   if flag(rdp)
     build-depends: record-dot-preprocessor

@@ -299,7 +299,11 @@ listE es = inheritLoc es $ ExplicitList defExt
 -- | Equivalent of 'Language.Haskell.TH.Lib.lamE'
 lamE :: NonEmpty (LPat GhcPs) -> LHsExpr GhcPs -> LHsExpr GhcPs
 lamE pats body = inheritLoc body $
-    HsLam defExt $
+    HsLam defExt 
+#if __GLASGOW_HASKELL__ >= 910
+      LamSingle
+#endif
+      $
 #if __GLASGOW_HASKELL__ >= 906
       MG defExt (inheritLoc body [inheritLoc body match])
 #else
@@ -307,7 +311,13 @@ lamE pats body = inheritLoc body $
 #endif
   where
     match :: Match GhcPs (LHsExpr GhcPs)
-    match = Match defExt LambdaExpr (NE.toList pats) (simpleGHRSs body)
+    match = Match defExt matchContext (NE.toList pats) (simpleGHRSs body)
+
+#if __GLASGOW_HASKELL__ >= 910
+    matchContext = LamAlt LamSingle
+#else
+    matchContext = LambdaExpr
+#endif
 
 -- | Convenience wrapper around 'lamE' for a single argument
 lamE1 :: LPat GhcPs -> LHsExpr GhcPs -> LHsExpr GhcPs
@@ -328,12 +338,14 @@ caseE x alts = inheritLoc x $
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.appsE'
 appsE :: LHsExpr GhcPs -> [LHsExpr GhcPs] -> LHsExpr GhcPs
-appsE = foldl' appE
+appsE = Data.List.foldl' appE -- prefix to avoid unused import warning.
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.appT'
 appTypeE :: LHsExpr GhcPs -> LHsType GhcPs -> LHsExpr GhcPs
 appTypeE expr typ = inheritLoc expr $
-#if __GLASGOW_HASKELL__ >= 906
+#if __GLASGOW_HASKELL__ >= 910
+    HsAppType defExt expr (HsWC defExt typ)
+#elif __GLASGOW_HASKELL__ >= 906
     HsAppType noExtField expr noHsTok (HsWC defExt typ)
 #else
     HsAppType
@@ -786,7 +798,9 @@ classD = \ctx name clsVars sigs -> inheritLoc name $
     TyClD defExt $ ClassDecl {
         tcdCExt   = defExt
 #if __GLASGOW_HASKELL__ >= 906
+#if __GLASGOW_HASKELL__ < 910
       , tcdLayout = NoLayoutInfo
+#endif
 #endif
 #if __GLASGOW_HASKELL__ >= 902
       , tcdCtxt   = Just (inheritLoc name ctx)
@@ -828,7 +842,11 @@ tySynEqn name pats val = inheritLoc val $
 #else
                Nothing
 #endif
+#if __GLASGOW_HASKELL__ >= 910
+               (map (HsValArg defExt) pats)
+#else
                (map HsValArg pats)
+#endif
                Prefix
                val
 

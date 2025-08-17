@@ -15,8 +15,9 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE OverloadedLabels          #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 -- For lens derivation
 -- {-# LANGUAGE ImpredicativeTypes #-}
@@ -33,7 +34,7 @@ import Data.Time
 import Database.Beam hiding (countAll_)
 import Database.Beam.Backend.SQL
 import Database.Beam.Sqlite
-import Lens.Micro
+import Optics.Core ((&), (^.), (.~), (%), coerced, Lens')
 
 import qualified Data.Text              as T
 import qualified Database.SQLite.Simple as SQLite
@@ -66,11 +67,11 @@ data ProductT (f :: Type -> Type) = Product {
  deriving anyclass (Beamable)
 
 instance Table ProductT where
-  data PrimaryKey ProductT f = ProductId (Columnar f Int32)
+  newtype PrimaryKey ProductT f = ProductId (Columnar f Int32)
     deriving stock (GHC.Generic)
     deriving anyclass (Beamable)
 
-  primaryKey p = ProductId p.productId
+  primaryKey p = ProductId (p ^. #productId)
 
 deriving instance Show (Columnar f Int32) => Show (PrimaryKey ProductT f)
 deriving instance Eq   (Columnar f Int32) => Eq   (PrimaryKey ProductT f)
@@ -114,18 +115,18 @@ data ShippingInfoT (f :: Type -> Type) = ShippingInfo {
   deriving anyclass (Beamable)
 
 instance Table OrderT where
-  data PrimaryKey OrderT f = OrderId (Columnar f Int32)
+  newtype PrimaryKey OrderT f = OrderId (Columnar f Int32)
     deriving stock (GHC.Generic)
     deriving anyclass (Beamable)
 
-  primaryKey o = OrderId o.orderId
+  primaryKey o = OrderId (o ^. #orderId)
 
 instance Table ShippingInfoT where
-  data PrimaryKey ShippingInfoT f = ShippingInfoId (Columnar f Int32)
+  newtype PrimaryKey ShippingInfoT f = ShippingInfoId (Columnar f Int32)
     deriving stock (GHC.Generic)
     deriving anyclass (Beamable)
 
-  primaryKey s = ShippingInfoId s.shippingInfoId
+  primaryKey s = ShippingInfoId (s ^. #shippingInfoId)
 
 deriving instance Show (Columnar f Int32) => Show (PrimaryKey OrderT f)
 deriving instance Eq   (Columnar f Int32) => Eq   (PrimaryKey OrderT f)
@@ -157,7 +158,7 @@ instance Table LineItemT where
       deriving stock (GHC.Generic)
       deriving anyclass (Beamable)
 
-    primaryKey l = LineItemId l.lineItemInOrder l.lineItemForProduct
+    primaryKey l = LineItemId (l ^. #lineItemInOrder) (l ^. #lineItemForProduct)
 
 {-------------------------------------------------------------------------------
   Version 3 of the DB
@@ -180,105 +181,29 @@ instance Database be ShoppingCart3Db
 -------------------------------------------------------------------------------}
 
 shoppingCart3Db :: DatabaseSettings be ShoppingCart3Db
-shoppingCart3Db = defaultDbSettings `withDbModification`
-    dbModification{shoppingCart3UserAddresses =
-                         setEntityName "addresses"
-                      <> modifyTableFields tableModification{addressLine1 = "address1"
-                                                            ,addressLine2 = "address2"
-                                                            }
-                  , shoppingCart3Products =
-                         setEntityName "products"
-                  , shoppingCart3Orders =
-                         setEntityName "orders"
-                      <> modifyTableFields tableModification{orderShippingInfo = ShippingInfoId "shipping_info__id"}
-                  , shoppingCart3ShippingInfos =
-                         setEntityName "shipping_info"
-                      <> modifyTableFields tableModification{shippingInfoId             = "id"
-                                                            ,shippingInfoCarrier        = "carrier"
-                                                            ,shippingInfoTrackingNumber = "tracking_number"
-                                                            }
-                  , shoppingCart3LineItems =
+shoppingCart3Db = withDbModification defaultDbSettings $ dbModification
+    & #shoppingCart3UserAddresses .~
+           (setEntityName "addresses"
+        <> modifyTableFields (tableModification & #addressLine1 .~ "address1"
+                                                & #addressLine2 .~ "address2"))
+    & #shoppingCart3Products .~
+           setEntityName "products"
+    & #shoppingCart3Orders .~
+           (setEntityName "orders"
+        <> modifyTableFields (tableModification & #orderShippingInfo .~ ShippingInfoId "shipping_info__id"))
+    & #shoppingCart3ShippingInfos .~
+           (setEntityName "shipping_info"
+        <> modifyTableFields (tableModification & #shippingInfoId             .~ "id"
+                                                & #shippingInfoCarrier        .~ "carrier"
+                                                & #shippingInfoTrackingNumber .~ "tracking_number"))
+    & #shoppingCart3LineItems .~
                          setEntityName "line_items"
-                  }
 
-{-------------------------------------------------------------------------------
-  Lenses
--------------------------------------------------------------------------------}
-
-lensesLineItemT :: LineItemT (Lenses LineItemT f)
-lensesProductT  :: ProductT  (Lenses ProductT  f)
-lensesOrderT    :: OrderT    (Lenses OrderT    f)
-
-lensesLineItemT = tableLenses
-lensesProductT  = tableLenses
-lensesOrderT    = tableLenses
-
-lensesShoppingCart3 :: ShoppingCart3Db (TableLens f ShoppingCart3Db)
-lensesShoppingCart3 = dbLenses
-
-
-xlineItemInOrder :: Lens' (LineItemT f) (C f Int32)
-xlineItemInOrder = case lensesLineItemT.lineItemInOrder of OrderId (LensFor l) -> l
-
-xlineItemForProduct :: Lens' (LineItemT f) (C f Int32)
-xlineItemForProduct = case lensesLineItemT.lineItemForProduct of ProductId (LensFor l) -> l
-
-xlineItemQuantity :: Lens' (LineItemT f) (C f Int32)
-xlineItemQuantity = case lensesLineItemT.lineItemQuantity of LensFor l -> l
-
-
-xproductId :: Lens' (ProductT f) (C f Int32)
-xproductId = case lensesProductT.productId of LensFor l -> l
-
-xproductTitle :: Lens' (ProductT f) (C f Text)
-xproductTitle = case lensesProductT.productTitle of LensFor l -> l
-
-xproductDescription :: Lens' (ProductT f) (C f Text)
-xproductDescription = case lensesProductT.productDescription of LensFor l -> l
-
-xproductPrice :: Lens' (ProductT f) (C f Int32)
-xproductPrice = case lensesProductT.productPrice of LensFor l -> l
-
-
-xorderId :: Lens' (OrderT f) (C f Int32)
-xorderId = case lensesOrderT.orderId of LensFor l -> l
-
-xorderDate :: Lens' (OrderT f) (C f LocalTime)
-xorderDate = case lensesOrderT.orderDate of LensFor l -> l
-
-xorderForUser :: Lens' (OrderT f) (C f Text)
-xorderForUser = case lensesOrderT.orderForUser of UserId (LensFor l) -> l
-
-xorderShipToAddress :: Lens' (OrderT f) (C f Int32)
-xorderShipToAddress = case lensesOrderT.orderShipToAddress of AddressId (LensFor l) -> l
-
-xorderShippingInfo :: Lens' (OrderT f) (C f (Maybe Int32))
-xorderShippingInfo = case lensesOrderT.orderShippingInfo of ShippingInfoId (LensFor l) -> l
-
-
-xshoppingCart3Users :: Lens' (ShoppingCart3Db f) (f (TableEntity UserT))
-xshoppingCart3Users = case lensesShoppingCart3.shoppingCart3Users of TableLens x -> x
-
-xshoppingCart3UserAddresses :: Lens' (ShoppingCart3Db f) (f (TableEntity AddressT))
-xshoppingCart3UserAddresses = case lensesShoppingCart3.shoppingCart3UserAddresses of TableLens x -> x
-
-xshoppingCart3Products :: Lens' (ShoppingCart3Db f) (f (TableEntity ProductT))
-xshoppingCart3Products = case lensesShoppingCart3.shoppingCart3Products of TableLens x -> x
-
-xshoppingCart3Orders :: Lens' (ShoppingCart3Db f) (f (TableEntity OrderT))
-xshoppingCart3Orders = case lensesShoppingCart3.shoppingCart3Orders of TableLens x -> x
-
-xshoppingCart3ShippingInfos :: Lens' (ShoppingCart3Db f) (f (TableEntity ShippingInfoT))
-xshoppingCart3ShippingInfos = case lensesShoppingCart3.shoppingCart3ShippingInfos of TableLens x -> x
-
-xshoppingCart3LineItems :: Lens' (ShoppingCart3Db f) (f (TableEntity LineItemT))
-xshoppingCart3LineItems = case lensesShoppingCart3.shoppingCart3LineItems of TableLens x -> x
-
--- | Lens from 'Order' to the primary key of the shipping info
---
--- Note that nullability translates to 'Maybe'.
+--- | Lens from 'Order' to the primary key of the shipping info
+---
+--- Note that nullability translates to 'Maybe'.
 shippingInfo :: Lens' Order (Maybe Int32)
-shippingInfo = xorderShippingInfo
+shippingInfo = #orderShippingInfo % coerced
 
 {-------------------------------------------------------------------------------
   Tests proper
@@ -330,17 +255,17 @@ test_SQL = runInMemory $ \conn -> do
       "CREATE TABLE line_items (item_in_order__id INTEGER NOT NULL, item_for_product__id INTEGER NOT NULL, item_quantity INTEGER NOT NULL)"
 
     (jamesAddress1, bettyAddress1, _bettyAddress2, redBall, mathTextbook, introToHaskell, _suitcase) <- do
-      runInsert $ insert (shoppingCart3Db ^. xshoppingCart3Users) $
+      runInsert $ insert (shoppingCart3Db ^. #shoppingCart3Users) $
         insertValues users
 
       [jamesAddress1, bettyAddress1, bettyAddress2] <-
         runInsertReturningList $
-          insertReturning (shoppingCart3Db ^. xshoppingCart3UserAddresses) $
+          insertReturning (shoppingCart3Db ^. #shoppingCart3UserAddresses) $
             insertExpressions addresses
 
       [redBall, mathTextbook, introToHaskell, suitcase] <-
         runInsertReturningList $
-          insertReturning (shoppingCart3Db ^. xshoppingCart3Products) $
+          insertReturning (shoppingCart3Db ^. #shoppingCart3Products) $
             insertExpressions products
 
       pure ( jamesAddress1, bettyAddress1, bettyAddress2, redBall, mathTextbook, introToHaskell, suitcase )
@@ -352,7 +277,7 @@ test_SQL = runInMemory $ \conn -> do
     bettyShippingInfo <- do
       [bettyShippingInfo] <-
         runInsertReturningList $
-          insertReturning (shoppingCart3Db ^. xshoppingCart3ShippingInfos) $
+          insertReturning (shoppingCart3Db ^. #shoppingCart3ShippingInfos) $
             insertExpressions [
                 ShippingInfo default_ (val_ USPS) (val_ "12345790ABCDEFGHI")
               ]
@@ -363,7 +288,7 @@ test_SQL = runInMemory $ \conn -> do
     now <- liftIO $ zonedTimeToLocalTime <$> getZonedTime
     [jamesOrder1, bettyOrder1, jamesOrder2] <-
       runInsertReturningList $
-        insertReturning (shoppingCart3Db ^. xshoppingCart3Orders) $
+        insertReturning (shoppingCart3Db ^. #shoppingCart3Orders) $
           insertExpressions [
               Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_
             , Order default_ currentTimestamp_ (val_ (pk betty)) (val_ (pk bettyAddress1)) (just_ (val_ (pk bettyShippingInfo)))
@@ -372,7 +297,7 @@ test_SQL = runInMemory $ \conn -> do
     -- Less than one second should have passed in between us taking a timestamp
     -- and sqlite actually creating the row
     liftIO $ assertBool "timestamp" $
-      nominalDiffTimeToSeconds ((jamesOrder1 ^. xorderDate) `diffLocalTime` now) < 1
+      nominalDiffTimeToSeconds ((jamesOrder1 ^. #orderDate) `diffLocalTime` now) < 1
 
     -- Create line items
     let lineItems :: [LineItem]
@@ -384,15 +309,15 @@ test_SQL = runInMemory $ \conn -> do
           , LineItem (pk bettyOrder1) (pk introToHaskell) 3
           , LineItem (pk jamesOrder2) (pk mathTextbook)   1
           ]
-    runInsert $ insert (shoppingCart3Db ^. xshoppingCart3LineItems) $
+    runInsert $ insert (shoppingCart3Db ^. #shoppingCart3LineItems) $
       insertValues lineItems
 
     -- LEFT JOIN: Users and orders
     usersAndOrders <-
       runSelectReturningList $
         select $ do
-          user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-          order <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders)) (\order -> order.orderForUser `references_` user)
+          user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+          order <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders)) (\order -> (order ^. #orderForUser) `references_` user)
           pure (user, order)
 
     let expectedUsersAndOrders :: [(User, Maybe Order)]
@@ -409,8 +334,8 @@ test_SQL = runInMemory $ \conn -> do
     usersWithNoOrders <-
       runSelectReturningList $
         select $ do
-          user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-          order <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders)) (\order -> order.orderForUser `references_` user)
+          user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+          order <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders)) (\order -> (order ^. #orderForUser) `references_` user)
           guard_ (isNothing_ order)
           pure user
     liftIO $ assertEqual "usersWithNoOrders" [sam] usersWithNoOrders
@@ -419,8 +344,8 @@ test_SQL = runInMemory $ \conn -> do
     usersWithNoOrders' <-
       runSelectReturningList $
         select $ do
-          user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-          guard_ (not_ (exists_ (filter_ (\order -> order.orderForUser `references_` user) (all_ (shoppingCart3Db ^. xshoppingCart3Orders)))))
+          user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+          guard_ (not_ (exists_ (filter_ (\order -> (order ^. #orderForUser) `references_` user) (all_ (shoppingCart3Db ^. #shoppingCart3Orders)))))
           pure user
 
     liftIO $ assertEqual "usersWithNoOrders'" [sam] usersWithNoOrders'
@@ -430,20 +355,20 @@ test_SQL = runInMemory $ \conn -> do
       runSelectReturningList $
         select $ orderBy_ (\(_order, total) -> desc_ total)
                $ aggregate_ (\(order, lineItem, product) ->
-                       (group_ order, sum_ (lineItem ^. xlineItemQuantity * product ^. xproductPrice)))
+                       (group_ order, sum_ (lineItem ^. #lineItemQuantity * product ^. #productPrice)))
                $ do
-          lineItem <- all_     (shoppingCart3Db ^. xshoppingCart3LineItems)
-          order    <- related_ (shoppingCart3Db ^. xshoppingCart3Orders)   lineItem.lineItemInOrder
-          product  <- related_ (shoppingCart3Db ^. xshoppingCart3Products) lineItem.lineItemForProduct
+          lineItem <- all_     (shoppingCart3Db ^. #shoppingCart3LineItems)
+          order    <- related_ (shoppingCart3Db ^. #shoppingCart3Orders)   (lineItem ^. #lineItemInOrder)
+          product  <- related_ (shoppingCart3Db ^. #shoppingCart3Products) (lineItem ^. #lineItemForProduct)
           pure (order, lineItem, product)
 
     let totalJamesOrder1, totalJamesOrder2, totalBettyOrder1 :: Int32
-        totalJamesOrder1 = 10 * redBall.productPrice
-                         +  1 * mathTextbook.productPrice
-                         +  4 * introToHaskell.productPrice
-        totalJamesOrder2 =  1 * mathTextbook.productPrice
-        totalBettyOrder1 =  3 * mathTextbook.productPrice
-                         +  3 * introToHaskell.productPrice
+        totalJamesOrder1 = 10 * (redBall ^. #productPrice)
+                         +  1 * (mathTextbook ^. #productPrice)
+                         +  4 * (introToHaskell ^. #productPrice)
+        totalJamesOrder2 =  1 * (mathTextbook ^. #productPrice)
+        totalBettyOrder1 =  3 * (mathTextbook ^. #productPrice)
+                         +  3 * (introToHaskell ^. #productPrice)
 
         expectedOrdersWithCostOrdered :: [(Order, Maybe Int32)]
         expectedOrdersWithCostOrdered = [
@@ -459,15 +384,15 @@ test_SQL = runInMemory $ \conn -> do
       runSelectReturningList $
         select $ orderBy_ (\(_user, total) -> desc_ total)
                $ aggregate_ (\(user, lineItem, product) ->
-                       (group_ user, sum_ (maybe_ 0 id lineItem.lineItemQuantity * maybe_ 0 id (product ^. xproductPrice))))
+                       (group_ user, sum_ (maybe_ 0 id (lineItem ^. #lineItemQuantity) * maybe_ 0 id (product ^. #productPrice))))
                $ do
-          user     <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-          order    <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders))
-                                (\order -> order.orderForUser `references_` user)
-          lineItem <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3LineItems))
-                                (\lineItem -> maybe_ (val_ False) (\order' -> lineItem.lineItemInOrder `references_` order') order)
-          product  <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Products))
-                                (\product -> maybe_ (val_ False) (\lineItem' -> lineItem'.lineItemForProduct `references_` product) lineItem)
+          user     <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+          order    <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders))
+                                (\order -> (order ^. #orderForUser) `references_` user)
+          lineItem <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3LineItems))
+                                (\lineItem -> maybe_ (val_ False) (\order' -> (lineItem ^. #lineItemInOrder) `references_` order') order)
+          product  <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Products))
+                                (\product -> maybe_ (val_ False) (\lineItem' -> (lineItem' ^. #lineItemForProduct) `references_` product) lineItem)
           pure (user, lineItem, product)
 
     -- Bug in beam? Original tutorial (without LR) has same problem.
@@ -486,15 +411,15 @@ test_SQL = runInMemory $ \conn -> do
       runSelectReturningList $
         select $ orderBy_ (\(_user, total) -> desc_ total)
                $ aggregate_ (\(user, lineItem, product) ->
-                       (group_ user, sum_ (maybe_ 0 id lineItem.lineItemQuantity * maybe_ 0 id (product ^. xproductPrice))))
+                       (group_ user, sum_ (maybe_ 0 id (lineItem ^. #lineItemQuantity) * maybe_ 0 id (product ^. #productPrice))))
                $ do
-          user     <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-          order    <- leftJoin_  (all_ (shoppingCart3Db ^. xshoppingCart3Orders))
-                                 (\order -> order.orderForUser `references_` user)
-          lineItem <- leftJoin_' (all_ (shoppingCart3Db ^. xshoppingCart3LineItems))
-                                 (\lineItem -> just_ lineItem.lineItemInOrder ==?. pk order)
-          product  <- leftJoin_' (all_ (shoppingCart3Db ^. xshoppingCart3Products))
-                                 (\product -> lineItem.lineItemForProduct ==?. just_ (pk product))
+          user     <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+          order    <- leftJoin_  (all_ (shoppingCart3Db ^. #shoppingCart3Orders))
+                                 (\order -> (order ^. #orderForUser) `references_` user)
+          lineItem <- leftJoin_' (all_ (shoppingCart3Db ^. #shoppingCart3LineItems))
+                                 (\lineItem -> just_ (lineItem ^. #lineItemInOrder) ==?. pk order)
+          product  <- leftJoin_' (all_ (shoppingCart3Db ^. #shoppingCart3Products))
+                                 (\product -> (lineItem ^. #lineItemForProduct) ==?. just_ (pk product))
           pure (user, lineItem, product)
 
     let expectedAllUsersAndTotals2 :: [(User, Maybe Int32)]
@@ -509,8 +434,8 @@ test_SQL = runInMemory $ \conn -> do
     -- Dealing with nullable foreign keys
     allUnshippedOrders <-
       runSelectReturningList $
-        select $ filter_ (\info -> isNothing_ info.orderShippingInfo)
-               $ all_ (shoppingCart3Db ^. xshoppingCart3Orders)
+        select $ filter_ (\info -> isNothing_ (info ^. #orderShippingInfo))
+               $ all_ (shoppingCart3Db ^. #shoppingCart3Orders)
 
     let expectedAllUnshippedOrders :: [Order]
         expectedAllUnshippedOrders = [jamesOrder1, jamesOrder2]
@@ -521,15 +446,15 @@ test_SQL = runInMemory $ \conn -> do
     shippingInformationByUser <-
       runSelectReturningList $
         select $ aggregate_ (\(user, order) ->
-                   let ShippingInfoId siId = order.orderShippingInfo
+                   let ShippingInfoId siId = order ^. #orderShippingInfo
                    in ( group_ user
                       , as_ @Int32 $ count_ (as_ @(Maybe Int32) (maybe_ (just_ 1) (\_ -> nothing_) siId))
                       , as_ @Int32 $ count_ siId
                       ))
 
                $ do
-          user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-          order <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders)) (\order -> order.orderForUser `references_` user)
+          user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+          order <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders)) (\order -> (order ^. #orderForUser) `references_` user)
           pure (user, order)
 
     let expectedShippingInformationByUser :: [(User, Int32, Int32)]
@@ -548,22 +473,22 @@ test_SQL = runInMemory $ \conn -> do
     shippingInformationByUser' <-
       runSelectReturningList $
         select $ do
-          forUser <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
+          forUser <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
 
           (email, unshippedCount) <-
             aggregate_ (\(email, _order) -> (group_ email, countAll_)) $
-            do user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-               order <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders))
-                                  (\order -> order.orderForUser `references_` user &&. isNothing_ order.orderShippingInfo)
+            do user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+               order <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders))
+                                  (\order -> (order ^. #orderForUser) `references_` user &&. isNothing_ (order ^. #orderShippingInfo))
                pure (pk user, order)
 
           guard_ (email `references_` forUser)
 
           (email', shippedCount) <-
             aggregate_ (\(email', _order) -> (group_ email', countAll_)) $
-            do user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-               order <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders))
-                                  (\order -> order.orderForUser `references_` user &&. isJust_ order.orderShippingInfo)
+            do user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+               order <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders))
+                                  (\order -> (order ^. #orderForUser) `references_` user &&. isJust_ (order ^. #orderShippingInfo))
                pure (pk user, order)
 
           guard_ (email' `references_` forUser)
@@ -587,14 +512,14 @@ test_SQL = runInMemory $ \conn -> do
     shippingInformationByUser'' <-
         runSelectReturningList $
         select $
-        do forUser <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
+        do forUser <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
 
            (email, unshippedCount) <-
              subselect_ $
              aggregate_ (\(email, _order) -> (group_ email, countAll_)) $
-             do user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-                order <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders))
-                                   (\order -> order.orderForUser `references_` user &&. isNothing_ order.orderShippingInfo)
+             do user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+                order <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders))
+                                   (\order -> (order ^. #orderForUser) `references_` user &&. isNothing_ (order ^. #orderShippingInfo))
                 pure (pk user, order)
 
            guard_ (email `references_` forUser)
@@ -602,9 +527,9 @@ test_SQL = runInMemory $ \conn -> do
            (email', shippedCount) <-
              subselect_ $
              aggregate_ (\(email', _order) -> (group_ email', countAll_)) $
-             do user  <- all_ (shoppingCart3Db ^. xshoppingCart3Users)
-                order <- leftJoin_ (all_ (shoppingCart3Db ^. xshoppingCart3Orders))
-                                   (\order -> order.orderForUser `references_` user &&. isJust_ order.orderShippingInfo)
+             do user  <- all_ (shoppingCart3Db ^. #shoppingCart3Users)
+                order <- leftJoin_ (all_ (shoppingCart3Db ^. #shoppingCart3Orders))
+                                   (\order -> (order ^. #orderForUser) `references_` user &&. isJust_ (order ^. #orderShippingInfo))
                 pure (pk user, order)
            guard_ (email' `references_` forUser)
 

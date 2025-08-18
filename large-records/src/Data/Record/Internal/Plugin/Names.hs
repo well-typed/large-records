@@ -19,81 +19,81 @@ data QualifiedNames = QualifiedNames {
       -- Prelude type classes
       --
 
-      prelude_type_Eq   :: LRdrName
-    , prelude_type_Ord  :: LRdrName
-    , prelude_type_Show :: LRdrName
-    , prelude_compare   :: LRdrName
-    , prelude_eq        :: LRdrName
-    , prelude_showsPrec :: LRdrName
+      prelude_type_Eq   :: LIdP GhcPs
+    , prelude_type_Ord  :: LIdP GhcPs
+    , prelude_type_Show :: LIdP GhcPs
+    , prelude_compare   :: LIdP GhcPs
+    , prelude_eq        :: LIdP GhcPs
+    , prelude_showsPrec :: LIdP GhcPs
 
       --
       -- Other base
       --
 
-    , type_Constraint  :: LRdrName
-    , type_GHC_Generic :: LRdrName
-    , type_GHC_Rep     :: LRdrName
-    , type_Int         :: LRdrName
-    , type_Proxy       :: LRdrName
-    , type_Type        :: LRdrName
-    , error            :: LRdrName
-    , ghc_from         :: LRdrName
-    , ghc_to           :: LRdrName
-    , proxy            :: LRdrName
+    , type_Constraint  :: LIdP GhcPs
+    , type_GHC_Generic :: LIdP GhcPs
+    , type_GHC_Rep     :: LIdP GhcPs
+    , type_Int         :: LIdP GhcPs
+    , type_Proxy       :: LIdP GhcPs
+    , type_Type        :: LIdP GhcPs
+    , error            :: LIdP GhcPs
+    , ghc_from         :: LIdP GhcPs
+    , ghc_to           :: LIdP GhcPs
+    , proxy            :: LIdP GhcPs
 
       --
       -- AnyArray
       --
 
-    , type_AnyArray    :: LRdrName
-    , anyArrayFromList :: LRdrName
-    , anyArrayToList   :: LRdrName
-    , anyArrayIndex    :: LRdrName
-    , anyArrayUpdate   :: LRdrName
+    , type_AnyArray    :: LIdP GhcPs
+    , anyArrayFromList :: LIdP GhcPs
+    , anyArrayToList   :: LIdP GhcPs
+    , anyArrayIndex    :: LIdP GhcPs
+    , anyArrayUpdate   :: LIdP GhcPs
 
       --
       -- large-generics
       --
 
-    , type_LR_Generic     :: LRdrName
-    , type_LR_MetadataOf  :: LRdrName
-    , type_LR_Constraints :: LRdrName
-    , lr_from             :: LRdrName
-    , lr_to               :: LRdrName
-    , lr_dict             :: LRdrName
-    , lr_metadata         :: LRdrName
+    , type_LR_Generic     :: LIdP GhcPs
+    , type_LR_MetadataOf  :: LIdP GhcPs
+    , type_LR_Constraints :: LIdP GhcPs
+    , lr_from             :: LIdP GhcPs
+    , lr_to               :: LIdP GhcPs
+    , lr_dict             :: LIdP GhcPs
+    , lr_metadata         :: LIdP GhcPs
 
       -- .. wrappers
 
-    , type_Rep         :: LRdrName
-    , type_Dict        :: LRdrName
-    , gcompare         :: LRdrName
-    , geq              :: LRdrName
-    , gshowsPrec       :: LRdrName
-    , noInlineUnsafeCo :: LRdrName
+    , type_Rep         :: LIdP GhcPs
+    , type_Dict        :: LIdP GhcPs
+    , gcompare         :: LIdP GhcPs
+    , geq              :: LIdP GhcPs
+    , gshowsPrec       :: LIdP GhcPs
+    , noInlineUnsafeCo :: LIdP GhcPs
 
       -- .. utilities
 
-    , anyArrayToRep   :: LRdrName
-    , anyArrayFromRep :: LRdrName
-    , mkDicts         :: LRdrName
-    , mkDict          :: LRdrName
-    , mkStrictField   :: LRdrName
-    , mkLazyField     :: LRdrName
-    , mkMetadata      :: LRdrName
+    , anyArrayToRep   :: LIdP GhcPs
+    , anyArrayFromRep :: LIdP GhcPs
+    , mkDicts         :: LIdP GhcPs
+    , mkDict          :: LIdP GhcPs
+    , mkStrictField   :: LIdP GhcPs
+    , mkLazyField     :: LIdP GhcPs
+    , mkMetadata      :: LIdP GhcPs
 
       -- .. ThroughLRGenerics
 
-    , type_ThroughLRGenerics  :: LRdrName
-    , wrapThroughLRGenerics   :: LRdrName
-    , unwrapThroughLRGenerics :: LRdrName
+    , type_ThroughLRGenerics  :: LIdP GhcPs
+    , wrapThroughLRGenerics   :: LIdP GhcPs
+    , unwrapThroughLRGenerics :: LIdP GhcPs
 
       --
       -- record-hasfield
       --
 
-    , type_HasField :: LRdrName
-    , hasField      :: LRdrName
+    , type_HasField :: LIdP GhcPs
+    , hasField      :: LIdP GhcPs
     }
 
 -- | Resolve qualified names
@@ -197,8 +197,8 @@ getQualifiedNames = do
     return QualifiedNames{..}
 
   where
-   exact :: Name -> LRdrName
-   exact = noLoc . Exact
+   exact :: Name -> LIdP GhcPs
+   exact = noLocA . Exact
 
    ghcClasses, ghcShow :: ModuleName
    ghcClasses = mkModuleName "GHC.Classes"

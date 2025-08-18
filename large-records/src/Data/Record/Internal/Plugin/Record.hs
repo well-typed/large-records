@@ -29,9 +29,9 @@ import Data.Record.Internal.Plugin.Options (LargeRecordOptions)
 
 -- | A representation for records that can be processed by large-records.
 data Record = Record {
-      recordTyName    :: LRdrName
+      recordTyName    :: LIdP GhcPs
     , recordTyVars    :: [LHsTyVarBndr GhcPs]
-    , recordConName   :: LRdrName
+    , recordConName   :: LIdP GhcPs
     , recordFields    :: [Field]
     , recordDerivings :: [RecordDeriving]
     , recordOptions   :: LargeRecordOptions
@@ -43,7 +43,7 @@ data Record = Record {
     }
 
 data Field = Field {
-      fieldName       :: LRdrName
+      fieldName       :: LIdP GhcPs
     , fieldType       :: LHsType GhcPs
     , fieldStrictness :: HsSrcBang
     , fieldIndex      :: Int
@@ -98,7 +98,7 @@ viewRecord annLoc options decl =
 
 viewField ::
      MonadError Exception m
-  => (LRdrName, LHsType GhcPs) -> m (Int -> Field)  
+  => (LIdP GhcPs, LHsType GhcPs) -> m (Int -> Field)  
 viewField (name, typ) =
   return $ Field name (parensT (getBangType typ)) (getBangStrictness typ)
 

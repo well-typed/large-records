@@ -26,7 +26,6 @@ module Data.Record.Internal.GHC.Shim (
   , mkFunBind
   , HsModule
   , LHsModule
-  , LRdrName
   , pattern GHC.HsModule
 
     -- * Annotations
@@ -35,6 +34,7 @@ module Data.Record.Internal.GHC.Shim (
   , reLocA
   , noLocA
 #endif
+  , unLoc
 
     -- * Extensions
   , HasDefaultExt(..)
@@ -113,16 +113,16 @@ import BasicTypes (SourceText (NoSourceText))
 import ConLike (ConLike)
 import ErrUtils (mkErrMsg, mkWarnMsg)
 import Finder (findImportedModule)
-import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind, mkFunBind)
-import GhcPlugins hiding ((<>), getHscEnv,)
+import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind, mkFunBind, unLoc)
+import GhcPlugins hiding ((<>), getHscEnv, unLoc)
 import HscMain (getHscEnv)
 import IfaceEnv (lookupOrigIO)
 import NameCache (NameCache(nsUniqs))
 import PatSyn (PatSyn)
 import TcEvidence (HsWrapper(WpHole))
 
-import qualified GHC
-import qualified GhcPlugins as GHC
+import qualified GHC hiding (unLoc)
+import qualified GhcPlugins as GHC hiding (unLoc)
 
 #else
 
@@ -137,7 +137,7 @@ import GHC.Driver.Main (getHscEnv)
 import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
 import GHC.Utils.Error (Severity(SevError, SevWarning))
 
-import GHC.Plugins hiding ((<>), getHscEnv
+import GHC.Plugins hiding ((<>), getHscEnv, unLoc
 #if __GLASGOW_HASKELL__ >= 902
     , AnnType, AnnLet, AnnRec, AnnLam, AnnCase
     , Exception
@@ -258,7 +258,7 @@ lookupOrigIO :: HscEnv -> Module -> OccName -> IO Name
 lookupOrigIO env modl occ = lookupNameCache (hsc_NC env) modl occ
 #endif
 
-{-------------------------------------------------------------------------------
+{---------------------------------------------------------------------.10.7/----------
   Miscellaneous
 -------------------------------------------------------------------------------}
 
@@ -302,18 +302,18 @@ importDecl qualified name = reLocA $ noLoc $ ImportDecl {
 #endif
     }
 
-conPat :: Located RdrName -> HsConPatDetails GhcPs -> Pat GhcPs
+conPat :: LIdP GhcPs -> HsConPatDetails GhcPs -> Pat GhcPs
 #if __GLASGOW_HASKELL__ < 900
 conPat x y = ConPatIn x y
 #else
-conPat x y = ConPat defExt (reLocA x) y
+conPat x y = ConPat defExt x y
 #endif
 
-mkFunBind :: Located RdrName -> [LMatch GhcPs (LHsExpr GhcPs)] -> HsBind GhcPs
+mkFunBind :: LIdP GhcPs -> [LMatch GhcPs (LHsExpr GhcPs)] -> HsBind GhcPs
 #if __GLASGOW_HASKELL__ >= 908
-mkFunBind (reLocA -> n) = GHC.mkFunBind (Generated DoPmc) n
+mkFunBind n = GHC.mkFunBind (Generated DoPmc) n
 #else
-mkFunBind (reLocA -> n) = GHC.mkFunBind Generated n
+mkFunBind n = GHC.mkFunBind Generated n
 #endif
 
 #if __GLASGOW_HASKELL__ < 900
@@ -327,7 +327,6 @@ type LHsModule = Located (HsModule GhcPs)
 #else
 type LHsModule = Located HsModule
 #endif
-type LRdrName  = Located RdrName
 
 {-------------------------------------------------------------------------------
   NameCache
@@ -449,38 +448,38 @@ hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow (L NoTokenLoc HsNormalTok))
 
 userTyVar ::
      XUserTyVar GhcPs
-  -> Located (IdP GhcPs)
+  -> LIdP GhcPs
   -> HsTyVarBndr GhcPs
 #if __GLASGOW_HASKELL__ < 900
 userTyVar = UserTyVar
 #elif __GLASGOW_HASKELL__ < 908
-userTyVar ext x = UserTyVar ext () (reLocA x)
+userTyVar ext x = UserTyVar ext () x
 #else
-userTyVar ext x = UserTyVar ext HsBndrRequired (reLocA x)
+userTyVar ext x = UserTyVar ext HsBndrRequired x
 #endif
 
 kindedTyVar ::
      XKindedTyVar GhcPs
-  -> Located (IdP GhcPs)
+  -> LIdP GhcPs
   -> LHsKind GhcPs
   -> HsTyVarBndr GhcPs
 #if __GLASGOW_HASKELL__ < 900
 kindedTyVar = KindedTyVar
 #elif __GLASGOW_HASKELL__ < 908
-kindedTyVar ext k = KindedTyVar ext () (reLocA k)
+kindedTyVar ext k = KindedTyVar ext () k
 #else
-kindedTyVar ext k = KindedTyVar ext HsBndrRequired (reLocA k)
+kindedTyVar ext k = KindedTyVar ext HsBndrRequired k
 #endif
 
 -- | Like 'hsTyVarName', but don't throw away the location information
-hsTyVarLName :: HsTyVarBndr GhcPs -> LRdrName
+hsTyVarLName :: HsTyVarBndr GhcPs -> LIdP GhcPs
 #if __GLASGOW_HASKELL__ < 900
 hsTyVarLName (UserTyVar   _ n  ) = n
 hsTyVarLName (KindedTyVar _ n _) = n
 hsTyVarLName _ = panic "hsTyVarLName"
 #else
-hsTyVarLName (UserTyVar   _ _ n  ) = reLoc n
-hsTyVarLName (KindedTyVar _ _ n _) = reLoc n
+hsTyVarLName (UserTyVar   _ _ n  ) = n
+hsTyVarLName (KindedTyVar _ _ n _) = n
 #endif
 
 #if __GLASGOW_HASKELL__ < 900
@@ -592,6 +591,10 @@ instance InheritLoc x (HsLocalBindsLR p q) (HsLocalBindsLR p q) where inheritLoc
 withoutLoc :: InheritLoc SrcSpan a b => a -> b
 withoutLoc = inheritLoc noSrcSpan
 
+-- GHC-8.10 has weird unLoc definition.
+unLoc :: GenLocated l a -> a
+unLoc (L _ a) = a
+
 {-------------------------------------------------------------------------------
   Records
 -------------------------------------------------------------------------------}
@@ -605,7 +608,7 @@ type RupdFlds = [LHsRecUpdField GhcPs]
 #endif
 
 -- | Pattern match against the @rupd_flds@ of @RecordUpd@
-simpleRecordUpdates :: RupdFlds -> Maybe [(LRdrName, LHsExpr GhcPs)]
+simpleRecordUpdates :: RupdFlds -> Maybe [(LIdP GhcPs, LHsExpr GhcPs)]
 
 #if __GLASGOW_HASKELL__ >= 904
 
@@ -622,9 +625,9 @@ simpleRecordUpdates =
 #endif
   where
     aux :: forall lhs rhs.
-         (lhs -> Maybe LRdrName)
+         (lhs -> Maybe (LIdP GhcPs))
       -> LHsFieldBind GhcPs lhs rhs
-      -> Maybe (LRdrName, rhs)
+      -> Maybe (LIdP GhcPs, rhs)
     aux f (L _ (HsFieldBind { hfbLHS = lbl
                             , hfbRHS = val
                             , hfbPun = pun
@@ -632,11 +635,11 @@ simpleRecordUpdates =
         guard $ not pun
         (, val) <$> f lbl
 
-    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe LRdrName
-    isUnambigous (Unambiguous _ name) = Just $ reLoc name
+    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe (LIdP GhcPs)
+    isUnambigous (Unambiguous _ name) = Just name
     isUnambigous _                    = Nothing
 
-    isSingleLabel :: FieldLabelStrings GhcPs -> Maybe LRdrName
+    isSingleLabel :: FieldLabelStrings GhcPs -> Maybe (LIdP GhcPs)
     isSingleLabel (FieldLabelStrings labels) =
         case labels of
 #if __GLASGOW_HASKELL__ >= 906
@@ -644,7 +647,7 @@ simpleRecordUpdates =
 #else
           [L _ (DotFieldOcc _ (L l label))] ->
 #endif
-            Just $ reLoc $ L l (Unqual $ mkVarOccFS label)
+            Just $ L l (Unqual $ mkVarOccFS label)
           _otherwise ->
             Nothing
 
@@ -656,9 +659,9 @@ simpleRecordUpdates =
       Right flds -> mapM (aux isSingleLabel) flds
   where
     aux :: forall lhs rhs.
-         (lhs -> Maybe LRdrName)
+         (lhs -> Maybe (LIdP GhcPs))
       -> LHsRecField' GhcPs lhs rhs
-      -> Maybe (LRdrName, rhs)
+      -> Maybe (LIdP GhcPs, rhs)
     aux f (L _ (HsRecField { hsRecFieldLbl = L _ lbl
                            , hsRecFieldArg = val
                            , hsRecPun      = pun
@@ -666,15 +669,15 @@ simpleRecordUpdates =
         guard $ not pun
         (, val) <$> f lbl
 
-    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe LRdrName
-    isUnambigous (Unambiguous _ name) = Just $ reLoc name
+    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe (LIdP GhcPs)
+    isUnambigous (Unambiguous _ name) = Just name
     isUnambigous _                    = Nothing
 
-    isSingleLabel :: FieldLabelStrings GhcPs -> Maybe LRdrName
+    isSingleLabel :: FieldLabelStrings GhcPs -> Maybe (LIdP GhcPs)
     isSingleLabel (FieldLabelStrings labels) =
         case labels of
           [L _ (HsFieldLabel _ (L l label))] ->
-            Just $ L l (Unqual $ mkVarOccFS label)
+            Just $ inheritLoc l (Unqual $ mkVarOccFS label)
           _otherwise ->
             Nothing
 
@@ -684,9 +687,9 @@ simpleRecordUpdates =
      mapM (aux isUnambigous)
   where
     aux :: forall lhs rhs.
-         (lhs -> Maybe LRdrName)
+         (lhs -> Maybe (LIdP GhcPs))
       -> LHsRecField' lhs rhs
-      -> Maybe (LRdrName, rhs)
+      -> Maybe (LIdP GhcPs, rhs)
     aux f (L _ (HsRecField { hsRecFieldLbl = L _ lbl
                            , hsRecFieldArg = val
                            , hsRecPun      = pun
@@ -694,7 +697,7 @@ simpleRecordUpdates =
         guard $ not pun
         (, val) <$> f lbl
 
-    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe LRdrName
+    isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe (LIdP GhcPs)
     isUnambigous (Unambiguous _ name) = Just $ reLoc name
     isUnambigous _                    = Nothing
 

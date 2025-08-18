@@ -101,7 +101,6 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   , LHsTyVarBndr
   , LPat
   , LTyFamInstDecl
-  , LRdrName
   ) where
 
 import Data.List (foldl')
@@ -115,13 +114,14 @@ import Data.Record.Internal.GHC.Shim
   Internal auxiliary: types of names
 -------------------------------------------------------------------------------}
 
-isTermVar, isTermCon, isTypeVar, isTypeCon :: LRdrName -> Bool
+isTermVar, isTermCon, isTypeVar, isTypeCon :: GenLocated l RdrName -> Bool
 isTermVar = checkNameType isVarOcc
 isTermCon = checkNameType isDataOcc
 isTypeVar = checkNameType isTvOcc
 isTypeCon = checkNameType isTcOcc
 
-checkNameType :: (OccName -> Bool) -> LRdrName -> Bool
+
+checkNameType :: (OccName -> Bool) -> GenLocated l RdrName -> Bool
 checkNameType f (L _ n) = f (rdrNameOcc n)
 
 {-------------------------------------------------------------------------------
@@ -129,50 +129,50 @@ checkNameType f (L _ n) = f (rdrNameOcc n)
 -------------------------------------------------------------------------------}
 
 -- | Equivalent of 'Language.Haskell.TH.Syntax.nameBase'
-nameBase :: LRdrName -> String
+nameBase :: GenLocated l RdrName -> String
 nameBase = occNameString . rdrNameOcc . unLoc
 
 -- | Equivalent of 'Language.Haskell.TH.Syntax.mkName', for expression vars
-mkNameExp :: SrcSpan -> String -> LRdrName
-mkNameExp l = L l . mkRdrUnqual . mkVarOcc
+mkNameExp :: SrcSpan -> String -> LIdP GhcPs
+mkNameExp l = inheritLoc l . mkRdrUnqual . mkVarOcc
 
 -- | Equivalent of 'Language.Haskell.TH.Syntax.mkName', for type vars
-mkNameTy :: SrcSpan -> String -> LRdrName
-mkNameTy l = L l . mkRdrUnqual . mkTyVarOcc
+mkNameTy :: SrcSpan -> String -> LIdP GhcPs
+mkNameTy l = inheritLoc l . mkRdrUnqual . mkTyVarOcc
 
 -- | Equivalent of 'Language.Haskell.TH.Syntax.mkName', for type constructors
-mkNameTyCon :: SrcSpan -> String -> LRdrName
-mkNameTyCon l = L l . mkRdrUnqual . mkTcOcc
+mkNameTyCon :: SrcSpan -> String -> LIdP GhcPs
+mkNameTyCon l = inheritLoc l . mkRdrUnqual . mkTcOcc
 
 -- | Inverse to 'mkNameExp'
 --
 -- NOTE: Defined in terms of 'nameBase', so discards qualifiers.
-viewExpVar :: LRdrName -> Maybe String
+viewExpVar :: LIdP GhcPs -> Maybe String
 viewExpVar n | isTermVar n = Just (nameBase n)
 viewExpVar _otherwise = Nothing
 
 -- | Inverse to 'mkNameTy'
 --
 -- NOTE: Defined in terms of 'nameBase', so discards qualifiers.
-viewTyVar :: LRdrName -> Maybe String
+viewTyVar :: LIdP GhcPs -> Maybe String
 viewTyVar n | isTypeVar n = Just (nameBase n)
 viewTyVar _otherwise = Nothing
 
 -- | Inverse to 'mkNameTyCon'
-viewTyCon :: LRdrName -> Maybe String
+viewTyCon :: LIdP GhcPs -> Maybe String
 viewTyCon n | isTypeCon n = Just (nameBase n)
 viewTyCon _otherwise = Nothing
 
--- This patterns are not bidirectional: to construct a LRdrName, we need a
+-- This patterns are not bidirectional: to construct a LIdP GhcPs, we need a
 -- location. We may want to change this somehow. Use a Located String?
 
-pattern ExpVar :: String -> LRdrName
+pattern ExpVar :: String -> LIdP GhcPs
 pattern ExpVar n <- (viewExpVar -> Just n)
 
-pattern TyVar :: String -> LRdrName
+pattern TyVar :: String -> LIdP GhcPs
 pattern TyVar n <- (viewTyVar -> Just n)
 
-pattern TyCon :: String -> LRdrName
+pattern TyCon :: String -> LIdP GhcPs
 pattern TyCon n <- (viewTyCon -> Just n)
 
 {-------------------------------------------------------------------------------
@@ -180,33 +180,33 @@ pattern TyCon n <- (viewTyCon -> Just n)
 -------------------------------------------------------------------------------}
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varE'
-varE :: HasCallStack => LRdrName -> LHsExpr GhcPs
+varE :: HasCallStack => LIdP GhcPs -> LHsExpr GhcPs
 varE name
-  | isTermVar name = inheritLoc name $ HsVar defExt (reLocA name)
+  | isTermVar name = inheritLoc name $ HsVar defExt name
   | otherwise      = error "varE: incorrect name type"
 
 -- | Inverse to 'varE'
-viewVarE :: LHsExpr GhcPs -> Maybe LRdrName
-viewVarE (L _ (HsVar _ (reLoc -> name))) | isTermVar name = Just name
+viewVarE :: LHsExpr GhcPs -> Maybe (LIdP GhcPs)
+viewVarE (L _ (HsVar _ name)) | isTermVar name = Just name
 viewVarE _ = Nothing
 
-pattern VarE :: HasCallStack => () => LRdrName -> LHsExpr GhcPs
+pattern VarE :: HasCallStack => () => LIdP GhcPs -> LHsExpr GhcPs
 pattern VarE name <- (viewVarE -> Just name)
   where
     VarE = varE
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.conE'
-conE :: HasCallStack => LRdrName -> LHsExpr GhcPs
+conE :: HasCallStack => LIdP GhcPs -> LHsExpr GhcPs
 conE name
-  | isTermCon name = inheritLoc name $ HsVar defExt (reLocA name)
+  | isTermCon name = inheritLoc name $ HsVar defExt name
   | otherwise      = error "conE: incorrect name type"
 
 -- | Inverse to 'conE'
-viewConE :: LHsExpr GhcPs -> Maybe LRdrName
-viewConE (L _ (HsVar _ (reLoc -> name))) | isTermCon name = Just name
+viewConE :: LHsExpr GhcPs -> Maybe (LIdP GhcPs)
+viewConE (L _ (HsVar _ name)) | isTermCon name = Just name
 viewConE _ = Nothing
 
-pattern ConE :: HasCallStack => () => LRdrName -> LHsExpr GhcPs
+pattern ConE :: HasCallStack => () => LIdP GhcPs -> LHsExpr GhcPs
 pattern ConE name <- (viewConE -> Just name)
   where
     ConE = conE
@@ -220,14 +220,14 @@ stringE :: String -> LHsExpr GhcPs
 stringE = litE . HsString NoSourceText . fsLit
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.recConE'
-recConE :: LRdrName -> [(LRdrName, LHsExpr GhcPs)] -> LHsExpr GhcPs
+recConE :: LIdP GhcPs -> [(LIdP GhcPs, LHsExpr GhcPs)] -> LHsExpr GhcPs
 recConE = \recName -> mkRec recName . map (uncurry mkFld)
   where
-    mkRec :: LRdrName -> [LHsRecField GhcPs (LHsExpr GhcPs)] -> LHsExpr GhcPs
+    mkRec :: LIdP GhcPs -> [LHsRecField GhcPs (LHsExpr GhcPs)] -> LHsExpr GhcPs
     mkRec name fields = inheritLoc name $
-        RecordCon defExt (reLocA name) (HsRecFields fields Nothing)
+        RecordCon defExt name (HsRecFields fields Nothing)
 
-    mkFld :: LRdrName -> LHsExpr GhcPs -> LHsRecField GhcPs (LHsExpr GhcPs)
+    mkFld :: LIdP GhcPs -> LHsExpr GhcPs -> LHsRecField GhcPs (LHsExpr GhcPs)
     mkFld name val = inheritLoc name $
 #if __GLASGOW_HASKELL__ >= 904
         HsFieldBind defExt
@@ -236,10 +236,10 @@ recConE = \recName -> mkRec recName . map (uncurry mkFld)
 #else
         HsRecField
 #endif
-          (inheritLoc name (mkFieldOcc (reLocA name))) val False
+          (inheritLoc name (mkFieldOcc name)) val False
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.recUpdE'
-recUpdE :: LHsExpr GhcPs -> [(LRdrName, LHsExpr GhcPs)] -> LHsExpr GhcPs
+recUpdE :: LHsExpr GhcPs -> [(LIdP GhcPs, LHsExpr GhcPs)] -> LHsExpr GhcPs
 recUpdE = \recExpr -> updRec recExpr . map (uncurry updFld)
   where
 #if __GLASGOW_HASKELL__ >= 908
@@ -257,9 +257,9 @@ recUpdE = \recExpr -> updRec recExpr . map (uncurry updFld)
             fields
 
 #if __GLASGOW_HASKELL__ >= 908
-    updFld :: LRdrName -> LHsExpr GhcPs -> LHsRecUpdField GhcPs GhcPs
+    updFld :: LIdP GhcPs -> LHsExpr GhcPs -> LHsRecUpdField GhcPs GhcPs
 #else
-    updFld :: LRdrName -> LHsExpr GhcPs -> LHsRecUpdField GhcPs
+    updFld :: LIdP GhcPs -> LHsExpr GhcPs -> LHsRecUpdField GhcPs
 #endif
     updFld name val = inheritLoc name $
 #if __GLASGOW_HASKELL__ >= 904
@@ -270,16 +270,16 @@ recUpdE = \recExpr -> updRec recExpr . map (uncurry updFld)
 #if __GLASGOW_HASKELL__ >= 902
           defExt
 #endif
-          (inheritLoc name (mkAmbiguousFieldOcc (reLocA name))) val False
+          (inheritLoc name (mkAmbiguousFieldOcc name)) val False
 
 viewRecUpdE ::
      LHsExpr GhcPs
-  -> Maybe (LHsExpr GhcPs, [(LRdrName, LHsExpr GhcPs)])
+  -> Maybe (LHsExpr GhcPs, [(LIdP GhcPs, LHsExpr GhcPs)])
 viewRecUpdE (L _ (RecordUpd _ recExpr fields)) =
     (recExpr,) <$> simpleRecordUpdates fields
 viewRecUpdE _otherwise = Nothing
 
-pattern RecUpdE :: LHsExpr GhcPs -> [(LRdrName, LHsExpr GhcPs)] -> LHsExpr GhcPs
+pattern RecUpdE :: LHsExpr GhcPs -> [(LIdP GhcPs, LHsExpr GhcPs)] -> LHsExpr GhcPs
 pattern RecUpdE recExpr fields <- (viewRecUpdE -> Just (recExpr, fields))
   where
     RecUpdE = recUpdE
@@ -383,33 +383,33 @@ litT :: HsTyLit -> LHsType GhcPs
 litT = noLocA . HsTyLit defExt
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varT'
-varT :: HasCallStack => LRdrName -> LHsType GhcPs
+varT :: HasCallStack => LIdP GhcPs -> LHsType GhcPs
 varT name
-  | isTypeVar name = inheritLoc name (HsTyVar defExt NotPromoted (reLocA name))
+  | isTypeVar name = inheritLoc name (HsTyVar defExt NotPromoted name)
   | otherwise      = error "varT: incorrect name type"
 
 -- | Inverse to 'varT'
-viewVarT :: LHsType GhcPs -> Maybe LRdrName
-viewVarT (L _ (HsTyVar _ _ (reLoc -> name))) | isTypeVar name = Just name
+viewVarT :: LHsType GhcPs -> Maybe (LIdP GhcPs)
+viewVarT (L _ (HsTyVar _ _ name)) | isTypeVar name = Just name
 viewVarT _otherwise = Nothing
 
-pattern VarT :: HasCallStack => () => LRdrName -> LHsType GhcPs
+pattern VarT :: HasCallStack => () => LIdP GhcPs -> LHsType GhcPs
 pattern VarT name <- (viewVarT -> Just name)
   where
     VarT = varT
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.conT'
-conT :: HasCallStack => LRdrName -> LHsType GhcPs
+conT :: HasCallStack => LIdP GhcPs -> LHsType GhcPs
 conT name
-  | isTypeCon name = inheritLoc name (HsTyVar defExt NotPromoted (reLocA name))
+  | isTypeCon name = inheritLoc name (HsTyVar defExt NotPromoted name)
   | otherwise      = error "varT: incorrect name type"
 
 -- | Inverse to 'conT'
-viewConT :: LHsType GhcPs -> Maybe LRdrName
-viewConT (L _ (HsTyVar _ _ (reLoc -> name))) | isTypeCon name = Just name
+viewConT :: LHsType GhcPs -> Maybe (LIdP GhcPs)
+viewConT (L _ (HsTyVar _ _ name)) | isTypeCon name = Just name
 viewConT _otherwise = Nothing
 
-pattern ConT :: HasCallStack => () => LRdrName -> LHsType GhcPs
+pattern ConT :: HasCallStack => () => LIdP GhcPs -> LHsType GhcPs
 pattern ConT name <- (viewConT -> Just name)
   where
     ConT = conT
@@ -454,11 +454,11 @@ tupT ts = inheritLoc ts $ HsExplicitTupleTy defExt (NE.toList ts)
 -------------------------------------------------------------------------------}
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.varP'
-varP :: LRdrName -> LPat GhcPs
-varP name = inheritLoc name (VarPat defExt (reLocA name))
+varP :: LIdP GhcPs -> LPat GhcPs
+varP name = inheritLoc name (VarPat defExt name)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.conP'
-conP :: LRdrName -> [LPat GhcPs] -> LPat GhcPs
+conP :: LIdP GhcPs -> [LPat GhcPs] -> LPat GhcPs
 #if __GLASGOW_HASKELL__ >= 902
 conP con args = inheritLoc con (conPat con (PrefixCon [] args))
 #else
@@ -511,11 +511,11 @@ equalP x y = inheritLoc x $
 --
 -- NOTE: The GHC AST (but not TH) supports declaring multiple record fields
 -- with the same type. We do not support this here (since we follow TH).
-recC :: LRdrName -> [(LRdrName, LHsType GhcPs)] -> LConDecl GhcPs
+recC :: LIdP GhcPs -> [(LIdP GhcPs, LHsType GhcPs)] -> LConDecl GhcPs
 recC = forallRecC [] []
 
 -- | Inverse to 'recC'
-viewRecC :: LConDecl GhcPs -> Maybe (LRdrName, [(LRdrName, LHsType GhcPs)])
+viewRecC :: LConDecl GhcPs -> Maybe (LIdP GhcPs, [(LIdP GhcPs, LHsType GhcPs)])
 viewRecC
     (L _
        ConDeclH98 {
@@ -529,9 +529,9 @@ viewRecC
          , con_mb_cxt = Nothing
          , con_args   = RecCon (L _ fields)
          }
-    ) = (reLoc conName ,) <$> mapM viewRecField fields
+    ) = (conName ,) <$> mapM viewRecField fields
   where
-    viewRecField :: LConDeclField GhcPs -> Maybe (LRdrName, LHsType GhcPs)
+    viewRecField :: LConDeclField GhcPs -> Maybe (LIdP GhcPs, LHsType GhcPs)
     viewRecField
         (L _
            ConDeclField {
@@ -541,14 +541,14 @@ viewRecC
         ) = Just $ (viewFieldOcc name, ty)
     viewRecField _otherwise = Nothing
 
-    viewFieldOcc :: FieldOcc GhcPs -> LRdrName
-    viewFieldOcc (FieldOcc _ (reLoc -> name)) = name
+    viewFieldOcc :: FieldOcc GhcPs -> LIdP GhcPs
+    viewFieldOcc (FieldOcc _ name) = name
 #if __GLASGOW_HASKELL__ < 900
     viewFieldOcc _ = panic "viewFieldOcc"
 #endif
 viewRecC _otherwise = Nothing
 
-pattern RecC :: LRdrName -> [(LRdrName, LHsType GhcPs)] -> LConDecl GhcPs
+pattern RecC :: LIdP GhcPs -> [(LIdP GhcPs, LHsType GhcPs)] -> LConDecl GhcPs
 pattern RecC conName args <- (viewRecC -> Just (conName, args))
   where
     RecC = recC
@@ -556,14 +556,14 @@ pattern RecC conName args <- (viewRecC -> Just (conName, args))
 -- | Equivalent of the combination of 'Language.Haskell.TH.Lib.forallC' and
 -- 'Language.Haskell.TH.Lib.recC'.
 forallRecC ::
-     [LRdrName]                  -- ^ @forallC@ argument: bound type variables
-  -> [LHsType GhcPs]             -- ^ @forallC@ argument: context
-  -> LRdrName                    -- ^ @recC@ argument: record constructor name
-  -> [(LRdrName, LHsType GhcPs)] -- ^ @recC@ argument: record fields
+     [LIdP GhcPs]                  -- ^ @forallC@ argument: bound type variables
+  -> [LHsType GhcPs]               -- ^ @forallC@ argument: context
+  -> LIdP GhcPs                    -- ^ @recC@ argument: record constructor name
+  -> [(LIdP GhcPs, LHsType GhcPs)] -- ^ @recC@ argument: record fields
   -> LConDecl GhcPs
 forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
       con_ext    = defExt
-    , con_name   = reLocA conName
+    , con_name   = conName
     , con_forall = inheritLoc conName True
     , con_ex_tvs = map (setDefaultSpecificity . mkBndr) vars
     , con_mb_cxt = Just (inheritLoc conName ctxt)
@@ -571,13 +571,13 @@ forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
     , con_doc    = Nothing
     }
   where
-    mkBndr :: LRdrName -> LHsTyVarBndr GhcPs
+    mkBndr :: LIdP GhcPs -> LHsTyVarBndr GhcPs
     mkBndr name = inheritLoc name $ userTyVar defExt name
 
-    mkRecField :: LRdrName -> LHsType GhcPs -> LConDeclField GhcPs
+    mkRecField :: LIdP GhcPs -> LHsType GhcPs -> LConDeclField GhcPs
     mkRecField name ty = inheritLoc name $ ConDeclField {
           cd_fld_ext   = defExt
-        , cd_fld_names = [inheritLoc name $ mkFieldOcc $ reLocA name]
+        , cd_fld_names = [inheritLoc name $ mkFieldOcc name]
         , cd_fld_type  = ty
         , cd_fld_doc   = Nothing
         }
@@ -587,14 +587,14 @@ forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
 -------------------------------------------------------------------------------}
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.kindedTV'
-kindedTV :: LRdrName -> LHsType GhcPs -> LHsTyVarBndr GhcPs
+kindedTV :: LIdP GhcPs -> LHsType GhcPs -> LHsTyVarBndr GhcPs
 kindedTV name ty = inheritLoc name (kindedTyVar defExt name ty)
 
 {-------------------------------------------------------------------------------
   .. without direct equivalent
 -------------------------------------------------------------------------------}
 
-tyVarBndrName :: LHsTyVarBndr GhcPs -> LRdrName
+tyVarBndrName :: LHsTyVarBndr GhcPs -> LIdP GhcPs
 tyVarBndrName = hsTyVarLName . unLoc
 
 {-------------------------------------------------------------------------------
@@ -602,22 +602,22 @@ tyVarBndrName = hsTyVarLName . unLoc
 -------------------------------------------------------------------------------}
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.sigD'
-sigD :: LRdrName -> LHsType GhcPs -> LHsDecl GhcPs
+sigD :: LIdP GhcPs -> LHsType GhcPs -> LHsDecl GhcPs
 sigD name ty = inheritLoc name $ SigD defExt sig
   where
     sig :: Sig GhcPs
-    sig = TypeSig defExt [reLocA name] $ HsWC defExt (implicitBndrs ty)
+    sig = TypeSig defExt [name] $ HsWC defExt (implicitBndrs ty)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.valD'
 --
 -- Currently this offers a simplified API only.
-valD :: LRdrName -> LHsExpr GhcPs -> LHsDecl GhcPs
+valD :: LIdP GhcPs -> LHsExpr GhcPs -> LHsDecl GhcPs
 valD fnName body = inheritLoc fnName $
     ValD defExt (unLoc (simpleBinding fnName body))
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.dataD'
 dataD ::
-     LRdrName                  -- ^ Datatype name
+     LIdP GhcPs                -- ^ Datatype name
   -> [LHsTyVarBndr GhcPs]      -- ^ Type arguments
   -> [LConDecl GhcPs]          -- ^ Constructors
   -> [LHsDerivingClause GhcPs] -- ^ Deriving clauses
@@ -625,7 +625,7 @@ dataD ::
 dataD typeName tyVars cons derivs = inheritLoc typeName $
     TyClD defExt $ DataDecl {
         tcdDExt     = defExt
-      , tcdLName    = reLocA typeName
+      , tcdLName    = typeName
       , tcdTyVars   = mkHsQTvs tyVars
       , tcdFixity   = Prefix
       , tcdDataDefn = HsDataDefn {
@@ -654,7 +654,7 @@ dataD typeName tyVars cons derivs = inheritLoc typeName $
 viewDataD ::
      LHsDecl GhcPs
   -> Maybe (
-         LRdrName
+         LIdP GhcPs
        , [LHsTyVarBndr GhcPs]
        , [LConDecl GhcPs]
        , [LHsDerivingClause GhcPs]
@@ -691,11 +691,11 @@ viewDataD
                  }
            }
        )
-    ) = Just (reLoc typeName, tyVars, cons, derivs)
+    ) = Just (typeName, tyVars, cons, derivs)
 viewDataD _otherwise = Nothing
 
 pattern DataD ::
-     LRdrName
+     LIdP GhcPs
   -> [LHsTyVarBndr GhcPs]
   -> [LConDecl GhcPs]
   -> [LHsDerivingClause GhcPs]
@@ -749,7 +749,7 @@ pattern DerivClause strat tys <-
 instanceD ::
      [LHsType GhcPs]            -- ^ Context
   -> LHsType GhcPs              -- ^ Head
-  -> [(LRdrName, LHsExpr GhcPs)] -- ^ Bindings
+  -> [(LIdP GhcPs, LHsExpr GhcPs)] -- ^ Bindings
   -> [LTyFamInstDecl GhcPs]     -- ^ Associated types
   -> LHsDecl GhcPs
 instanceD ctxt hd binds assocTypes = inheritLoc hd $
@@ -777,10 +777,10 @@ instanceD ctxt hd binds assocTypes = inheritLoc hd $
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.classD'
 classD ::
-     [LHsType GhcPs]            -- ^ Class context
-  -> LRdrName                    -- ^ Class name
-  -> [LHsTyVarBndr GhcPs]       -- ^ Type variables
-  -> [(LRdrName, LHsType GhcPs)] -- ^ Method signatures
+     [LHsType GhcPs]               -- ^ Class context
+  -> LIdP GhcPs                    -- ^ Class name
+  -> [LHsTyVarBndr GhcPs]          -- ^ Type variables
+  -> [(LIdP GhcPs, LHsType GhcPs)] -- ^ Method signatures
   -> LHsDecl GhcPs
 classD = \ctx name clsVars sigs -> inheritLoc name $
     TyClD defExt $ ClassDecl {
@@ -793,7 +793,7 @@ classD = \ctx name clsVars sigs -> inheritLoc name $
 #else
       , tcdCtxt   = inheritLoc name ctx
 #endif
-      , tcdLName  = reLocA name
+      , tcdLName  = name
       , tcdTyVars = mkHsQTvs clsVars
       , tcdFixity = Prefix
       , tcdFDs    = []
@@ -804,13 +804,13 @@ classD = \ctx name clsVars sigs -> inheritLoc name $
       , tcdDocs   = []
       }
   where
-    classOpSig :: LRdrName -> LHsType GhcPs -> LSig GhcPs
+    classOpSig :: LIdP GhcPs -> LHsType GhcPs -> LSig GhcPs
     classOpSig name ty = inheritLoc name $
-        ClassOpSig defExt False [reLocA name] (implicitBndrs ty)
+        ClassOpSig defExt False [name] (implicitBndrs ty)
 
 -- | Approximate equivalent of 'Language.Haskell.TH.Lib.tySynEqn'
 tySynEqn ::
-     LRdrName         -- ^ Type family name
+     LIdP GhcPs         -- ^ Type family name
   -> [LHsType GhcPs] -- ^ Equation LHS
   -> LHsType GhcPs   -- ^ Equation RHS
   -> LTyFamInstDecl GhcPs
@@ -822,7 +822,7 @@ tySynEqn name pats val = inheritLoc val $
       $ implicitBndrs $
 #endif
         FamEqn defExt
-               (reLocA name)
+               name
 #if __GLASGOW_HASKELL__ >= 902
                (HsOuterImplicit defExt)
 #else
@@ -835,7 +835,7 @@ tySynEqn name pats val = inheritLoc val $
 {-------------------------------------------------------------------------------
   Pragmas
 
-  NOTE: We work with 'LRdrName' everywhere, but 'AnnProvenance' /already/ wraps
+  NOTE: We work with 'LIdP GhcPs' everywhere, but 'AnnProvenance' /already/ wraps
   the @name@ type in @Located@.
 -------------------------------------------------------------------------------}
 
@@ -847,15 +847,15 @@ type AnnProvenancePs = AnnProvenance
 #endif
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.typeAnnotation'
-typeAnnotation :: LRdrName -> AnnProvenancePs
-typeAnnotation name = TypeAnnProvenance (reLocA name)
+typeAnnotation :: LIdP GhcPs -> AnnProvenancePs
+typeAnnotation name = TypeAnnProvenance name
 
 -- | Inverse to 'typeAnnotation'
-viewTypeAnnotation :: AnnProvenancePs -> Maybe LRdrName
-viewTypeAnnotation (TypeAnnProvenance name) = Just (reLoc name)
+viewTypeAnnotation :: AnnProvenancePs -> Maybe (LIdP GhcPs)
+viewTypeAnnotation (TypeAnnProvenance name) = Just name
 viewTypeAnnotation _otherwise               = Nothing
 
-pattern TypeAnnotation :: LRdrName -> AnnProvenancePs
+pattern TypeAnnotation :: LIdP GhcPs -> AnnProvenancePs
 pattern TypeAnnotation name <- (viewTypeAnnotation -> Just name)
   where
     TypeAnnotation = typeAnnotation
@@ -911,7 +911,7 @@ viewImplicitBndrs _ = panic "viewImplicitBndrs"
 #endif
 
 -- | Simple binding (without patterns)
-simpleBinding :: LRdrName -> LHsExpr GhcPs -> LHsBind GhcPs
+simpleBinding :: LIdP GhcPs -> LHsExpr GhcPs -> LHsBind GhcPs
 simpleBinding fnName body = inheritLoc fnName $
     mkFunBind fnName [match]
   where
@@ -921,7 +921,7 @@ simpleBinding fnName body = inheritLoc fnName $
     match :: LMatch GhcPs (LHsExpr GhcPs)
     match = inheritLoc fnName $
         Match defExt
-              (FunRhs (reLocA fnName) Prefix NoSrcStrict)
+              (FunRhs fnName Prefix NoSrcStrict)
               []
               grhs
 

@@ -82,7 +82,7 @@ getLargeRecordOptions =
 viewAnnotation :: AnnDecl GhcPs -> Maybe (String, (SrcSpan, LargeRecordOptions))
 viewAnnotation = \case
     PragAnnD (TypeAnnotation tyName) (intOptions -> Just options) ->
-      Just (nameBase tyName, (getLoc tyName, options))
+      Just (nameBase tyName, (toSrcSpan tyName, options))
     _otherwise ->
       Nothing
 
@@ -107,7 +107,7 @@ intOptions _ =
     Nothing
 
 intUpdate ::
-     (LRdrName, LHsExpr GhcPs)
+     (LIdP GhcPs, LHsExpr GhcPs)
   -> Maybe (LargeRecordOptions -> LargeRecordOptions)
 intUpdate (nameBase -> "debugLargeRecords", intBool -> Just b) =
     Just $ \opts -> opts { debugLargeRecords = b }

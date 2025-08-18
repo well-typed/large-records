@@ -111,7 +111,7 @@ genDatatype Record{..} = pure $
   where
     -- There is no need to generate fresh va  riables here, as these type vars
     -- cannot clash with anything else (no other type vars can be in scope).
-    vars :: [LRdrName]
+    vars :: [LIdP GhcPs]
     vars = [
           mkNameTy recordAnnLoc ("lr_f" <> show i)
         | (i, _) <- zip [1 :: Int ..] recordFields
@@ -120,10 +120,10 @@ genDatatype Record{..} = pure $
     optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
     optionalBang bang = noLocA . HsBangTy defExt bang
 
-    fieldContext :: LRdrName -> Field -> LHsType GhcPs
+    fieldContext :: LIdP GhcPs -> Field -> LHsType GhcPs
     fieldContext var fld = equalP (VarT var) (fieldType fld)
 
-    fieldExistentialType :: LRdrName -> Field -> (LRdrName, LHsType GhcPs)
+    fieldExistentialType :: LIdP GhcPs -> Field -> (LIdP GhcPs, LHsType GhcPs)
     fieldExistentialType var fld = (fieldName fld, optionalBang (fieldStrictness fld) $ VarT var)
 
 -- | Generate conversion to and from an array
@@ -180,7 +180,7 @@ genVectorConversions QualifiedNames{..} r@Record{..} = concatM [
                   )
           ]
      where
-       name :: LRdrName
+       name :: LIdP GhcPs
        name = nameVectorFrom r
 
     toVector :: m [LHsDecl GhcPs]
@@ -209,7 +209,7 @@ genVectorConversions QualifiedNames{..} r@Record{..} = concatM [
                   ]
           ]
       where
-        name :: LRdrName
+        name :: LIdP GhcPs
         name = nameVectorTo r
 
         matchErr :: String
@@ -260,7 +260,7 @@ genIndexedAccessor QualifiedNames{..} r@Record{..} = do
               )
       ]
   where
-    name :: LRdrName
+    name :: LIdP GhcPs
     name = nameUnsafeGetIndex r
 
 -- | Generate index field overwrite
@@ -304,7 +304,7 @@ genUnsafeSetIndex QualifiedNames{..} r@Record{..} = do
               )
       ]
   where
-    name :: LRdrName
+    name :: LIdP GhcPs
     name = nameUnsafeSetIndex r
 
 -- | Generate 'HasField' instance for single field
@@ -440,7 +440,7 @@ genDict names@QualifiedNames{..} Record{..} = do
           (VarE mkDicts)
           (listE (map (dictForField p) recordFields))
   where
-    dictForField :: LRdrName -> Field -> LHsExpr GhcPs
+    dictForField :: LIdP GhcPs -> Field -> LHsExpr GhcPs
     dictForField p Field{..} =
         appE
           (VarE noInlineUnsafeCo)
@@ -626,7 +626,7 @@ genStockInstance QualifiedNames{..} r = pure . \case
     Ord     -> [mkInstance prelude_type_Ord  prelude_compare   gcompare  ]
     Generic -> []
   where
-    mkInstance :: LRdrName -> LRdrName -> LRdrName -> LHsDecl GhcPs
+    mkInstance :: LIdP GhcPs -> LIdP GhcPs -> LIdP GhcPs -> LHsDecl GhcPs
     mkInstance cls mthd gen =
         instanceD
           (genRequiredConstraints r (ConT cls))
@@ -680,15 +680,15 @@ nameRecord :: Record -> String
 nameRecord Record{..} = nameBase recordTyName
 
 -- | Make name derived from the name of the record
-mkDerived :: (SrcSpan -> String -> LRdrName) -> String -> Record -> LRdrName
+mkDerived :: (SrcSpan -> String -> LIdP GhcPs) -> String -> Record -> LIdP GhcPs
 mkDerived f prefix r = f (recordAnnLoc r) (prefix <> nameRecord r)
 
-nameVectorFrom      :: Record -> LRdrName
-nameVectorTo        :: Record -> LRdrName
-nameUnsafeGetIndex  :: Record -> LRdrName
-nameUnsafeSetIndex  :: Record -> LRdrName
-nameConstraints     :: Record -> LRdrName
-nameDictConstraints :: Record -> LRdrName
+nameVectorFrom      :: Record -> LIdP GhcPs
+nameVectorTo        :: Record -> LIdP GhcPs
+nameUnsafeGetIndex  :: Record -> LIdP GhcPs
+nameUnsafeSetIndex  :: Record -> LIdP GhcPs
+nameConstraints     :: Record -> LIdP GhcPs
+nameDictConstraints :: Record -> LIdP GhcPs
 
 nameVectorFrom      = mkDerived mkNameExp   "vectorFrom"
 nameVectorTo        = mkDerived mkNameExp   "vectorTo"

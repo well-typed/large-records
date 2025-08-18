@@ -4,3 +4,4 @@ dist-newstyle
 unversioned
 .envrc
 settings.json
+cabal.project.local

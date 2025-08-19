@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Data.Record.Internal.Plugin.Names (
     QualifiedNames(..)
@@ -8,6 +9,11 @@ module Data.Record.Internal.Plugin.Names (
 
 import Prelude hiding (error)
 import Data.Record.Internal.GHC.Shim
+
+import qualified Data.Record.Plugin.Runtime as Runtime
+import qualified GHC.Generics
+import qualified Data.Record.Generic
+import qualified GHC.Records.Compat
 
 {-------------------------------------------------------------------------------
   Qualified names
@@ -118,94 +124,84 @@ getQualifiedNames = do
     -- we cannot declare instances of type aliased classes.
     --
 
-    prelude_type_Eq   <- exact <$> lookupTcName  ghcClasses (Just "ghc-prim") "Eq"
-    prelude_type_Ord  <- exact <$> lookupTcName  ghcClasses (Just "ghc-prim") "Ord"
-    prelude_type_Show <- exact <$> lookupTcName  ghcShow    Nothing           "Show"
-    prelude_compare   <- exact <$> lookupVarName ghcClasses (Just "ghc-prim") "compare"
-    prelude_eq        <- exact <$> lookupVarName ghcClasses (Just "ghc-prim") "=="
-    prelude_showsPrec <- exact <$> lookupVarName ghcShow    Nothing           "showsPrec"
+    prelude_type_Eq   <- exact <$> thNameToGhcNameHsc ''Eq
+    prelude_type_Ord  <- exact <$> thNameToGhcNameHsc ''Ord
+    prelude_type_Show <- exact <$> thNameToGhcNameHsc ''Show
+    prelude_compare   <- exact <$> thNameToGhcNameHsc 'compare
+    prelude_eq        <- exact <$> thNameToGhcNameHsc '(==)
+    prelude_showsPrec <- exact <$> thNameToGhcNameHsc 'showsPrec
 
     --
     -- Other base
     --
 
-    type_Constraint  <- exact <$> lookupTcName  runtime     Nothing "Constraint"
-    type_GHC_Generic <- exact <$> lookupTcName  ghcGenerics Nothing "Generic"
-    type_GHC_Rep     <- exact <$> lookupTcName  ghcGenerics Nothing "Rep"
-    type_Proxy       <- exact <$> lookupTcName  runtime     Nothing "Proxy"
-    type_Type        <- exact <$> lookupTcName  runtime     Nothing "Type"
-    type_Int         <- exact <$> lookupTcName  runtime     Nothing "Int"
-    error            <- exact <$> lookupVarName runtime     Nothing "error"
-    ghc_from         <- exact <$> lookupVarName ghcGenerics Nothing "from"
-    ghc_to           <- exact <$> lookupVarName ghcGenerics Nothing "to"
-    proxy            <- exact <$> lookupVarName runtime     Nothing "proxy"
+    type_Constraint  <- exact <$> thNameToGhcNameHsc ''Runtime.Constraint
+    type_GHC_Generic <- exact <$> thNameToGhcNameHsc ''GHC.Generics.Generic
+    type_GHC_Rep     <- exact <$> thNameToGhcNameHsc ''GHC.Generics.Rep
+    type_Proxy       <- exact <$> thNameToGhcNameHsc ''Runtime.Proxy
+    type_Type        <- exact <$> thNameToGhcNameHsc ''Runtime.Type
+    type_Int         <- exact <$> thNameToGhcNameHsc ''Runtime.Int
+    error            <- exact <$> thNameToGhcNameHsc 'Runtime.error
+    ghc_from         <- exact <$> thNameToGhcNameHsc 'GHC.Generics.from
+    ghc_to           <- exact <$> thNameToGhcNameHsc 'GHC.Generics.to
+    proxy            <- exact <$> thNameToGhcNameHsc 'Runtime.proxy
 
     --
     -- AnyArray
     --
 
-    type_AnyArray    <- exact <$> lookupTcName  runtime Nothing "AnyArray"
-    anyArrayFromList <- exact <$> lookupVarName runtime Nothing "anyArrayFromList"
-    anyArrayToList   <- exact <$> lookupVarName runtime Nothing "anyArrayToList"
-    anyArrayIndex    <- exact <$> lookupVarName runtime Nothing "anyArrayIndex"
-    anyArrayUpdate   <- exact <$> lookupVarName runtime Nothing "anyArrayUpdate"
+    type_AnyArray    <- exact <$> thNameToGhcNameHsc ''Runtime.AnyArray
+    anyArrayFromList <- exact <$> thNameToGhcNameHsc 'Runtime.anyArrayFromList
+    anyArrayToList   <- exact <$> thNameToGhcNameHsc 'Runtime.anyArrayToList
+    anyArrayIndex    <- exact <$> thNameToGhcNameHsc 'Runtime.anyArrayIndex
+    anyArrayUpdate   <- exact <$> thNameToGhcNameHsc 'Runtime.anyArrayUpdate
 
     --
     -- large-generics
     --
 
-    type_LR_Generic     <- exact <$> lookupTcName  largeGenerics (Just "large-generics") "Generic"
-    type_LR_Constraints <- exact <$> lookupTcName  largeGenerics (Just "large-generics") "Constraints"
-    type_LR_MetadataOf  <- exact <$> lookupTcName  largeGenerics (Just "large-generics") "MetadataOf"
-    lr_from             <- exact <$> lookupVarName largeGenerics (Just "large-generics") "from"
-    lr_to               <- exact <$> lookupVarName largeGenerics (Just "large-generics") "to"
-    lr_dict             <- exact <$> lookupVarName largeGenerics (Just "large-generics") "dict"
-    lr_metadata         <- exact <$> lookupVarName largeGenerics (Just "large-generics") "metadata"
+    type_LR_Generic     <- exact <$> thNameToGhcNameHsc ''Data.Record.Generic.Generic
+    type_LR_Constraints <- exact <$> thNameToGhcNameHsc ''Data.Record.Generic.Constraints
+    type_LR_MetadataOf  <- exact <$> thNameToGhcNameHsc ''Data.Record.Generic.MetadataOf
+    lr_from             <- exact <$> thNameToGhcNameHsc 'Data.Record.Generic.from
+    lr_to               <- exact <$> thNameToGhcNameHsc 'Data.Record.Generic.to
+    lr_dict             <- exact <$> thNameToGhcNameHsc 'Data.Record.Generic.dict
+    lr_metadata         <- exact <$> thNameToGhcNameHsc 'Data.Record.Generic.metadata
 
     -- .. utilities
 
-    anyArrayToRep   <- exact <$> lookupVarName runtime Nothing "anyArrayToRep"
-    anyArrayFromRep <- exact <$> lookupVarName runtime Nothing "anyArrayFromRep"
-    mkDicts         <- exact <$> lookupVarName runtime Nothing "mkDicts"
-    mkDict          <- exact <$> lookupVarName runtime Nothing "mkDict"
-    mkStrictField   <- exact <$> lookupVarName runtime Nothing "mkStrictField"
-    mkLazyField     <- exact <$> lookupVarName runtime Nothing "mkLazyField"
-    mkMetadata      <- exact <$> lookupVarName runtime Nothing "mkMetadata"
+    anyArrayToRep   <- exact <$> thNameToGhcNameHsc 'Runtime.anyArrayToRep
+    anyArrayFromRep <- exact <$> thNameToGhcNameHsc 'Runtime.anyArrayFromRep
+    mkDicts         <- exact <$> thNameToGhcNameHsc 'Runtime.mkDicts
+    mkDict          <- exact <$> thNameToGhcNameHsc 'Runtime.mkDict
+    mkStrictField   <- exact <$> thNameToGhcNameHsc 'Runtime.mkStrictField
+    mkLazyField     <- exact <$> thNameToGhcNameHsc 'Runtime.mkLazyField
+    mkMetadata      <- exact <$> thNameToGhcNameHsc 'Runtime.mkMetadata
 
     -- .. wrappers
 
-    type_Rep         <- exact <$> lookupTcName  runtime Nothing "Rep"
-    type_Dict        <- exact <$> lookupTcName  runtime Nothing "Dict"
-    gcompare         <- exact <$> lookupVarName runtime Nothing "gcompare"
-    geq              <- exact <$> lookupVarName runtime Nothing "geq"
-    gshowsPrec       <- exact <$> lookupVarName runtime Nothing "gshowsPrec"
-    noInlineUnsafeCo <- exact <$> lookupVarName runtime Nothing "noInlineUnsafeCo"
+    type_Rep         <- exact <$> thNameToGhcNameHsc ''Runtime.Rep
+    type_Dict        <- exact <$> thNameToGhcNameHsc ''Runtime.Dict
+    gcompare         <- exact <$> thNameToGhcNameHsc 'Runtime.gcompare
+    geq              <- exact <$> thNameToGhcNameHsc 'Runtime.geq
+    gshowsPrec       <- exact <$> thNameToGhcNameHsc 'Runtime.gshowsPrec
+    noInlineUnsafeCo <- exact <$> thNameToGhcNameHsc 'Runtime.noInlineUnsafeCo
 
     -- .. ThroughLRGenerics
 
-    type_ThroughLRGenerics  <- exact <$> lookupTcName  runtime Nothing "ThroughLRGenerics"
-    wrapThroughLRGenerics   <- exact <$> lookupVarName runtime Nothing "wrapThroughLRGenerics"
-    unwrapThroughLRGenerics <- exact <$> lookupVarName runtime Nothing "unwrapThroughLRGenerics"
+    type_ThroughLRGenerics  <- exact <$> thNameToGhcNameHsc ''Runtime.ThroughLRGenerics
+    wrapThroughLRGenerics   <- exact <$> thNameToGhcNameHsc 'Runtime.wrapThroughLRGenerics
+    unwrapThroughLRGenerics <- exact <$> thNameToGhcNameHsc 'Runtime.unwrapThroughLRGenerics
 
     --
     -- record-hasfield
     --
 
-    type_HasField <- exact <$> lookupTcName  recordHasField (Just "record-hasfield") "HasField"
-    hasField      <- exact <$> lookupVarName recordHasField (Just "record-hasfield") "hasField"
+    type_HasField <- exact <$> thNameToGhcNameHsc ''GHC.Records.Compat.HasField
+    hasField      <- exact <$> thNameToGhcNameHsc 'GHC.Records.Compat.hasField
 
     return QualifiedNames{..}
 
   where
    exact :: Name -> LIdP GhcPs
    exact = noLocA . Exact
-
-   ghcClasses, ghcShow :: ModuleName
-   ghcClasses = mkModuleName "GHC.Classes"
-   ghcShow    = mkModuleName "GHC.Show"
-
-   runtime, recordHasField, ghcGenerics, largeGenerics :: ModuleName
-   runtime        = mkModuleName "Data.Record.Plugin.Runtime"
-   recordHasField = mkModuleName "GHC.Records.Compat"
-   ghcGenerics    = mkModuleName "GHC.Generics"
-   largeGenerics  = mkModuleName "Data.Record.Generic"

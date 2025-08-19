@@ -158,13 +158,13 @@ transformDecl largeRecords decl@(reLoc -> L l _) =
             -- Not a large record. Leave alone.
             return [decl]
           (_:_:_) -> do
-            lift $ issueError l $ text ("Conflicting annotations for " ++ name)
+            _ <- lift $ issueError l $ text ("Conflicting annotations for " ++ name)
             return [decl]
           [(annLoc, opts)] -> do
             tell (Set.singleton name)
             case runExcept (viewRecord annLoc opts decl) of
               Left e -> do
-                lift $ issueError (exceptionLoc e) (exceptionToSDoc e)
+                _ <- lift $ issueError (exceptionLoc e) (exceptionToSDoc e)
                 -- Return the declaration unchanged if we cannot parse it
                 return [decl]
               Right r -> lift $ do

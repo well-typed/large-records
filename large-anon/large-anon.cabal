@@ -13,6 +13,7 @@ category:           Records
 extra-doc-files:    CHANGELOG.md
                     test/Test/Sanity/RebindableSyntax/Tests.hs
 tested-with:        GHC ==8.10.7
+                    GHC ==9.0.2
                     GHC ==9.2.8
                     GHC ==9.4.8
                     GHC ==9.6.7

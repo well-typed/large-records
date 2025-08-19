@@ -116,7 +116,6 @@ test-suite test-large-records
     , large-records
 
     , generic-deriving
-    , ghc-prim
     , large-generics
     , mtl
     , newtype

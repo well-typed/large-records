@@ -17,8 +17,7 @@
 -- rest of the plugin should not import from any GHC modules directly.
 module Data.Record.Internal.GHC.Shim (
     -- * Names
-    lookupVarName
-  , lookupTcName
+    thNameToGhcNameHsc
 
     -- * Miscellaneous
   , importDecl
@@ -31,7 +30,6 @@ module Data.Record.Internal.GHC.Shim (
     -- * Annotations
 #if __GLASGOW_HASKELL__ < 902
   , reLoc
-  , reLocA
   , noLocA
 #endif
   , unLoc
@@ -112,11 +110,9 @@ import Bag (Bag, listToBag, emptyBag)
 import BasicTypes (SourceText (NoSourceText))
 import ConLike (ConLike)
 import ErrUtils (mkErrMsg, mkWarnMsg)
-import Finder (findImportedModule)
 import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind, mkFunBind, unLoc)
 import GhcPlugins hiding ((<>), getHscEnv, unLoc)
 import HscMain (getHscEnv)
-import IfaceEnv (lookupOrigIO)
 import NameCache (NameCache(nsUniqs))
 import PatSyn (PatSyn)
 import TcEvidence (HsWrapper(WpHole))
@@ -151,22 +147,17 @@ import GHC.Plugins hiding ((<>), getHscEnv, unLoc
     )
 
 #if __GLASGOW_HASKELL__ < 902
-import GHC.Driver.Finder (findImportedModule)
 import GHC.Parser.Annotation (IsUnicodeSyntax(NormalSyntax))
 import GHC.Utils.Error (mkErrMsg, mkWarnMsg)
 #else
 import GHC.Types.Fixity
 import GHC.Types.SourceText (SourceText(NoSourceText), mkIntegralLit)
-import GHC.Unit.Finder (findImportedModule, FindResult(Found))
 #endif
 
 #if __GLASGOW_HASKELL__ < 904
 import Data.IORef
-import GHC.Iface.Env (lookupOrigIO)
 import GHC.Types.Name.Cache (NameCache(nsUniqs))
 #else
-import GHC.Iface.Env (lookupNameCache)
-import GHC.Rename.Names (renamePkgQual)
 import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 #endif
 
@@ -204,61 +195,58 @@ import GHC.Types.Error (UnknownDiagnostic(..))
 import GHC.Driver.Config.Diagnostic (initPrintConfig)
 #endif
 
+import qualified Language.Haskell.TH as TH
+
+-- thNameToGhcNameIO imports
+#if !MIN_VERSION_ghc(9,0,0)
+import Data.Maybe (listToMaybe)
+import IfaceEnv (lookupOrigIO)
+import GHC.ThToHs (thRdrNameGuesses)
+import MonadUtils (mapMaybeM)
+#elif !MIN_VERSION_ghc(9,4,0)
+import Data.Maybe (listToMaybe)
+import GHC.Iface.Env (lookupOrigIO)
+import GHC.ThToHs (thRdrNameGuesses)
+import GHC.Utils.Monad (mapMaybeM)
+#endif
+
 {-------------------------------------------------------------------------------
   Name resolution
 -------------------------------------------------------------------------------}
 
-lookupVarName ::
-     HasCallStack
-  => ModuleName
-  -> Maybe FastString -- ^ Optional package name
-  -> String -> Hsc Name
-lookupVarName modl pkg = lookupOccName modl pkg . mkVarOcc
-
-lookupTcName ::
-     HasCallStack
-  => ModuleName
-  -> Maybe FastString -- ^ Optional package name
-  -> String -> Hsc Name
-lookupTcName modl pkg = lookupOccName modl pkg . mkTcOcc
-
-lookupOccName ::
-     HasCallStack
-  => ModuleName
-  -> Maybe FastString -- ^ Optional package name
-  -> OccName -> Hsc Name
-lookupOccName modlName mPkgName name = do
-    env <- getHscEnv
-
+thNameToGhcNameHsc :: TH.Name -> Hsc Name
+thNameToGhcNameHsc th_name = do
+  hsc_env <- getHscEnv
 #if __GLASGOW_HASKELL__ >= 904
-    let pkgq :: PkgQual
-        pkgq = renamePkgQual (hsc_unit_env env) modlName mPkgName
+  let nameCache = hsc_NC hsc_env
 #else
-    let pkgq :: Maybe FastString
-        pkgq = mPkgName
+  let nameCache = hsc_env
+#endif
+  mname <- liftIO $ thNameToGhcNameIO nameCache th_name
+  case mname of
+    Just name -> return name
+    Nothing -> issueError noSrcSpan $ text "Cannot lookup" <+> text (show th_name)
+
+#if !MIN_VERSION_ghc(9,4,0)
+thNameToGhcNameIO :: HscEnv -> TH.Name -> IO (Maybe Name)
+thNameToGhcNameIO hscEnv th_name
+  =  do { names <- mapMaybeM do_lookup (thRdrNameGuesses th_name)
+        ; return (listToMaybe names) }
+  where
+    do_lookup rdr_name
+      | Just n <- isExact_maybe rdr_name
+      = return $ if isExternalName n then Just n else Nothing
+      | Just (rdr_mod, rdr_occ) <- isOrig_maybe rdr_name
+#if MIN_VERSION_ghc(9,3,0)
+      = Just <$> lookupNameCache (hsc_NC hscEnv) rdr_mod rdr_occ
+#else
+      = Just <$> lookupOrigIO hscEnv rdr_mod rdr_occ
+#endif
+      | otherwise
+      = return Nothing
 #endif
 
-    mModl <- liftIO $ findImportedModule env modlName pkgq
-    case mModl of
-      Found _ modl -> liftIO $ lookupOrigIO env modl name
-      _otherwise   -> error $ concat [
-          "lookupName: could not find "
-        , occNameString name
-        , " in module "
-        , moduleNameString modlName
-        , ". This might be due to an undeclared package dependency"
-        , case mPkgName of
-            Nothing  -> ""
-            Just pkg -> " on " ++ unpackFS pkg
-        , "."
-        ]
-
-#if __GLASGOW_HASKELL__ >= 904
-lookupOrigIO :: HscEnv -> Module -> OccName -> IO Name
-lookupOrigIO env modl occ = lookupNameCache (hsc_NC env) modl occ
-#endif
-
-{---------------------------------------------------------------------.10.7/----------
+{-------------------------------------------------------------------------------
   Miscellaneous
 -------------------------------------------------------------------------------}
 
@@ -277,7 +265,7 @@ importDecl qualified name = reLocA $ noLoc $ ImportDecl {
 #if __GLASGOW_HASKELL__ < 906
     , ideclSourceSrc = NoSourceText
 #endif
-    , ideclName      = reLocA $ noLoc name
+    , ideclName      = noLocA name
 #if __GLASGOW_HASKELL__ >= 904
     , ideclPkgQual   = NoRawPkgQual
 #else
@@ -707,7 +695,7 @@ simpleRecordUpdates =
   Diagnostics
 -------------------------------------------------------------------------------}
 
-issueError :: SrcSpan -> SDoc -> Hsc ()
+issueError :: SrcSpan -> SDoc -> Hsc a
 issueError l errMsg = do
 #if __GLASGOW_HASKELL__ == 902
     throwOneError $

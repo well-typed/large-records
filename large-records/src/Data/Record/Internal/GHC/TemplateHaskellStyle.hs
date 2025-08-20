@@ -104,6 +104,7 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   ) where
 
 import Data.List (foldl')
+import Data.Maybe (fromMaybe)
 import Data.List.NonEmpty (NonEmpty(..))
 
 import qualified Data.List.NonEmpty as NE
@@ -225,7 +226,12 @@ recConE = \recName -> mkRec recName . map (uncurry mkFld)
   where
     mkRec :: LIdP GhcPs -> [LHsRecField GhcPs (LHsExpr GhcPs)] -> LHsExpr GhcPs
     mkRec name fields = inheritLoc name $
-        RecordCon defExt name (HsRecFields fields Nothing)
+        RecordCon defExt name (HsRecFields
+#if __GLASGOW_HASKELL__ >= 912
+         defExt
+#endif
+
+         fields Nothing)
 
     mkFld :: LIdP GhcPs -> LHsExpr GhcPs -> LHsRecField GhcPs (LHsExpr GhcPs)
     mkFld name val = inheritLoc name $
@@ -299,7 +305,7 @@ listE es = inheritLoc es $ ExplicitList defExt
 -- | Equivalent of 'Language.Haskell.TH.Lib.lamE'
 lamE :: NonEmpty (LPat GhcPs) -> LHsExpr GhcPs -> LHsExpr GhcPs
 lamE pats body = inheritLoc body $
-    HsLam defExt 
+    HsLam defExt
 #if __GLASGOW_HASKELL__ >= 910
       LamSingle
 #endif
@@ -311,13 +317,7 @@ lamE pats body = inheritLoc body $
 #endif
   where
     match :: Match GhcPs (LHsExpr GhcPs)
-    match = Match defExt matchContext (NE.toList pats) (simpleGHRSs body)
-
-#if __GLASGOW_HASKELL__ >= 910
-    matchContext = LamAlt LamSingle
-#else
-    matchContext = LambdaExpr
-#endif
+    match = Match defExt LambdaExpr (inheritLoc pats (NE.toList pats)) (simpleGHRSs body)
 
 -- | Convenience wrapper around 'lamE' for a single argument
 lamE1 :: LPat GhcPs -> LHsExpr GhcPs -> LHsExpr GhcPs
@@ -334,7 +334,7 @@ caseE x alts = inheritLoc x $
   where
     mkAlt :: (LPat GhcPs, LHsExpr GhcPs) -> LMatch GhcPs (LHsExpr GhcPs)
     mkAlt (pat, body) = inheritLoc x $
-        Match defExt CaseAlt [pat] (simpleGHRSs body)
+        Match defExt CaseAlt (inheritLoc pat [pat]) (simpleGHRSs body)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.appsE'
 appsE :: LHsExpr GhcPs -> [LHsExpr GhcPs] -> LHsExpr GhcPs
@@ -459,8 +459,11 @@ funT a b = inheritLoc a (hsFunTy defExt a b)
 -- TH only provides 'Language.Haskell.TH.Lib.tupleT'.
 -- Signature by analogy with 'tupE'.
 tupT :: NonEmpty (LHsType GhcPs) -> LHsType GhcPs
+#if __GLASGOW_HASKELL__ >= 912
+tupT ts = withoutLoc $ HsExplicitTupleTy defExt NotPromoted (NE.toList ts)
+#else
 tupT ts = inheritLoc ts $ HsExplicitTupleTy defExt (NE.toList ts)
-
+#endif
 {-------------------------------------------------------------------------------
   Patterns
 -------------------------------------------------------------------------------}
@@ -498,8 +501,11 @@ wildP = inheritLoc noSrcSpan (WildPat defExt)
 -- The GHC API has no equivalent of 'Language.Haskell.TH.Syntax.BangType'.
 bangType :: LHsType GhcPs -> LHsType GhcPs
 bangType t = inheritLoc t $
+#if __GLASGOW_HASKELL__ >= 912
+    HsBangTy defExt (HsBang NoSrcUnpack SrcStrict) t
+#else
     HsBangTy defExt (HsSrcBang NoSourceText NoSrcUnpack SrcStrict) t
-
+#endif
 {-------------------------------------------------------------------------------
   Class contexts
 -------------------------------------------------------------------------------}
@@ -584,7 +590,7 @@ forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
     }
   where
     mkBndr :: LIdP GhcPs -> LHsTyVarBndr GhcPs
-    mkBndr name = inheritLoc name $ userTyVar defExt name
+    mkBndr name = inheritLoc name $ userTyVar name
 
     mkRecField :: LIdP GhcPs -> LHsType GhcPs -> LConDeclField GhcPs
     mkRecField name ty = inheritLoc name $ ConDeclField {
@@ -600,14 +606,14 @@ forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.kindedTV'
 kindedTV :: LIdP GhcPs -> LHsType GhcPs -> LHsTyVarBndr GhcPs
-kindedTV name ty = inheritLoc name (kindedTyVar defExt name ty)
+kindedTV name ty = inheritLoc name (kindedTyVar name ty)
 
 {-------------------------------------------------------------------------------
   .. without direct equivalent
 -------------------------------------------------------------------------------}
 
 tyVarBndrName :: LHsTyVarBndr GhcPs -> LIdP GhcPs
-tyVarBndrName = hsTyVarLName . unLoc
+tyVarBndrName = fromMaybe (error "tyVarBndrName: Nothing") . hsTyVarLName . unLoc
 
 {-------------------------------------------------------------------------------
   Top-level declarations
@@ -768,7 +774,11 @@ instanceD ctxt hd binds assocTypes = inheritLoc hd $
     InstD defExt $ ClsInstD defExt $ ClsInstDecl {
         cid_ext           = defExt
       , cid_poly_ty       = implicitBndrs (qualT ctxt hd)
+#if __GLASGOW_HASKELL__ >= 912
+      , cid_binds         = map (uncurry simpleBinding) binds
+#else
       , cid_binds         = listToBag $ map (uncurry simpleBinding) binds
+#endif
       , cid_sigs          = []
       , cid_tyfam_insts   = assocTypes
       , cid_datafam_insts = []
@@ -812,7 +822,7 @@ classD = \ctx name clsVars sigs -> inheritLoc name $
       , tcdFixity = Prefix
       , tcdFDs    = []
       , tcdSigs   = map (uncurry classOpSig) sigs
-      , tcdMeths  = emptyBag
+      , tcdMeths  = defExt
       , tcdATs    = []
       , tcdATDefs = []
       , tcdDocs   = []
@@ -939,8 +949,16 @@ simpleBinding fnName body = inheritLoc fnName $
     match :: LMatch GhcPs (LHsExpr GhcPs)
     match = inheritLoc fnName $
         Match defExt
+#if __GLASGOW_HASKELL__ >= 912
+              (FunRhs fnName Prefix NoSrcStrict defExt)
+#else
               (FunRhs fnName Prefix NoSrcStrict)
+#endif
+#if __GLASGOW_HASKELL__ >= 912
+              (withoutLoc [])
+#else
               []
+#endif
               grhs
 
 -- | Simple guarded RHS (no guards)

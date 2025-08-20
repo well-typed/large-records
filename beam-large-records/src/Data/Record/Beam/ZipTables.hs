@@ -68,4 +68,3 @@ instance Beamable table => ZipBeamFieldsI (table Uninterpreted) where
 instance Beamable table => ZipBeamFieldsI (table (Nullable Uninterpreted)) where
   zipBeamFieldsI f = liftInterpretedA2 $ zipBeamFieldsM (liftNullableA2 f)
 
-

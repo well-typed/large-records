@@ -65,4 +65,3 @@ instance Show FieldName where
 instance Outputable FieldName where
   ppr = pprString . fieldNameLabel
 
-

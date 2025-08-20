@@ -124,4 +124,3 @@ applyF f =
     <*> pure (MkT 98)
     <*> pure (MkT 99)
 
-

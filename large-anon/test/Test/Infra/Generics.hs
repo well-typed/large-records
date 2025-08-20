@@ -68,5 +68,3 @@ debugFieldTypes _ =
     name :: forall n a. KnownSymbol n => K String '(n, a)
     name = K (symbolVal (Proxy @n))
 
-
-

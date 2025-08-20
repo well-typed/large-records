@@ -72,7 +72,3 @@ import Data.Record.Anon.Plugin.Internal.Runtime
 import Data.Record.Anon.Internal.Advanced (Field, Some(..))
 import Data.Record.Anon.Internal.Reflection (Reflected(Reflected))
 
-
-
-
-

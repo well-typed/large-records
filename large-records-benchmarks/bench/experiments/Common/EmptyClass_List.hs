@@ -19,4 +19,3 @@ instance EmptyClass xs => EmptyClass (x ': xs)
 requireEmptyClass :: EmptyClass xs => Proxy xs -> ()
 requireEmptyClass _ = ()
 
-

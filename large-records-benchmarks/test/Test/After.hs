@@ -113,4 +113,3 @@ test_hasField = do
     lr090 = LR.glowerBound :: After0090.R
     lr100 = LR.glowerBound :: After0100.R
 
-

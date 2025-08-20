@@ -57,4 +57,3 @@ exampleValue =
        --
     :* Nil
 
-

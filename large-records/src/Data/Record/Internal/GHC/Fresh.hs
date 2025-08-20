@@ -52,4 +52,3 @@ runFreshHsc fa = do
     env <- getHscEnv
     liftIO $ runFresh fa (hscNameCacheIO env)
 
-

@@ -60,4 +60,3 @@ test_HasField = do
 
     assertEqual "set field 1" record1' $ Anon.set #x (I False) record1
 
-

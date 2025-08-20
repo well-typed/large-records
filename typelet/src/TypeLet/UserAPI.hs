@@ -236,5 +236,3 @@ letAs' fa k = k fa
 constructLet :: forall f a. (forall b. Let b a => Proxy b -> f b) -> f a
 constructLet f = f Proxy
 
-
-

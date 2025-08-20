@@ -60,6 +60,3 @@ test_SOP = do
     val4 = "Double" .= (5.6  :: Double) : val3
     val5 = "Bool"   .= (True :: Bool)   : val4
 
-
-
-

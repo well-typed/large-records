@@ -113,4 +113,3 @@ instance ReflectTree FieldMetadata (ToTree xs) => Generic (HList xs) where
       fields :: [FieldMetadata Any]
       fields = treeToList $ reflectTree (Proxy @(ToTree xs))
 
-

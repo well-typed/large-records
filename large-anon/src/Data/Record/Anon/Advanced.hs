@@ -583,4 +583,3 @@ letInsertAs p n x r f = A.letInsertAs p n x r f
 castEqual :: Equal a b => a -> b
 castEqual = TypeLet.castEqual
 
-

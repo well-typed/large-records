@@ -43,5 +43,3 @@ test_sanity = assertEqual "" expected actual
     expected = MkR 2 1
     actual   = swap $ MkR 1 2
 
-
-

@@ -210,4 +210,3 @@ pairFst (Pair fx _) = fx
 pairSnd :: Product f g x -> g x
 pairSnd (Pair _ gx) = gx
 
-

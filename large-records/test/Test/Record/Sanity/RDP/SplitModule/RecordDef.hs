@@ -43,4 +43,3 @@ data R4_WithLR = MkR4_WithLR { r4_withLR_x :: Int, r4_withLR_y :: R5_WithLR }
 data R5_WithLR = MkR5_WithLR { r5_withLR_x :: Char, r5_withLR_y :: Double }
   deriving (Show, Eq)
 
-

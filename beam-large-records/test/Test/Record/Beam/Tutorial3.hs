@@ -643,11 +643,3 @@ test_SQL = runInMemory $ \conn -> do
     info1 :: ShippingInfo
     info1 = ShippingInfo 1 USPS "12345790ABCDEFGHI"
 
-
-
-
-
-
-
-
-

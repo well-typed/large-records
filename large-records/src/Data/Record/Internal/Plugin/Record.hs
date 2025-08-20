@@ -98,7 +98,7 @@ viewRecord annLoc options decl =
 
 viewField ::
      MonadError Exception m
-  => (LIdP GhcPs, LHsType GhcPs) -> m (Int -> Field)  
+  => (LIdP GhcPs, LHsType GhcPs) -> m (Int -> Field)
 viewField (name, typ) =
   return $ Field name (parensT (getBangType typ)) (getBangStrictness typ)
 

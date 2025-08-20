@@ -23,5 +23,3 @@ withCF _ = ()
 -- (This is probably easier to understand when compared to the shallow version.)
 type instance CF (HList xs) = EmptyClass (ToTree xs)
 
-
-

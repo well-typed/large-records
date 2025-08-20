@@ -28,4 +28,3 @@ requireEmptyClass _ = ()
 requireEmptyClass_preEval :: EmptyClass (ToTree_PreEval xs) => Proxy xs -> ()
 requireEmptyClass_preEval _ = ()
 
-

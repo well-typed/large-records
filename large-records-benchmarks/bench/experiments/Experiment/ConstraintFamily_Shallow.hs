@@ -24,5 +24,3 @@ instance EmptyClass (ToTree xs) => CF_HList xs
 -- | In the " shallow " evaluation, we introduce an intermediate class.
 type instance CF (HList xs) = CF_HList xs
 
-
-

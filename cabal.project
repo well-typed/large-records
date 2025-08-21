@@ -4,8 +4,6 @@ packages: large-generics
 packages: large-records
 packages: beam-large-records
 
-constraints: large-records -rdp
-
 if impl(ghc <9)
   packages: large-records-benchmarks
 

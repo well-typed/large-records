@@ -32,7 +32,7 @@ source-repository head
 flag rdp
   description: Include @record-dot-preprocessor@ functionality
   manual: True
-  default: True
+  default: False
 
 library
   exposed-modules:

@@ -44,7 +44,7 @@ instance GFromLargeBackendRow be tbl
       perField = Rep.cpure (Proxy @(FromBackendRowI be)) (Comp fromBackendRowI)
 
   gValuesNeeded pBackend _ _ =
-       foldl' (+) 0 $ Rep.collapse perField
+       Data.List.foldl' (+) 0 $ Rep.collapse perField
    where
       perField :: Rep (K Int) (tbl Uninterpreted)
       perField = Rep.cpure (Proxy @(FromBackendRowI be)) (valuesNeededI pBackend)

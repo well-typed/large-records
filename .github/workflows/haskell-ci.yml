@@ -181,7 +181,7 @@ jobs:
           echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
+          echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
           cat cabal.project
       - name: sdist
@@ -213,7 +213,7 @@ jobs:
           echo "packages: ${PKGDIR_large_anon}" >> cabal.project
           echo "packages: ${PKGDIR_large_generics}" >> cabal.project
           echo "packages: ${PKGDIR_large_records}" >> cabal.project
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
+          echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
           echo "package typelet" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
@@ -223,8 +223,8 @@ jobs:
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           echo "package large-records" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
+          echo "package beam-large-records" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package typelet" >> cabal.project ; fi
@@ -235,8 +235,8 @@ jobs:
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000 && HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000 && HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           cat >> cabal.project <<EOF
           constraints: large-records -rdp
 

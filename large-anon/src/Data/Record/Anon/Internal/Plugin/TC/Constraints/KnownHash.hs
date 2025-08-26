@@ -48,7 +48,7 @@ parseKnownHash ::
   -> Ct
   -> ParseResult Void (GenLocated CtLoc CKnownHash)
 parseKnownHash _ ResolvedNames{..} =
-    parseConstraint isRelevant $ \(ty, label) -> do
+    parseConstraint isRelevant (text "isRelevant") $ \(ty, label) -> do
       return $ CKnownHash {
           knownHashLabel = label
         , knownHashType  = ty

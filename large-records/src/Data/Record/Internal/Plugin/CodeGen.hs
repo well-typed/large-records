@@ -36,6 +36,7 @@ genLargeRecord names r@Record{..} dynFlags = concatM [
     , genUnsafeSetIndex         names r
     , genStockInstances         names r
     , mapM (genHasFieldInstance names r) recordFields
+    , mapM (genLabelOpticInstance names r) recordFields
     , sequence [
           genConstraintsClass    names r
         , genConstraintsInstance names r
@@ -334,6 +335,40 @@ genHasFieldInstance QualifiedNames{..} r@Record{..} Field{..} = do
               tupE $
                     appsE (VarE (nameUnsafeSetIndex r)) [intE fieldIndex, VarE t]
                 :| [appsE (VarE (nameUnsafeGetIndex r)) [intE fieldIndex, VarE t]]
+          )
+        ]
+        []
+
+-- | Generate 'LabelOptic' instance for a single field
+--
+-- Generates something like
+--
+-- > instance (x ~ Word, y ~ Word) => LabelOptic "tInt" A_Lens (T a b) (T a b) x y where
+-- >   labelOptic = lens (unsafeGetIndexT 0) (unsafeSetIndexT 0)
+genLabelOpticInstance :: MonadFresh m
+  => QualifiedNames
+  -> Record -> Field -> m (LHsDecl GhcPs)
+genLabelOpticInstance QualifiedNames{..} r@Record{..} Field{..} = do
+    x <- freshName' False $ mkNameTy recordAnnLoc "x"
+    y <- freshName' False $ mkNameTy recordAnnLoc "y"
+    return $
+      instanceD
+        [equalP (VarT x) fieldType, equalP (VarT y) fieldType]
+        (appsT
+           (ConT type_LabelOptic)
+           [ stringT (nameBase fieldName)
+           , ConT type_A_Lens
+           , recordTypeT r
+           , recordTypeT r
+           , VarT x
+           , VarT y
+           ]
+        )
+        [ ( labelOptic
+          , appsE (VarE lens)
+            [ appsE (VarE (nameUnsafeGetIndex r)) [intE fieldIndex]
+            , appsE (VarE (nameUnsafeSetIndex r)) [intE fieldIndex]
+            ]
           )
         ]
         []

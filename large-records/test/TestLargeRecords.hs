@@ -12,6 +12,8 @@ import qualified Test.Record.Sanity.OverloadedRecordUpdate
 import qualified Test.Record.Sanity.OverloadingNoDRF
 import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.QualifiedImports
+import qualified Test.Record.Sanity.Optics.SingleModule
+import qualified Test.Record.Sanity.Optics.SplitModule
 import qualified Test.Record.Sanity.RDP.SingleModule
 import qualified Test.Record.Sanity.RDP.SplitModule
 import qualified Test.Record.Sanity.RecordConstruction
@@ -32,6 +34,8 @@ tests = testGroup "Tests" [
         , Test.Record.Sanity.OverloadingNoDRF.tests
         , Test.Record.Sanity.PatternMatch.tests
         , Test.Record.Sanity.QualifiedImports.tests
+        , Test.Record.Sanity.Optics.SplitModule.tests
+        , Test.Record.Sanity.Optics.SingleModule.tests
         , Test.Record.Sanity.RDP.SplitModule.tests
         , Test.Record.Sanity.RDP.SingleModule.tests
         , Test.Record.Sanity.RecordConstruction.tests

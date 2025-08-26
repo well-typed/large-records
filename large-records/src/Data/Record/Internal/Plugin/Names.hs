@@ -14,6 +14,8 @@ import qualified Data.Record.Plugin.Runtime as Runtime
 import qualified GHC.Generics
 import qualified Data.Record.Generic
 import qualified GHC.Records.Compat
+import qualified Optics.Core
+import qualified Optics.Label
 
 {-------------------------------------------------------------------------------
   Qualified names
@@ -100,6 +102,13 @@ data QualifiedNames = QualifiedNames {
 
     , type_HasField :: LIdP GhcPs
     , hasField      :: LIdP GhcPs
+
+      -- optics
+
+    , type_LabelOptic :: LIdP GhcPs
+    , type_A_Lens     :: LIdP GhcPs
+    , labelOptic      :: LIdP GhcPs
+    , lens            :: LIdP GhcPs
     }
 
 -- | Resolve qualified names
@@ -199,6 +208,13 @@ getQualifiedNames = do
 
     type_HasField <- exact <$> thNameToGhcNameHsc ''GHC.Records.Compat.HasField
     hasField      <- exact <$> thNameToGhcNameHsc 'GHC.Records.Compat.hasField
+
+    -- optics
+
+    type_LabelOptic <- exact <$> thNameToGhcNameHsc ''Optics.Label.LabelOptic
+    labelOptic      <- exact <$> thNameToGhcNameHsc 'Optics.Label.labelOptic
+    type_A_Lens     <- exact <$> thNameToGhcNameHsc ''Optics.Core.A_Lens
+    lens            <- exact <$> thNameToGhcNameHsc 'Optics.Core.lens
 
     return QualifiedNames{..}
 

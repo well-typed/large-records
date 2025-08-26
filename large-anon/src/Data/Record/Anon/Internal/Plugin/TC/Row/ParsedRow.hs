@@ -115,7 +115,7 @@ parseFields tcs rn@ResolvedNames{..} = go
         , do FieldsVar <$> getTyVar_maybe fields
         , do args <- parseInjTyConApp tcs tyConMerge fields
              (left, right) <- case args of
-                                [l, r]     -> return (l, r)
+                                [_k, l, r]     -> return (l, r)
                                 _otherwise -> mzero
              FieldsMerge <$> go left <*> go right
         ]

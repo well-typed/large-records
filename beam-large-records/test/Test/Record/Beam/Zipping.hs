@@ -14,8 +14,9 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE OverloadedLabels          #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Beam.Zipping (tests) where
 
@@ -25,6 +26,7 @@ import Database.Beam
 import Database.Beam.Schema.Tables
 import Test.Tasty
 import Test.Tasty.HUnit
+import Optics.Core ((^.))
 
 import qualified GHC.Generics as GHC
 
@@ -47,11 +49,11 @@ data TableB (f :: Type -> Type) = TableB {
   deriving anyclass (Beamable)
 
 instance Table TableA where
-  data PrimaryKey TableA f = PrimA (Columnar f Int)
+  newtype PrimaryKey TableA f = PrimA (Columnar f Int)
     deriving stock (GHC.Generic)
     deriving anyclass (Beamable)
 
-  primaryKey ta = ta.taPrim
+  primaryKey ta = ta ^. #taPrim
 
 deriving instance Show (Columnar f Int) => Show (PrimaryKey TableA f)
 deriving instance Eq   (Columnar f Int) => Eq   (PrimaryKey TableA f)

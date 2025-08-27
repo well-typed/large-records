@@ -22,10 +22,17 @@ tested-with:        GHC ==8.10.7
                     GHC ==9.4.8
                     GHC ==9.6.7
                     GHC ==9.8.4
+                    GHC ==9.10.2
+                    GHC ==9.12.2
 
 source-repository head
   type:     git
   location: https://github.com/well-typed/large-records
+
+flag rdp
+  description: Include @record-dot-preprocessor@ functionality
+  manual: True
+  default: False
 
 library
   exposed-modules:
@@ -33,7 +40,6 @@ library
       Data.Record.Plugin
       Data.Record.Plugin.Options
       Data.Record.Plugin.Runtime
-      Data.Record.Plugin.WithRDP
       Data.Record.Overloading
 
   other-modules:
@@ -49,14 +55,14 @@ library
       Data.Record.Internal.Plugin.Record
 
   build-depends:
-    , base             >= 4.14   && < 4.20
+    , base             >= 4.14   && < 4.22
     , containers       >= 0.6.2  && < 0.9
-    , ghc              >= 8.10   && < 9.9
+    , ghc              >= 8.10   && < 9.13
     , mtl              >= 2.2.1  && < 2.4
     , primitive        >= 0.7.3  && < 0.10
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
-    , template-haskell >= 2.16   && < 2.22
+    , template-haskell >= 2.16   && < 2.24
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics >= 0.2 && < 0.3
@@ -64,10 +70,12 @@ library
       -- transformers 0.5.6 introduces Writer.CPS
     , transformers >= 0.5.6 && < 0.7
 
-      -- 0.2.16 introduces support for ghc 9.4
-    , record-dot-preprocessor >= 0.2.16 && < 0.3
 
     , optics-core >=0.4.1.1 && <0.5
+
+  if flag(rdp)
+    build-depends: record-dot-preprocessor >= 0.2.16 && < 0.3
+    exposed-modules: Data.Record.Plugin.WithRDP
 
   hs-source-dirs:
       src
@@ -109,13 +117,17 @@ test-suite test-large-records
       Test.Record.Sanity.Optics.SingleModule
       Test.Record.Sanity.Optics.SplitModule
       Test.Record.Sanity.Optics.SplitModule.RecordDef
-      Test.Record.Sanity.RDP.SingleModule
-      Test.Record.Sanity.RDP.SplitModule
-      Test.Record.Sanity.RDP.SplitModule.RecordDef
       Test.Record.Sanity.RecordConstruction
       Test.Record.Sanity.Strictness
       Test.Record.Sanity.StrictnessStrictData
       Test.Record.Util
+
+  if flag(rdp)
+    cpp-options: -DHAS_RDP
+    other-modules:
+      Test.Record.Sanity.RDP.SingleModule
+      Test.Record.Sanity.RDP.SplitModule
+      Test.Record.Sanity.RDP.SplitModule.RecordDef
 
   build-depends:
       base
@@ -125,7 +137,6 @@ test-suite test-large-records
     , large-generics
     , mtl
     , newtype
-    , record-dot-preprocessor
     , record-hasfield
     , tasty
     , tasty-hunit
@@ -133,6 +144,12 @@ test-suite test-large-records
     , transformers
     , optics-core
     , optics-th >=0.4.1 && <0.5
+
+  if impl(ghc >= 9.10)
+    build-depends: ghc-internal
+
+  if flag(rdp)
+    build-depends: record-dot-preprocessor
   hs-source-dirs:
       test
   default-language:

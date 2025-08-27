@@ -106,10 +106,16 @@ genDatatype Record{..} = pure $
           (zipWith fieldExistentialType vars recordFields)
 
       ]
-      [ DerivClause (Just (withoutLoc (withDefExt AnyclassStrategy))) (c :| [])
+      [ DerivClause (Just (withoutLoc strategy)) (c :| [])
       | DeriveAnyClass c <- recordDerivings
       ]
   where
+#if __GLASGOW_HASKELL__ >= 902
+    strategy = AnyclassStrategy defExt
+#else
+    strategy = AnyclassStrategy
+#endif
+
     -- There is no need to generate fresh va  riables here, as these type vars
     -- cannot clash with anything else (no other type vars can be in scope).
     vars :: [LIdP GhcPs]
@@ -119,7 +125,12 @@ genDatatype Record{..} = pure $
         ]
 
     optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
-    optionalBang bang = noLocA . HsBangTy defExt bang
+    optionalBang bang = noLocA . HsBangTy defExt
+#if __GLASGOW_HASKELL__ >= 912
+      (case bang of HsSrcBang _ b -> b)
+#else
+      bang
+#endif
 
     fieldContext :: LIdP GhcPs -> Field -> LHsType GhcPs
     fieldContext var fld = equalP (VarT var) (fieldType fld)
@@ -543,7 +554,11 @@ genMetadata names@QualifiedNames{..} r@Record{..} dynFlags = do
         $ stringT (nameBase fieldName)
 
 isStrict :: DynFlags -> HsSrcBang -> Bool
+#if __GLASGOW_HASKELL__ >= 912
+isStrict dynFlags (HsSrcBang _ (HsBang _ strictness)) =
+#else
 isStrict dynFlags (HsSrcBang _ _ strictness) =
+#endif
     case strictness of
       SrcStrict   -> True
       SrcLazy     -> False

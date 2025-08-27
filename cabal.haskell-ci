@@ -11,3 +11,9 @@ error-unused-packages: False
 -- We test only with one ghc version, because the precise error messages
 -- that are tested by the tests vary between versions
 docspec: ==9.4.*
+
+constraint-set rdp
+  ghc: <9.10
+  constraints: large-records +rdp
+  tests: True
+  run-tests: True

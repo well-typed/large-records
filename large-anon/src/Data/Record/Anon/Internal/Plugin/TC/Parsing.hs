@@ -81,10 +81,11 @@ withOrig f x = fmap (x, ) $ f x
 parseConstraint ::
      HasCallStack
   => (Class -> [Type] -> Maybe a) -- ^ Do we want to try and match against this?
+  -> SDoc                         -- ^ Description of above predicate
   -> (a -> Maybe b)               -- ^ Parser for the class arguments
   -> Ct                           -- ^ Constraint to parse
   -> ParseResult e (GenLocated CtLoc b)
-parseConstraint p f ct = fmap (L $ ctLoc ct) $
+parseConstraint p doc f ct = fmap (L $ ctLoc ct) $
     -- TODO: classify up to equalities..?
     case classifyPredType (ctPred ct) of
       ClassPred cls args | Just a <- p cls args ->
@@ -97,6 +98,8 @@ parseConstraint p f ct = fmap (L $ ctLoc ct) $
               , showSDocUnsafe (ppr cls)
               , " constraint with arguments:\n"
               , unlines (map (showSDocUnsafe . ppr) args)
+              , "\nWhen parsing " ++ showSDocUnsafe (ppr ct)
+              , "\nlooking for " ++ showSDocUnsafe doc
               , "\nat\n"
               , prettyCallStack callStack
               ]
@@ -110,7 +113,7 @@ parseConstraint' ::
   -> ([Type] -> Maybe a)          -- ^ Parser for the class arguments
   -> Ct                           -- ^ Constraint to parse
   -> ParseResult e (GenLocated CtLoc a)
-parseConstraint' cls = parseConstraint p
+parseConstraint' cls = parseConstraint p (ppr cls)
   where
     p :: Class -> [Type] -> Maybe [Type]
     p cls' args = if cls == cls' then Just args else Nothing
@@ -152,4 +155,11 @@ parseInjTyConApp tcs tyCon t = do
     -- When this is the case, however, by injectivity of 'tyCon' we know that
     -- @args1 ~ args1'@, so we can just return /any/ of the matches; we will
     -- return the first.
-    lookup tyCon (toList splits)
+    --
+    -- 2025-08-26: we ignore constraints here.
+    -- Prior using ghc-tcplugin-api-0.17 we ignored them by necessity and plugin worked.
+    -- There is a concern that the plugin should record (equality) constraints
+    -- used for reasoning in evidences it constructs,
+    -- but AFAIK, GHC simply has no direct mechanism to do that
+    -- (see the hoops GHC itself jumps though to make `unsafeCoerce` behave well).
+    lookup tyCon [ (x,y) | (x,y,_) <- toList splits]

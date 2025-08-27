@@ -44,7 +44,7 @@ library
       , base             >= 4.14   && < 4.22
       , containers       >= 0.6    && < 0.9
       , ghc              >= 8.10   && < 9.13
-      , ghc-tcplugin-api >= 0.16.1 && < 0.17
+      , ghc-tcplugin-api >= 0.16.1 && < 0.18
     hs-source-dirs:
         src
     default-language:

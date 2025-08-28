@@ -81,7 +81,6 @@ test-suite test-beam-large-records
     , beam-large-records
     , beam-sqlite
     , large-records
-    , microlens
     , record-hasfield
     , sqlite-simple
     , tasty

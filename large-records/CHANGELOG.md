@@ -1,8 +1,11 @@
 # Revision history for large-records
 
-## *
+## 0.4.4 -- 2025-09-19
 
 * Generate `optics-core` `LabelOptic` instances.
+* Support for ghc 9.10 and 9.12
+* The `rdp` flag now defaults to off; you might wish you enable this if you
+  use the `record-dot-preprocessor`.
 
 ## 0.4.3 -- 2025-07-19
 

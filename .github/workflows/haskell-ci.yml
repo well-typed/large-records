@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.19.20250722
+# version: 0.19.20250821
 #
-# REGENDATA ("0.19.20250722",["github","cabal.project"])
+# REGENDATA ("0.19.20250821",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -85,8 +85,8 @@ jobs:
           chmod a+x "$HOME/.ghcup/bin/ghcup"
       - name: Install cabal-install
         run: |
-          "$HOME/.ghcup/bin/ghcup" install cabal 3.14.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
-          echo "CABAL=$HOME/.ghcup/bin/cabal-3.14.2.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          "$HOME/.ghcup/bin/ghcup" install cabal 3.16.0.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          echo "CABAL=$HOME/.ghcup/bin/cabal-3.16.0.0 -vnormal+nowrap" >> "$GITHUB_ENV"
       - name: Install GHC (GHCup)
         if: matrix.setup-method == 'ghcup'
         run: |
@@ -180,8 +180,8 @@ jobs:
           echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project ; fi
+          echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
           cat cabal.project
       - name: sdist
@@ -212,8 +212,8 @@ jobs:
           echo "packages: ${PKGDIR_typelet}" >> cabal.project
           echo "packages: ${PKGDIR_large_anon}" >> cabal.project
           echo "packages: ${PKGDIR_large_generics}" >> cabal.project
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records}" >> cabal.project ; fi
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project ; fi
+          echo "packages: ${PKGDIR_large_records}" >> cabal.project
+          echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
           echo "package typelet" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
@@ -221,10 +221,10 @@ jobs:
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           echo "package large-generics" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
+          echo "package large-records" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
+          echo "package beam-large-records" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package typelet" >> cabal.project ; fi
@@ -233,13 +233,11 @@ jobs:
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package large-generics" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000 && HCNUMVER < 91000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000 && HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000 && HCNUMVER < 91000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000 && HCNUMVER < 91000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           cat >> cabal.project <<EOF
-          constraints: large-records -rdp
-
           package typelet
             ghc-options: -Werror
 
@@ -295,6 +293,16 @@ jobs:
         run: |
           rm -f cabal.project.local
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks all
+      - name: prepare for constraint sets
+        run: |
+          rm -f cabal.project.local
+      - name: constraint set rdp
+        run: |
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='large-records +rdp' all --dry-run ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then cabal-plan topo | sort ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='large-records +rdp' --dependencies-only -j2 all ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='large-records +rdp' all ; fi
+          if [ $((HCNUMVER < 91000)) -ne 0 ] ; then $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='large-records +rdp' all ; fi
       - name: save cache
         if: always()
         uses: actions/cache/save@v4

@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeApplications       #-}
 {-# LANGUAGE UndecidableInstances   #-}
 {-# LANGUAGE ViewPatterns           #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- | Thin compatibility layer around GHC
 --
@@ -36,7 +37,6 @@ module Data.Record.Internal.GHC.Shim (
 
     -- * Extensions
   , HasDefaultExt(..)
-  , withDefExt
 
     -- * Generalized @forall@
 #if __GLASGOW_HASKELL__ >= 900
@@ -46,11 +46,14 @@ module Data.Record.Internal.GHC.Shim (
   , hsFunTy
   , userTyVar
   , kindedTyVar
+#if __GLASGOW_HASKELL__ < 912
   , hsTyVarLName
+#endif
   , setDefaultSpecificity
 
     -- * Locations
   , ToSrcSpan(..)
+  , FromSrcSpan(..)
   , InheritLoc(..)
   , withoutLoc
 
@@ -64,10 +67,18 @@ module Data.Record.Internal.GHC.Shim (
 
     -- * Records
   , simpleRecordUpdates
+#if __GLASGOW_HASKELL__ >= 912
+  , mkAmbiguousFieldOcc
+#endif
 
     -- * Diagnostics
   , issueError
   , issueWarning
+
+    -- * Compat
+#if __GLASGOW_HASKELL__ >= 910
+  , pattern LambdaExpr
+#endif
 
     -- * Re-exports
 
@@ -252,7 +263,7 @@ thNameToGhcNameIO hscEnv th_name
 
 -- | Optionally @qualified@ import declaration
 importDecl :: Bool -> ModuleName -> LImportDecl GhcPs
-importDecl qualified name = reLocA $ noLoc $ ImportDecl {
+importDecl qualified name = noLocA $ ImportDecl {
 #if __GLASGOW_HASKELL__ < 906
       ideclExt       = defExt
 #else
@@ -299,7 +310,7 @@ conPat x y = ConPat defExt x y
 
 mkFunBind :: LIdP GhcPs -> [LMatch GhcPs (LHsExpr GhcPs)] -> HsBind GhcPs
 #if __GLASGOW_HASKELL__ >= 908
-mkFunBind n = GHC.mkFunBind (Generated DoPmc) n
+mkFunBind n = GHC.mkFunBind defExt n
 #else
 mkFunBind n = GHC.mkFunBind Generated n
 #endif
@@ -347,9 +358,6 @@ hscNameCacheIO = hsc_NC
 reLoc :: Located a -> Located a
 reLoc = id
 
-reLocA :: Located a -> Located a
-reLocA = id
-
 noLocA :: e -> Located e
 noLocA = noLoc
 
@@ -363,15 +371,24 @@ mapXRec = fmap
   Extensions
 -------------------------------------------------------------------------------}
 
+-- | This class has evolved to be essentially @class Default a where def :: a@,
 class HasDefaultExt a where
   defExt :: a
+
+instance HasDefaultExt (Maybe a) where defExt = Nothing
+instance HasDefaultExt [a] where defExt = []
 
 instance HasDefaultExt NoExtField where
   defExt = noExtField
 
+instance HasDefaultExt (Bag a) where
+  defExt = emptyBag
+
 #if __GLASGOW_HASKELL__ >= 906
+#if __GLASGOW_HASKELL__ < 910
 instance HasDefaultExt (LayoutInfo GhcPs) where
   defExt = NoLayoutInfo
+#endif
 instance HasDefaultExt SourceText where
   defExt = NoSourceText
 #elif __GLASGOW_HASKELL__ >= 900
@@ -379,7 +396,10 @@ instance HasDefaultExt LayoutInfo where
   defExt = NoLayoutInfo
 #endif
 
-#if __GLASGOW_HASKELL__ >= 908
+#if __GLASGOW_HASKELL__ >= 910
+instance HasDefaultExt GHC.Types.Basic.Origin where
+  defExt = Generated OtherExpansion DoPmc
+#elif __GLASGOW_HASKELL__ >= 908
 instance HasDefaultExt GHC.Types.Basic.Origin where
   defExt = Generated DoPmc
 #elif __GLASGOW_HASKELL__ >= 906
@@ -393,24 +413,55 @@ instance (HasDefaultExt a, HasDefaultExt b) => HasDefaultExt (a, b) where
 instance (HasDefaultExt a, HasDefaultExt b, HasDefaultExt c) => HasDefaultExt (a, b, c) where
   defExt = (defExt, defExt, defExt)
 
-#if __GLASGOW_HASKELL__ >= 902
-instance HasDefaultExt (EpAnn ann) where
+#if __GLASGOW_HASKELL__ >= 910
+instance NoAnn ann => HasDefaultExt (EpAnn ann) where
   defExt = noAnn
 
+instance HasDefaultExt EpAnnComments where
+  defExt = epAnnComments (noAnn @(EpAnn [()]))
+
+#elif __GLASGOW_HASKELL__ >= 902
+instance HasDefaultExt (EpAnn ann) where
+  defExt = noAnn
 instance HasDefaultExt AnnSortKey where
   defExt = NoAnnSortKey
-
 instance HasDefaultExt EpAnnComments where
   defExt = epAnnComments noAnn
 #endif
 
--- In GHC-9.2 some things have extension fields.
-#if __GLASGOW_HASKELL__ >= 902
-withDefExt :: HasDefaultExt a => (a -> b) -> b
-withDefExt f = f defExt
+#if __GLASGOW_HASKELL__ >= 910
+instance HasDefaultExt NoEpAnns         where defExt = NoEpAnns
+instance HasDefaultExt AnnListItem      where defExt = noAnn
+instance HasDefaultExt AnnPragma        where defExt = noAnn
+instance HasDefaultExt AnnContext       where defExt = noAnn
+instance HasDefaultExt AnnSig           where defExt = noAnn
+instance HasDefaultExt AnnParen         where defExt = noAnn
+instance HasDefaultExt EpAnnHsCase      where defExt = noAnn
+instance HasDefaultExt NameAnn          where defExt = noAnn
+instance HasDefaultExt (AnnSortKey tag) where defExt = NoAnnSortKey
+instance HasDefaultExt EpLayout         where defExt = EpNoLayout
+instance HasDefaultExt (EpToken t)      where defExt = noAnn
+
+#if __GLASGOW_HASKELL__ >= 912
+instance NoAnn a => HasDefaultExt (AnnList a) where defExt = noAnn
 #else
-withDefExt :: a -> a
-withDefExt a = a
+instance HasDefaultExt AnnList          where defExt = noAnn
+#endif
+
+#endif
+
+#if __GLASGOW_HASKELL__ >= 912
+instance HasDefaultExt EpAnnLam where defExt = noAnn
+instance HasDefaultExt AnnConDeclH98 where defExt = noAnn
+instance HasDefaultExt AnnClassDecl where defExt = noAnn
+instance HasDefaultExt AnnFunRhs where defExt = noAnn
+instance HasDefaultExt AnnClsInstDecl where defExt = noAnn
+instance HasDefaultExt AnnDataDefn where defExt = noAnn
+instance HasDefaultExt AnnTyVarBndr where defExt = noAnn
+
+instance HasDefaultExt (EpUniToken tok utok) where defExt = NoEpUniTok
+
+instance a ~ [LEpaComment] => HasDefaultExt (EpaLocation' a) where defExt = noAnn
 #endif
 
 {-------------------------------------------------------------------------------
@@ -430,44 +481,49 @@ hsFunTy :: XFunTy GhcPs -> LHsType GhcPs -> LHsType GhcPs -> HsType GhcPs
 hsFunTy = HsFunTy
 #elif __GLASGOW_HASKELL__ < 904
 hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow NormalSyntax)
-#else
+#elif __GLASGOW_HASKELL__ < 910
 hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow (L NoTokenLoc HsNormalTok))
-#endif
-
-userTyVar ::
-     XUserTyVar GhcPs
-  -> LIdP GhcPs
-  -> HsTyVarBndr GhcPs
-#if __GLASGOW_HASKELL__ < 900
-userTyVar = UserTyVar
-#elif __GLASGOW_HASKELL__ < 908
-userTyVar ext x = UserTyVar ext () x
 #else
-userTyVar ext x = UserTyVar ext HsBndrRequired x
+hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow NoEpUniTok)
 #endif
 
-kindedTyVar ::
-     XKindedTyVar GhcPs
-  -> LIdP GhcPs
-  -> LHsKind GhcPs
-  -> HsTyVarBndr GhcPs
+userTyVar :: LIdP GhcPs -> HsTyVarBndr GhcPs
 #if __GLASGOW_HASKELL__ < 900
-kindedTyVar = KindedTyVar
+userTyVar = UserTyVar defExt
 #elif __GLASGOW_HASKELL__ < 908
-kindedTyVar ext k = KindedTyVar ext () k
+userTyVar = UserTyVar defExt ()
+#elif __GLASGOW_HASKELL__ < 910
+userTyVar = UserTyVar defExt HsBndrRequired
+#elif __GLASGOW_HASKELL__ < 912
+userTyVar = UserTyVar defExt (HsBndrRequired defExt)
 #else
-kindedTyVar ext k = KindedTyVar ext HsBndrRequired k
+userTyVar n = HsTvb defExt (HsBndrRequired defExt) (HsBndrVar defExt n) (HsBndrNoKind defExt)
 #endif
 
+kindedTyVar :: LIdP GhcPs -> LHsKind GhcPs -> HsTyVarBndr GhcPs
+#if __GLASGOW_HASKELL__ < 900
+kindedTyVar = KindedTyVar defExt
+#elif __GLASGOW_HASKELL__ < 908
+kindedTyVar = KindedTyVar defExt ()
+#elif __GLASGOW_HASKELL__ < 910
+kindedTyVar = KindedTyVar defExt HsBndrRequired
+#elif __GLASGOW_HASKELL__ < 912
+kindedTyVar = KindedTyVar defExt (HsBndrRequired defExt)
+#else
+kindedTyVar n k = HsTvb defExt (HsBndrRequired defExt) (HsBndrVar defExt n) (HsBndrKind defExt k)
+#endif
+
+#if __GLASGOW_HASKELL__ < 912
 -- | Like 'hsTyVarName', but don't throw away the location information
-hsTyVarLName :: HsTyVarBndr GhcPs -> LIdP GhcPs
+hsTyVarLName :: HsTyVarBndr GhcPs -> Maybe (LIdP GhcPs)
 #if __GLASGOW_HASKELL__ < 900
-hsTyVarLName (UserTyVar   _ n  ) = n
-hsTyVarLName (KindedTyVar _ n _) = n
-hsTyVarLName _ = panic "hsTyVarLName"
+hsTyVarLName (UserTyVar   _ n  ) = Just n
+hsTyVarLName (KindedTyVar _ n _) = Just n
+hsTyVarLName _ = Nothing
 #else
-hsTyVarLName (UserTyVar   _ _ n  ) = n
-hsTyVarLName (KindedTyVar _ _ n _) = n
+hsTyVarLName (UserTyVar   _ _ n  ) = Just n
+hsTyVarLName (KindedTyVar _ _ n _) = Just n
+#endif
 #endif
 
 #if __GLASGOW_HASKELL__ < 900
@@ -475,11 +531,15 @@ setDefaultSpecificity :: LHsTyVarBndr pass -> GHC.LHsTyVarBndr pass
 setDefaultSpecificity = id
 #else
 setDefaultSpecificity :: LHsTyVarBndr GhcPs -> GHC.LHsTyVarBndr Specificity GhcPs
+#if __GLASGOW_HASKELL__ < 912
 setDefaultSpecificity = mapXRec @GhcPs $ \case
     UserTyVar   ext _ name      -> UserTyVar   ext SpecifiedSpec name
     KindedTyVar ext _ name kind -> KindedTyVar ext SpecifiedSpec name kind
 #if __GLASGOW_HASKELL__ < 900
     XTyVarBndr  ext              -> XTyVarBndr  ext
+#endif
+#else
+setDefaultSpecificity =  mapXRec @GhcPs $ \(HsTvb ext _ name kind) -> HsTvb ext SpecifiedSpec name kind
 #endif
 #endif
 
@@ -539,7 +599,7 @@ class ToSrcSpan a where
 instance ToSrcSpan SrcSpan where
   toSrcSpan = id
 
-#if __GLASGOW_HASKELL__ >= 902
+#if 902 <= __GLASGOW_HASKELL__  && __GLASGOW_HASKELL__ < 910
 instance ToSrcSpan (SrcSpanAnn' a) where
   toSrcSpan = locA
 #endif
@@ -550,6 +610,14 @@ instance ToSrcSpan l => ToSrcSpan (GenLocated l a) where
 instance ToSrcSpan a => ToSrcSpan (NonEmpty a) where
   toSrcSpan = toSrcSpan . NE.head
 
+#if __GLASGOW_HASKELL__ >= 910
+instance ToSrcSpan (EpAnn ann) where
+  toSrcSpan x = toSrcSpan (entry x)
+
+instance ToSrcSpan EpaLocation where
+  toSrcSpan = getHasLoc
+#endif
+
 -- | The instance for @[]@ is not ideal: we use 'noLoc' if the list is empty
 --
 -- For the use cases in this library, this is acceptable: typically these are
@@ -559,16 +627,33 @@ instance ToSrcSpan a => ToSrcSpan [a] where
    toSrcSpan (a:_) = toSrcSpan a
    toSrcSpan []    = noSrcSpan
 
+
+class FromSrcSpan a where
+    fromSrcSpan :: SrcSpan -> a
+
+instance FromSrcSpan SrcSpan where
+    fromSrcSpan = id
+
+#if 902 <= __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ < 910
+instance FromSrcSpan (SrcAnn ann) where
+    fromSrcSpan = SrcSpanAnn defExt
+#endif
+
+#if __GLASGOW_HASKELL__ >= 910
+instance HasDefaultExt ann => FromSrcSpan (EpAnn ann) where
+    fromSrcSpan s = EpAnn (spanAsAnchor s) defExt emptyComments
+#endif
+
+#if __GLASGOW_HASKELL__ >= 912
+instance FromSrcSpan (EpaLocation' ann) where
+    fromSrcSpan = EpaSpan
+#endif
+
 class InheritLoc x a b | b -> a where
   inheritLoc :: x -> a -> b
 
-instance ToSrcSpan x => InheritLoc x a (GenLocated SrcSpan a) where
-  inheritLoc = L . toSrcSpan
-
-#if __GLASGOW_HASKELL__ >= 902
-instance ToSrcSpan x => InheritLoc x a (GenLocated (SrcAnn ann) a) where
-  inheritLoc = L . SrcSpanAnn defExt . toSrcSpan
-#endif
+instance (ToSrcSpan x, FromSrcSpan y) => InheritLoc x a (GenLocated y a) where
+  inheritLoc = L . fromSrcSpan . toSrcSpan
 
 instance InheritLoc x [a]                  [a]                  where inheritLoc _ = id
 instance InheritLoc x Bool                 Bool                 where inheritLoc _ = id
@@ -593,6 +678,11 @@ type RupdFlds = LHsRecUpdFields GhcPs
 type RupdFlds = Either [LHsRecUpdField GhcPs] [LHsRecUpdProj GhcPs]
 #else
 type RupdFlds = [LHsRecUpdField GhcPs]
+#endif
+
+#if __GLASGOW_HASKELL__ >= 912
+mkAmbiguousFieldOcc :: LIdP GhcPs -> FieldOcc GhcPs
+mkAmbiguousFieldOcc = mkFieldOcc
 #endif
 
 -- | Pattern match against the @rupd_flds@ of @RecordUpd@
@@ -623,9 +713,14 @@ simpleRecordUpdates =
         guard $ not pun
         (, val) <$> f lbl
 
+#if __GLASGOW_HASKELL__ >= 912
+    isUnambigous :: FieldOcc GhcPs -> Maybe (LIdP GhcPs)
+    isUnambigous (FieldOcc _ name) = Just name
+#else
     isUnambigous :: AmbiguousFieldOcc GhcPs -> Maybe (LIdP GhcPs)
     isUnambigous (Unambiguous _ name) = Just name
     isUnambigous _                    = Nothing
+#endif
 
     isSingleLabel :: FieldLabelStrings GhcPs -> Maybe (LIdP GhcPs)
     isSingleLabel (FieldLabelStrings labels) =
@@ -760,3 +855,12 @@ issueWarning l errMsg = do
   where
     bag :: a -> Bag a
     bag = listToBag . (:[])
+
+{-------------------------------------------------------------------------------
+  Compat
+-------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ >= 910
+pattern LambdaExpr :: HsMatchContext fn
+pattern LambdaExpr = LamAlt LamSingle
+#endif

@@ -17,6 +17,8 @@ tested-with:        GHC ==8.10.7
                     GHC ==9.4.8
                     GHC ==9.6.7
                     GHC ==9.8.4
+                    GHC ==9.10.2
+                    GHC ==9.12.2
 
 source-repository head
   type:     git
@@ -38,7 +40,7 @@ library
   build-depends:
       -- lower bound on beam-core is necessary
       -- see https://github.com/haskell-beam/beam/issues/585
-      base           >= 4.14     && < 4.20
+      base           >= 4.14     && < 4.23
     , beam-core      >= 0.10.3.0 && < 0.11
     , large-generics >= 0.2      && < 0.3
     , microlens      >= 0.4      && < 0.5

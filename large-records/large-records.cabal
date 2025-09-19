@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-records
-version:            0.4.3
+version:            0.4.4
 synopsis:           Efficient compilation for large records, linear in the size of the record
 description:        For many reasons, the internal code generated for modules
                     that contain records is quadratic in the number of record

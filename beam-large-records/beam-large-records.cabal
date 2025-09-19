@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               beam-large-records
-version:            0.1.2
+version:            0.1.3
 synopsis:           Integration of large-records with beam-core.
 description:        This package provides the necessary instances that make
                     it possible to use records defined with large-records as

@@ -2,6 +2,8 @@ packages: typelet
 packages: large-anon
 packages: large-generics
 
+constraints: large-records -rdp
+
 if impl(ghc <9.10)
   packages: large-records
   packages: beam-large-records

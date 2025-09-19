@@ -15,8 +15,9 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE OverloadedLabels          #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 module Test.Record.Beam.Tutorial1 (
     tests
@@ -35,6 +36,7 @@ import Data.Record.Beam ()
 import Data.Text (Text)
 import Database.Beam hiding (Generic, countAll_)
 import Database.Beam.Schema.Tables
+import Optics.Core ((^.))
 
 import qualified Data.List.NonEmpty     as NE
 import qualified Database.SQLite.Simple as SQLite
@@ -79,11 +81,11 @@ sam2   = User "sam@sophitz.com"  "Sam"   "Sophitz" "332532dcfaa1cbf61e2a266bd723
 sam3   = User "sam@jely.com"     "Sam"   "Jely"    "332532dcfaa1cbf61e2a266bd723612c"
 
 instance Table UserT where
-   data PrimaryKey UserT f = UserId (Columnar f Text)
+   newtype PrimaryKey UserT f = UserId (Columnar f Text)
      deriving stock (GHC.Generic)
      deriving anyclass (Beamable)
 
-   primaryKey tbl = UserId tbl.userEmail
+   primaryKey tbl = UserId (tbl ^. #userEmail)
 
 deriving instance Show (Columnar f Text) => Show (PrimaryKey UserT f)
 deriving instance Eq   (Columnar f Text) => Eq   (PrimaryKey UserT f)
@@ -153,23 +155,23 @@ test_tutorial1_insertSelect = runInMemory $ \conn -> do
     liftIO $ SQLite.execute_ conn $
       "CREATE TABLE cart_users (email VARCHAR NOT NULL, first_name VARCHAR NOT NULL, last_name VARCHAR NOT NULL, password VARCHAR NOT NULL, PRIMARY KEY( email ));"
 
-    runInsert $ insert shoppingCartDb.shoppingCartUsers $ insertValues [
+    runInsert $ insert (shoppingCartDb ^. #shoppingCartUsers) $ insertValues [
          james
        , betty
        , sam
        ]
 
-    let allUsers = all_ (shoppingCartDb.shoppingCartUsers)
+    let allUsers = all_ (shoppingCartDb ^. #shoppingCartUsers)
     users <- runSelectReturningList $ select allUsers
     liftIO $ assertEqual "users" [james, betty, sam] users
 
-    let sortUsersByFirstName = orderBy_ (\u -> (asc_ u.userFirstName, desc_ u.userLastName)) (all_ shoppingCartDb.shoppingCartUsers)
+    let sortUsersByFirstName = orderBy_ (\u -> (asc_ $ u ^. #userFirstName, desc_ $ u ^. #userLastName)) (all_ $ shoppingCartDb ^. #shoppingCartUsers)
     sorted <- runSelectReturningList $ select sortUsersByFirstName
     liftIO $ assertEqual "sorted" [betty, james, sam] sorted
 
     let boundedQuery = limit_ 1 $ offset_ 1 $
-                       orderBy_ (\u -> asc_ u.userFirstName) $
-                       all_ shoppingCartDb.shoppingCartUsers
+                       orderBy_ (\u -> asc_ (u ^. #userFirstName)) $
+                       all_ (shoppingCartDb ^. #shoppingCartUsers)
 
     bounded <- runSelectReturningList (select boundedQuery)
     liftIO $ assertEqual "bounded" [james] bounded
@@ -177,19 +179,19 @@ test_tutorial1_insertSelect = runInMemory $ \conn -> do
     -- Tutorial has Int32 here, but that doesn't typecheck
     -- Don't think that is related to beam-large-records though..?
     -- (Maybe due to beam version mismatch between tutorial and our beam branch.)
-    let userCount = aggregate_ (\_u -> as_ @Int32 countAll_) (all_ shoppingCartDb.shoppingCartUsers)
+    let userCount = aggregate_ (\_u -> as_ @Int32 countAll_) (all_ (shoppingCartDb ^. #shoppingCartUsers))
     Just c <- runSelectReturningOne $ select userCount
     liftIO $ assertEqual "userCount" 3 c
 
-    runInsert $ insert shoppingCartDb.shoppingCartUsers $ insertValues [
+    runInsert $ insert (shoppingCartDb ^. #shoppingCartUsers) $ insertValues [
         james2
       , betty2
       , james3
       , sam2
       , sam3
       ]
-    let numberOfUsersByName = aggregate_ (\u -> (group_ u.userFirstName, as_ @Int32 countAll_)) $
-                              all_ shoppingCartDb.shoppingCartUsers
+    let numberOfUsersByName = aggregate_ (\u -> (group_ (u ^. #userFirstName), as_ @Int32 countAll_)) $
+                              all_ (shoppingCartDb ^. #shoppingCartUsers)
     countedByName <- runSelectReturningList $ select numberOfUsersByName
     liftIO $ assertEqual "countedByName" [("Betty",2), ("James",3), ("Sam",3)] countedByName
 
@@ -197,7 +199,7 @@ test_tutorial1_insertSelect = runInMemory $ \conn -> do
 -- (NOTE: RDS gets confused by nested multiline comments.)
 test_tutorial1_recordDotSyntax :: Assertion
 test_tutorial1_recordDotSyntax =
-    assertEqual "" "a@b.c" u.userEmail
+    assertEqual "" "a@b.c" (u ^. #userEmail)
   where
     u :: User
     u = User {

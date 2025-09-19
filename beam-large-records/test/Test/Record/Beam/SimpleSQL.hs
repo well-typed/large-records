@@ -14,8 +14,9 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE OverloadedLabels          #-}
 
-{-# OPTIONS_GHC -fplugin=Data.Record.Plugin.WithRDP #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Plugin #-}
 
 -- | Simple but complete example that does an SQL INSERT and SELECT
 module Test.Record.Beam.SimpleSQL (
@@ -29,6 +30,7 @@ import Data.Int
 import Data.Kind
 import Data.Text (Text)
 import Database.Beam
+import Optics.Core ((^.))
 
 import qualified Database.SQLite.Simple as SQLite
 import qualified GHC.Generics           as GHC
@@ -61,7 +63,7 @@ instance Table LargeTable where
     deriving stock (GHC.Generic)
     deriving anyclass (Beamable)
 
-  primaryKey tbl = LargeTableKey tbl.largeTableId
+  primaryKey tbl = LargeTableKey (tbl ^. #largeTableId)
 
 {-------------------------------------------------------------------------------
   The full database
@@ -93,12 +95,12 @@ test_insert_select = runInMemory $ \conn -> do
       "CREATE TABLE db_large_table (table_id INT PRIMARY KEY NOT NULL, table_field VARCHAR NOT NULL);"
 
     runInsert $
-      insert exampleDb.exampleDbLargeTable $ insertValues [
+      insert (exampleDb ^. #exampleDbLargeTable) $ insertValues [
           large1
         , large2
         ]
 
     allLarge <- runSelectReturningList $ select $
-      orderBy_ (\x -> asc_ (x.largeTableId)) $ all_ exampleDb.exampleDbLargeTable
+      orderBy_ (\x -> asc_ (x ^. #largeTableId)) $ all_ (exampleDb ^. #exampleDbLargeTable)
     liftIO $ assertEqual "allLarge" allLarge [large1, large2]
 

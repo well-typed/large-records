@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Main (main) where
 
 import Test.Tasty
@@ -14,11 +15,14 @@ import qualified Test.Record.Sanity.PatternMatch
 import qualified Test.Record.Sanity.QualifiedImports
 import qualified Test.Record.Sanity.Optics.SingleModule
 import qualified Test.Record.Sanity.Optics.SplitModule
-import qualified Test.Record.Sanity.RDP.SingleModule
-import qualified Test.Record.Sanity.RDP.SplitModule
 import qualified Test.Record.Sanity.RecordConstruction
 import qualified Test.Record.Sanity.Strictness
 import qualified Test.Record.Sanity.StrictnessStrictData
+
+#if HAS_RDP
+import qualified Test.Record.Sanity.RDP.SingleModule
+import qualified Test.Record.Sanity.RDP.SplitModule
+#endif
 
 main :: IO ()
 main = defaultMain tests
@@ -36,8 +40,10 @@ tests = testGroup "Tests" [
         , Test.Record.Sanity.QualifiedImports.tests
         , Test.Record.Sanity.Optics.SplitModule.tests
         , Test.Record.Sanity.Optics.SingleModule.tests
+#if HAS_RDP
         , Test.Record.Sanity.RDP.SplitModule.tests
         , Test.Record.Sanity.RDP.SingleModule.tests
+#endif
         , Test.Record.Sanity.RecordConstruction.tests
         , Test.Record.Sanity.Strictness.tests
         , Test.Record.Sanity.StrictnessStrictData.tests

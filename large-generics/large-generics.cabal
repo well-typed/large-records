@@ -21,6 +21,7 @@ tested-with:        GHC ==8.10.7
                     GHC ==9.8.4
                     GHC ==9.10.2
                     GHC ==9.12.2
+                    GHC ==9.14.1
 
 library
   exposed-modules:
@@ -50,7 +51,7 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base         >= 4.14  && < 4.22
+      base         >= 4.14  && < 4.23
     , aeson        >= 1.4.4 && < 2.3
     , deepseq      >= 1.4.4 && < 1.6
     , generics-sop >= 0.5   && < 0.6

@@ -25,3 +25,7 @@ package beam-large-records
 
 package typelet
   tests: True
+
+-- 2026-05-14: needed for GHC-9.14
+-- https://github.com/obsidiansystems/dependent-map/issues/59
+allow-newer: dependent-map-0.4.0.1:containers

@@ -12,6 +12,12 @@
 {-# LANGUAGE ViewPatterns           #-}
 {-# LANGUAGE TypeOperators #-}
 
+#if __GLASGOW_HASKELL__ <914
+#define data pattern
+#else
+{-# LANGUAGE ExplicitNamespaces #-}
+#endif
+
 -- | Thin compatibility layer around GHC
 --
 -- This should be the only module with GHC-specific CPP directives, and the
@@ -26,7 +32,7 @@ module Data.Record.Internal.GHC.Shim (
   , mkFunBind
   , HsModule
   , LHsModule
-  , pattern GHC.HsModule
+  , data GHC.HsModule
 
     -- * Annotations
 #if __GLASGOW_HASKELL__ < 902
@@ -77,7 +83,14 @@ module Data.Record.Internal.GHC.Shim (
 
     -- * Compat
 #if __GLASGOW_HASKELL__ >= 910
-  , pattern LambdaExpr
+  , data LambdaExpr
+#endif
+  , wrapBangTy
+  , Singleton (..)
+
+#if __GLASGOW_HASKELL__ >= 914
+  , getBangType
+  , getBangStrictness
 #endif
 
     -- * Re-exports
@@ -107,12 +120,15 @@ module Data.Record.Internal.GHC.Shim (
 #endif
   ) where
 
+#undef data
+
 import Control.Monad
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Generics (Data, GenericQ, cast, toConstr, gzipWithQ)
 
 import qualified Data.List.NonEmpty as NE
 
+-- ATM only 8.10.7 is <900
 #if __GLASGOW_HASKELL__ < 900
 
 import Data.IORef
@@ -122,14 +138,14 @@ import BasicTypes (SourceText (NoSourceText))
 import ConLike (ConLike)
 import ErrUtils (mkErrMsg, mkWarnMsg)
 import GHC hiding (AnnKeywordId(..), HsModule, exprType, typeKind, mkFunBind, unLoc)
-import GhcPlugins hiding ((<>), getHscEnv, unLoc)
+import GhcPlugins hiding ((<>), getHscEnv, unLoc, singleton)
 import HscMain (getHscEnv)
 import NameCache (NameCache(nsUniqs))
 import PatSyn (PatSyn)
 import TcEvidence (HsWrapper(WpHole))
 
-import qualified GHC hiding (unLoc)
-import qualified GhcPlugins as GHC hiding (unLoc)
+import qualified GHC hiding (unLoc, singleton)
+import qualified GhcPlugins as GHC hiding (unLoc, singleton)
 
 #else
 
@@ -144,7 +160,7 @@ import GHC.Driver.Main (getHscEnv)
 import GHC.Tc.Types.Evidence (HsWrapper(WpHole))
 import GHC.Utils.Error (Severity(SevError, SevWarning))
 
-import GHC.Plugins hiding ((<>), getHscEnv, unLoc
+import GHC.Plugins hiding ((<>), getHscEnv, unLoc, singleton
 #if __GLASGOW_HASKELL__ >= 902
     , AnnType, AnnLet, AnnRec, AnnLam, AnnCase
     , Exception
@@ -298,6 +314,9 @@ importDecl qualified name = noLocA $ ImportDecl {
 #endif
 #if __GLASGOW_HASKELL__ >= 906
     , ideclImportList = Nothing
+#endif
+#if __GLASGOW_HASKELL__ >= 914
+    , ideclLevelSpec  = NotLevelled
 #endif
     }
 
@@ -483,8 +502,10 @@ hsFunTy = HsFunTy
 hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow NormalSyntax)
 #elif __GLASGOW_HASKELL__ < 910
 hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow (L NoTokenLoc HsNormalTok))
-#else
+#elif __GLASGOW_HASKELL__ < 914
 hsFunTy ext = HsFunTy ext (HsUnrestrictedArrow NoEpUniTok)
+#else
+hsFunTy ext = HsFunTy ext (HsUnannotated (EpArrow defExt))
 #endif
 
 userTyVar :: LIdP GhcPs -> HsTyVarBndr GhcPs
@@ -726,7 +747,7 @@ simpleRecordUpdates =
     isSingleLabel (FieldLabelStrings labels) =
         case labels of
 #if __GLASGOW_HASKELL__ >= 906
-          [L _ (DotFieldOcc _ (L l (FieldLabelString label)))] ->
+          (matchSingleton -> Just (L _ (DotFieldOcc _ (L l (FieldLabelString label))))) ->
 #else
           [L _ (DotFieldOcc _ (L l label))] ->
 #endif
@@ -856,9 +877,53 @@ issueWarning l errMsg = do
     bag :: a -> Bag a
     bag = listToBag . (:[])
 
+
+{-------------------------------------------------------------------------------
+  Strictness
+-------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ >= 914
+getBangType :: LHsType GhcPs -> LHsType GhcPs
+getBangType                 (L _ (XHsType (HsBangTy _ _ lty))) = lty
+--getBangType (L _ (HsDocTy x (L _ (HsBangTy _ _ lty)) lds)) =
+--  addCLocA lty lds (HsDocTy x lty lds)
+getBangType lty                                            = lty
+
+getBangStrictness :: LHsType GhcPs -> HsSrcBang
+getBangStrictness                 (L _ (XHsType (HsBangTy _ s _ty))) = s
+-- getBangStrictness (L _ (HsDocTy _ (L _ (HsBangTy (_, s) b _)) _)) = HsSrcBang s b
+getBangStrictness _ = HsSrcBang NoSourceText NoSrcUnpack NoSrcStrict
+#endif
+
+{-------------------------------------------------------------------------------
+  Singleton
+-------------------------------------------------------------------------------}
+
+class Singleton f where
+    singleton :: a -> f a
+    matchSingleton :: f a -> Maybe a
+
+instance Singleton [] where
+    singleton x = [x]
+    matchSingleton [x] = Just x
+    matchSingleton _   = Nothing
+
+instance Singleton NonEmpty where
+    singleton x = x :| []
+    matchSingleton (x :| []) = Just x
+    matchSingleton _         = Nothing
+
 {-------------------------------------------------------------------------------
   Compat
 -------------------------------------------------------------------------------}
+
+#if __GLASGOW_HASKELL__ >= 914
+wrapBangTy :: HsTypeGhcPsExt -> HsType GhcPs
+wrapBangTy = XHsType
+#else
+wrapBangTy :: HsType GhcPs -> HsType GhcPs
+wrapBangTy = id
+#endif
 
 #if __GLASGOW_HASKELL__ >= 910
 pattern LambdaExpr :: HsMatchContext fn

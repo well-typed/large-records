@@ -41,9 +41,9 @@ library
         TypeLet.Plugin.NameResolution
         TypeLet.Plugin.Substitution
     build-depends:
-      , base             >= 4.14   && < 4.22
+      , base             >= 4.14   && < 4.23
       , containers       >= 0.6    && < 0.9
-      , ghc              >= 8.10   && < 9.13
+      , ghc              >= 8.10   && < 9.15
       , ghc-tcplugin-api >= 0.16.1 && < 0.18
     hs-source-dirs:
         src

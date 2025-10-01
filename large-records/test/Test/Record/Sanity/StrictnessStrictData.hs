@@ -40,7 +40,7 @@ _silenceWarnings MkLazy{..} MkStrict{..} = const () $ (
     )
 
 tests :: TestTree
-tests = testGroup "Test.Record.Sanity.Strictness" [
+tests = testGroup "Test.Record.Sanity.StrictnessStrictData" [
       testCase "initValueLazy"   test_initValueLazy
     , testCase "initValueStrict" test_initValueStrict
     , testCase "setValueLazy"    test_setValueLazy

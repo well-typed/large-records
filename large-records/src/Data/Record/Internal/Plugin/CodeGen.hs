@@ -124,19 +124,11 @@ genDatatype Record{..} = pure $
         | (i, _) <- zip [1 :: Int ..] recordFields
         ]
 
-    optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
-    optionalBang bang = noLocA . HsBangTy defExt
-#if __GLASGOW_HASKELL__ >= 912
-      (case bang of HsSrcBang _ b -> b)
-#else
-      bang
-#endif
-
     fieldContext :: LIdP GhcPs -> Field -> LHsType GhcPs
     fieldContext var fld = equalP (VarT var) (fieldType fld)
 
-    fieldExistentialType :: LIdP GhcPs -> Field -> (LIdP GhcPs, LHsType GhcPs)
-    fieldExistentialType var fld = (fieldName fld, optionalBang (fieldStrictness fld) $ VarT var)
+    fieldExistentialType :: LIdP GhcPs -> Field -> (LIdP GhcPs, LHsType GhcPs, HsSrcBang)
+    fieldExistentialType var fld = (fieldName fld, VarT var, fieldStrictness fld)
 
 -- | Generate conversion to and from an array
 --

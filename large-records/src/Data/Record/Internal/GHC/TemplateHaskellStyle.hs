@@ -529,11 +529,11 @@ equalP x y = inheritLoc x $
 --
 -- NOTE: The GHC AST (but not TH) supports declaring multiple record fields
 -- with the same type. We do not support this here (since we follow TH).
-recC :: LIdP GhcPs -> [(LIdP GhcPs, LHsType GhcPs)] -> LConDecl GhcPs
+recC :: LIdP GhcPs -> [(LIdP GhcPs, LHsType GhcPs, HsSrcBang)] -> LConDecl GhcPs
 recC = forallRecC [] []
 
 -- | Inverse to 'recC'
-viewRecC :: LConDecl GhcPs -> Maybe (LIdP GhcPs, [(LIdP GhcPs, LHsType GhcPs)])
+viewRecC :: LConDecl GhcPs -> Maybe (LIdP GhcPs, [(LIdP GhcPs, LHsType GhcPs, HsSrcBang)])
 viewRecC
     (L _
        ConDeclH98 {
@@ -549,14 +549,14 @@ viewRecC
          }
     ) = (conName ,) <$> mapM viewRecField fields
   where
-    viewRecField :: LConDeclField GhcPs -> Maybe (LIdP GhcPs, LHsType GhcPs)
+    viewRecField :: LConDeclField GhcPs -> Maybe (LIdP GhcPs, LHsType GhcPs, HsSrcBang)
     viewRecField
         (L _
            ConDeclField {
                cd_fld_names = [L _ name]
              , cd_fld_type  = ty
              }
-        ) = Just $ (viewFieldOcc name, ty)
+        ) = Just (viewFieldOcc name, getBangType ty, getBangStrictness ty)
     viewRecField _otherwise = Nothing
 
     viewFieldOcc :: FieldOcc GhcPs -> LIdP GhcPs
@@ -566,7 +566,7 @@ viewRecC
 #endif
 viewRecC _otherwise = Nothing
 
-pattern RecC :: LIdP GhcPs -> [(LIdP GhcPs, LHsType GhcPs)] -> LConDecl GhcPs
+pattern RecC :: LIdP GhcPs -> [(LIdP GhcPs, LHsType GhcPs, HsSrcBang)] -> LConDecl GhcPs
 pattern RecC conName args <- (viewRecC -> Just (conName, args))
   where
     RecC = recC
@@ -577,7 +577,7 @@ forallRecC ::
      [LIdP GhcPs]                  -- ^ @forallC@ argument: bound type variables
   -> [LHsType GhcPs]               -- ^ @forallC@ argument: context
   -> LIdP GhcPs                    -- ^ @recC@ argument: record constructor name
-  -> [(LIdP GhcPs, LHsType GhcPs)] -- ^ @recC@ argument: record fields
+  -> [(LIdP GhcPs, LHsType GhcPs, HsSrcBang)] -- ^ @recC@ argument: record fields
   -> LConDecl GhcPs
 forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
       con_ext    = defExt
@@ -585,18 +585,26 @@ forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
     , con_forall = inheritLoc conName True
     , con_ex_tvs = map (setDefaultSpecificity . mkBndr) vars
     , con_mb_cxt = Just (inheritLoc conName ctxt)
-    , con_args   = RecCon (inheritLoc conName $ map (uncurry mkRecField) args)
+    , con_args   = RecCon (inheritLoc conName $ map mkRecField args)
     , con_doc    = Nothing
     }
   where
     mkBndr :: LIdP GhcPs -> LHsTyVarBndr GhcPs
     mkBndr name = inheritLoc name $ userTyVar name
 
-    mkRecField :: LIdP GhcPs -> LHsType GhcPs -> LConDeclField GhcPs
-    mkRecField name ty = inheritLoc name $ ConDeclField {
+    optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
+    optionalBang bang = noLocA . HsBangTy defExt
+#if __GLASGOW_HASKELL__ >= 912
+      (case bang of HsSrcBang _ b -> b)
+#else
+      bang
+#endif
+
+    mkRecField :: (LIdP GhcPs, LHsType GhcPs, HsSrcBang) -> LConDeclField GhcPs
+    mkRecField (name, ty, bang) = inheritLoc name $ ConDeclField {
           cd_fld_ext   = defExt
         , cd_fld_names = [inheritLoc name $ mkFieldOcc name]
-        , cd_fld_type  = ty
+        , cd_fld_type  = optionalBang bang ty
         , cd_fld_doc   = Nothing
         }
 

@@ -257,6 +257,9 @@ importDecl qualified name = reLocA $ noLoc $ ImportDecl {
 #if __GLASGOW_HASKELL__ >= 906
     , ideclImportList = Nothing
 #endif
+#if __GLASGOW_HASKELL__ >= 914
+    , ideclLevelSpec = NotLevelled
+#endif
     }
 
 issueWarning :: SrcSpan -> SDoc -> Hsc ()
@@ -294,7 +297,11 @@ issueWarning l errMsg = do
                          (initPrintConfig dynFlags)
                          (initDiagOpts dynFlags)
 
+#if __GLASGOW_HASKELL__ >= 914
+    let msg :: Err.UnknownDiagnostic opts Err.GhcHint
+#else
     let msg :: Err.UnknownDiagnostic opts
+#endif
         msg = Err.mkSimpleUnknownDiagnostic $
                 mkPlainError [] errMsg
 #endif

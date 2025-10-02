@@ -82,7 +82,7 @@ viewRecord ::
   => SrcSpan -> LargeRecordOptions -> LHsDecl GhcPs -> m Record
 viewRecord annLoc options decl =
     case decl of
-      DataD tyName tyVars [RecC conName fields] derivs-> do
+      DataD tyName tyVars [RecC conName fields] derivs -> do
         fields'   <- mapM viewField fields
         derivings <- viewRecordDerivings derivs
         pure Record {

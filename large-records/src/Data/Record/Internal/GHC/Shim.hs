@@ -144,7 +144,7 @@ import NameCache (NameCache(nsUniqs))
 import PatSyn (PatSyn)
 import TcEvidence (HsWrapper(WpHole))
 
-import qualified GHC hiding (unLoc, singleton)
+import qualified GHC hiding (unLoc)
 import qualified GhcPlugins as GHC hiding (unLoc, singleton)
 
 #else

@@ -55,14 +55,14 @@ library
       Data.Record.Internal.Plugin.Record
 
   build-depends:
-    , base             >= 4.14   && < 4.22
+    , base             >= 4.14   && < 4.23
     , containers       >= 0.6.2  && < 0.9
-    , ghc              >= 8.10   && < 9.13
+    , ghc              >= 8.10   && < 9.15
     , mtl              >= 2.2.1  && < 2.4
     , primitive        >= 0.7.3  && < 0.10
     , record-hasfield  >= 1.0    && < 1.1
     , syb              >= 0.7    && < 0.8
-    , template-haskell >= 2.16   && < 2.24
+    , template-haskell >= 2.16   && < 2.25
 
       -- large-generics 0.2 starts using 'SmallArray' instead of 'Vector'
     , large-generics >= 0.2 && < 0.3

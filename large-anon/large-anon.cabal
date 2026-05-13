@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               large-anon
-version:            0.3.3
+version:            0.3.3.1
 synopsis:           Scalable anonymous records
 description:        The @large-anon@ package provides support for anonymous
                     records in Haskell, with a focus on compile-time (and
@@ -81,7 +81,7 @@ library
     , containers       >= 0.6.2  && < 0.9
     , deepseq          >= 1.4.4  && < 1.6
     , ghc              >= 8.10   && < 9.13
-    , ghc-tcplugin-api >= 0.17.1.0 && < 0.18
+    , ghc-tcplugin-api >= 0.18.2.0 && < 0.20
     , hashable         >= 1.3    && < 1.6
     , mtl              >= 2.2.1  && < 2.4
     , optics-core      >= 0.3    && < 0.5

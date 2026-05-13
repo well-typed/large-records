@@ -8,8 +8,6 @@ module TypeLet.Plugin.GhcTcPluginAPI (
 
     -- * Additional re-exports
     -- ** Substitutions
-  , Subst -- opaque
-  , Subst.substTy
   , Subst.substTyWith
   , Subst.zipTvSubst
   , elemVarSet
@@ -35,19 +33,4 @@ import qualified TcType as Subst
 
 #endif
 
-{-------------------------------------------------------------------------------
-  TCvSubst was renamed to Subst in ghc 9.6
--------------------------------------------------------------------------------}
-
-#if MIN_VERSION_ghc(9,6,0)
-import GHC.Core.TyCo.Subst (Subst)
-#elif MIN_VERSION_ghc(9,0,0)
-import GHC.Core.TyCo.Subst (TCvSubst)
-#else
-import TcType (TCvSubst)
-#endif
-
-#if !MIN_VERSION_ghc(9,6,0)
-type Subst = TCvSubst
-#endif
 

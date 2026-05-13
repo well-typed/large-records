@@ -259,12 +259,12 @@ test_SQL = runInMemory $ \conn -> do
         insertValues users
 
       [jamesAddress1, bettyAddress1, bettyAddress2] <-
-        runInsertReturningList $
+        runSqliteInsertReturningList $
           insertReturning (shoppingCart3Db ^. #shoppingCart3UserAddresses) $
             insertExpressions addresses
 
       [redBall, mathTextbook, introToHaskell, suitcase] <-
-        runInsertReturningList $
+        runSqliteInsertReturningList $
           insertReturning (shoppingCart3Db ^. #shoppingCart3Products) $
             insertExpressions products
 
@@ -276,7 +276,7 @@ test_SQL = runInMemory $ \conn -> do
     -- Marshalling custom types
     bettyShippingInfo <- do
       [bettyShippingInfo] <-
-        runInsertReturningList $
+        runSqliteInsertReturningList $
           insertReturning (shoppingCart3Db ^. #shoppingCart3ShippingInfos) $
             insertExpressions [
                 ShippingInfo default_ (val_ USPS) (val_ "12345790ABCDEFGHI")
@@ -287,7 +287,7 @@ test_SQL = runInMemory $ \conn -> do
     -- Timestamps
     now <- liftIO $ zonedTimeToLocalTime <$> getZonedTime
     [jamesOrder1, bettyOrder1, jamesOrder2] <-
-      runInsertReturningList $
+      runSqliteInsertReturningList $
         insertReturning (shoppingCart3Db ^. #shoppingCart3Orders) $
           insertExpressions [
               Order default_ currentTimestamp_ (val_ (pk james)) (val_ (pk jamesAddress1)) nothing_

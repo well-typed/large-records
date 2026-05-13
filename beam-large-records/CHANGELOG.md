@@ -1,5 +1,9 @@
 # Revision history for beam-large-records
 
+## 0.1.4 -- 2026-mm-dd
+
+* Use beam-core-0.11
+
 ## 0.1.3 -- 2025-09-19
 
 * Support for ghc 9.10 and 9.12

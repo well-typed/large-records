@@ -3,6 +3,13 @@
 {-# LANGUAGE TupleSections   #-}
 {-# LANGUAGE ViewPatterns    #-}
 
+-- Workaround for -Wpattern-namespace-specifie
+#if __GLASGOW_HASKELL__ <914
+#define data pattern
+#else
+{-# LANGUAGE ExplicitNamespaces #-}
+#endif
+
 -- | Interface to the GHC API that closely mimicks Template Haskell
 --
 -- See "Language.Haskell.TH.Lib".
@@ -17,16 +24,16 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   , mkNameExp
   , mkNameTy
   , mkNameTyCon
-  , pattern ExpVar
-  , pattern TyVar
-  , pattern TyCon
+  , data ExpVar
+  , data TyVar
+  , data TyCon
     -- * Expressions
   , litE
   , stringE
-  , pattern VarE
-  , pattern ConE
+  , data VarE
+  , data ConE
   , recConE
-  , pattern RecUpdE
+  , data RecUpdE
   , appE
   , listE
   , lamE
@@ -41,8 +48,8 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
     -- * Types
   , parensT
   , litT
-  , pattern VarT
-  , pattern ConT
+  , data VarT
+  , data ConT
   , appT
   , listT
     -- ** Without direct equivalent
@@ -56,12 +63,10 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   , bangP
   , listP
   , wildP
-    -- * Strictness
-  , bangType
     -- * Class contexts
   , equalP
     -- * Constructors
-  , pattern RecC
+  , data RecC
   , forallRecC
     -- * Type variable binders
   , kindedTV
@@ -70,14 +75,14 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
     -- * Top-level declarations
   , sigD
   , valD
-  , pattern DataD
-  , pattern DerivClause
+  , data DataD
+  , data DerivClause
   , instanceD
   , classD
   , tySynEqn
     -- * Pragmas
-  , pattern TypeAnnotation
-  , pattern PragAnnD
+  , data TypeAnnotation
+  , data PragAnnD
 
     -- * Re-exported types (intentionally without constructors)
     --
@@ -102,6 +107,8 @@ module Data.Record.Internal.GHC.TemplateHaskellStyle (
   , LPat
   , LTyFamInstDecl
   ) where
+
+#undef data
 
 import Data.List (foldl')
 import Data.Maybe (fromMaybe)
@@ -321,7 +328,7 @@ lamE pats body = inheritLoc body $
 
 -- | Convenience wrapper around 'lamE' for a single argument
 lamE1 :: LPat GhcPs -> LHsExpr GhcPs -> LHsExpr GhcPs
-lamE1 p = lamE (p :| [])
+lamE1 p = lamE (singleton p)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.caseE'
 caseE :: LHsExpr GhcPs -> [(LPat GhcPs, LHsExpr GhcPs)] -> LHsExpr GhcPs
@@ -474,7 +481,9 @@ varP name = inheritLoc name (VarPat defExt name)
 
 -- | Equivalent of 'Language.Haskell.TH.Lib.conP'
 conP :: LIdP GhcPs -> [LPat GhcPs] -> LPat GhcPs
-#if __GLASGOW_HASKELL__ >= 902
+#if __GLASGOW_HASKELL__ >= 914
+conP con args = inheritLoc con (conPat con (PrefixCon args))
+#elif __GLASGOW_HASKELL__ >= 902
 conP con args = inheritLoc con (conPat con (PrefixCon [] args))
 #else
 conP con args = inheritLoc con (conPat con (PrefixCon args))
@@ -492,20 +501,6 @@ listP xs = inheritLoc xs $ ListPat defExt xs
 wildP :: LPat GhcPs
 wildP = inheritLoc noSrcSpan (WildPat defExt)
 
-{-------------------------------------------------------------------------------
-  Strictness
--------------------------------------------------------------------------------}
-
--- | Approximate equivalent of 'Language.Haskell.TH.Lib.bangType'
---
--- The GHC API has no equivalent of 'Language.Haskell.TH.Syntax.BangType'.
-bangType :: LHsType GhcPs -> LHsType GhcPs
-bangType t = inheritLoc t $
-#if __GLASGOW_HASKELL__ >= 912
-    HsBangTy defExt (HsBang NoSrcUnpack SrcStrict) t
-#else
-    HsBangTy defExt (HsSrcBang NoSourceText NoSrcUnpack SrcStrict) t
-#endif
 {-------------------------------------------------------------------------------
   Class contexts
 -------------------------------------------------------------------------------}
@@ -549,6 +544,13 @@ viewRecC
          }
     ) = (conName ,) <$> mapM viewRecField fields
   where
+#if __GLASGOW_HASKELL__ >= 914
+    viewRecField :: LHsConDeclRecField GhcPs -> Maybe (LIdP GhcPs, LHsType GhcPs, HsSrcBang)
+    viewRecField
+        (L _
+           (HsConDeclRecField _ [L _ name] CDF { cdf_type = ty, cdf_bang = bang, cdf_unpack = unpack })
+        ) = Just (viewFieldOcc name, ty, HsSrcBang NoSourceText unpack bang)
+#else
     viewRecField :: LConDeclField GhcPs -> Maybe (LIdP GhcPs, LHsType GhcPs, HsSrcBang)
     viewRecField
         (L _
@@ -557,6 +559,7 @@ viewRecC
              , cd_fld_type  = ty
              }
         ) = Just (viewFieldOcc name, getBangType ty, getBangStrictness ty)
+#endif
     viewRecField _otherwise = Nothing
 
     viewFieldOcc :: FieldOcc GhcPs -> LIdP GhcPs
@@ -592,14 +595,22 @@ forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
     mkBndr :: LIdP GhcPs -> LHsTyVarBndr GhcPs
     mkBndr name = inheritLoc name $ userTyVar name
 
-    optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
-    optionalBang bang = noLocA . HsBangTy defExt
-#if __GLASGOW_HASKELL__ >= 912
-      (case bang of HsSrcBang _ b -> b)
-#else
-      bang
-#endif
+#if __GLASGOW_HASKELL__ >= 914
+    mkRecField :: (LIdP GhcPs, LHsType GhcPs, HsSrcBang) -> LHsConDeclRecField GhcPs
+    mkRecField (name, ty, HsSrcBang _ unpack bang) = inheritLoc name $ HsConDeclRecField
+        { cdrf_ext   = defExt
+        , cdrf_names = [inheritLoc name $ mkFieldOcc name]
+        , cdrf_spec  = CDF
+             { cdf_ext          = defExt
+             , cdf_unpack       = unpack
+             , cdf_bang         = bang
+             , cdf_multiplicity = HsUnannotated (EpArrow defExt)
+             , cdf_type         = ty
+             , cdf_doc          = Nothing
+             }
+        }
 
+#else
     mkRecField :: (LIdP GhcPs, LHsType GhcPs, HsSrcBang) -> LConDeclField GhcPs
     mkRecField (name, ty, bang) = inheritLoc name $ ConDeclField {
           cd_fld_ext   = defExt
@@ -607,6 +618,15 @@ forallRecC vars ctxt conName args = inheritLoc conName $ ConDeclH98 {
         , cd_fld_type  = optionalBang bang ty
         , cd_fld_doc   = Nothing
         }
+
+    optionalBang :: HsSrcBang -> LHsType GhcPs -> LHsType GhcPs
+    optionalBang bang = noLocA . HsBangTy defExt
+#if __GLASGOW_HASKELL__ >= 912
+      (case bang of HsSrcBang _ b -> b)
+#else
+      bang
+#endif
+#endif
 
 {-------------------------------------------------------------------------------
   Type variable binders
@@ -973,5 +993,5 @@ simpleBinding fnName body = inheritLoc fnName $
 simpleGHRSs :: LHsExpr GhcPs -> GRHSs GhcPs (LHsExpr GhcPs)
 simpleGHRSs body =
     GRHSs defExt
-          [inheritLoc body $ GRHS defExt [] body]
+          (singleton (inheritLoc body (GRHS defExt [] body)))
           (inheritLoc body $ EmptyLocalBinds defExt)

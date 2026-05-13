@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
@@ -41,5 +42,11 @@ import qualified GHC.Records.Compat
 ifThenElse :: Bool -> a -> a -> a
 ifThenElse b x y = if b then x else y
 
+-- | NOTE: the order of arguments is GHC version dependent.
+#if __GLASGOW_HASKELL__ >=914
+setField :: forall x r a. GHC.Records.Compat.HasField x r a => a -> r -> r
+setField = flip (fst . GHC.Records.Compat.hasField @x)
+#else
 setField :: forall x r a. GHC.Records.Compat.HasField x r a => r -> a -> r
 setField = fst . GHC.Records.Compat.hasField @x
+#endif

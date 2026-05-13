@@ -546,7 +546,9 @@ genMetadata names@QualifiedNames{..} r@Record{..} dynFlags = do
         $ stringT (nameBase fieldName)
 
 isStrict :: DynFlags -> HsSrcBang -> Bool
-#if __GLASGOW_HASKELL__ >= 912
+#if __GLASGOW_HASKELL__ >= 914
+isStrict dynFlags (HsSrcBang _ _ strictness) =
+#elif __GLASGOW_HASKELL__ >= 912
 isStrict dynFlags (HsSrcBang _ (HsBang _ strictness)) =
 #else
 isStrict dynFlags (HsSrcBang _ _ strictness) =

@@ -37,6 +37,11 @@ jobs:
     strategy:
       matrix:
         include:
+          - compiler: ghc-9.14.1
+            compilerKind: ghc
+            compilerVersion: 9.14.1
+            setup-method: ghcup
+            allow-failure: false
           - compiler: ghc-9.12.2
             compilerKind: ghc
             compilerVersion: 9.12.2
@@ -243,6 +248,8 @@ jobs:
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           cat >> cabal.project <<EOF
+          allow-newer: dependent-map-0.4.0.1:containers
+
           package typelet
             ghc-options: -Werror
 

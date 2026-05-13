@@ -17,3 +17,6 @@ constraint-set rdp
   constraints: large-records +rdp
   tests: True
   run-tests: True
+
+constraint-set ghc-tcplugin-api-0.18
+  constraints: gch-tcplugin-api >=0.18 && <0.19

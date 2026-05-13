@@ -40,6 +40,11 @@ tcPlugin = TcPlugin {
       tcPluginInit    = nameResolution
     , tcPluginSolve   = solve
     , tcPluginRewrite = rewrite
+#if MIN_VERSION_ghc_tcplugin_api(0,19,0)
+    , tcPluginPostTc   = const $ return ()
+    , tcPluginShutdown = const $ return ()
+#else
     , tcPluginStop    = const $ return ()
+#endif
     }
 

@@ -1,15 +1,8 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
-
 -- | 'DynRecord' interop with the simple record API.
 --
 -- Intended for qualified import.
 --
--- > import qualified Test.Infra.DynRecord.Simple as Dyn
+-- > import Test.Infra.DynRecord.Simple qualified as Dyn
 module Test.Infra.DynRecord.Simple (
     -- * Type inference
     ValidField(..)
@@ -25,10 +18,9 @@ import Data.Kind
 import Data.Typeable
 
 import Data.Record.Anon
+import Data.Record.Anon.Advanced qualified as A
 import Data.Record.Anon.Simple (Record)
-
-import qualified Data.Record.Anon.Advanced as A
-import qualified Data.Record.Anon.Simple   as S
+import Data.Record.Anon.Simple qualified as S
 
 import Test.Infra.Discovery
 import Test.Infra.DynRecord

@@ -1,12 +1,3 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE GADTs #-}
-
 -- | Simple dynamic record type, for testing purposes only
 module Test.Infra.DynRecord (
     -- * Definition
@@ -21,7 +12,7 @@ import Data.Kind
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 {-------------------------------------------------------------------------------
   Definition

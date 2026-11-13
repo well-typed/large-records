@@ -1,28 +1,9 @@
-{-# LANGUAGE ConstraintKinds       #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE RoleAnnotations       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
-
 -- | Full record representation
 --
 -- Intended for qualified import.
 --
 -- > import Data.Record.Anon.Internal.Advanced (Record)
--- > import qualified Data.Record.Anon.Internal.Advanced as A
+-- > import Data.Record.Anon.Internal.Advanced qualified as A
 module Data.Record.Anon.Internal.Advanced (
     -- * Definition
     Record -- opaque
@@ -74,13 +55,10 @@ module Data.Record.Anon.Internal.Advanced (
   , Some(..)
   , SomeRecord(..)
   , someRecord
-    -- * Support for @typelet@
-  , letRecordT
-  , letInsertAs
   ) where
 
 import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
-import qualified Prelude
+import Prelude qualified
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
@@ -96,28 +74,25 @@ import Data.SOP.Constraint
 import Data.Tagged
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
+import GHC.Records qualified as Base
+import GHC.Records.Compat qualified as RecordHasfield
 import GHC.TypeLits
-import TypeLet.UserAPI
+import Optics.Core qualified as Optics
 
-import qualified Optics.Core        as Optics
-import qualified GHC.Records        as Base
-import qualified GHC.Records.Compat as RecordHasfield
-
-import qualified Data.Record.Generic.Eq     as Generic
-import qualified Data.Record.Generic.JSON   as Generic
-import qualified Data.Record.Generic.NFData as Generic
-import qualified Data.Record.Generic.Show   as Generic
+import Data.Record.Generic.Eq     qualified as Generic
+import Data.Record.Generic.JSON   qualified as Generic
+import Data.Record.Generic.NFData qualified as Generic
+import Data.Record.Generic.Show   qualified as Generic
 
 import Data.Record.Anon.Internal.Core.Canonical (Canonical)
+import Data.Record.Anon.Internal.Core.Canonical qualified as Canon
 import Data.Record.Anon.Internal.Core.Diff (Diff)
+import Data.Record.Anon.Internal.Core.Diff qualified as Diff
 import Data.Record.Anon.Internal.Core.FieldName
 import Data.Record.Anon.Internal.Reflection (Reflected(..))
+import Data.Record.Anon.Internal.Reflection qualified as Unsafe
 
 import Data.Record.Anon.Plugin.Internal.Runtime
-
-import qualified Data.Record.Anon.Internal.Core.Canonical as Canon
-import qualified Data.Record.Anon.Internal.Core.Diff      as Diff
-import qualified Data.Record.Anon.Internal.Reflection     as Unsafe
 
 {-------------------------------------------------------------------------------
   Definition
@@ -655,25 +630,3 @@ czipWith ::
   -> (forall x. c x => f x -> g x -> h x)
   -> Record f r -> Record g r -> Record h r
 czipWith p f a b = unI $ czipWithM p (\x y -> I (f x y)) a b
-
-{-------------------------------------------------------------------------------
-  Support for @typelet@
--------------------------------------------------------------------------------}
-
--- | Introduce type variable for a row
-letRecordT :: forall r f.
-     (forall r'. Let r' r => Proxy r' -> Record f r)
-  -> Record f r
-letRecordT f = letT' (Proxy @r) f
-
--- | Insert field into a record and introduce type variable for the result
-letInsertAs :: forall r r' f n a.
-     Proxy r       -- ^ Type of the record we are constructing
-  -> Field n       -- ^ New field to be inserted
-  -> f a           -- ^ Value of the new field
-  -> Record f r'   -- ^ Record constructed so far
-  -> (forall r''. Let r'' (n := a : r') => Record f r'' -> Record f r)
-                   -- ^ Assign type variable to new partial record, and continue
-  -> Record f r
-letInsertAs _ n x r = letAs' (insert n x r)
-

@@ -1,8 +1,3 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators    #-}
-{-# LANGUAGE RankNTypes       #-}
-
 -- | Simple interface (without a functor argument)
 --
 -- See "Data.Record.Anon.Advanced" for the advanced interface.
@@ -12,7 +7,7 @@
 --
 -- > import Data.Record.Anon
 -- > import Data.Record.Anon.Simple (Record)
--- > import qualified Data.Record.Anon.Simple as Anon
+-- > import Data.Record.Anon.Simple qualified as Anon
 module Data.Record.Anon.Simple (
     Record
     -- * Construction
@@ -32,34 +27,21 @@ module Data.Record.Anon.Simple (
   , toAdvanced
   , fromAdvanced
   , sequenceA
-    -- * Experimental integration with @typelet@
-    --
-    -- |
-    -- The @typelet@ plugin provides support for type sharing. These functions
-    -- can be used to construct records that result in ghc core that is truly
-    -- linear in size.
-  , letRecordT
-  , letInsertAs
-    -- ** Supporting definitions
-  , castEqual
   ) where
 
 import Prelude hiding (sequenceA)
 
-import TypeLet (Let, Equal)
-import qualified TypeLet
-
 import Data.Record.Anon
 
 import Data.Record.Anon.Internal.Simple (Record)
-import qualified Data.Record.Anon.Internal.Simple   as S
-import qualified Data.Record.Anon.Internal.Advanced as A
+import Data.Record.Anon.Internal.Simple qualified as S
+import Data.Record.Anon.Internal.Advanced qualified as A
 
 -- $setup
 -- >>> :set -XDataKinds
 -- >>> :set -XOverloadedLabels
 -- >>> :set -XTypeOperators
--- >>> :set -fplugin=TypeLet -fplugin=Data.Record.Anon.Plugin
+-- >>> :set -fplugin=Data.Record.Anon.Plugin
 -- >>> :set -dppr-cols=200
 -- >>> import Data.Record.Anon
 
@@ -245,43 +227,3 @@ fromAdvanced = S.fromAdvanced
 -- | Sequence all actions
 sequenceA :: Applicative m => A.Record m r -> m (Record r)
 sequenceA = S.sequenceA
-
-{-------------------------------------------------------------------------------
-  Experimental integration with @typelet@
--------------------------------------------------------------------------------}
-
--- | Introduce type variable for a row
---
--- This can be used in conjunction with 'letInsertAs':
---
--- >>> :{
--- example :: Record '[ "a" := Int, "b" := Char, "c" := Bool ]
--- example = letRecordT $ \p -> castEqual $
---     letInsertAs p #c True empty $ \xs02 ->
---     letInsertAs p #b 'X'  xs02  $ \xs01 ->
---     letInsertAs p #a 1    xs01  $ \xs00 ->
---     castEqual xs00
--- :}
-letRecordT :: forall r.
-     (forall r'. Let r' r => Proxy r' -> Record r)
-  -> Record r
-letRecordT f = S.letRecordT f
-
--- | Insert field into a record and introduce type variable for the result
-letInsertAs :: forall r r' n a.
-     Proxy r     -- ^ Type of the record we are constructing
-  -> Field n     -- ^ New field to be inserted
-  -> a           -- ^ Value of the new field
-  -> Record r'   -- ^ Record constructed so far
-  -> (forall r''. Let r'' (n := a : r') => Record r'' -> Record r)
-                 -- ^ Assign type variable to new partial record, and continue
-  -> Record r
-letInsertAs p n x r f = S.letInsertAs p n x r f
-
-{-------------------------------------------------------------------------------
-  Supporting definitions
--------------------------------------------------------------------------------}
-
-castEqual :: Equal a b => a -> b
-castEqual = TypeLet.castEqual
-

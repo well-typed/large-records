@@ -1,19 +1,5 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE GADTs                #-}
-{-# LANGUAGE KindSignatures       #-}
-{-# LANGUAGE PolyKinds            #-}
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
-{-# OPTIONS -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans                     #-}
 
 module Test.Prop.Record.Model.Generator (
     -- * Existential wrapper around 'ModelRecord' that hides the record shape
@@ -50,7 +36,7 @@ import Test.Prop.Record.Model (
   , Types
   )
 
-import qualified Test.Prop.Record.Model as Model
+import Test.Prop.Record.Model qualified as Model
 
 {-------------------------------------------------------------------------------
   Existential wrapper around 'ModelRecord' that hides the record shape

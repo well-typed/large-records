@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Data.Record.Anon.Internal.Plugin.TC.EquivClasses (
     constructEquivClasses
   , canonicalize
@@ -8,12 +6,11 @@ module Data.Record.Anon.Internal.Plugin.TC.EquivClasses (
 import Data.Bifunctor
 import Data.Foldable (toList)
 import Data.Graph (Graph, Vertex)
+import Data.Graph qualified as Graph
 import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Set (Set)
-
-import qualified Data.Graph as Graph
-import qualified Data.Map   as Map
-import qualified Data.Set   as Set
+import Data.Set qualified as Set
 
 -- | Given a set of equivalent pairs, map every value to canonical value
 --

@@ -1,26 +1,18 @@
-{-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE ViewPatterns        #-}
-
 module Test.Prop.Record.Combinators.Simple (tests) where
 
 import Control.Monad.State
 import Data.Bifunctor
 import Data.SOP
 
-import qualified Data.Record.Anon          as Anon
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon          qualified as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
 import Test.Prop.Record.Model.Orphans ()
 import Test.Prop.Record.Model.Generator
-
-import qualified Test.Prop.Record.Model as Modl
+import Test.Prop.Record.Model qualified as Modl
 
 tests :: TestTree
 tests = testGroup "Test.Prop.Record.Combinators.Simple" [

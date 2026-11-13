@@ -1,8 +1,8 @@
-packages: typelet
-packages: large-anon
-packages: large-generics
-packages: large-records
-packages: beam-large-records
+packages: 
+  large-generics
+  large-records
+  beam-large-records
+  large-anon
 
 if impl(ghc <9)
   packages: large-records-benchmarks
@@ -22,10 +22,3 @@ package large-anon
 
 package beam-large-records
   tests: True
-
-package typelet
-  tests: True
-
--- 2026-05-14: needed for GHC-9.14
--- https://github.com/obsidiansystems/dependent-map/issues/59
-allow-newer: dependent-map-0.4.0.1:containers

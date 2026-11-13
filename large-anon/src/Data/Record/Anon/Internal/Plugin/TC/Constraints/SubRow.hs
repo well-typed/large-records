@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module Data.Record.Anon.Internal.Plugin.TC.Constraints.SubRow (
     CSubRow(..)
   , parseSubRow
@@ -15,10 +12,9 @@ import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (Source(..), Target (..), KnownRowField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow qualified as KnownRow
 import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
-
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow qualified as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition

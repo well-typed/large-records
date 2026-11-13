@@ -1,19 +1,4 @@
-{-# LANGUAGE ConstraintKinds         #-}
-{-# LANGUAGE DataKinds               #-}
-{-# LANGUAGE ExplicitNamespaces      #-}
-{-# LANGUAGE FlexibleContexts        #-}
-{-# LANGUAGE FlexibleInstances       #-}
-{-# LANGUAGE GADTs                   #-}
-{-# LANGUAGE KindSignatures          #-}
-{-# LANGUAGE OverloadedLabels        #-}
-{-# LANGUAGE PolyKinds               #-}
-{-# LANGUAGE RankNTypes              #-}
-{-# LANGUAGE ScopedTypeVariables     #-}
-{-# LANGUAGE StandaloneDeriving      #-}
-{-# LANGUAGE TypeFamilies            #-}
-{-# LANGUAGE TypeOperators           #-}
-{-# LANGUAGE UndecidableInstances    #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
@@ -25,7 +10,7 @@
 -- Intended for qualified import.
 --
 -- > import Test.Prop.Model (ModelRecord(..), ModelFields(..))
--- > import qualified Test.Prop.Model as Model
+-- > import Test.Prop.Model qualified as Model
 module Test.Prop.Record.Model (
     -- * Model proper
     ModelFields(..)
@@ -66,13 +51,11 @@ import Prelude hiding (map, mapM, zip, zipWith, sequenceA, pure)
 import Data.Functor.Product
 import Data.Kind
 import Data.SOP (NP(..), SListI, All)
-
-import qualified Data.SOP as SOP
+import Data.SOP qualified as SOP
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)
-
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 {-------------------------------------------------------------------------------
   Model proper

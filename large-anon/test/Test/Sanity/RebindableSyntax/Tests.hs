@@ -1,14 +1,9 @@
-{-# LANGUAGE Arrows                #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NPlusKPatterns        #-}
-{-# LANGUAGE OverloadedLabels      #-}
-{-# LANGUAGE OverloadedLists       #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE Arrows            #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE NPlusKPatterns    #-}
+{-# LANGUAGE OverloadedLabels  #-}
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 #ifdef REBINDABLE_SYNTAX
 {-# LANGUAGE RebindableSyntax #-}
@@ -22,14 +17,13 @@ import Control.Arrow.Operations (ArrowCircuit(delay))
 import Control.Arrow.Transformer.Stream (StreamArrow (..))
 import Control.Monad (guard)
 import Data.Proxy
+import Data.Stream qualified as Stream
 import Data.Text (Text)
 import GHC.Exts (IsList(..))
 import GHC.OverloadedLabels (IsLabel(..))
 import GHC.TypeLits (KnownSymbol, symbolVal)
 import Test.Tasty
 import Test.Tasty.HUnit
-
-import qualified Data.Stream as Stream
 
 #ifdef REBINDABLE_SYNTAX
 import Data.Record.Anon.Overloading

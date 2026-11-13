@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 #if __GLASGOW_HASKELL__ < 902
 
@@ -14,10 +15,6 @@ tests =
 
 #else
 
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE TypeOperators       #-}
-
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.OverloadedRecordDot (tests) where
@@ -26,9 +23,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Anon
-
-import qualified Data.Record.Anon.Simple   as S
-import qualified Data.Record.Anon.Advanced as A
+import Data.Record.Anon.Advanced qualified as A
+import Data.Record.Anon.Simple qualified as S
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.OverloadedRecordDot" [

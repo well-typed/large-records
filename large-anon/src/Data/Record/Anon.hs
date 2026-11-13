@@ -1,6 +1,3 @@
-{-# LANGUAGE ExplicitNamespaces #-}
-{-# LANGUAGE PatternSynonyms    #-}
-
 -- | Supporting definitions used by both the simple and the advanced interface
 --
 -- To use the anonymous records library, you will want to use either the simple
@@ -12,7 +9,7 @@
 --
 -- > import Data.Record.Anon
 -- > import Data.Record.Anon.Simple (Record)
--- > import qualified Data.Record.Anon.Simple as Anon
+-- > import Data.Record.Anon.Simple qualified as Anon
 --
 -- In addition, since the classes and type families defined here as handled by
 -- the plugin, you will also want to enable that:

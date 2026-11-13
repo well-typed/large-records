@@ -1,10 +1,4 @@
-{-# LANGUAGE CPP                  #-}
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE RecordWildCards      #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns         #-}
+{-# LANGUAGE CPP #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -33,8 +27,13 @@ import GHC.TcPlugin.API.TyConSubst
 import GHC.Builtin.Names
 import GHC.Builtin.Types
 import GHC.Builtin.Types.Prim
-import GHC.Core.Make
 import GHC.Utils.Outputable
+
+import GHC.Core.Make (
+    mkCoreApps
+  , mkListExpr
+  , mkUncheckedIntExpr
+  )
 
 #if __GLASGOW_HASKELL__ >= 810 &&  __GLASGOW_HASKELL__ < 900
 import Constraint (Ct(..))

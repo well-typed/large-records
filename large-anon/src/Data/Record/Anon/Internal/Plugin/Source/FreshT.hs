@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 -- | Fresh name generation
 module Data.Record.Anon.Internal.Plugin.Source.FreshT (
     -- * Monad definition

@@ -3,6 +3,7 @@ branches: main
 local-ghc-options: -Werror
 cabal-check: False
 copy-fields: some
+apt: libpcre3-dev
 
 -- if large-records is used, some dependencies must be declared
 -- which ghc thinks are unused.
@@ -17,6 +18,3 @@ constraint-set rdp
   constraints: large-records +rdp
   tests: True
   run-tests: True
-
-constraint-set ghc-tcplugin-api-0.18
-  constraints: gch-tcplugin-api >=0.18 && <0.19

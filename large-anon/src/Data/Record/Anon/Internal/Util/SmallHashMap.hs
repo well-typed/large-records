@@ -1,7 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE TypeApplications    #-}
 
 -- | Strict hash table designed for small hash tables
 --
@@ -15,7 +12,7 @@
 -- Intended for qualified import.
 --
 -- > import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
--- > import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
+-- > import Data.Record.Anon.Internal.Util.SmallHashMap qualified as HashMap
 module Data.Record.Anon.Internal.Util.SmallHashMap (
     SmallHashMap
     -- * Standard operations
@@ -37,9 +34,8 @@ import Data.Bifunctor
 import Data.Coerce (coerce)
 import Data.Hashable (Hashable(hash))
 import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Tuple (swap)
-
-import qualified Data.Map.Strict as Map
 
 {-------------------------------------------------------------------------------
   Wrapper to compare keys based on their hash first

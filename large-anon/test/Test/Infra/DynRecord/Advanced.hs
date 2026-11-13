@@ -1,18 +1,8 @@
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE TypeApplications    #-}
-
 -- | 'DynRecord' interop with the advanced record API.
 --
 -- Intended for qualified import
 --
--- > import qualified Test.Infra.DynRecord.Advanced as Dyn
+-- > import Test.Infra.DynRecord.Advanced qualified as Dyn
 module Test.Infra.DynRecord.Advanced (
     -- * Type inference
     ValidField(..)
@@ -32,7 +22,7 @@ import Data.Typeable
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 import Test.Infra.Discovery
 import Test.Infra.DynRecord

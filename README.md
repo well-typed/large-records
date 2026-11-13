@@ -8,7 +8,6 @@ This repository contains all of the work on scalable records in Haskell:
   `large-records` and `large-anon`.
 - [beam-large-records](beam-large-records/) provides integration for
   `large-records` with [beam](https://hackage.haskell.org/package/beam-core).
-- [typelet](typelet/) provides experimental support for type-level sharing.
 - [large-records-benchmarks](large-records-benchmarks) contains a large number
   of benchmarks measuring the (compile time) performance of the `large-records`
   library.
@@ -29,6 +28,3 @@ as well as in various presentations:
 
 - [Avoiding quadratic GHC core code size: Introducing the large-records library](https://www.youtube.com/watch?v=XXPWVPquYvw), Haskell Implementors’ Workshop 2021
 - [Avoid quadratic blow-up during compilation](https://skillsmatter.com/skillscasts/17262-avoiding-quadratic-blow-up-during-compilation), Haskell Exchange 2021
-
-
-

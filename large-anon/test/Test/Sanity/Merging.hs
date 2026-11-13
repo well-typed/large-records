@@ -1,9 +1,6 @@
-{-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeFamilies     #-}
-{-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints       #-}
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.Merging (tests) where
@@ -15,7 +12,7 @@ import Test.Tasty.HUnit
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.Merging" [

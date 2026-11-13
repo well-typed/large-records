@@ -1,4 +1,7 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                    #-}
+{-# LANGUAGE OverloadedRecordDot    #-}
+{-# LANGUAGE OverloadedRecordUpdate #-}
+{-# LANGUAGE RebindableSyntax       #-}
 
 #if __GLASGOW_HASKELL__ < 902
 
@@ -14,13 +17,6 @@ tests =
 
 #else
 
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE NamedFieldPuns         #-}
-{-# LANGUAGE OverloadedRecordDot    #-}
-{-# LANGUAGE OverloadedRecordUpdate #-}
-{-# LANGUAGE RebindableSyntax       #-}
-{-# LANGUAGE TypeOperators          #-}
-
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
 module Test.Sanity.OverloadedRecordUpdate (tests) where
@@ -29,10 +25,9 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Anon
+import Data.Record.Anon.Advanced qualified as A
 import Data.Record.Anon.Overloading
-
-import qualified Data.Record.Anon.Simple   as S
-import qualified Data.Record.Anon.Advanced as A
+import Data.Record.Anon.Simple qualified as S
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.OverloadedRecordUpdate" [

@@ -1,9 +1,4 @@
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE NamedFieldPuns      #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE CPP #-}
 
 module Data.Record.Anon.Internal.Plugin.Source (sourcePlugin) where
 
@@ -90,25 +85,24 @@ anonRec ::
   -> SrcSpan
   -> [(FastString, LHsExpr GhcPs)]
   -> FreshT Hsc (LHsExpr GhcPs)
-anonRec Options{typelet, noapply} names@LargeAnonNames{..} l = \fields ->
+anonRec Options{noapply} names@LargeAnonNames{..} l = \fields ->
     applyDiff =<< go fields
   where
     go :: [(FastString, LHsExpr GhcPs)] -> FreshT Hsc (LHsExpr GhcPs)
     go fields
       | null fields = do
           return $ mkVar l largeAnon_empty
-      | not typelet = do
-          lift $ recordWithoutTypelet names l fields
       | otherwise = do
-          p       <- freshVar l "p"
-          fields' <- mapM (\(n, e) -> (n,e,) <$> freshVar l "xs") fields
-          lift $ recordWithTypelet names l p fields'
+          lift $ recordWithoutTypelet names l fields
 
     applyDiff :: LHsExpr GhcPs -> FreshT Hsc (LHsExpr GhcPs)
     applyDiff e
       | noapply   = return e
       | otherwise = return $ mkVar l largeAnon_applyPending `mkHsApp` e
 
+-- | No type-level sharing
+--
+-- Support for @typelet@ was dropped in 0.4.0.
 recordWithoutTypelet ::
      LargeAnonNames
   -> SrcSpan
@@ -121,50 +115,9 @@ recordWithoutTypelet LargeAnonNames{..} l = \fields -> do
     go []         = mkVar l largeAnon_empty
     go ((n,e):fs) = mkVar l largeAnon_insert `mkHsApps` [mkLabel l n, e, go fs]
 
--- | Experimental support for typelet
---
--- See documentation of 'letRecordT' and 'letInsertAs'.
-recordWithTypelet ::
-     LargeAnonNames
-  -> SrcSpan
-  -> RdrName                                -- ^ Fresh var for the proxy
-  -> [(FastString, LHsExpr GhcPs, RdrName)] -- ^ Fresh var for each insert
-  -> Hsc (LHsExpr GhcPs)
-recordWithTypelet LargeAnonNames{..} l p = \fields -> do
-    return $
-      mkHsApp (mkVar l largeAnon_letRecordT) $
-        simpleLam p $ mkHsApp (mkVar l typelet_castEqual) $
-          go (mkVar l largeAnon_empty) $ reverse fields
-  where
-    go ::
-         LHsExpr GhcPs
-      -> [(FastString, LHsExpr GhcPs, RdrName)]
-      -> LHsExpr GhcPs
-    go prev []           = mkHsApp  (mkVar l typelet_castEqual) prev
-    go prev ((n,e,x):fs) = mkHsApps (mkVar l largeAnon_letInsertAs) [
-          mkVar l p
-        , mkLabel l n
-        , e
-        , prev
-        , simpleLam x $ go (mkVar l x) fs
-        ]
-      where
-
 {-------------------------------------------------------------------------------
   Auxiliary
 -------------------------------------------------------------------------------}
 
 mkVar :: SrcSpan -> RdrName -> LHsExpr GhcPs
 mkVar l name = reLocA $ L l $ HsVar defExt (reLocA $ L l name)
-
--- | Construct simple lambda
---
--- Constructs lambda of the form
---
--- > \x -> e
-simpleLam :: RdrName -> LHsExpr GhcPs -> LHsExpr GhcPs
-#if __GLASGOW_HASKELL__ >= 912
-simpleLam x body = mkHsLam (noLocA [nlVarPat x]) body
-#else
-simpleLam x body = mkHsLam [nlVarPat x] body
-#endif

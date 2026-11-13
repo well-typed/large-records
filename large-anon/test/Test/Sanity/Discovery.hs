@@ -1,8 +1,4 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE OverloadedLabels  #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
@@ -12,9 +8,8 @@ import Data.Either (fromRight)
 import Data.Record.Generic
 
 import Data.Record.Anon
-
-import qualified Data.Record.Anon.Simple   as S
-import qualified Data.Record.Anon.Advanced as A
+import Data.Record.Anon.Advanced qualified as A
+import Data.Record.Anon.Simple qualified as S
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -23,8 +18,8 @@ import Test.Infra.Discovery
 import Test.Infra.DynRecord
 import Test.Infra.MarkStrictness
 
-import qualified Test.Infra.DynRecord.Simple   as Dyn.S
-import qualified Test.Infra.DynRecord.Advanced as Dyn.A
+import Test.Infra.DynRecord.Simple   qualified as Dyn.S
+import Test.Infra.DynRecord.Advanced qualified as Dyn.A
 
 {-------------------------------------------------------------------------------
   Tests proper

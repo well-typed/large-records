@@ -1,11 +1,6 @@
-{-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
-
 -- | Generic parsing infrastructure
 --
 -- TODO: Perhaps we could move this (or some form of this) to ghc-tcplugin-api?
--- (The @typelet@ package could then use it, too.)
 module Data.Record.Anon.Internal.Plugin.TC.Parsing (
     -- * Basic infrastructure
     ParseResult(..)

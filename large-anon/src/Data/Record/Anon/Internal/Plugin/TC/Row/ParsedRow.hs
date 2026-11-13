@@ -1,11 +1,9 @@
-{-# LANGUAGE RecordWildCards #-}
-
 -- | Parsed form of a row type in the source
 --
 -- Intended for qualified import.
 --
 -- import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
--- import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
+-- import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow qualified as ParsedRow
 module Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (
     -- * Definition
     Fields     -- opaque
@@ -24,16 +22,14 @@ import Control.Monad.State (State, evalState, state)
 import Data.Foldable (asum)
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
+import Data.Record.Anon.Internal.Core.FieldName qualified as FieldName
 
-import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
-
-import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
-import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..), KnownRowField(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution (ResolvedNames(..))
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
-
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow as KnownRow
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..), KnownRowField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow qualified as KnownRow
 
 {-------------------------------------------------------------------------------
   Definition

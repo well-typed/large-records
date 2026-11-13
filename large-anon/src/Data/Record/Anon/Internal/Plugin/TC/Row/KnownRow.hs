@@ -1,16 +1,9 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE DeriveFoldable      #-}
-{-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- | Information about a record
 --
 -- Intended for qualified import.
 --
 -- > import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow(..))
--- > import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow as KnownRow
+-- > import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow qualified as KnownRow
 module Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (
     -- * Definition
     KnownRow(..)
@@ -36,7 +29,7 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (
   ) where
 
 import Prelude hiding (traverse, lookup)
-import qualified Prelude
+import Prelude qualified
 
 import Data.Either (partitionEithers)
 import Data.List (sortBy)
@@ -44,11 +37,10 @@ import Data.Ord (comparing)
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
+import Data.Record.Anon.Internal.Util.SmallHashMap qualified as HashMap
 
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
-
-import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
 
 {-------------------------------------------------------------------------------
   Definition

@@ -1,13 +1,4 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE KindSignatures       #-}
-{-# LANGUAGE OverloadedLabels     #-}
-{-# LANGUAGE PolyKinds            #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
@@ -27,9 +18,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Data.Record.Anon
-
-import qualified Data.Record.Anon.Simple   as S
-import qualified Data.Record.Anon.Advanced as A
+import Data.Record.Anon.Advanced qualified as A
+import Data.Record.Anon.Simple qualified as S
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.TypeLevelMetadata" [

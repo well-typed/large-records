@@ -1,5 +1,12 @@
 # Revision history for large-anon
 
+## 0.4.0 -- 2026-11-13
+
+* Drop support for `typelet` (which is no longer maintained).
+* Drop support for ghc < 9.2
+* Relax bounds
+* Use ghc-tcplugin-api 0.20.2
+
 ## 0.3.4 -- 2026-05-20
 
 * Support ghc 9.14

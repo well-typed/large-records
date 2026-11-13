@@ -1,7 +1,3 @@
-{-# LANGUAGE RankNTypes       #-}
-{-# LANGUAGE TupleSections    #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Test.Prop.Record.Combinators.Constrained (tests) where
 
 import Control.Monad.ST
@@ -10,15 +6,14 @@ import Data.Record.Generic.LowerBound
 import Data.SOP.BasicFunctors
 import Data.STRef
 
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
 import Test.Prop.Record.Model.Orphans ()
 import Test.Prop.Record.Model.Generator
-
-import qualified Test.Prop.Record.Model as Modl
+import Test.Prop.Record.Model qualified as Modl
 
 tests :: TestTree
 tests = testGroup "Test.Prop.Record.Combinators.Constrained" [

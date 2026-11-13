@@ -1,23 +1,16 @@
-{-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeOperators    #-}
 
-{-# OPTIONS_GHC -fplugin=TypeLet -fplugin=Data.Record.Anon.Plugin #-}
-{-# OPTIONS_GHC -fplugin-opt=Data.Record.Anon.Plugin:typelet #-}
+{-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 -- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anon.Plugin:debug   #-}
+-- {-# OPTIONS_GHC -fplugin-opt=Data.Record.Anon.Plugin:noapply #-}
 
--- | Tests for @typelet@
---
--- These tests are identical to the ones in @WithoutTypelet@, except that we
--- enable the @typelet@ plugin option here.
-module Test.Sanity.SrcPlugin.WithTypelet (tests) where
+module Test.Sanity.SrcPlugin (tests) where
 
 import Data.SOP.BasicFunctors
 
 import Data.Record.Anon
-
-import qualified Data.Record.Anon.Advanced as A
-import qualified Data.Record.Anon.Simple   as S
+import Data.Record.Anon.Advanced qualified as A
+import Data.Record.Anon.Simple qualified as S
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -27,7 +20,7 @@ import Test.Tasty.HUnit
 -------------------------------------------------------------------------------}
 
 tests :: TestTree
-tests = testGroup "Test.Sanity.SrcPlugin.WithTypelet" [
+tests = testGroup "Test.Sanity.SrcPlugin" [
       testCase "simple"   test_simple
     , testCase "advanced" test_advanced
     ]
@@ -73,7 +66,11 @@ example_simple = ANON {
     , c = True
     }
 
--- | Check that the use of typelet does not hinder type inference
+-- | Example showing that we can easily reorder fields
+--
+-- Importantly, the @a = 1@ assignment does /not/ lead to warnings about
+-- defaulting @1@: the projection causes a unificaiton to happen between its
+-- type and @Int@ (provided we have a type annotation, of course).
 example_simple_reordered :: S.Record '[ "a" := Int, "b" := Char, "c" := Bool ]
 example_simple_reordered = S.project $ ANON {
       a = 1

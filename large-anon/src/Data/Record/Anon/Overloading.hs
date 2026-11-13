@@ -1,7 +1,4 @@
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE CPP #-}
 
 -- Not a fan of @AllowAmbiguousTypes@, but no choice here, /must/ be enabled
 -- to export a 'getField' of the correct type.
@@ -29,11 +26,11 @@ module Data.Record.Anon.Overloading (
   , setField
   ) where
 
-import qualified Control.Arrow
-import qualified Data.String
-import qualified GHC.OverloadedLabels
-import qualified GHC.Records
-import qualified GHC.Records.Compat
+import Control.Arrow        qualified
+import Data.String          qualified
+import GHC.OverloadedLabels qualified
+import GHC.Records          qualified
+import GHC.Records.Compat   qualified
 
 {-------------------------------------------------------------------------------
   Other exports

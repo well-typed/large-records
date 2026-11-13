@@ -1,15 +1,9 @@
-{-# LANGUAGE DeriveFoldable  #-}
-{-# LANGUAGE DeriveFunctor   #-}
-{-# LANGUAGE NamedFieldPuns  #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DataKinds #-}
-
 -- | Information about a field in a record
 --
 -- Intended for qualified import
 --
 -- > import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
--- > import qualified Data.Record.Anonymous.Row.Record.KnownField as KnownField
+-- > import Data.Record.Anonymous.Row.Record.KnownField qualified as KnownField
 module Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (
     -- * Definition
     KnownField(..)
@@ -21,7 +15,7 @@ module Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (
   ) where
 
 import Data.Record.Anon.Internal.Core.FieldName (FieldName(..))
-import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
+import Data.Record.Anon.Internal.Core.FieldName qualified as FieldName
 
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 

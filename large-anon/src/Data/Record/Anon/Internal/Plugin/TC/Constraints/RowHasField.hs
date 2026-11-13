@@ -1,7 +1,3 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module Data.Record.Anon.Internal.Plugin.TC.Constraints.RowHasField (
     CRowHasField(..)
   , parseRowHasField
@@ -15,10 +11,9 @@ import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRowField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow qualified as KnownRow
 import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields, FieldLabel(..))
-
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow qualified as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition

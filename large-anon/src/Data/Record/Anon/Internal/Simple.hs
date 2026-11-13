@@ -1,18 +1,3 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MonoLocalBinds        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
-
 -- | Simple interface to the anonymous records library
 --
 -- This module defines a type @Record r@ such that, for example,
@@ -36,7 +21,7 @@
 -- This module is intended for qualified import.
 --
 -- > import Data.Record.Anonymous.Simple (Record)
--- > import qualified Data.Record.Anonymous.Simple as Anon
+-- > import Data.Record.Anonymous.Simple qualified as Anon
 module Data.Record.Anon.Internal.Simple (
     Record -- opaque
     -- * Basic API
@@ -57,9 +42,6 @@ module Data.Record.Anon.Internal.Simple (
   , toAdvanced
   , fromAdvanced
   , sequenceA
-    -- * Support for @typelet@
-  , letRecordT
-  , letInsertAs
   ) where
 
 import Prelude hiding (sequenceA)
@@ -67,6 +49,7 @@ import Prelude hiding (sequenceA)
 import Control.DeepSeq (NFData(..))
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Bifunctor
+import Data.Primitive.SmallArray
 import Data.Record.Generic
 import Data.Record.Generic.Eq
 import Data.Record.Generic.JSON
@@ -75,19 +58,15 @@ import Data.Record.Generic.Show
 import Data.Tagged
 import GHC.Exts (Any)
 import GHC.OverloadedLabels
+import GHC.Records qualified as Base
+import GHC.Records.Compat qualified as RecordHasfield
 import GHC.TypeLits
-import TypeLet
-import Data.Primitive.SmallArray
-
-import qualified GHC.Records        as Base
-import qualified GHC.Records.Compat as RecordHasfield
-import qualified Optics.Core        as Optics
+import Optics.Core qualified as Optics
 
 import Data.Record.Anon.Plugin.Internal.Runtime
 
 import Data.Record.Anon.Internal.Advanced (Field(..))
-
-import qualified Data.Record.Anon.Internal.Advanced as A
+import Data.Record.Anon.Internal.Advanced qualified as A
 
 {-------------------------------------------------------------------------------
   Definition
@@ -277,25 +256,3 @@ instance RecordConstraints r ToJSON => ToJSON (Record r) where
 
 instance RecordConstraints r FromJSON => FromJSON (Record r) where
   parseJSON = gparseJSON
-
-{-------------------------------------------------------------------------------
-  Support for @typelet@
--------------------------------------------------------------------------------}
-
--- | Introduce type variable for a row
-letRecordT :: forall r.
-     (forall r'. Let r' r => Proxy r' -> Record r)
-  -> Record r
-letRecordT f = letT' (Proxy @r) f
-
--- | Insert field into a record and introduce type variable for the result
-letInsertAs :: forall r r' n a.
-     Proxy r     -- ^ Type of the record we are constructing
-  -> Field n     -- ^ New field to be inserted
-  -> a           -- ^ Value of the new field
-  -> Record r'   -- ^ Record constructed so far
-  -> (forall r''. Let r'' (n := a : r') => Record r'' -> Record r)
-                 -- ^ Assign type variable to new partial record, and continue
-  -> Record r
-letInsertAs _ n x r = letAs' (insert n x r)
-

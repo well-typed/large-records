@@ -1,7 +1,4 @@
-{-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 {-# OPTIONS_GHC -Wno-orphans #-} -- for the ToJSON/FromJSON instances
@@ -13,15 +10,15 @@ import Data.Record.Generic
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
 import Test.Infra.Generics
 
-import qualified Test.Sanity.Named.Record1 as R1
-import qualified Test.Sanity.Named.Record2 as R2
+import Test.Sanity.Named.Record1 qualified as R1
+import Test.Sanity.Named.Record2 qualified as R2
 
 -- add test with non-I functor
 

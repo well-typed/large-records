@@ -3,8 +3,7 @@
 module Data.Record.Anon.Internal.Plugin (plugin) where
 
 import GHC.TcPlugin.API
-
-import qualified GHC.Plugins
+import GHC.Plugins qualified
 
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Rewriter

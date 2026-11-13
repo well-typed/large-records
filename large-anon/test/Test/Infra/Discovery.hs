@@ -1,12 +1,3 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeOperators       #-}
-
 module Test.Infra.Discovery (
      -- * Intersect rows
      InBothRows(..)
@@ -26,6 +17,7 @@ module Test.Infra.Discovery (
    , pairSnd
    ) where
 
+import Control.Monad.State (State, runState, state)
 import Data.Kind
 import Data.Maybe (catMaybes)
 import Data.Typeable
@@ -33,8 +25,7 @@ import GHC.TypeLits
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record, InRow(InRow))
-import qualified Data.Record.Anon.Advanced as Anon
-import Control.Monad.State
+import Data.Record.Anon.Advanced qualified as Anon
 
 {-------------------------------------------------------------------------------
   Intersect rows

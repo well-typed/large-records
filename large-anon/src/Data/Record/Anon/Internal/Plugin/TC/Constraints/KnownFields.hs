@@ -1,8 +1,3 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE NamedFieldPuns  #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownFields (
     CKnownFields(..)
   , parseKnownFields
@@ -14,12 +9,11 @@ import Data.Void
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField qualified as KnownField
 import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow)
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow qualified as KnownRow
 import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
-
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownField as KnownField
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow   as KnownRow
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow  as ParsedRow
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow qualified as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition

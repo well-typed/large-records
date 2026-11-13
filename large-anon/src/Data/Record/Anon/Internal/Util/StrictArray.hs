@@ -1,8 +1,4 @@
-{-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE CPP #-}
 
 module Data.Record.Anon.Internal.Util.StrictArray (
     StrictArray -- opaque
@@ -30,12 +26,11 @@ module Data.Record.Anon.Internal.Util.StrictArray (
 import Prelude hiding (mapM, zipWith)
 
 import Control.Monad (forM_)
+import Control.Monad qualified as Monad
 import Control.Monad.ST
+import Data.Foldable qualified as Foldable
 import Data.Primitive.SmallArray hiding (writeSmallArray, indexSmallArray)
-
-import qualified Control.Monad             as Monad
-import qualified Data.Foldable             as Foldable
-import qualified Data.Primitive.SmallArray as SmallArray
+import Data.Primitive.SmallArray qualified as SmallArray
 
 #ifdef DEBUG
 import GHC.Stack

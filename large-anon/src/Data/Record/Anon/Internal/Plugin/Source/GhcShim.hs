@@ -1,7 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds #-}
 
 -- | Thin shim around the GHC API
 --
@@ -142,7 +139,7 @@ import GHC.Rename.Names (renamePkgQual)
 import GHC.Types.Name.Cache (NameCache, takeUniqFromNameCache)
 import GHC.Types.PkgQual (RawPkgQual(NoRawPkgQual))
 import GHC.Utils.Error (mkPlainError)
-import qualified GHC.Types.Error as Err
+import GHC.Types.Error qualified as Err
 #endif
 
 #endif

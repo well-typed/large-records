@@ -1,6 +1,3 @@
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 module Test.Sanity.Named.Record2 (
     Record(..)
   ) where

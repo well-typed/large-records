@@ -3,7 +3,7 @@
 -- Intended for qualified import.
 --
 -- > import Data.Record.Anon.Internal.Core.FieldName (FieldName(..))
--- > import qualified Data.Record.Anon.Internal.Core.FieldName as FieldName
+-- > import Data.Record.Anon.Internal.Core.FieldName qualified as FieldName
 module Data.Record.Anon.Internal.Core.FieldName (
     -- * Definition
     FieldName(..)

@@ -1,15 +1,4 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE EmptyCase           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE OverloadedLabels    #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
@@ -17,6 +6,7 @@ module Test.Prop.Record.Diff (tests) where
 
 import Data.Kind
 import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.SOP
 import Data.Type.Equality
 import GHC.TypeLits
@@ -24,11 +14,9 @@ import Test.QuickCheck
 import Test.Tasty hiding (after)
 import Test.Tasty.QuickCheck
 
-import qualified Data.Map as Map
-
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)
-import qualified Data.Record.Anon.Advanced as Anon
+import Data.Record.Anon.Advanced qualified as Anon
 
 {-------------------------------------------------------------------------------
   Abstraction over the 'Diff' operations

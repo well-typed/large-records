@@ -1,10 +1,3 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-
 -- | Additional generic functions used in tests
 module Test.Infra.Generics (
     describeRecord
@@ -18,7 +11,7 @@ import Data.SOP
 import Data.Typeable
 import GHC.TypeLits
 
-import qualified Data.Record.Generic.Rep as Rep
+import Data.Record.Generic.Rep qualified as Rep
 
 import Data.Record.Anon
 import Data.Record.Anon.Advanced (Record)

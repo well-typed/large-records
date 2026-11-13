@@ -1,13 +1,9 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE GADTs           #-}
-{-# LANGUAGE RankNTypes      #-}
-
 -- | Low-level reflection utility for internal use.
 --
 -- Intended for qualified import:
 --
 -- > import Data.Record.Anon.Internal.Reflection (Reflected(..))
--- > import qualified Data.Record.Anon.Internal.Reflection as Unsafe
+-- > import Data.Record.Anon.Internal.Reflection qualified as Unsafe
 module Data.Record.Anon.Internal.Reflection (
     Reflected(..)
   , reflectKnownFields

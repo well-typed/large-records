@@ -2,30 +2,29 @@ module Main (main) where
 
 import Test.Tasty
 
-import qualified Test.Prop.Record.Combinators.Constrained
-import qualified Test.Prop.Record.Combinators.Simple
-import qualified Test.Prop.Record.Diff
-import qualified Test.Sanity.AllFields
-import qualified Test.Sanity.Applicative
-import qualified Test.Sanity.BlogPost
-import qualified Test.Sanity.CheckIsSubRow
-import qualified Test.Sanity.Discovery
-import qualified Test.Sanity.DuplicateFields
-import qualified Test.Sanity.Generics
-import qualified Test.Sanity.HasField
-import qualified Test.Sanity.Intersection
-import qualified Test.Sanity.Merging
-import qualified Test.Sanity.OverloadedRecordDot
-import qualified Test.Sanity.OverloadedRecordUpdate
-import qualified Test.Sanity.PolyKinds
-import qualified Test.Sanity.RebindableSyntax.Disabled
-import qualified Test.Sanity.RebindableSyntax.Enabled
-import qualified Test.Sanity.RecordLens
-import qualified Test.Sanity.Regression
-import qualified Test.Sanity.Simple
-import qualified Test.Sanity.SrcPlugin.WithoutTypelet
-import qualified Test.Sanity.SrcPlugin.WithTypelet
-import qualified Test.Sanity.TypeLevelMetadata
+import Test.Prop.Record.Combinators.Constrained qualified
+import Test.Prop.Record.Combinators.Simple      qualified
+import Test.Prop.Record.Diff                    qualified
+import Test.Sanity.AllFields                    qualified
+import Test.Sanity.Applicative                  qualified
+import Test.Sanity.BlogPost                     qualified
+import Test.Sanity.CheckIsSubRow                qualified
+import Test.Sanity.Discovery                    qualified
+import Test.Sanity.DuplicateFields              qualified
+import Test.Sanity.Generics                     qualified
+import Test.Sanity.HasField                     qualified
+import Test.Sanity.Intersection                 qualified
+import Test.Sanity.Merging                      qualified
+import Test.Sanity.OverloadedRecordDot          qualified
+import Test.Sanity.OverloadedRecordUpdate       qualified
+import Test.Sanity.PolyKinds                    qualified
+import Test.Sanity.RebindableSyntax.Disabled    qualified
+import Test.Sanity.RebindableSyntax.Enabled     qualified
+import Test.Sanity.RecordLens                   qualified
+import Test.Sanity.Regression                   qualified
+import Test.Sanity.Simple                       qualified
+import Test.Sanity.SrcPlugin                    qualified
+import Test.Sanity.TypeLevelMetadata            qualified
 
 main :: IO ()
 main = defaultMain $ testGroup "large-anon" [
@@ -42,8 +41,7 @@ main = defaultMain $ testGroup "large-anon" [
         , Test.Sanity.PolyKinds.tests
         , Test.Sanity.CheckIsSubRow.tests
         , Test.Sanity.Discovery.tests
-        , Test.Sanity.SrcPlugin.WithoutTypelet.tests
-        , Test.Sanity.SrcPlugin.WithTypelet.tests
+        , Test.Sanity.SrcPlugin.tests
         , Test.Sanity.Intersection.tests
         , Test.Sanity.BlogPost.tests
         , Test.Sanity.OverloadedRecordDot.tests

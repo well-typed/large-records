@@ -1,6 +1,4 @@
-{-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
 
@@ -15,8 +13,7 @@ import Test.Tasty.HUnit
 
 import Data.Record.Anon
 import Data.Record.Anon.Simple (Record)
-
-import qualified Data.Record.Anon.Simple as Anon
+import Data.Record.Anon.Simple qualified as Anon
 
 tests :: TestTree
 tests = testGroup "Test.Sanity.Simple" [

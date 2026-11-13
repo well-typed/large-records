@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module Data.Record.Anon.Internal.Plugin.TC.Constraints.KnownHash (
     CKnownHash(..)
   , parseKnownHash

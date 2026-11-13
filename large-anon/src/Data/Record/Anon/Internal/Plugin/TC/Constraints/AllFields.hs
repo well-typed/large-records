@@ -1,9 +1,3 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
-
 module Data.Record.Anon.Internal.Plugin.TC.Constraints.AllFields (
     CAllFields(..)
   , parseAllFields
@@ -13,15 +7,14 @@ module Data.Record.Anon.Internal.Plugin.TC.Constraints.AllFields (
 import Data.Bifunctor
 import Data.Void
 
-import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
-import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow)
-import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
 import Data.Record.Anon.Internal.Plugin.TC.GhcTcPluginAPI
 import Data.Record.Anon.Internal.Plugin.TC.NameResolution
 import Data.Record.Anon.Internal.Plugin.TC.Parsing
-
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow  as KnownRow
-import qualified Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow as ParsedRow
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownField (KnownField(..))
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow (KnownRow)
+import Data.Record.Anon.Internal.Plugin.TC.Row.KnownRow qualified as KnownRow
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow (Fields)
+import Data.Record.Anon.Internal.Plugin.TC.Row.ParsedRow qualified as ParsedRow
 
 {-------------------------------------------------------------------------------
   Definition

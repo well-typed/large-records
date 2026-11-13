@@ -1,18 +1,11 @@
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE RoleAnnotations     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
+{-# LANGUAGE CPP #-}
 
 -- | Record diff
 --
 -- Intended for qualified import.
 --
 -- > import Data.Record.Anonymous.Internal.Diff (Diff)
--- > import qualified Data.Record.Anonymous.Internal.Diff as Diff
+-- > import Data.Record.Anonymous.Internal.Diff qualified as Diff
 module Data.Record.Anon.Internal.Core.Diff (
     Diff(..)
     -- * Incremental construction
@@ -29,25 +22,23 @@ module Data.Record.Anon.Internal.Core.Diff (
   ) where
 
 import Data.IntMap (IntMap)
+import Data.IntMap.Strict qualified as IntMap
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty(..), (<|))
+import Data.List.NonEmpty qualified as NE
 import Data.SOP.BasicFunctors
 import GHC.Exts (Any)
-import qualified Data.IntMap.Strict as IntMap
 
 #if DEBUG
 import Debug.RecoverRTTI (AnythingToString(..))
 import Data.Record.Generic.Rep.Internal (noInlineUnsafeCo)
 #endif
 
-import qualified Data.List.NonEmpty as NE
-
 import Data.Record.Anon.Internal.Core.Canonical (Canonical)
+import Data.Record.Anon.Internal.Core.Canonical qualified as Canon
 import Data.Record.Anon.Internal.Core.FieldName (FieldName)
 import Data.Record.Anon.Internal.Util.SmallHashMap (SmallHashMap)
-
-import qualified Data.Record.Anon.Internal.Core.Canonical    as Canon
-import qualified Data.Record.Anon.Internal.Util.SmallHashMap as HashMap
+import Data.Record.Anon.Internal.Util.SmallHashMap qualified as HashMap
 
 {-------------------------------------------------------------------------------
   Definition

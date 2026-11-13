@@ -1,5 +1,3 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE TypeOperators    #-}
 {-# LANGUAGE OverloadedLabels #-}
 
 {-# OPTIONS_GHC -fplugin=Data.Record.Anon.Plugin #-}
@@ -10,7 +8,7 @@ import Validation
 
 import Data.Record.Anon
 import Data.Record.Anon.Simple (Record)
-import qualified Data.Record.Anon.Simple as Anon
+import Data.Record.Anon.Simple qualified as Anon
 
 import Test.Tasty
 import Test.Tasty.HUnit

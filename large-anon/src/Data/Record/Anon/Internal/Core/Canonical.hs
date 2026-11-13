@@ -1,24 +1,11 @@
-{-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures             #-}
-{-# LANGUAGE NamedFieldPuns             #-}
-{-# LANGUAGE PolyKinds                  #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE RoleAnnotations            #-}
+{-# LANGUAGE CPP #-}
 
 -- | Canonical gecord (i.e., no diff)
 --
 -- Intended for qualified import.
 --
 -- > import Data.Record.Anonymous.Internal.Canonical (Canonical)
--- > import qualified Data.Record.Anonymous.Internal.Canonical as Canon
+-- > import Data.Record.Anonymous.Internal.Canonical qualified as Canon
 module Data.Record.Anon.Internal.Core.Canonical (
     Canonical -- opaque
     -- * Indexed access
@@ -48,10 +35,12 @@ module Data.Record.Anon.Internal.Core.Canonical (
   ) where
 
 import Prelude hiding (map, mapM, zipWith, sequenceA, pure)
-import qualified Prelude
+import Prelude qualified
 
 import Data.Coerce (coerce)
+import Data.Foldable qualified as Foldable
 import Data.Kind
+import Data.Primitive (SmallArray)
 import Data.SOP.BasicFunctors
 import Data.SOP.Classes (type (-.->)(apFn))
 import GHC.Exts (Any)
@@ -60,12 +49,8 @@ import GHC.Exts (Any)
 import Debug.RecoverRTTI (AnythingToString(..))
 #endif
 
-import qualified Data.Foldable as Foldable
-
 import Data.Record.Anon.Internal.Util.StrictArray (StrictArray)
-
-import qualified Data.Record.Anon.Internal.Util.StrictArray as Strict
-import Data.Primitive (SmallArray)
+import Data.Record.Anon.Internal.Util.StrictArray qualified as Strict
 
 {-------------------------------------------------------------------------------
   Definition

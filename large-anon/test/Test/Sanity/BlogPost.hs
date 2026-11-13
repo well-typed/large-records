@@ -1,17 +1,6 @@
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedLabels      #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE OverloadedLabels  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 #if defined(NO_RECORD_DOT_PREPROCESSOR)
 
@@ -49,31 +38,29 @@ module Test.Sanity.BlogPost (
   ) where
 
 import Data.Aeson (ToJSON(..), Value)
+import Data.Aeson qualified as Aeson
+import Data.Aeson.Encode.Pretty qualified as Aeson.Pretty
 import Data.Bifunctor
+import Data.ByteString.Lazy qualified as Lazy (ByteString)
+import Data.ByteString.Lazy.Char8 qualified as Lazy.BS.C8
 import Data.Function (on)
 import Data.Kind
 import Data.Maybe
 import Data.SOP (fn_3)
 import Data.String
+import Data.Text qualified as Text
 import Data.Type.Equality
 import GHC.TypeLits
 import Optics.Core (over)
 import Text.Parsec (Parsec, ParseError)
+import Text.Parsec qualified as Parsec
 import Text.Read (readMaybe)
 
-import qualified Data.Aeson                 as Aeson
-import qualified Data.Aeson.Encode.Pretty   as Aeson.Pretty
-import qualified Data.ByteString.Lazy       as Lazy (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as Lazy.BS.C8
-import qualified Data.Text                  as Text
-import qualified Text.Parsec                as Parsec
-
 import Data.Record.Anon
-import Data.Record.Anon.Simple (Record)
 import Data.Record.Anon.Advanced (InRow(..))
-
-import qualified Data.Record.Anon.Advanced  as A
-import qualified Data.Record.Anon.Simple    as S
+import Data.Record.Anon.Advanced qualified as A
+import Data.Record.Anon.Simple (Record)
+import Data.Record.Anon.Simple qualified as S
 
 import Test.Tasty
 import Test.Tasty.HUnit

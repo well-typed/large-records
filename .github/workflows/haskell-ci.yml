@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.19.20260331
+# version: 0.19.20261010
 #
-# REGENDATA ("0.19.20260331",["github","cabal.project"])
+# REGENDATA ("0.19.20261010",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -32,7 +32,7 @@ jobs:
     timeout-minutes:
       60
     container:
-      image: buildpack-deps:jammy
+      image: buildpack-deps:noble
     continue-on-error: ${{ matrix.allow-failure }}
     strategy:
       matrix:
@@ -42,14 +42,14 @@ jobs:
             compilerVersion: 9.14.1
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.12.2
+          - compiler: ghc-9.12.4
             compilerKind: ghc
-            compilerVersion: 9.12.2
+            compilerVersion: 9.12.4
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.10.2
+          - compiler: ghc-9.10.3
             compilerKind: ghc
-            compilerVersion: 9.10.2
+            compilerVersion: 9.10.3
             setup-method: ghcup
             allow-failure: false
           - compiler: ghc-9.8.4
@@ -87,7 +87,8 @@ jobs:
       - name: apt-get install
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
+          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common
+          apt-get install -y libpcre3-dev
       - name: Install GHCup
         run: |
           mkdir -p "$HOME/.ghcup/bin"
@@ -181,17 +182,16 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-docspec
           cabal-docspec --version
       - name: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           path: source
       - name: initial cabal.project for sdist
         run: |
           touch cabal.project
-          echo "packages: $GITHUB_WORKSPACE/source/typelet" >> cabal.project
-          echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-generics" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/large-records" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/beam-large-records" >> cabal.project
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-anon" >> cabal.project ; fi
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "packages: $GITHUB_WORKSPACE/source/large-records-benchmarks" >> cabal.project ; fi
           cat cabal.project
       - name: sdist
@@ -204,58 +204,43 @@ jobs:
           find sdist -maxdepth 1 -type f -name '*.tar.gz' -exec tar -C $GITHUB_WORKSPACE/unpacked -xzvf {} \;
       - name: generate cabal.project
         run: |
-          PKGDIR_typelet="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/typelet-[0-9.]*')"
-          echo "PKGDIR_typelet=${PKGDIR_typelet}" >> "$GITHUB_ENV"
-          PKGDIR_large_anon="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-anon-[0-9.]*')"
-          echo "PKGDIR_large_anon=${PKGDIR_large_anon}" >> "$GITHUB_ENV"
           PKGDIR_large_generics="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-generics-[0-9.]*')"
           echo "PKGDIR_large_generics=${PKGDIR_large_generics}" >> "$GITHUB_ENV"
           PKGDIR_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-records-[0-9.]*')"
           echo "PKGDIR_large_records=${PKGDIR_large_records}" >> "$GITHUB_ENV"
           PKGDIR_beam_large_records="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/beam-large-records-[0-9.]*')"
           echo "PKGDIR_beam_large_records=${PKGDIR_beam_large_records}" >> "$GITHUB_ENV"
+          PKGDIR_large_anon="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-anon-[0-9.]*')"
+          echo "PKGDIR_large_anon=${PKGDIR_large_anon}" >> "$GITHUB_ENV"
           PKGDIR_large_records_benchmarks="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/large-records-benchmarks-[0-9.]*')"
           echo "PKGDIR_large_records_benchmarks=${PKGDIR_large_records_benchmarks}" >> "$GITHUB_ENV"
           rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
-          echo "packages: ${PKGDIR_typelet}" >> cabal.project
-          echo "packages: ${PKGDIR_large_anon}" >> cabal.project
           echo "packages: ${PKGDIR_large_generics}" >> cabal.project
           echo "packages: ${PKGDIR_large_records}" >> cabal.project
           echo "packages: ${PKGDIR_beam_large_records}" >> cabal.project
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_anon}" >> cabal.project ; fi
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "packages: ${PKGDIR_large_records_benchmarks}" >> cabal.project ; fi
-          echo "package typelet" >> cabal.project
-          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
-          echo "package large-anon" >> cabal.project
-          echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           echo "package large-generics" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           echo "package large-records" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
           echo "package beam-large-records" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "package large-records-benchmarks" >> cabal.project ; fi
           if [ $((HCNUMVER < 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods -Werror=missing-fields" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package typelet" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package large-generics" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package large-records" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "package beam-large-records" >> cabal.project ; fi
           if [ $((HCNUMVER >= 90000)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "package large-anon" >> cabal.project ; fi
+          if [ $((HCNUMVER >= 90200)) -ne 0 ] ; then echo "    ghc-options: -Werror=incomplete-patterns -Werror=incomplete-uni-patterns" >> cabal.project ; fi
           cat >> cabal.project <<EOF
-          allow-newer: dependent-map-0.4.0.1:containers
-
-          package typelet
-            ghc-options: -Werror
-
-          package large-anon
-            ghc-options: -Werror
-
           package large-generics
             ghc-options: -Werror
 
@@ -265,10 +250,13 @@ jobs:
           package beam-large-records
             ghc-options: -Werror
 
+          package large-anon
+            ghc-options: -Werror
+
           package large-records-benchmarks
             ghc-options: -Werror
           EOF
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks|typelet)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(beam-large-records|large-anon|large-generics|large-records|large-records-benchmarks)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
@@ -276,11 +264,11 @@ jobs:
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
           cabal-plan
       - name: restore cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
-          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
+          key: noble-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
-          restore-keys: ${{ runner.os }}-${{ matrix.compiler }}-
+          restore-keys: noble-${{ matrix.compiler }}-
       - name: install dependencies
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --dependencies-only -j2 all
@@ -308,12 +296,6 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
-      - name: constraint set ghc-tcplugin-api-0.18
-        run: |
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='gch-tcplugin-api >=0.18 && <0.19' all --dry-run
-          cabal-plan topo | sort
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='gch-tcplugin-api >=0.18 && <0.19' --dependencies-only -j2 all
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='gch-tcplugin-api >=0.18 && <0.19' all
       - name: constraint set rdp
         run: |
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='large-records +rdp' all --dry-run ; fi
@@ -323,7 +305,7 @@ jobs:
           if [ $((HCNUMVER < 91000)) -ne 0 ] ; then $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='large-records +rdp' all ; fi
       - name: save cache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
-          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
+          key: noble-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
